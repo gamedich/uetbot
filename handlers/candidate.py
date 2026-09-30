@@ -28,6 +28,7 @@ from common import (
     VACANCIES,
     CandidateForm,
     InquiryForm,
+    SupportForm,
     route_new_candidate_ticket,
     route_new_inquiry_ticket,
     sync_user_commands
@@ -88,7 +89,7 @@ async def cmd_help(message: types.Message, state: FSMContext = None):
     is_tech = is_tech_admin(user_id)
     is_hr = is_hr_admin(user_id)
     help_text = texts.format_help_text(is_super, is_tech, is_hr)
-    await safe_answer(message, help_text, reply_markup=make_candidate_main_keyboard(), parse_mode="HTML")
+    await safe_answer(message, help_text, reply_markup=make_candidate_main_keyboard(user_id=message.from_user.id), parse_mode="HTML")
 
 
 @candidate_router.message(Command("id"))
@@ -129,8 +130,93 @@ async def cmd_start(message: types.Message, state: FSMContext, bot: Bot):
     if CONFIG.get("MAINTENANCE_MODE") and not is_admin:
         return await safe_answer(message, texts.MAINTENANCE_ACTIVE, parse_mode="HTML")
 
-    await safe_answer(message, texts.START_WELCOME, reply_markup=make_candidate_main_keyboard(), parse_mode="HTML")
+    await safe_answer(message, texts.START_WELCOME, reply_markup=make_candidate_main_keyboard(user_id=message.from_user.id), parse_mode="HTML")
+# =====================================================================
+# ЭКСТРЕННАЯ СВЯЗЬ С ТЕХНИЧЕСКИМ АДМИНИСТРАТОРОМ (/support, /sos)
+# =====================================================================
 
+@candidate_router.callback_query(F.data == "cand_support")
+@candidate_router.message(Command("support", "sos", "tech_support"))
+@candidate_router.message(F.text.lower().in_(["поддержка", "техподдержка", "сос", "sos", "/support", "/sos"]))
+async def cb_cand_support_start(event: types.CallbackQuery | types.Message, state: FSMContext):
+    await state.set_state(SupportForm.waiting_message)
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❌ Отмена", callback_data="cand_back_to_menu")
+    prompt_text = (
+        "🚨 <b>ЭКСТРЕННАЯ СВЯЗЬ С ТЕХНИЧЕСКИМ АДМИНИСТРАТОРОМ</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Если вы столкнулись с техническим сбоем, критической ошибкой в работе бота "
+        "или вам требуется срочная помощь инженера, отправьте сообщение с описанием проблемы <b>одним сообщением</b> ниже.\n\n"
+        "<i>Ваше обращение поступит напрямую дежурному техническому администратору.</i>"
+    )
+    if isinstance(event, types.CallbackQuery):
+        await event.message.edit_text(prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+        await event.answer()
+    else:
+        await safe_answer(event, prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@candidate_router.message(SupportForm.waiting_message)
+async def process_support_message(message: types.Message, state: FSMContext, bot: Bot):
+    text = (message.text or "").strip()
+    if not text:
+        return await safe_answer(message, "⚠️ Пожалуйста, опишите проблему текстом в одном сообщении.")
+
+    await state.clear()
+    user_id = message.from_user.id
+    user_name = message.from_user.full_name or "Пользователь"
+    if message.from_user.username:
+        user_name += f" (@{message.from_user.username})"
+
+    time_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    alert_text = (
+        "🚨 <b>ЭКСТРЕННОЕ СООБЩЕНИЕ В ТЕХПОДДЕРЖКУ!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>От пользователя:</b> {html.escape(user_name)} (ID: <code>{user_id}</code>)\n"
+        f"⏱ <b>Время:</b> <code>{time_str}</code>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "⚠️ <b>Текст обращения:</b>\n"
+        f"«{html.escape(text)}»\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "<i>Связаться с пользователем можно по ссылке ниже.</i>"
+    )
+
+    tech_recipients = set()
+    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    if super_id:
+        tech_recipients.add(super_id)
+    tech_id = CONFIG.get("TECH_ADMIN_ID")
+    if tech_id:
+        tech_recipients.add(tech_id)
+    try:
+        for adm_id, role in db.get_all_admins():
+            if role in ("tech", "superadmin"):
+                tech_recipients.add(adm_id)
+    except Exception:
+        pass
+
+    builder = InlineKeyboardBuilder()
+    if message.from_user.username:
+        builder.button(text="💬 Открыть чат в TG", url=f"https://t.me/{message.from_user.username}")
+    else:
+        builder.button(text="👤 Профиль пользователя", url=f"tg://user?id={user_id}")
+
+    for t_id in tech_recipients:
+        try:
+            await safe_send(bot, t_id, alert_text, reply_markup=builder.as_markup())
+        except Exception:
+            pass
+
+    success_text = (
+        "✅ <b>Экстренное сообщение передано техническому администратору!</b>\n\n"
+        "Дежурный инженер уведомлен и разбирается с ситуацией. При необходимости специалист свяжется с вами в Telegram."
+    )
+    await safe_answer(
+        message,
+        success_text,
+        reply_markup=make_candidate_main_keyboard(),
+        parse_mode="HTML"
+    )
 
 @candidate_router.callback_query(F.data.in_(["cand_my_application", "cand_status"]))
 @candidate_router.message(Command("my", "status"))
@@ -733,3 +819,47 @@ async def process_experience(message: types.Message, state: FSMContext, bot: Bot
         f"<i>Действия кадровой службы:</i>"
     )
     await route_new_candidate_ticket(bot, admin_card, reply_markup=make_ticket_keyboard(ticket_id))
+# ==============================================================================
+# ЭКСТРЕННАЯ ТЕХПОДДЕРЖКА (/support, /sos)
+# ==============================================================================
+@candidate_router.message(Command("support", "sos", "tech_support"))
+@candidate_router.message(F.text.lower().in_(["поддержка", "техподдержка", "сос", "sos", "/support", "/sos"]))
+async def cmd_support_start(message: types.Message, state: FSMContext):
+    """Старт сценария экстренной связи с инженером."""
+    await state.set_state(SupportForm.waiting_message)
+    builder = InlineKeyboardBuilder()
+    builder.button(text=texts.BTN_CANCEL, callback_data="cand_back_to_menu")
+    await safe_answer(message, texts.SUPPORT_PROMPT, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@candidate_router.message(SupportForm.waiting_message)
+async def process_support_message(message: types.Message, state: FSMContext, bot: Bot):
+    """Приём текста сбоя и отправка алертов техническим администраторам."""
+    text = (message.text or "").strip()
+    if not text:
+        return await safe_answer(message, "⚠️ Пожалуйста, опишите проблему текстом в одном сообщении.")
+
+    await state.clear()
+    user_id = message.from_user.id
+    user_name = message.from_user.full_name or "Пользователь"
+    if message.from_user.username:
+        user_name += f" (@{message.from_user.username})"
+
+    time_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    alert_text = texts.format_support_alert(
+        user_name=html.escape(user_name),
+        user_id=user_id,
+        time_str=time_str,
+        message_text=html.escape(text)
+    )
+
+    # Отправка напрямую тех-администратору (в обход кадровых чатов)
+    super_admin = CONFIG.get("SUPER_ADMIN_ID")
+    if super_admin:
+        await safe_send(bot, int(super_admin), alert_text, parse_mode="HTML")
+
+    tech_admin = CONFIG.get("TECH_ADMIN_ID")
+    if tech_admin and tech_admin != super_admin:
+        await safe_send(bot, int(tech_admin), alert_text, parse_mode="HTML")
+
+    await message.answer(texts.SUPPORT_SUCCESS, parse_mode="HTML")

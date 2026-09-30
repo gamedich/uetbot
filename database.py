@@ -7,9 +7,15 @@
 
 import os
 import sqlite3
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List, Tuple, Dict, Any
+import asyncio
+try:
+    import aiosqlite
+except ImportError:
+    aiosqlite = None
 
 class ResumeDB:
     def __init__(self, db_path: str = "resumes.db"):
@@ -18,13 +24,25 @@ class ResumeDB:
 
     def _get_connection(self) -> sqlite3.Connection:
         """Создание соединения с оптимизациями для многопоточного доступа и WAL"""
-        conn = sqlite3.connect(self.db_path, timeout=10.0)
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA busy_timeout=5000;")
+        conn.execute("PRAGMA busy_timeout=30000;")
         conn.execute("PRAGMA synchronous=NORMAL;")
         conn.execute("PRAGMA cache_size=-64000;")
+        conn.execute("PRAGMA temp_store=MEMORY;")
         return conn
 
+    async def get_async_connection(self):
+        """Создание асинхронного соединения через aiosqlite."""
+        if aiosqlite is None:
+            raise RuntimeError("Пакет aiosqlite не установлен. Установите: pip install aiosqlite")
+        conn = await aiosqlite.connect(self.db_path, timeout=30.0)
+        await conn.execute("PRAGMA journal_mode=WAL;")
+        await conn.execute("PRAGMA busy_timeout=30000;")
+        await conn.execute("PRAGMA synchronous=NORMAL;")
+        await conn.execute("PRAGMA cache_size=-64000;")
+        await conn.execute("PRAGMA temp_store=MEMORY;")
+        return conn
     def _init_and_migrate_db(self):
         """Создание таблиц, миграция структуры и установка высокоскоростных индексов"""
         with self._get_connection() as conn:
@@ -162,6 +180,30 @@ class ResumeDB:
                 )
                 """
             )
+            # 9. Таблица персистентных FSM состояний (aiogram 3)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS fsm_storage (
+                    storage_key TEXT PRIMARY KEY,
+                    state TEXT,
+                    data TEXT DEFAULT '{}',
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+            # 10. Таблица сессий внешних мессенджеров (VK / MAX)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS external_sessions (
+                    platform TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    data TEXT DEFAULT '{}',
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (platform, user_id)
+                )
+                """
+            )
 
             # Индексы для ускорения поиска на больших объемах
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_user_plat ON candidates(user_id, platform)")
@@ -203,8 +245,40 @@ class ResumeDB:
             return cursor.lastrowid
 
     async def async_add_candidate(self, *args, **kwargs) -> int:
-        """Асинхронная совместимая обертка добавления анкеты."""
-        return self.add_candidate(*args, **kwargs)
+        """Неблокирующее асинхронное добавление анкеты."""
+        return await asyncio.to_thread(self.add_candidate, *args, **kwargs)
+
+    async def async_add_inquiry(self, *args, **kwargs) -> int:
+        """Неблокирующее асинхронное добавление вопроса."""
+        return await asyncio.to_thread(self.add_inquiry, *args, **kwargs)
+
+    async def async_get_candidate(self, ticket_id: int) -> Optional[Tuple]:
+        """Неблокирующее получение анкеты по ID."""
+        return await asyncio.to_thread(self.get_candidate, ticket_id)
+
+    async def async_get_candidate_by_user_id(self, user_id: str, platform: str = "tg") -> Optional[Tuple]:
+        """Неблокирующее получение анкеты по user_id."""
+        return await asyncio.to_thread(self.get_candidate_by_user_id, user_id, platform)
+
+    async def async_check_candidate_can_apply(self, user_id: str, platform: str = "tg"):
+        """Неблокирующая проверка права подачи анкеты."""
+        return await asyncio.to_thread(self.check_candidate_can_apply, user_id, platform)
+
+    async def async_get_recent_candidates(self, *args, **kwargs) -> List[Tuple]:
+        """Неблокирующее получение списка последних анкет."""
+        return await asyncio.to_thread(self.get_recent_candidates, *args, **kwargs)
+
+    async def async_get_statistics(self) -> Dict[str, int]:
+        """Неблокирующий расчет статистики отдела кадров."""
+        return await asyncio.to_thread(self.get_statistics)
+
+    async def async_delete_candidate_152fz(self, ticket_id: int) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """Неблокирующее удаление анкеты по 152-ФЗ."""
+        return await asyncio.to_thread(self.delete_candidate_152fz, ticket_id)
+
+    async def async_update_status(self, ticket_id: int, new_status: str):
+        """Неблокирующее обновление статуса анкеты."""
+        return await asyncio.to_thread(self.update_status, ticket_id, new_status)
 
     def get_candidate(self, ticket_id: int) -> Optional[Tuple]:
         with self._get_connection() as conn:
@@ -846,3 +920,95 @@ class ResumeDB:
             except Exception:
                 pass
         return len(deleted_names), deleted_names
+
+    # ==================== FSM & ПЕРСИСТЕНТНЫЕ СЕССИИ ====================
+    def set_fsm_state(self, key: str, state: Optional[str]):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            if state is None:
+                cursor.execute("UPDATE fsm_storage SET state = NULL, updated_at = CURRENT_TIMESTAMP WHERE storage_key = ?", (key,))
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO fsm_storage (storage_key, state, data, updated_at)
+                    VALUES (?, ?, '{}', CURRENT_TIMESTAMP)
+                    ON CONFLICT(storage_key) DO UPDATE SET state = ?, updated_at = CURRENT_TIMESTAMP
+                    """,
+                    (key, state, state)
+                )
+            conn.commit()
+
+    def get_fsm_state(self, key: str) -> Optional[str]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT state FROM fsm_storage WHERE storage_key = ?", (key,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    def set_fsm_data(self, key: str, data: Dict[str, Any]):
+        raw_json = json.dumps(data or {}, ensure_ascii=False)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO fsm_storage (storage_key, state, data, updated_at)
+                VALUES (?, NULL, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(storage_key) DO UPDATE SET data = ?, updated_at = CURRENT_TIMESTAMP
+                """,
+                (key, raw_json, raw_json)
+            )
+            conn.commit()
+
+    def get_fsm_data(self, key: str) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT data FROM fsm_storage WHERE storage_key = ?", (key,))
+            row = cursor.fetchone()
+            if row and row[0]:
+                try:
+                    return json.loads(row[0])
+                except Exception:
+                    return {}
+            return {}
+
+    def set_external_session(self, platform: str, user_id: str, data: Dict[str, Any]):
+        raw_json = json.dumps(data or {}, ensure_ascii=False)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO external_sessions (platform, user_id, data, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(platform, user_id) DO UPDATE SET data = ?, updated_at = CURRENT_TIMESTAMP
+                """,
+                (platform, str(user_id), raw_json, raw_json)
+            )
+            conn.commit()
+
+    def delete_external_session(self, platform: str, user_id: str):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM external_sessions WHERE platform = ? AND user_id = ?", (platform, str(user_id)))
+            conn.commit()
+
+    def get_all_external_sessions(self) -> List[Tuple[str, str, Dict[str, Any]]]:
+        sessions = []
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT platform, user_id, data FROM external_sessions")
+            for plat, uid, raw_json in cursor.fetchall():
+                try:
+                    d = json.loads(raw_json) if raw_json else {}
+                except Exception:
+                    d = {}
+                sessions.append((plat, uid, d))
+        return sessions
+def update_admin_note(self, ticket_id: int, note: str):
+    """Обновление служебной заметки кадровика по анкете."""
+    with self._get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE candidates SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
+            (note, ticket_id),
+        )
+        conn.commit()

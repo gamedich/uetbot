@@ -1,0 +1,20 @@
+[0;1;32m●[0m uet_bot.service - Telegram/VK/MAX Bot for MUP Ulyanovskelektrotrans
+     Loaded: loaded (]8;;file://9123017-ob386832.twc1.net/etc/systemd/system/uet_bot.service/etc/systemd/system/uet_bot.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Wed 2026-09-30 19:30:02 +04; 1min 26s ago
+   Main PID: 186163 (python)
+      Tasks: 2 (limit: 4650)
+     Memory: 155.8M (peak: 156.0M)
+        CPU: 6.985s
+     CGroup: /system.slice/uet_bot.service
+             └─[0;38;5;245m186163 /root/uetbot/venv/bin/python /root/uetbot/bot.py[0m
+
+сен 30 19:30:02 9123017-ob386832.twc1.net systemd[1]: Started uet_bot.service - Telegram/VK/MAX Bot for MUP Ulyanovskelektrotrans.
+сен 30 19:30:09 9123017-ob386832.twc1.net python[186163]: 2026-09-30 19:30:09,733 - INFO - Запуск многоканального сервиса МУП «Ульяновскэлектротранс»...
+сен 30 19:31:10 9123017-ob386832.twc1.net python[186163]: 2026-09-30 19:31:10,730 - ERROR - Не удалось подключиться к Telegram Bot API: HTTP Client says - Request timeout error
+сен 30 19:31:11 9123017-ob386832.twc1.net python[186163]: 2026-09-30 19:31:11,136 - INFO - Запуск фонового шлюза ВКонтакте (Long Poll с Exponential Backoff)...
+сен 30 19:31:11 9123017-ob386832.twc1.net python[186163]: 2026-09-30 19:31:11,137 - INFO - МАКС (MyTeam): токен не указан в .env. Модуль ожидает настройки.
+сен 30 19:31:11 9123017-ob386832.twc1.net python[186163]: 2026-09-30 19:31:11,216 - INFO - ВКонтакте: шлюз Long Poll успешно подключен.
+сен 30 19:31:11 9123017-ob386832.twc1.net python[186163]: 2026-09-30 19:31:11,234 - INFO - Start polling
+сен 30 19:31:11 9123017-ob386832.twc1.net python[186163]: 2026-09-30 19:31:11,279 - INFO - Run polling for bot @UetFeedback_bot id=8880412470 - 'Бот для подачи заявки в УЭТ'
+сен 30 19:31:11 9123017-ob386832.twc1.net python[186163]: 2026-09-30 19:31:11,531 - INFO - Update id=348140012 is handled. Duration 200 ms by bot id=8880412470
+сен 30 19:31:11 9123017-ob386832.twc1.net python[186163]: 2026-09-30 19:31:11,749 - INFO - Update id=348140013 is handled. Duration 409 ms by bot id=8880412470

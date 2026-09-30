@@ -6,18 +6,42 @@
 from typing import Tuple, List
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from common import get_git_info
+from datetime import datetime
+from common import db, CONFIG, SYSTEM_METRICS, get_uptime, is_tech_admin, is_hr_admin
 
-from common import db, CONFIG, SYSTEM_METRICS, get_uptime
 
-def make_candidate_main_keyboard() -> types.InlineKeyboardMarkup:
+
+def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
+    """Динамическое главное меню по правам доступа (соискатель / HR / инженер / суперадмин)."""
     builder = InlineKeyboardBuilder()
     builder.button(text="📝 Заполнить анкету на работу", callback_data="cand_start_apply")
     builder.button(text="📑 Моя анкета", callback_data="cand_my_application")
     builder.button(text="💬 Связаться с кадровиком / Задать вопрос", callback_data="cand_ask_question")
     builder.button(text="📚 Частые вопросы и ответы (FAQ)", callback_data="cand_faq_menu")
     builder.button(text="📞 Контакты отдела кадров", callback_data="cand_hr_contacts")
+    builder.button(text="🚨 Экстренная техподдержка", callback_data="cand_support")
     builder.button(text="📄 Политика конфиденциальности", callback_data="cand_privacy_policy")
-    builder.adjust(1, 1, 1, 1, 1, 1)
+
+    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    is_tech = bool(user_id and (user_id == super_id or is_tech_admin(user_id)))
+    is_hr = bool(user_id and (user_id == super_id or is_hr_admin(user_id)))
+
+    if is_tech or is_hr:
+        if is_tech:
+            builder.button(text="🛠 Панель инженера (/tech)", callback_data="tech_refresh")
+            builder.button(text="🚀 Управление Git (/git)", callback_data="tech_git_menu")
+        if is_hr:
+            builder.button(text="📋 Кадровая панель (/admin)", callback_data="admin_stats")
+        if is_tech and is_hr:
+            builder.adjust(1, 1, 1, 1, 1, 1, 1, 2, 1)
+        elif is_tech:
+            builder.adjust(1, 1, 1, 1, 1, 1, 1, 2)
+        else:
+            builder.adjust(1, 1, 1, 1, 1, 1, 1, 1)
+    else:
+        builder.adjust(1, 1, 1, 1, 1, 1, 1)
+
     return builder.as_markup()
 
 def make_phone_reply_keyboard() -> types.ReplyKeyboardMarkup:
@@ -137,16 +161,16 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     builder.button(text="🟡 В работе", callback_data="admin_list_in_progress")
     builder.button(text="📦 Архив", callback_data="admin_list_archive")
     builder.button(text="📊 Статистика", callback_data="admin_stats")
-    builder.button(text="📥 Выгрузить базу (Excel)", callback_data="hr_export_excel")
-    builder.adjust(3, 2, 1, 1, 1)
-
-    # Управление набором по вакансиям (для кадровиков)
     builder.button(text="🎯 Вакансии и набор (Вкл/Выкл)", callback_data="tech_vacancies_menu")
+
+    cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
+    cd_label = f"{cur_cd // 60} мин" if cur_cd > 0 else "0 (выкл)"
+    builder.button(text=f"⏱ Таймаут вопросов: [{cd_label}]", callback_data="hr_toggle_cooldown")
 
     is_enabled = db.get_admin_notify_status(user_id)
     toggle_text = "🔔 Уведы в ЛС: [ВКЛ]" if is_enabled else "🔕 Уведы в ЛС: [ВЫКЛ]"
     builder.button(text=toggle_text, callback_data="toggle_dm_notify")
-    builder.adjust(3, 2, 1, 1)
+    builder.adjust(3, 2, 2, 1)
     return builder.as_markup()
 
 def make_admins_menu_keyboard(all_admins: list) -> types.InlineKeyboardMarkup:
@@ -189,23 +213,17 @@ def make_faq_keyboard() -> types.InlineKeyboardMarkup:
     return builder.as_markup()
 
 def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
+    """Технический мониторинг — только системные параметры и кнопка перехода в Git."""
     builder = InlineKeyboardBuilder()
     env = CONFIG.get("ENVIRONMENT", "TEST")
     toggle_env_text = "🛡 Включить PROD (152-ФЗ, лимиты)" if env == "TEST" else "🧪 Включить TEST (без ограничений)"
     builder.button(text=toggle_env_text, callback_data="tech_toggle_env")
     builder.button(text="💾 Управление бэкапами (/backups)", callback_data="tech_manage_backups")
-    builder.button(text="🎯 Вакансии и набор (Вкл/Выкл)", callback_data="tech_vacancies_menu")
-    builder.button(text="📋 Changelog (История версий)", callback_data="tech_changelog")
-
-    cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
-    cd_min = cur_cd // 60
-    builder.button(text=f"⏱ Таймаут между вопросами: [{cd_min} мин]", callback_data="tech_toggle_cooldown")
-
     maint_text = "🟡 Выключить ТО" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Включить ТО (пауза)"
     builder.button(text=maint_text, callback_data="tech_toggle_maint")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")
-    builder.button(text="🔄 Перезапустить службу бота", callback_data="tech_restart_ask")
     builder.button(text="🔄 Обновить статус", callback_data="tech_refresh")
+    builder.button(text="🚀 Панель GitHub и деплой (/git)", callback_data="tech_git_menu")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -221,18 +239,21 @@ def make_tests_menu_keyboard() -> types.InlineKeyboardMarkup:
     return builder.as_markup()
 
 def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMarkup]:
+    git_info = get_git_info()
+    
     tg_status = "🟢 Онлайн"
     vk_status = "🟢 Онлайн" if SYSTEM_METRICS["vk_online"] else ("🟡 Не настроен" if not CONFIG.get("VK_GROUP_TOKEN") else "🔴 Ошибка")
     max_status = "🟢 Онлайн" if SYSTEM_METRICS["max_online"] else ("🟡 Не настроен" if not CONFIG.get("MAX_BOT_TOKEN") else "🔴 Ошибка")
     db_status = "🟢 Исправна" if db.check_health() else "🔴 Сбой целостности"
     maint_status = "🟡 Включен (прием на паузе)" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Работа в штатном режиме"
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
-
+    check_time = datetime.now().strftime("%H:%M:%S")
     text = (
         "🛠 <b>ТЕХНИЧЕСКИЙ МОНИТОРИНГ И ОБСЛУЖИВАНИЕ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"🛡 <b>Режим работы:</b> <b>{env_mode}</b> " + ("(Законный режим: проверка анкет, 3 мес. отказ, антифлуд)\n" if env_mode == "PROD" else "(Режим отладки: все ограничения сняты)\n") +
         f"⏱ <b>Аптайм:</b> <code>{get_uptime()}</code>\n"
+        f"🔄 <b>Проверено в:</b> <code>{check_time}</code>\n"
         f"⚙️ <b>Режим обслуживания:</b> <b>{maint_status}</b>\n"
         f"💾 <b>База данных:</b> <b>{db_status}</b>\n"
         f"⚠️ <b>Ошибок сети/вызовов:</b> <code>{SYSTEM_METRICS['errors_count']}</code>\n"
@@ -244,3 +265,45 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
         "━━━━━━━━━━━━━━━━━━━━━"
     )
     return text, make_tech_menu_keyboard(user_id)
+def make_tech_git_keyboard(current_branch: str = "beta") -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    other_branch = "main" if current_branch == "beta" else "beta"
+    builder.button(text="🔄 Обновить и перезапустить (pull + restart)", callback_data="git_action_pull_restart")
+    builder.button(text=f"🔀 Переключить на ветку «{other_branch}»", callback_data=f"git_action_switch_{other_branch}")
+    builder.button(text="⏪ Откат коммита (HEAD~1)", callback_data="git_action_rollback_ask")
+    builder.button(text="⚡ Быстрый рестарт", callback_data="git_action_restart_only")
+    builder.button(text="🔄 Обновить статус Git", callback_data="tech_git_menu")
+    builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
+    builder.adjust(1, 1, 2, 2)
+    return builder.as_markup()
+def make_git_menu_keyboard(current_branch: str = "beta") -> types.InlineKeyboardMarkup:
+    """Клавиатура управления Git и обновлениями."""
+    builder = InlineKeyboardBuilder()
+    other_branch = "main" if current_branch == "beta" else "beta"
+    builder.button(text="🔄 Обновить и перезапустить (pull + restart)", callback_data="git_action_pull_restart")
+    builder.button(text=f"🔀 Переключить на ветку «{other_branch}»", callback_data=f"git_action_switch_{other_branch}")
+    builder.button(text="⏪ Откат коммита (HEAD~1)", callback_data="git_action_rollback_ask")
+    builder.button(text="⚡ Быстрый рестарт", callback_data="git_action_restart_only")
+    builder.button(text="🔄 Обновить статус Git", callback_data="tech_git_menu")
+    builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
+    builder.adjust(1, 1, 2, 2)
+    return builder.as_markup()
+
+# Псевдоним на случай старых вызовов
+make_tech_git_keyboard = make_git_menu_keyboard
+#клавиатура паннели 
+def make_git_menu_keyboard(current_branch: str = "main") -> types.InlineKeyboardMarkup:
+    """Клавиатура управления Git с откатом и возвратом на актуальный коммит."""
+    builder = InlineKeyboardBuilder()
+    other_branch = "beta" if current_branch == "main" else "main"
+    builder.button(text="🔄 Обновить и перезапустить (pull + restart)", callback_data="git_action_pull_restart")
+    builder.button(text=f"🔀 Переключить на «{other_branch}»", callback_data=f"git_action_switch_{other_branch}")
+    builder.button(text="⏪ Откат на 1 коммит (HEAD~1)", callback_data="git_action_rollback_ask")
+    builder.button(text="⏩ Вернуть актуальный коммит", callback_data="git_action_forward_ask")
+    builder.button(text="⚡ Быстрый рестарт", callback_data="git_action_restart_only")
+    builder.button(text="🔄 Обновить статус Git", callback_data="tech_git_menu")
+    builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
+    builder.adjust(1, 1, 2, 2, 1)
+    return builder.as_markup()
+
+make_tech_git_keyboard = make_git_menu_keyboard

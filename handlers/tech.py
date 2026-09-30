@@ -22,6 +22,8 @@ import texts
 import re
 import os
 import random
+import subprocess
+import sys
 from common import get_all_vacancies, save_all_vacancies
 
 from aiohttp import ClientSession, ClientTimeout
@@ -52,6 +54,8 @@ from common import (
 from keyboards import (
     get_tech_screen_data,
     make_tech_menu_keyboard,
+    make_git_menu_keyboard,
+    make_tech_git_keyboard,
     make_tests_menu_keyboard,
     make_admins_menu_keyboard,
     make_remove_admin_keyboard,
@@ -96,17 +100,24 @@ async def cmd_tech(message: types.Message):
     await safe_answer(message, screen_text, reply_markup=kb, parse_mode="HTML")
 
 
+@tech_router.message(Command("status", "refresh", "metrics"))
 @tech_router.callback_query(F.data == "tech_refresh")
-async def cb_tech_refresh(callback: types.CallbackQuery):
-    if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Доступ ограничен!", show_alert=True)
+async def cb_tech_refresh(event: types.Message | types.CallbackQuery):
+    user_id = event.from_user.id
+    if not is_privileged_user(user_id):
+        if isinstance(event, types.CallbackQuery):
+            return await event.answer("🚫 Доступ ограничен!", show_alert=True)
+        return await safe_answer(event, "🚫 Доступ ограничен.")
     SYSTEM_METRICS["tg_online"] = True
-    screen_text, kb = get_tech_screen_data(callback.from_user.id)
-    try:
-        await callback.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
-    except Exception:
-        pass
-    await callback.answer("Метрики обновлены")
+    screen_text, kb = get_tech_screen_data(user_id)
+    if isinstance(event, types.CallbackQuery):
+        try:
+            await event.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
+        await event.answer("🔄 Метрики и статус обновлены!")
+    else:
+        await safe_answer(event, screen_text, reply_markup=kb, parse_mode="HTML")
 
 
 @tech_router.callback_query(F.data == "tech_toggle_env")
@@ -1271,25 +1282,57 @@ async def cb_tech_vacancies_menu(callback: types.CallbackQuery, state: FSMContex
 
 # --- Переключение Открыт / Закрыт ---
 @tech_router.callback_query(F.data.startswith("vac_tgl_"))
-async def cb_tech_vac_toggle(callback: types.CallbackQuery):
-    if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+@tech_router.callback_query(F.data == "tech_vacancies_menu")
+async def cb_tech_vacancies_menu(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if not is_hr_admin(user_id) and not is_tech_admin(user_id) and user_id != CONFIG.get("SUPER_ADMIN_ID"):
+        return await callback.answer("🚫 Доступно только кадровой службе (HR)!", show_alert=True)
 
-    vacancies = get_all_vacancies()
+    from common import VACANCIES
+    closed = get_closed_vacancies()
+
+    builder = InlineKeyboardBuilder()
+    for vac in VACANCIES:
+        is_open = vac not in closed
+        status_icon = "🟢 Открыт" if is_open else "🔴 ЗАКРЫТ"
+        builder.button(text=f"{status_icon}: {vac[:22]}", callback_data=f"vac_tgl_{vac[:25]}")
+
+    builder.button(text="⬅️ Назад в меню кадров", callback_data="admin_stats")
+    builder.adjust(1)
+
+    text = (
+        "🎯 <b>УПРАВЛЕНИЕ НАБОРОМ ПО ВАКАНСИЯМ</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Нажмите на должность, чтобы открыть или закрыть приём анкет:\n"
+        "• 🟢 <b>Открыт</b> — соискатели видят эту вакансию в анкете\n"
+        "• 🔴 <b>ЗАКРЫТ</b> — вакансия скрыта от соискателей\n"
+        "━━━━━━━━━━━━━━━━━━━━━"
+    )
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@tech_router.callback_query(F.data.startswith("vac_tgl_"))
+async def cb_tech_vac_toggle(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if not is_hr_admin(user_id) and not is_tech_admin(user_id) and user_id != CONFIG.get("SUPER_ADMIN_ID"):
+        return await callback.answer("🚫 Доступно только кадровой службе (HR)!", show_alert=True)
+
+    from common import VACANCIES
     vac_raw = callback.data.replace("vac_tgl_", "")
-    target_vac = next((v for v in vacancies if v.startswith(vac_raw)), vac_raw)
+    target_vac = next((v for v in VACANCIES if v.startswith(vac_raw)), vac_raw)
 
     closed = get_closed_vacancies()
     if target_vac in closed:
         closed.remove(target_vac)
-        msg = f"🟢 Приём на «{target_vac}» открыт!"
+        action_text = f"🟢 Набор на «{target_vac}» открыт!"
     else:
         closed.add(target_vac)
-        msg = f"🔴 Приём на «{target_vac}» закрыт!"
+        action_text = f"🔴 Набор на «{target_vac}» закрыт!"
 
     import json
     db.set_setting("closed_vacancies", json.dumps(list(closed), ensure_ascii=False))
-    await callback.answer(msg, show_alert=True)
+    await callback.answer(action_text, show_alert=True)
     await cb_tech_vacancies_menu(callback)
 
 
@@ -1348,6 +1391,237 @@ async def cb_vac_del_execute(callback: types.CallbackQuery):
     if 0 <= idx < len(vacancies):
         removed = vacancies.pop(idx)
         save_all_vacancies(vacancies)
-        await callback.answer(f"🗑 Вакансия «{removed}» удалена!", show_alert=True)
+        await callback.answer(f"🗑️ Вакансия «{removed}» удалена!", show_alert=True)
+        await cb_tech_vacancies_menu(callback)
+async def run_shell_cmd(cmd: str) -> tuple[int, str]:
+    """Асинхронный запуск системных команд без блокировки Event Loop."""
+    proc = await asyncio.create_subprocess_shell(
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await proc.communicate()
+    out = (stdout or b"").decode("utf-8", errors="replace").strip()
+    err = (stderr or b"").decode("utf-8", errors="replace").strip()
+    return proc.returncode, out or err
 
-    await cb_tech_vacancies_menu(callback)
+@tech_router.message(Command("git", "deploy", "version", "github"))
+@tech_router.callback_query(F.data == "tech_git_menu")
+async def cb_tech_git_menu(event: types.Message | types.CallbackQuery):
+    user_id = event.from_user.id
+    if not is_privileged_user(user_id):
+        if isinstance(event, types.CallbackQuery):
+            return await event.answer("🚫 Нет прав!", show_alert=True)
+        return await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+
+    _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
+    _, last_commit = await run_shell_cmd("git log -1 --pretty=format:'%h - %s (%cd)' --date=relative")
+    _, status_out = await run_shell_cmd("git status --porcelain")
+
+    branch = branch or "beta"
+    last_commit = last_commit or "нет данных"
+    has_uncommitted = "⚠️ Есть незакоммиченные файлы" if status_out else "🟢 Рабочая директория чиста"
+    check_time = datetime.now().strftime("%H:%M:%S")
+
+    text = (
+        "🚀 <b>УПРАВЛЕНИЕ ВЕРСИЯМИ И СЛУЖБОЙ (GIT)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🌿 <b>Текущая ветка:</b> <code>{branch}</code>\n"
+        f"📌 <b>Последний коммит:</b>\n<code>{last_commit}</code>\n"
+        f"📂 <b>Статус файлов:</b> {has_uncommitted}\n"
+        f"🔄 <b>Проверено в:</b> <code>{check_time}</code>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Выберите необходимое действие:"
+    )
+    kb = make_git_menu_keyboard(branch)
+    if isinstance(event, types.CallbackQuery):
+        try:
+            await event.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
+        await event.answer("🔄 Статус Git обновлен!")
+    else:
+        await safe_answer(event, text, reply_markup=kb, parse_mode="HTML")
+
+
+@tech_router.callback_query(F.data == "git_action_pull_restart")
+async def cb_git_pull_restart(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    await callback.message.edit_text(
+        "⏳ <b>Стягиваем обновления из GitHub...</b>\nВыполняется <code>git pull</code>...",
+        parse_mode="HTML"
+    )
+
+    code, out = await run_shell_cmd("git pull")
+    if code != 0:
+        return await callback.message.edit_text(
+            f"❌ <b>Ошибка выполнения git pull:</b>\n<code>{out[:500]}</code>",
+            reply_markup=make_git_menu_keyboard(),
+            parse_mode="HTML"
+        )
+
+    await callback.message.edit_text(
+        f"✅ <b>Обновления получены:</b>\n<code>{out[:300]}</code>\n\n"
+        "🔄 <b>Перезапуск службы uet_bot выполняется...</b>\nБот поднимется через 2-3 секунды.",
+        parse_mode="HTML"
+    )
+
+    async def _do_restart():
+        await asyncio.sleep(1.0)
+        os.system("systemctl restart uet_bot")
+
+    asyncio.create_task(_do_restart())
+
+
+@tech_router.callback_query(F.data.startswith("git_action_switch_"))
+async def cb_git_switch_branch(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    target_branch = callback.data.replace("git_action_switch_", "")
+    await callback.message.edit_text(
+        f"⏳ <b>Переключение на ветку «{target_branch}»...</b>\nВыполняется <code>git checkout {target_branch} && git pull</code>...",
+        parse_mode="HTML"
+    )
+
+    code, out = await run_shell_cmd(f"git checkout {target_branch} && git pull origin {target_branch}")
+    if code != 0:
+        return await callback.message.edit_text(
+            f"❌ <b>Ошибка переключения ветки:</b>\n<code>{out[:500]}</code>",
+            reply_markup=make_git_menu_keyboard(target_branch),
+            parse_mode="HTML"
+        )
+
+    await callback.message.edit_text(
+        f"✅ Ветка переключена на <b>«{target_branch}»</b>!\n\n🔄 <b>Перезапуск службы uet_bot...</b>",
+        parse_mode="HTML"
+    )
+
+    async def _do_restart():
+        await asyncio.sleep(1.0)
+        os.system("systemctl restart uet_bot")
+
+    asyncio.create_task(_do_restart())
+
+
+@tech_router.callback_query(F.data == "git_action_rollback_ask")
+async def cb_git_rollback_ask(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="⚠️ ДА, ОТКАТИТЬ НА 1 КОММИТ", callback_data="git_action_rollback_confirm")
+    builder.button(text="❌ Отмена", callback_data="tech_git_menu")
+    builder.adjust(1, 1)
+
+    await callback.message.edit_text(
+        "⚠️ <b>ПОДТВЕРЖДЕНИЕ ОТКАТА (ROLLBACK)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Будет выполнен жесткий откат кода на 1 коммит назад: <code>git reset --hard HEAD~1</code>.\n"
+        "Все незакоммиченные локальные правки будут сброшены, а бот перезапущен.\n\n"
+        "<b>Вы уверены?</b>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+
+
+@tech_router.callback_query(F.data == "git_action_rollback_confirm")
+async def cb_git_rollback_confirm(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    code, out = await run_shell_cmd("git reset --hard HEAD~1")
+    await callback.message.edit_text(
+        f"⏪ <b>Откат выполнен:</b>\n<code>{out[:300]}</code>\n\n🔄 Перезапуск службы...",
+        parse_mode="HTML"
+    )
+
+    async def _do_restart():
+        await asyncio.sleep(1.0)
+        os.system("systemctl restart uet_bot")
+
+    asyncio.create_task(_do_restart())
+
+
+@tech_router.callback_query(F.data == "git_action_restart_only")
+async def cb_git_restart_only(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    await callback.message.edit_text(
+        "🔄 <b>Перезапуск службы uet_bot выполняется...</b>\n\nБот поднимется через 2-3 секунды.",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+    async def _do_restart():
+        await asyncio.sleep(1.0)
+        os.system("systemctl restart uet_bot")
+
+    asyncio.create_task(_do_restart())
+
+
+@tech_router.message(Command("restart", "reboot"))
+async def cmd_restart(message: types.Message):
+    if not is_privileged_user(message.from_user.id):
+        return await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ ДА, ПЕРЕЗАПУСТИТЬ", callback_data="git_action_restart_only")
+    builder.button(text="❌ Отмена", callback_data="tech_git_menu")
+    builder.adjust(1, 1)
+    await safe_answer(
+        message,
+        "⚠️ <b>ПОДТВЕРЖДЕНИЕ ПЕРЕЗАПУСКА СЛУЖБЫ</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Вы собираетесь перезапустить системную службу <code>uet_bot</code>.\n"
+        "Процесс перезагрузится за 2–3 секунды и применит все изменения в коде.\n\n"
+        "<b>Перезапустить сейчас?</b>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+
+@tech_router.callback_query(F.data == "git_action_forward_ask")
+async def cb_git_forward_ask(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
+    branch = branch or "main"
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="⏩ ДА, ВЕРНУТЬ АКТУАЛЬНЫЙ КОММИТ", callback_data="git_action_forward_confirm")
+    builder.button(text="❌ Отмена", callback_data="tech_git_menu")
+    builder.adjust(1, 1)
+
+    await callback.message.edit_text(
+        "⏩ <b>ВОЗВРАТ НА АКТУАЛЬНЫЙ КОММИТ (FORWARD)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Будет выполнена синхронизация с GitHub: <code>git fetch origin && git reset --hard origin/{branch}</code>.\n"
+        "Все откаты будут отменены, код вернётся к последней версии из GitHub, а бот перезапустится.\n\n"
+        "<b>Вернуть актуальную версию?</b>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+
+
+@tech_router.callback_query(F.data == "git_action_forward_confirm")
+async def cb_git_forward_confirm(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
+    branch = branch or "main"
+
+    code, out = await run_shell_cmd(f"git fetch origin && git reset --hard origin/{branch}")
+    await callback.message.edit_text(
+        f"⏩ <b>Возврат выполнен:</b>\n<code>{out[:300]}</code>\n\n🔄 Перезапуск службы uet_bot...",
+        parse_mode="HTML"
+    )
+
+    async def _do_restart():
+        await asyncio.sleep(1.0)
+        os.system("systemctl restart uet_bot")
+
+    asyncio.create_task(_do_restart())

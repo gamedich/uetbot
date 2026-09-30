@@ -252,4 +252,14 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
         "━━━━━━━━━━━━━━━━━━━━━"
     )
     return text, make_tech_menu_keyboard(user_id)
-
+def make_tech_git_keyboard(current_branch: str = "beta") -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    other_branch = "main" if current_branch == "beta" else "beta"
+    builder.button(text="🔄 Обновить и перезапустить (pull + restart)", callback_data="git_action_pull_restart")
+    builder.button(text=f"🔀 Переключить на ветку «{other_branch}»", callback_data=f"git_action_switch_{other_branch}")
+    builder.button(text="⏪ Откат коммита (HEAD~1)", callback_data="git_action_rollback_ask")
+    builder.button(text="⚡ Быстрый рестарт", callback_data="git_action_restart_only")
+    builder.button(text="🔄 Обновить статус Git", callback_data="tech_git_menu")
+    builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
+    builder.adjust(1, 1, 2, 2)
+    return builder.as_markup()

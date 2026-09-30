@@ -139,16 +139,16 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     builder.button(text="🟡 В работе", callback_data="admin_list_in_progress")
     builder.button(text="📦 Архив", callback_data="admin_list_archive")
     builder.button(text="📊 Статистика", callback_data="admin_stats")
-    builder.button(text="📥 Выгрузить базу (Excel)", callback_data="hr_export_excel")
-    builder.adjust(3, 2, 1, 1, 1)
-
-    # Управление набором по вакансиям (для кадровиков)
     builder.button(text="🎯 Вакансии и набор (Вкл/Выкл)", callback_data="tech_vacancies_menu")
+
+    cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
+    cd_label = f"{cur_cd // 60} мин" if cur_cd > 0 else "0 (выкл)"
+    builder.button(text=f"⏱ Таймаут вопросов: [{cd_label}]", callback_data="hr_toggle_cooldown")
 
     is_enabled = db.get_admin_notify_status(user_id)
     toggle_text = "🔔 Уведы в ЛС: [ВКЛ]" if is_enabled else "🔕 Уведы в ЛС: [ВЫКЛ]"
     builder.button(text=toggle_text, callback_data="toggle_dm_notify")
-    builder.adjust(3, 2, 1, 1)
+    builder.adjust(3, 2, 2, 1)
     return builder.as_markup()
 
 def make_admins_menu_keyboard(all_admins: list) -> types.InlineKeyboardMarkup:
@@ -196,12 +196,7 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     toggle_env_text = "🛡 Включить PROD (152-ФЗ, лимиты)" if env == "TEST" else "🧪 Включить TEST (без ограничений)"
     builder.button(text=toggle_env_text, callback_data="tech_toggle_env")
     builder.button(text="💾 Управление бэкапами (/backups)", callback_data="tech_manage_backups")
-    builder.button(text="🎯 Вакансии и набор (Вкл/Выкл)", callback_data="tech_vacancies_menu")
-
-    cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
-    cd_min = cur_cd // 60
-    builder.button(text=f"⏱ Таймаут между вопросами: [{cd_min} мин]", callback_data="tech_toggle_cooldown")
-
+    builder.button(text="🚨 Экстренная техподдержка (/support)", callback_data="cand_support")
     maint_text = "🟡 Выключить ТО" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Включить ТО (пауза)"
     builder.button(text=maint_text, callback_data="tech_toggle_maint")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")

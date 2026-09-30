@@ -1273,25 +1273,57 @@ async def cb_tech_vacancies_menu(callback: types.CallbackQuery, state: FSMContex
 
 # --- Переключение Открыт / Закрыт ---
 @tech_router.callback_query(F.data.startswith("vac_tgl_"))
-async def cb_tech_vac_toggle(callback: types.CallbackQuery):
-    if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+@tech_router.callback_query(F.data == "tech_vacancies_menu")
+async def cb_tech_vacancies_menu(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if not is_hr_admin(user_id) and not is_tech_admin(user_id) and user_id != CONFIG.get("SUPER_ADMIN_ID"):
+        return await callback.answer("🚫 Доступно только кадровой службе (HR)!", show_alert=True)
 
-    vacancies = get_all_vacancies()
+    from common import VACANCIES
+    closed = get_closed_vacancies()
+
+    builder = InlineKeyboardBuilder()
+    for vac in VACANCIES:
+        is_open = vac not in closed
+        status_icon = "🟢 Открыт" if is_open else "🔴 ЗАКРЫТ"
+        builder.button(text=f"{status_icon}: {vac[:22]}", callback_data=f"vac_tgl_{vac[:25]}")
+
+    builder.button(text="⬅️ Назад в меню кадров", callback_data="admin_stats")
+    builder.adjust(1)
+
+    text = (
+        "🎯 <b>УПРАВЛЕНИЕ НАБОРОМ ПО ВАКАНСИЯМ</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Нажмите на должность, чтобы открыть или закрыть приём анкет:\n"
+        "• 🟢 <b>Открыт</b> — соискатели видят эту вакансию в анкете\n"
+        "• 🔴 <b>ЗАКРЫТ</b> — вакансия скрыта от соискателей\n"
+        "━━━━━━━━━━━━━━━━━━━━━"
+    )
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@tech_router.callback_query(F.data.startswith("vac_tgl_"))
+async def cb_tech_vac_toggle(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if not is_hr_admin(user_id) and not is_tech_admin(user_id) and user_id != CONFIG.get("SUPER_ADMIN_ID"):
+        return await callback.answer("🚫 Доступно только кадровой службе (HR)!", show_alert=True)
+
+    from common import VACANCIES
     vac_raw = callback.data.replace("vac_tgl_", "")
-    target_vac = next((v for v in vacancies if v.startswith(vac_raw)), vac_raw)
+    target_vac = next((v for v in VACANCIES if v.startswith(vac_raw)), vac_raw)
 
     closed = get_closed_vacancies()
     if target_vac in closed:
         closed.remove(target_vac)
-        msg = f"🟢 Приём на «{target_vac}» открыт!"
+        action_text = f"🟢 Набор на «{target_vac}» открыт!"
     else:
         closed.add(target_vac)
-        msg = f"🔴 Приём на «{target_vac}» закрыт!"
+        action_text = f"🔴 Набор на «{target_vac}» закрыт!"
 
     import json
     db.set_setting("closed_vacancies", json.dumps(list(closed), ensure_ascii=False))
-    await callback.answer(msg, show_alert=True)
+    await callback.answer(action_text, show_alert=True)
     await cb_tech_vacancies_menu(callback)
 
 

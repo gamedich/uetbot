@@ -1357,3 +1357,28 @@ async def process_export_candidates(event: types.Message | types.CallbackQuery):
         caption=f"📊 <b>Выгрузка базы соискателей</b> (Записей: {len(candidates)})",
         parse_mode="HTML"
     )
+
+@hr_router.callback_query(F.data == "hr_toggle_cooldown")
+async def cb_hr_toggle_cooldown(callback: types.CallbackQuery):
+    allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
+    if not allowed:
+        return await callback.answer(err_text or "🚫 Нет прав!", show_alert=True)
+
+    cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
+    if cur_cd >= 1200:
+        new_cd = 300
+    elif cur_cd >= 300:
+        new_cd = 60
+    elif cur_cd >= 60:
+        new_cd = 0
+    else:
+        new_cd = 1200
+
+    db.set_setting("cooldown_seconds", str(new_cd))
+    CONFIG["COOLDOWN_SECONDS"] = new_cd
+    cd_label = f"{new_cd // 60} мин" if new_cd > 0 else "0 сек (без задержки)"
+    await callback.answer(f"Таймаут вопросов: {cd_label}", show_alert=True)
+    try:
+        await callback.message.edit_reply_markup(reply_markup=make_admin_menu_keyboard(callback.from_user.id))
+    except Exception:
+        pass

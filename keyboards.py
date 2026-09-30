@@ -17,8 +17,9 @@ def make_candidate_main_keyboard() -> types.InlineKeyboardMarkup:
     builder.button(text="💬 Связаться с кадровиком / Задать вопрос", callback_data="cand_ask_question")
     builder.button(text="📚 Частые вопросы и ответы (FAQ)", callback_data="cand_faq_menu")
     builder.button(text="📞 Контакты отдела кадров", callback_data="cand_hr_contacts")
+    builder.button(text="🚨 Экстренная техподдержка", callback_data="cand_support")
     builder.button(text="📄 Политика конфиденциальности", callback_data="cand_privacy_policy")
-    builder.adjust(1, 1, 1, 1, 1, 1)
+    builder.adjust(1, 1, 1, 1, 1, 1, 1)
     return builder.as_markup()
 
 def make_phone_reply_keyboard() -> types.ReplyKeyboardMarkup:

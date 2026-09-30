@@ -1003,3 +1003,12 @@ class ResumeDB:
                     d = {}
                 sessions.append((plat, uid, d))
         return sessions
+def update_admin_note(self, ticket_id: int, note: str):
+    """Обновление служебной заметки кадровика по анкете."""
+    with self._get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE candidates SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
+            (note, ticket_id),
+        )
+        conn.commit()

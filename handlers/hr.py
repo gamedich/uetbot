@@ -34,7 +34,8 @@ from common import (
     send_response_to_candidate,
     CustomInviteForm,
     CandidateDirectMsgForm,
-    HRReplyForm
+    HRReplyForm,
+    CandidateNoteForm
     
 )
 from keyboards import (
@@ -1382,3 +1383,48 @@ async def cb_hr_toggle_cooldown(callback: types.CallbackQuery):
         await callback.message.edit_reply_markup(reply_markup=make_admin_menu_keyboard(callback.from_user.id))
     except Exception:
         pass
+@hr_router.callback_query(F.data.startswith("cand_note_"))
+async def cb_cand_note_ask(callback: types.CallbackQuery, state: FSMContext):
+    allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
+    if not allowed:
+        return await callback.answer("🔒 В режиме PROD доступ закрыт для разработчика (152-ФЗ)!", show_alert=True)
+    ticket_id = int(callback.data.replace("cand_note_", ""))
+    cand = db.get_candidate(ticket_id)
+    if not cand:
+        return await callback.answer("Анкета не найдена!", show_alert=True)
+
+    cand_name = cand[3]
+    cur_note = cand[8] if len(cand) > 8 and cand[8] else "отсутствует"
+    await state.set_state(CandidateNoteForm.waiting_note)
+    await state.update_data(ticket_id=ticket_id)
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❌ Отмена", callback_data=f"view_{ticket_id}")
+    await callback.message.reply(
+        f"📝 <b>Заметка к анкете #{ticket_id} ({html.escape(cand_name)})</b>\n\n"
+        f"📌 <b>Текущая заметка:</b> <i>{html.escape(cur_note)}</i>\n\n"
+        "Отправьте текст новой заметки (или отправьте <code>-</code> для очистки):",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+
+@hr_router.message(CandidateNoteForm.waiting_note)
+async def process_cand_note(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    ticket_id = data.get("ticket_id")
+    cand = db.get_candidate(ticket_id)
+    if not cand:
+        await state.clear()
+        return await safe_answer(message, "⚠️ Анкета не найдена.")
+
+    text = (message.text or "").strip()
+    if text == "-":
+        db.update_admin_note(ticket_id, "")
+        await state.clear()
+        await safe_answer(message, f"🗑 Заметка к анкете #{ticket_id} удалена.")
+    else:
+        db.update_admin_note(ticket_id, text)
+        await state.clear()
+        await safe_answer(message, f"✅ Заметка к анкете #{ticket_id} сохранена:\n<i>{html.escape(text)}</i>", parse_mode="HTML")

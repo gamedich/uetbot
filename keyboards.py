@@ -7,10 +7,13 @@ from typing import Tuple, List
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from common import get_git_info
+from datetime import datetime
+from common import db, CONFIG, SYSTEM_METRICS, get_uptime, is_tech_admin, is_hr_admin
 
-from common import db, CONFIG, SYSTEM_METRICS, get_uptime
 
-def make_candidate_main_keyboard() -> types.InlineKeyboardMarkup:
+
+def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
+    """Динамическое главное меню по правам доступа (соискатель / HR / инженер / суперадмин)."""
     builder = InlineKeyboardBuilder()
     builder.button(text="📝 Заполнить анкету на работу", callback_data="cand_start_apply")
     builder.button(text="📑 Моя анкета", callback_data="cand_my_application")
@@ -19,7 +22,26 @@ def make_candidate_main_keyboard() -> types.InlineKeyboardMarkup:
     builder.button(text="📞 Контакты отдела кадров", callback_data="cand_hr_contacts")
     builder.button(text="🚨 Экстренная техподдержка", callback_data="cand_support")
     builder.button(text="📄 Политика конфиденциальности", callback_data="cand_privacy_policy")
-    builder.adjust(1, 1, 1, 1, 1, 1, 1)
+
+    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    is_tech = bool(user_id and (user_id == super_id or is_tech_admin(user_id)))
+    is_hr = bool(user_id and (user_id == super_id or is_hr_admin(user_id)))
+
+    if is_tech or is_hr:
+        if is_tech:
+            builder.button(text="🛠 Панель инженера (/tech)", callback_data="tech_refresh")
+            builder.button(text="🚀 Управление Git (/git)", callback_data="tech_git_menu")
+        if is_hr:
+            builder.button(text="📋 Кадровая панель (/admin)", callback_data="admin_stats")
+        if is_tech and is_hr:
+            builder.adjust(1, 1, 1, 1, 1, 1, 1, 2, 1)
+        elif is_tech:
+            builder.adjust(1, 1, 1, 1, 1, 1, 1, 2)
+        else:
+            builder.adjust(1, 1, 1, 1, 1, 1, 1, 1)
+    else:
+        builder.adjust(1, 1, 1, 1, 1, 1, 1)
+
     return builder.as_markup()
 
 def make_phone_reply_keyboard() -> types.ReplyKeyboardMarkup:
@@ -233,15 +255,14 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
     db_status = "🟢 Исправна" if db.check_health() else "🔴 Сбой целостности"
     maint_status = "🟡 Включен (прием на паузе)" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Работа в штатном режиме"
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
-
+    check_time = datetime.now().strftime("%H:%M:%S")
     text = (
         "🛠 <b>ТЕХНИЧЕСКИЙ МОНИТОРИНГ И ОБСЛУЖИВАНИЕ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"🛡 <b>Режим работы:</b> <b>{env_mode}</b> " + ("(Законный режим: проверка анкет, 3 мес. отказ, антифлуд)\n" if env_mode == "PROD" else "(Режим отладки: все ограничения сняты)\n") +
         f"⏱ <b>Аптайм:</b> <code>{get_uptime()}</code>\n"
+        f"🔄 <b>Проверено в:</b> <code>{check_time}</code>\n"
         f"⚙️ <b>Режим обслуживания:</b> <b>{maint_status}</b>\n"
-        f"🌿 <b>Ветка Git:</b> <code>{git_info['branch']}</code> ({git_info['badge']})\n"
-        f"🏷 <b>Коммит:</b> <code>{git_info['commit']}</code>\n"
         f"💾 <b>База данных:</b> <b>{db_status}</b>\n"
         f"⚠️ <b>Ошибок сети/вызовов:</b> <code>{SYSTEM_METRICS['errors_count']}</code>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"

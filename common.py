@@ -47,7 +47,9 @@ class AdminManageState(StatesGroup):
     waiting_hr_id = State()
     waiting_tech_id = State()
     waiting_vacancy_name = State()
-
+#Добавьте состояние FSM для заметок:
+class CandidateNoteForm(StatesGroup):
+    waiting_note = State()
 # 2. Функции динамического списка вакансий в БД
 DEFAULT_VACANCIES = [
     "Водитель трамвая",

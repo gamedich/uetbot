@@ -89,7 +89,7 @@ async def cmd_help(message: types.Message, state: FSMContext = None):
     is_tech = is_tech_admin(user_id)
     is_hr = is_hr_admin(user_id)
     help_text = texts.format_help_text(is_super, is_tech, is_hr)
-    await safe_answer(message, help_text, reply_markup=make_candidate_main_keyboard(), parse_mode="HTML")
+    await safe_answer(message, help_text, reply_markup=make_candidate_main_keyboard(user_id=message.from_user.id), parse_mode="HTML")
 
 
 @candidate_router.message(Command("id"))
@@ -130,7 +130,7 @@ async def cmd_start(message: types.Message, state: FSMContext, bot: Bot):
     if CONFIG.get("MAINTENANCE_MODE") and not is_admin:
         return await safe_answer(message, texts.MAINTENANCE_ACTIVE, parse_mode="HTML")
 
-    await safe_answer(message, texts.START_WELCOME, reply_markup=make_candidate_main_keyboard(), parse_mode="HTML")
+    await safe_answer(message, texts.START_WELCOME, reply_markup=make_candidate_main_keyboard(user_id=message.from_user.id), parse_mode="HTML")
 # =====================================================================
 # ЭКСТРЕННАЯ СВЯЗЬ С ТЕХНИЧЕСКИМ АДМИНИСТРАТОРОМ (/support, /sos)
 # =====================================================================

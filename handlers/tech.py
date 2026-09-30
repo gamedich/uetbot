@@ -54,6 +54,7 @@ from common import (
 from keyboards import (
     get_tech_screen_data,
     make_tech_menu_keyboard,
+    make_tech_git_keyboard,
     make_tests_menu_keyboard,
     make_admins_menu_keyboard,
     make_remove_admin_keyboard,
@@ -1441,3 +1442,138 @@ async def cb_tech_git_pull(callback: types.CallbackQuery, bot: Bot):
             f"❌ <b>Ошибка git pull:</b>\n<code>{html.escape(str(e))}</code>",
             parse_mode="HTML"
         )
+async def run_shell_cmd(cmd: str) -> tuple[int, str]:
+    """Асинхронный запуск команд оболочки без блокировки бота."""
+    proc = await asyncio.create_subprocess_shell(
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await proc.communicate()
+    out = (stdout or b"").decode("utf-8", errors="replace").strip()
+    err = (stderr or b"").decode("utf-8", errors="replace").strip()
+    return proc.returncode, out or err
+
+
+@tech_router.message(Command("git", "commits", "deploy"))
+@tech_router.callback_query(F.data == "tech_git_menu")
+async def cb_tech_git_menu(event: types.Message | types.CallbackQuery):
+    user_id = event.from_user.id
+    if not is_privileged_user(user_id):
+        if isinstance(event, types.CallbackQuery):
+            return await event.answer("🚫 Нет прав!", show_alert=True)
+        return await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+
+    # Получаем текущую ветку, последние 4 коммита и статус файлов
+    _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
+    _, commits_log = await run_shell_cmd("git log -n 4 --pretty=format:'• <code>%h</code> <b>%s</b> <i>(%cr)</i>'")
+    _, status_out = await run_shell_cmd("git status --porcelain")
+
+    branch = branch or "beta"
+    commits_log = commits_log or "<i>История коммитов недоступна</i>"
+    status_text = "⚠️ <i>Есть незакоммиченные локальные файлы</i>" if status_out else "🟢 <i>Рабочая папка чистая</i>"
+
+    text = (
+        "🚀 <b>УПРАВЛЕНИЕ РЕПОЗИТОРИЕМ И СЛУЖБОЙ (GIT)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🌿 <b>Активная ветка:</b> <code>{branch}</code>\n"
+        f"📂 <b>Состояние:</b> {status_text}\n\n"
+        "📜 <b>Последние коммиты в репозитории:</b>\n"
+        f"{commits_log}\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Выберите действие:"
+    )
+
+    kb = make_tech_git_keyboard(branch)
+    if isinstance(event, types.CallbackQuery):
+        await event.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        await event.answer()
+    else:
+        await safe_answer(event, text, reply_markup=kb, parse_mode="HTML")
+
+
+@tech_router.callback_query(F.data == "git_action_pull_restart")
+async def cb_git_pull_restart(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    await callback.message.edit_text(
+        "⏳ <b>Стягиваем свежие коммиты...</b>\nВыполняется <code>git pull</code>...",
+        parse_mode="HTML"
+    )
+
+    code, out = await run_shell_cmd("git pull")
+    if code != 0:
+        return await callback.message.edit_text(
+            f"❌ <b>Ошибка git pull:</b>\n<code>{out[:500]}</code>",
+            reply_markup=make_tech_git_keyboard(),
+            parse_mode="HTML"
+        )
+
+    await callback.message.edit_text(
+        f"✅ <b>Код обновлён:</b>\n<code>{out[:250]}</code>\n\n🔄 Перезапуск службы <code>uet_bot</code>...",
+        parse_mode="HTML"
+    )
+
+    async def _do_restart():
+        await asyncio.sleep(1.0)
+        os.system("systemctl restart uet_bot")
+
+    asyncio.create_task(_do_restart())
+
+
+@tech_router.callback_query(F.data == "git_action_rollback_ask")
+async def cb_git_rollback_ask(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="⚠️ ДА, ОТКАТИТЬ НА 1 КОММИТ", callback_data="git_action_rollback_confirm")
+    builder.button(text="❌ Отмена (назад)", callback_data="tech_git_menu")
+    builder.adjust(1, 1)
+
+    await callback.message.edit_text(
+        "⚠️ <b>ПОДТВЕРЖДЕНИЕ ОТКАТА (GIT RESET)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Будет выполнен откат на 1 коммит назад: <code>git reset --hard HEAD~1</code>.\n"
+        "Текущие незафиксированные изменения будут стёрты, а бот перезапущен на предыдущей стабильной версии.\n\n"
+        "<b>Подтверждаете откат?</b>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+
+
+@tech_router.callback_query(F.data == "git_action_rollback_confirm")
+async def cb_git_rollback_confirm(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    code, out = await run_shell_cmd("git reset --hard HEAD~1")
+    await callback.message.edit_text(
+        f"⏪ <b>Откат успешно выполнен:</b>\n<code>{out[:250]}</code>\n\n🔄 Перезапуск службы бота...",
+        parse_mode="HTML"
+    )
+
+    async def _do_restart():
+        await asyncio.sleep(1.0)
+        os.system("systemctl restart uet_bot")
+
+    asyncio.create_task(_do_restart())
+
+
+@tech_router.callback_query(F.data == "git_action_restart_only")
+async def cb_git_restart_only(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    await callback.message.edit_text(
+        "🔄 <b>Перезапуск службы uet_bot...</b>\nБот перезагрузится через 2–3 секунды.",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+    async def _do_restart():
+        await asyncio.sleep(1.0)
+        os.system("systemctl restart uet_bot")
+
+    asyncio.create_task(_do_restart())

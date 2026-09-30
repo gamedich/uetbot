@@ -54,6 +54,7 @@ def make_phone_reply_keyboard() -> types.ReplyKeyboardMarkup:
     )
 
 def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
+    """Клавиатура карточки кандидата в HR-панели (без дублей и без лишней кнопки Панель HR)."""
     builder = InlineKeyboardBuilder()
     cand = db.get_candidate(ticket_id)
     platform = cand[1] if cand else "tg"
@@ -61,10 +62,10 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     status = cand[7] if cand and len(cand) > 7 else "Новая"
     is_cand_blocked = db.is_blocked(user_id) if user_id else False
 
-    # 1. Прямой живой чат через бота
+    # 1. Прямой чат через бота
     builder.button(text="🟢 Начать прямой диалог", callback_data=f"live_dlg_cand_{ticket_id}")
 
-    # 2. Прямой переход в профиль/чат
+    # 2. Переход в профиль / чат
     if platform == "tg" and user_id.lstrip("-").isdigit():
         builder.button(text="👤 Открыть чат в TG", url=f"tg://user?id={user_id}")
     elif platform == "vk":
@@ -72,10 +73,10 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     elif platform == "max":
         builder.button(text="👤 Открыть чат МАКС", url=f"https://myteam.mail.ru/chat/{user_id}")
 
-    # 3. Одноразовое сообщение
+    # 3. Сообщение через бота
     builder.button(text="💬 Написать через бота", callback_data=f"cand_msg_{ticket_id}")
 
-    # 4. Решения по статусу (моментальная смена статуса в БД и на кнопках)
+    # 4. Статусы
     if status == "В работе":
         builder.button(text="🟡 В работе (активно)", callback_data=f"status_noop_{ticket_id}")
     else:
@@ -97,35 +98,27 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     else:
         builder.button(text="📦 В архив", callback_data=f"status_{ticket_id}_Архив")
 
-# заметка
+    # 5. Заметка к анкете
     builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
+
+    # 6. Дата встречи и удаление (ровно один раз!)
     builder.button(text="📅 Дата встречи", callback_data=f"invite_custom_{ticket_id}")
     builder.button(text="🗑 Удалить", callback_data=f"del_ask_{ticket_id}")
 
-    # Кнопки навигации назад:
-    builder.button(text="⬅️ К списку анкет", callback_data="admin_list_all")
-    builder.button(text="🏠 Панель HR", callback_data="admin_stats")
-    builder.button(text="📅 Дата встречи", callback_data=f"invite_custom_{ticket_id}")
-    builder.button(text="🗑 Удалить", callback_data=f"del_ask_{ticket_id}")
-
-    # 5. Переключатель ЧС
+    # 7. Чёрный список
     if is_cand_blocked:
         builder.button(text="✅ Снять ЧС", callback_data=f"unblock_cand_{ticket_id}")
     else:
         builder.button(text="⛔ В ЧС", callback_data=f"block_cand_{ticket_id}")
 
+    # 8. Навигация ТОЛЬКО к списку анкет (без лишней Панель HR)
+    builder.button(text="⬅️ К списку анкет", callback_data="admin_list_all")
+
     if status == "Архив":
-        builder.adjust(1, 2, 2, 2, 2, 1)
+        builder.adjust(1, 2, 2, 1, 2, 1, 2, 1, 1)
     else:
-        builder.adjust(1, 2, 2, 1, 2, 1)
+        builder.adjust(1, 2, 2, 1, 2, 2, 1, 1)
     return builder.as_markup()
-
-def make_cand_reply_keyboard(ticket_id: int = 0) -> types.InlineKeyboardMarkup:
-    """Инлайн-кнопка для соискателя в Telegram для ответа на сообщение отдела кадров."""
-    builder = InlineKeyboardBuilder()
-    builder.button(text="💬 Ответить кадровику", callback_data=f"cand_reply_hr_{ticket_id}")
-    return builder.as_markup()
-
 
 def make_inquiry_admin_keyboard(inquiry_id: int) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

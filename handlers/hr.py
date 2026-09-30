@@ -1288,7 +1288,7 @@ async def process_live_dialog_photo(message: types.Message, state: FSMContext, b
         #заметки и выгрузка 
 @hr_router.callback_query(F.data.startswith("cand_note_"))
 async def cb_cand_note_start(callback: types.CallbackQuery, state: FSMContext):
-    ticket_id = int(callback.data.split("_"))
+    ticket_id = int(callback.data.split("_")[-1])
     await state.update_data(note_ticket_id=ticket_id)
     await state.set_state(CandidateNoteState.waiting_note)
     await safe_answer(callback.message, f"📝 <b>Заметка к анкете #{ticket_id}:</b>\nОтправьте текст комментария (/cancel для отмены):", parse_mode="HTML")
@@ -1383,12 +1383,12 @@ async def cb_hr_toggle_cooldown(callback: types.CallbackQuery):
         await callback.message.edit_reply_markup(reply_markup=make_admin_menu_keyboard(callback.from_user.id))
     except Exception:
         pass
-@hr_router.callback_query(F.data.startswith("cand_note_"))
+@hr_router.callback_query(F.data.startswith("cand_note_") | F.data.startswith("note_"))
 async def cb_cand_note_ask(callback: types.CallbackQuery, state: FSMContext):
     allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
     if not allowed:
         return await callback.answer("🔒 В режиме PROD доступ закрыт для разработчика (152-ФЗ)!", show_alert=True)
-    ticket_id = int(callback.data.replace("cand_note_", ""))
+    ticket_id = int(callback.data.split("_")[-1])
     cand = db.get_candidate(ticket_id)
     if not cand:
         return await callback.answer("Анкета не найдена!", show_alert=True)
@@ -1400,14 +1400,70 @@ async def cb_cand_note_ask(callback: types.CallbackQuery, state: FSMContext):
 
     builder = InlineKeyboardBuilder()
     builder.button(text="❌ Отмена", callback_data=f"view_{ticket_id}")
-    await callback.message.reply(
+    prompt_text = (
         f"📝 <b>Заметка к анкете #{ticket_id} ({html.escape(cand_name)})</b>\n\n"
         f"📌 <b>Текущая заметка:</b> <i>{html.escape(cur_note)}</i>\n\n"
-        "Отправьте текст новой заметки (или отправьте <code>-</code> для очистки):",
+        "Отправьте текст новой заметки (или отправьте <code>-</code> для очистки):"
+    )
+    try:
+        await callback.message.reply(prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception:
+        await safe_answer(callback.message, prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@hr_router.message(CandidateNoteForm.waiting_note)
+async def process_cand_note(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    ticket_id = data.get("ticket_id")
+    cand = db.get_candidate(ticket_id)
+    if not cand:
+        await state.clear()
+        return await safe_answer(message, "⚠️ Анкета не найдена.")
+
+    text = (message.text or "").strip()
+    builder = InlineKeyboardBuilder()
+    builder.button(text=f"📑 Открыть анкету #{ticket_id}", callback_data=f"view_{ticket_id}")
+    if text == "-":
+        db.update_admin_note(ticket_id, "")
+        await state.clear()
+        await safe_answer(message, f"🗑 Заметка к анкете #{ticket_id} удалена.", reply_markup=builder.as_markup())
+    else:
+        db.update_admin_note(ticket_id, text)
+        await state.clear()
+        await safe_answer(
+            message,
+            f"✅ Заметка к анкете #{ticket_id} сохранена:\n«<i>{html.escape(text)}</i>»",
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML"
+        )
+
+
+# Альтернативный способ: быстрая команда в чате
+@hr_router.message(Command("note", "admin_note"))
+async def cmd_set_note(message: types.Message):
+    """Позволяет поставить заметку командой: /note 15 Ждём на собеседование"""
+    allowed, err_text = check_hr_access_or_block(message.from_user.id, message.chat.id)
+    if not allowed:
+        return await safe_answer(message, err_text, parse_mode="HTML")
+    parts = (message.text or "").split(maxsplit=2)
+    if len(parts) < 3 or not parts[1].isdigit():
+        return await safe_answer(
+            message,
+            "ℹ️ Формат команды: <code>/note <номер_анкеты> <текст заметки></code>\nПример: <code>/note 15 Созвонились, ждём в четверг</code>",
+            parse_mode="HTML"
+        )
+    t_id = int(parts[1])
+    note_text = parts[2].strip()
+    db.update_admin_note(t_id, note_text)
+    builder = InlineKeyboardBuilder()
+    builder.button(text=f"📑 Открыть анкету #{t_id}", callback_data=f"view_{t_id}")
+    await safe_answer(
+        message,
+        f"✅ Заметка к анкете #{t_id} обновлена:\n«<i>{html.escape(note_text)}</i>»",
         reply_markup=builder.as_markup(),
         parse_mode="HTML"
     )
-    await callback.answer()
 
 
 @hr_router.message(CandidateNoteForm.waiting_note)

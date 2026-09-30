@@ -220,7 +220,8 @@ class CandidateDirectMsgForm(StatesGroup):
 
 class HRReplyForm(StatesGroup):
     waiting_reply = State()
-
+class SupportForm(StatesGroup):
+    waiting_message = State()
 VACANCIES = [
     "Водитель трамвая",
     "Водитель троллейбуса",

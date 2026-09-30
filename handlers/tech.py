@@ -22,6 +22,8 @@ import texts
 import re
 import os
 import random
+import subprocess
+import sys
 from common import get_all_vacancies, save_all_vacancies
 
 from aiohttp import ClientSession, ClientTimeout
@@ -1348,6 +1350,62 @@ async def cb_vac_del_execute(callback: types.CallbackQuery):
     if 0 <= idx < len(vacancies):
         removed = vacancies.pop(idx)
         save_all_vacancies(vacancies)
-        await callback.answer(f"🗑 Вакансия «{removed}» удалена!", show_alert=True)
+        await callback.answer(f"🗑️ Вакансия «{removed}» удалена!", show_alert=True)
+        await cb_tech_vacancies_menu(callback)
 
-    await cb_tech_vacancies_menu(callback)
+
+@tech_router.callback_query(F.data.in_(["tech_switch_main", "tech_switch_beta"]))
+async def cb_tech_switch_branch(callback: types.CallbackQuery, bot: Bot):
+    """Переключение ветки Git и перезапуск бота."""
+
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("⛔ Доступно только главному администратору!", show_alert=True)
+
+    target_branch = "main" if callback.data == "tech_switch_main" else "beta"
+    await callback.message.edit_text(
+        f"⏳ <b>Переключение Git-ветки на «{target_branch}»...</b>\nПожалуйста, подождите 3-5 секунд...",
+        parse_mode="HTML"
+    )
+    try:
+        # Выполняем checkout на сервере
+        subprocess.run(["git", "checkout", target_branch], capture_output=True, text=True, check=True)
+        
+        await callback.message.reply(
+            f"✅ <b>Ветка успешно переключена на {target_branch}!</b>\n"
+            f"Перезапускаю процесс бота...",
+            parse_mode="HTML"
+        )
+        # Перезапуск текущего процесса Python
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    except Exception as e:
+        await callback.message.edit_text(
+            f"❌ <b>Ошибка при переключении ветки:</b>\n<code>{html.escape(str(e))}</code>",
+            parse_mode="HTML"
+        )
+
+
+@tech_router.callback_query(F.data == "tech_git_pull")
+async def cb_tech_git_pull(callback: types.CallbackQuery, bot: Bot):
+    """Подтягивание свежих коммитов из GitHub и перезапуск."""
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("⛔ Доступно только администраторам!", show_alert=True)
+
+    await callback.message.edit_text("⏳ <b>Проверяю обновления на GitHub (git pull)...</b>", parse_mode="HTML")
+    try:
+        res = subprocess.run(["git", "pull"], capture_output=True, text=True, check=True)
+        output = res.stdout.strip()
+        
+        if "Already up to date" in output or "Уже обновлено" in output:
+            await callback.message.edit_text("ℹ️ <b>Установлена самая свежая версия кода.</b> Обновлений нет.", parse_mode="HTML")
+        else:
+            await callback.message.reply(
+                f"📥 <b>Обновления получены:</b>\n<pre>{output[:3000]}</pre>\n"
+                f"Перезапускаю бота...",
+                parse_mode="HTML"
+            )
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+    except Exception as e:
+        await callback.message.edit_text(
+            f"❌ <b>Ошибка git pull:</b>\n<code>{html.escape(str(e))}</code>",
+            parse_mode="HTML"
+        )

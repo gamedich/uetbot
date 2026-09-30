@@ -614,3 +614,40 @@ async def sync_user_commands(bot_instance: Bot, user_id: int):
             await bot_instance.delete_my_commands(scope=scope)
     except Exception:
         pass
+
+import subprocess
+
+def get_git_info() -> dict:
+    """Определение текущей активной ветки Git и хеша коммита."""
+    branch = "unknown"
+    commit = "unknown"
+
+    # 1. Читаем текущую ветку из .git/HEAD
+    try:
+        if os.path.exists(".git/HEAD"):
+            with open(".git/HEAD", "r", encoding="utf-8") as f:
+                ref = f.read().strip()
+                if ref.startswith("ref: refs/heads/"):
+                    branch = ref.replace("ref: refs/heads/", "")
+                else:
+                    branch = ref[:7]
+    except Exception:
+        pass
+
+    # 2. Читаем короткий хеш коммита
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL
+        ).decode().strip()
+    except Exception:
+        pass
+
+    is_beta = (branch == "beta")
+    badge = "🧪 BETA (Тестовая)" if is_beta else "🛡 MAIN (Стабильная)"
+    return {
+        "branch": branch,
+        "commit": commit,
+        "is_beta": is_beta,
+        "badge": badge
+    }

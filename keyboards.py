@@ -6,6 +6,7 @@
 from typing import Tuple, List
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from common import get_git_info
 
 from common import db, CONFIG, SYSTEM_METRICS, get_uptime
 
@@ -195,7 +196,6 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder.button(text=toggle_env_text, callback_data="tech_toggle_env")
     builder.button(text="💾 Управление бэкапами (/backups)", callback_data="tech_manage_backups")
     builder.button(text="🎯 Вакансии и набор (Вкл/Выкл)", callback_data="tech_vacancies_menu")
-    builder.button(text="📋 Changelog (История версий)", callback_data="tech_changelog")
 
     cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
     cd_min = cur_cd // 60
@@ -205,6 +205,15 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder.button(text=maint_text, callback_data="tech_toggle_maint")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")
     builder.button(text="🔄 Перезапустить службу бота", callback_data="tech_restart_ask")
+
+    # Переключение веток Git (4 пробела для if/else, 8 пробелов для кнопок внутри)
+    git_info = get_git_info()
+    if git_info["branch"] == "beta":
+        builder.button(text="🛡 Переключить на MAIN", callback_data="tech_switch_main")
+    else:
+        builder.button(text="🧪 Переключить на BETA", callback_data="tech_switch_beta")
+
+    builder.button(text="🔄 Обновить код (git pull)", callback_data="tech_git_pull")
     builder.button(text="🔄 Обновить статус", callback_data="tech_refresh")
     builder.adjust(1)
     return builder.as_markup()
@@ -221,6 +230,8 @@ def make_tests_menu_keyboard() -> types.InlineKeyboardMarkup:
     return builder.as_markup()
 
 def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMarkup]:
+    git_info = get_git_info()
+    
     tg_status = "🟢 Онлайн"
     vk_status = "🟢 Онлайн" if SYSTEM_METRICS["vk_online"] else ("🟡 Не настроен" if not CONFIG.get("VK_GROUP_TOKEN") else "🔴 Ошибка")
     max_status = "🟢 Онлайн" if SYSTEM_METRICS["max_online"] else ("🟡 Не настроен" if not CONFIG.get("MAX_BOT_TOKEN") else "🔴 Ошибка")
@@ -234,6 +245,8 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
         f"🛡 <b>Режим работы:</b> <b>{env_mode}</b> " + ("(Законный режим: проверка анкет, 3 мес. отказ, антифлуд)\n" if env_mode == "PROD" else "(Режим отладки: все ограничения сняты)\n") +
         f"⏱ <b>Аптайм:</b> <code>{get_uptime()}</code>\n"
         f"⚙️ <b>Режим обслуживания:</b> <b>{maint_status}</b>\n"
+        f"🌿 <b>Ветка Git:</b> <code>{git_info['branch']}</code> ({git_info['badge']})\n"
+        f"🏷 <b>Коммит:</b> <code>{git_info['commit']}</code>\n"
         f"💾 <b>База данных:</b> <b>{db_status}</b>\n"
         f"⚠️ <b>Ошибок сети/вызовов:</b> <code>{SYSTEM_METRICS['errors_count']}</code>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
@@ -244,3 +257,4 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
         "━━━━━━━━━━━━━━━━━━━━━"
     )
     return text, make_tech_menu_keyboard(user_id)
+

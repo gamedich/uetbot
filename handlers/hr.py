@@ -1288,7 +1288,7 @@ async def process_live_dialog_photo(message: types.Message, state: FSMContext, b
         #заметки и выгрузка 
 @hr_router.callback_query(F.data.startswith("cand_note_"))
 async def cb_cand_note_start(callback: types.CallbackQuery, state: FSMContext):
-    ticket_id = int(callback.data.split("_"))
+    ticket_id = int(callback.data.split("_")[-1])
     await state.update_data(note_ticket_id=ticket_id)
     await state.set_state(CandidateNoteState.waiting_note)
     await safe_answer(callback.message, f"📝 <b>Заметка к анкете #{ticket_id}:</b>\nОтправьте текст комментария (/cancel для отмены):", parse_mode="HTML")

@@ -1,0 +1,31 @@
+# Секреты и конфиденциальные данные
+.env*
+.env.local
+.env.*.local
+*.env
+
+# База данных SQLite и журналы WAL
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+backups/
+
+# Виртуальное окружение
+venv/
+.venv/
+env/
+ENV/
+
+# Кэш Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Логи и временные файлы
+*.log
+*.tmp
+.cache/
+.idea/
+.vscode/

@@ -54,7 +54,7 @@ def make_phone_reply_keyboard() -> types.ReplyKeyboardMarkup:
     )
 
 def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
-    """Клавиатура карточки кандидата в HR-панели (без дублирования кнопок)."""
+    """Клавиатура карточки кандидата в HR-панели (без дублей и без лишней кнопки Панель HR)."""
     builder = InlineKeyboardBuilder()
     cand = db.get_candidate(ticket_id)
     platform = cand[1] if cand else "tg"
@@ -98,7 +98,7 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     else:
         builder.button(text="📦 В архив", callback_data=f"status_{ticket_id}_Архив")
 
-    # 5. Заметка к анкете (callback_data строго cand_note_{ticket_id})
+    # 5. Заметка к анкете
     builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
 
     # 6. Дата встречи и удаление (ровно один раз!)
@@ -111,21 +111,14 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     else:
         builder.button(text="⛔ В ЧС", callback_data=f"block_cand_{ticket_id}")
 
-    # 8. Навигация
+    # 8. Навигация ТОЛЬКО к списку анкет (без лишней Панель HR)
     builder.button(text="⬅️ К списку анкет", callback_data="admin_list_all")
-    builder.button(text="🏠 Панель HR", callback_data="admin_stats")
 
     if status == "Архив":
-        builder.adjust(1, 2, 2, 1, 2, 1, 2, 1, 2)
+        builder.adjust(1, 2, 2, 1, 2, 1, 2, 1, 1)
     else:
-        builder.adjust(1, 2, 2, 1, 2, 2, 1, 2)
+        builder.adjust(1, 2, 2, 1, 2, 2, 1, 1)
     return builder.as_markup()
-def make_cand_reply_keyboard(ticket_id: int = 0) -> types.InlineKeyboardMarkup:
-    """Инлайн-кнопка для соискателя в Telegram для ответа на сообщение отдела кадров."""
-    builder = InlineKeyboardBuilder()
-    builder.button(text="💬 Ответить кадровику", callback_data=f"cand_reply_hr_{ticket_id}")
-    return builder.as_markup()
-
 
 def make_inquiry_admin_keyboard(inquiry_id: int) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

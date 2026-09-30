@@ -196,7 +196,6 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     toggle_env_text = "🛡 Включить PROD (152-ФЗ, лимиты)" if env == "TEST" else "🧪 Включить TEST (без ограничений)"
     builder.button(text=toggle_env_text, callback_data="tech_toggle_env")
     builder.button(text="💾 Управление бэкапами (/backups)", callback_data="tech_manage_backups")
-    builder.button(text="🚨 Экстренная техподдержка (/support)", callback_data="cand_support")
     maint_text = "🟡 Выключить ТО" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Включить ТО (пауза)"
     builder.button(text=maint_text, callback_data="tech_toggle_maint")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")

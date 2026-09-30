@@ -1581,3 +1581,47 @@ async def cmd_restart(message: types.Message):
         reply_markup=builder.as_markup(),
         parse_mode="HTML"
     )
+
+@tech_router.callback_query(F.data == "git_action_forward_ask")
+async def cb_git_forward_ask(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
+    branch = branch or "main"
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="⏩ ДА, ВЕРНУТЬ АКТУАЛЬНЫЙ КОММИТ", callback_data="git_action_forward_confirm")
+    builder.button(text="❌ Отмена", callback_data="tech_git_menu")
+    builder.adjust(1, 1)
+
+    await callback.message.edit_text(
+        "⏩ <b>ВОЗВРАТ НА АКТУАЛЬНЫЙ КОММИТ (FORWARD)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Будет выполнена синхронизация с GitHub: <code>git fetch origin && git reset --hard origin/{branch}</code>.\n"
+        "Все откаты будут отменены, код вернётся к последней версии из GitHub, а бот перезапустится.\n\n"
+        "<b>Вернуть актуальную версию?</b>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+
+
+@tech_router.callback_query(F.data == "git_action_forward_confirm")
+async def cb_git_forward_confirm(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+
+    _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
+    branch = branch or "main"
+
+    code, out = await run_shell_cmd(f"git fetch origin && git reset --hard origin/{branch}")
+    await callback.message.edit_text(
+        f"⏩ <b>Возврат выполнен:</b>\n<code>{out[:300]}</code>\n\n🔄 Перезапуск службы uet_bot...",
+        parse_mode="HTML"
+    )
+
+    async def _do_restart():
+        await asyncio.sleep(1.0)
+        os.system("systemctl restart uet_bot")
+
+    asyncio.create_task(_do_restart())

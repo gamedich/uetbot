@@ -213,6 +213,7 @@ def make_faq_keyboard() -> types.InlineKeyboardMarkup:
     return builder.as_markup()
 
 def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
+    """Технический мониторинг — только системные параметры и кнопка перехода в Git."""
     builder = InlineKeyboardBuilder()
     env = CONFIG.get("ENVIRONMENT", "TEST")
     toggle_env_text = "🛡 Включить PROD (152-ФЗ, лимиты)" if env == "TEST" else "🧪 Включить TEST (без ограничений)"
@@ -221,17 +222,8 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     maint_text = "🟡 Выключить ТО" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Включить ТО (пауза)"
     builder.button(text=maint_text, callback_data="tech_toggle_maint")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")
-    builder.button(text="🔄 Перезапустить службу бота", callback_data="tech_restart_ask")
-
-    # Переключение веток Git (4 пробела для if/else, 8 пробелов для кнопок внутри)
-    git_info = get_git_info()
-    if git_info["branch"] == "beta":
-        builder.button(text="🛡 Переключить на MAIN", callback_data="tech_switch_main")
-    else:
-        builder.button(text="🧪 Переключить на BETA", callback_data="tech_switch_beta")
-
-    builder.button(text="🔄 Обновить код (git pull)", callback_data="tech_git_pull")
     builder.button(text="🔄 Обновить статус", callback_data="tech_refresh")
+    builder.button(text="🚀 Панель GitHub и деплой (/git)", callback_data="tech_git_menu")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -298,4 +290,20 @@ def make_git_menu_keyboard(current_branch: str = "beta") -> types.InlineKeyboard
     return builder.as_markup()
 
 # Псевдоним на случай старых вызовов
+make_tech_git_keyboard = make_git_menu_keyboard
+#клавиатура паннели 
+def make_git_menu_keyboard(current_branch: str = "main") -> types.InlineKeyboardMarkup:
+    """Клавиатура управления Git с откатом и возвратом на актуальный коммит."""
+    builder = InlineKeyboardBuilder()
+    other_branch = "beta" if current_branch == "main" else "main"
+    builder.button(text="🔄 Обновить и перезапустить (pull + restart)", callback_data="git_action_pull_restart")
+    builder.button(text=f"🔀 Переключить на «{other_branch}»", callback_data=f"git_action_switch_{other_branch}")
+    builder.button(text="⏪ Откат на 1 коммит (HEAD~1)", callback_data="git_action_rollback_ask")
+    builder.button(text="⏩ Вернуть актуальный коммит", callback_data="git_action_forward_ask")
+    builder.button(text="⚡ Быстрый рестарт", callback_data="git_action_restart_only")
+    builder.button(text="🔄 Обновить статус Git", callback_data="tech_git_menu")
+    builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
+    builder.adjust(1, 1, 2, 2, 1)
+    return builder.as_markup()
+
 make_tech_git_keyboard = make_git_menu_keyboard

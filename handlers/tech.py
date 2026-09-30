@@ -1351,26 +1351,3 @@ async def cb_vac_del_execute(callback: types.CallbackQuery):
         await callback.answer(f"🗑 Вакансия «{removed}» удалена!", show_alert=True)
 
     await cb_tech_vacancies_menu(callback)
-
-@tech_router.message(Command("changelog"))
-async def cmd_show_changelog(message: types.Message):
-    """Отображение последних изменений системы из CHANGELOG.md."""
-    if not message.from_user or not is_privileged_user(message.from_user.id):
-        return await message.reply("⛔ Команда доступна только техническим администраторам.")
-
-    file_paths = ["CHANGELOG.md", os.path.join("docs", "CHANGELOG.md")]
-    content = ""
-    for path in file_paths:
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                content = f.read()
-            break
-
-    if not content:
-        return await message.reply("⚠️ Файл <code>CHANGELOG.md</code> не найден на сервере.", parse_mode="HTML")
-
-    snippet = content[:3500]
-    await message.reply(
-        f"📋 <b>ИСТОРИЯ ИЗМЕНЕНИЙ (CHANGELOG)</b>\n━━━━━━━━━━━━━━━━━━━━━\n<pre>{snippet}</pre>",
-        parse_mode="HTML"
-    )

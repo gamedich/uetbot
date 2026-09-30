@@ -362,3 +362,6 @@ async def handle_max_message(
                 exp_text = "Без опыта"
             else:
                 exp_text = clean or "Указан в резюме"
+async def run_max_gateway(bot, db):
+    pass
+

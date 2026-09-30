@@ -12,7 +12,7 @@ import re
 import sys
 import time
 from datetime import datetime
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any,Optional,List
 import json
 from aiogram.types import BotCommand, BotCommandScopeChat
 
@@ -27,7 +27,7 @@ from aiogram.exceptions import (
     TelegramAPIError
 )
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.base import BaseStorage, StorageKey, StateType
 
 try:
     from config import CONFIG, validate_config
@@ -163,12 +163,79 @@ memory_log_handler = MemoryLogHandler(capacity=120)
 memory_log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 logging.getLogger().addHandler(memory_log_handler)
 
+class SQLiteFSMStorage(BaseStorage):
+    """Персистентное хранилище FSM в базе SQLite (resumes.db)."""
+
+    def __init__(self, database: ResumeDB):
+        self.db = database
+
+    def _get_key_str(self, key: StorageKey) -> str:
+        return f"{key.bot_id}:{key.chat_id}:{key.user_id}:{key.destiny}"
+
+    async def set_state(self, key: StorageKey, state: StateType = None) -> None:
+        state_str = state.state if isinstance(state, State) else state
+        k = self._get_key_str(key)
+        await asyncio.to_thread(self.db.set_fsm_state, k, state_str)
+
+    async def get_state(self, key: StorageKey) -> Optional[str]:
+        k = self._get_key_str(key)
+        return await asyncio.to_thread(self.db.get_fsm_state, k)
+
+    async def set_data(self, key: StorageKey, data: Dict[str, Any]) -> None:
+        k = self._get_key_str(key)
+        await asyncio.to_thread(self.db.set_fsm_data, k, data)
+
+    async def get_data(self, key: StorageKey) -> Dict[str, Any]:
+        k = self._get_key_str(key)
+        return await asyncio.to_thread(self.db.get_fsm_data, k)
+
+    async def close(self) -> None:
+        pass
+
+
+class PersistentSessions(dict):
+    """Персистентный кэш сессий соискателей VK / MAX с авто-сохранением в SQLite."""
+
+    def __init__(self, database: ResumeDB):
+        super().__init__()
+        self.db = database
+        try:
+            for plat, uid, data in self.db.get_all_external_sessions():
+                super().__setitem__((plat, str(uid)), data)
+        except Exception:
+            pass
+
+    def __setitem__(self, key: Tuple[str, str], value: Dict[str, Any]):
+        super().__setitem__(key, value)
+        try:
+            plat, uid = key
+            self.db.set_external_session(plat, str(uid), value)
+        except Exception:
+            pass
+
+    def __delitem__(self, key: Tuple[str, str]):
+        if key in self:
+            super().__delitem__(key)
+        try:
+            plat, uid = key
+            self.db.delete_external_session(plat, str(uid))
+        except Exception:
+            pass
+
+    def pop(self, key: Tuple[str, str], default=None):
+        try:
+            plat, uid = key
+            self.db.delete_external_session(plat, str(uid))
+        except Exception:
+            pass
+        return super().pop(key, default)
+
 db = ResumeDB()
 bot = Bot(
     token=CONFIG.get("TG_BOT_TOKEN", ""),
     default=DefaultBotProperties(parse_mode="HTML")
 )
-dp = Dispatcher(storage=MemoryStorage())
+dp = Dispatcher(storage=SQLiteFSMStorage(db))
 
 START_TIME = time.time()
 SYSTEM_METRICS = {
@@ -230,7 +297,7 @@ VACANCIES = [
     "Электромонтер контактной сети",
 ]
 
-EXTERNAL_SESSIONS: Dict[Tuple[str, str], Dict[str, Any]] = {}
+EXTERNAL_SESSIONS = PersistentSessions(db)
 
 def is_tech_admin(user_id: int) -> bool:
     if user_id == CONFIG.get("SUPER_ADMIN_ID") or user_id == CONFIG.get("TECH_ADMIN_ID"):

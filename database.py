@@ -7,6 +7,7 @@
 
 import os
 import sqlite3
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List, Tuple, Dict, Any
@@ -176,6 +177,30 @@ class ResumeDB:
                 CREATE TABLE IF NOT EXISTS user_consents (
                     user_id TEXT PRIMARY KEY,
                     consent_timestamp TEXT NOT NULL
+                )
+                """
+            )
+            # 9. Таблица персистентных FSM состояний (aiogram 3)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS fsm_storage (
+                    storage_key TEXT PRIMARY KEY,
+                    state TEXT,
+                    data TEXT DEFAULT '{}',
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+            # 10. Таблица сессий внешних мессенджеров (VK / MAX)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS external_sessions (
+                    platform TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    data TEXT DEFAULT '{}',
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (platform, user_id)
                 )
                 """
             )
@@ -895,3 +920,86 @@ class ResumeDB:
             except Exception:
                 pass
         return len(deleted_names), deleted_names
+
+    # ==================== FSM & ПЕРСИСТЕНТНЫЕ СЕССИИ ====================
+    def set_fsm_state(self, key: str, state: Optional[str]):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            if state is None:
+                cursor.execute("UPDATE fsm_storage SET state = NULL, updated_at = CURRENT_TIMESTAMP WHERE storage_key = ?", (key,))
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO fsm_storage (storage_key, state, data, updated_at)
+                    VALUES (?, ?, '{}', CURRENT_TIMESTAMP)
+                    ON CONFLICT(storage_key) DO UPDATE SET state = ?, updated_at = CURRENT_TIMESTAMP
+                    """,
+                    (key, state, state)
+                )
+            conn.commit()
+
+    def get_fsm_state(self, key: str) -> Optional[str]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT state FROM fsm_storage WHERE storage_key = ?", (key,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    def set_fsm_data(self, key: str, data: Dict[str, Any]):
+        raw_json = json.dumps(data or {}, ensure_ascii=False)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO fsm_storage (storage_key, state, data, updated_at)
+                VALUES (?, NULL, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(storage_key) DO UPDATE SET data = ?, updated_at = CURRENT_TIMESTAMP
+                """,
+                (key, raw_json, raw_json)
+            )
+            conn.commit()
+
+    def get_fsm_data(self, key: str) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT data FROM fsm_storage WHERE storage_key = ?", (key,))
+            row = cursor.fetchone()
+            if row and row[0]:
+                try:
+                    return json.loads(row[0])
+                except Exception:
+                    return {}
+            return {}
+
+    def set_external_session(self, platform: str, user_id: str, data: Dict[str, Any]):
+        raw_json = json.dumps(data or {}, ensure_ascii=False)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO external_sessions (platform, user_id, data, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(platform, user_id) DO UPDATE SET data = ?, updated_at = CURRENT_TIMESTAMP
+                """,
+                (platform, str(user_id), raw_json, raw_json)
+            )
+            conn.commit()
+
+    def delete_external_session(self, platform: str, user_id: str):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM external_sessions WHERE platform = ? AND user_id = ?", (platform, str(user_id)))
+            conn.commit()
+
+    def get_all_external_sessions(self) -> List[Tuple[str, str, Dict[str, Any]]]:
+        sessions = []
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT platform, user_id, data FROM external_sessions")
+            for plat, uid, raw_json in cursor.fetchall():
+                try:
+                    d = json.loads(raw_json) if raw_json else {}
+                except Exception:
+                    d = {}
+                sessions.append((plat, uid, d))
+        return sessions

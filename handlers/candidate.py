@@ -1486,7 +1486,12 @@ async def cb_nav_back(event: types.CallbackQuery | types.Message, state: FSMCont
         prev_state, txt, kb = step_transitions[cur_state]
         await state.set_state(prev_state)
         if isinstance(event, types.CallbackQuery):
-            await event.message.edit_text(txt, reply_markup=kb, parse_mode="HTML")
+            # Если возвращаемся на шаг с обычной клавиатурой (телефон)
+            if isinstance(kb, types.ReplyKeyboardMarkup):
+                await event.message.delete()
+                await event.message.answer(txt, reply_markup=kb, parse_mode="HTML")
+            else:
+                await event.message.edit_text(txt, reply_markup=kb, parse_mode="HTML")
             await event.answer("Назад")
         else:
             await safe_answer(event, txt, reply_markup=kb, parse_mode="HTML")

@@ -554,6 +554,18 @@ class ResumeDB:
                 pass
 
         return cand_cnt, inq_cnt
+    def get_all_candidates_for_export(self) -> List[Tuple]:
+        """Получение всех анкет для выгрузки в CSV/Excel."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at
+                FROM candidates
+                ORDER BY ticket_id DESC
+                """
+            )
+            return cursor.fetchall()
 
     def get_recent_candidates(self, limit: int = 10, filter_status: Optional[str] = None, only_new: bool = False, is_archive: bool = False) -> List[Tuple]:
         with self._get_connection() as conn:

@@ -273,17 +273,55 @@ async def cb_cand_my_application(event: types.CallbackQuery | types.Message):
         builder.adjust(1)
         text = texts.APP_NOT_FOUND
     else:
-        ticket_id = cand_tuple[0]
-        full_name = cand_tuple[3]
-        vacancy = cand_tuple[5]
-        created_at = cand_tuple[9] if len(cand_tuple) > 9 and cand_tuple[9] else "Только что"
-        status = cand_tuple[7]
+        t_id = cand_tuple[0]
+        status = cand_tuple[7] if len(cand_tuple) > 7 else "Новая"
+        name = cand_tuple[3] if len(cand_tuple) > 3 else ""
+        phone = cand_tuple[4] if len(cand_tuple) > 4 else ""
+        vac = cand_tuple[5] if len(cand_tuple) > 5 else ""
+        exp = cand_tuple[6] if len(cand_tuple) > 6 else ""
+        created = cand_tuple[9] if len(cand_tuple) > 9 and cand_tuple[9] else "Только что"
+        birth = cand_tuple[10] if len(cand_tuple) > 10 and cand_tuple[10] else "Не указана"
+        city = cand_tuple[11] if len(cand_tuple) > 11 and cand_tuple[11] else "Не указан"
+        lic = cand_tuple[12] if len(cand_tuple) > 12 and cand_tuple[12] else "Нет"
+        edu = cand_tuple[13] if len(cand_tuple) > 13 and cand_tuple[13] else "Не указано"
+        reloc = cand_tuple[14] if len(cand_tuple) > 14 and cand_tuple[14] else "Нет"
+        dorm = cand_tuple[15] if len(cand_tuple) > 15 and cand_tuple[15] else "Нет"
+        shift = cand_tuple[16] if len(cand_tuple) > 16 and cand_tuple[16] else "Да"
+        med = cand_tuple[17] if len(cand_tuple) > 17 and cand_tuple[17] else "Нет"
+        crim = cand_tuple[18] if len(cand_tuple) > 18 and cand_tuple[18] else "Нет"
+        src = cand_tuple[19] if len(cand_tuple) > 19 and cand_tuple[19] else "Не указан"
+        extra = cand_tuple[20] if len(cand_tuple) > 20 and cand_tuple[20] else "Нет"
+
         builder.button(text="💬 Задать вопрос / Связаться", callback_data="cand_ask_question")
         builder.button(text="📚 Частые вопросы (FAQ)", callback_data="cand_faq_menu")
         builder.button(text="🏢 Контакты отдела кадров", callback_data="cand_hr_contacts")
         builder.button(text=texts.BTN_BACK_TO_MENU, callback_data="cand_back_to_menu")
         builder.adjust(1)
-        text = texts.format_my_application(ticket_id, full_name, vacancy, created_at, status)
+
+        text = (
+            f"📑 <b>ВАША АНКЕТА #{t_id} В МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>Текущий статус:</b> <b>{status}</b>\n"
+            f"⏱ <b>Дата подачи:</b> <code>{created}</code>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 <b>ФИО:</b> {html.escape(name)}\n"
+            f"🎂 <b>Дата рождения:</b> <code>{html.escape(birth)}</code>\n"
+            f"📞 <b>Телефон:</b> <code>{html.escape(phone)}</code>\n"
+            f"🏙 <b>Город:</b> {html.escape(city)}\n"
+            f"🎯 <b>Должность:</b> <b>{html.escape(vac)}</b>\n"
+            f"🚗 <b>Водительские права:</b> {html.escape(lic)}\n"
+            f"💼 <b>Опыт работы:</b> {html.escape(exp)}\n"
+            f"🎓 <b>Образование:</b> {html.escape(edu)}\n"
+            f"🏠 <b>Готовность к переезду:</b> {html.escape(reloc)}\n"
+            f"🛏 <b>Общежитие:</b> {html.escape(dorm)}\n"
+            f"🕐 <b>Сменный график:</b> {html.escape(shift)}\n"
+            f"⚕️ <b>Противопоказания:</b> {html.escape(med)}\n"
+            f"⚖️ <b>Судимость (ст. 86 УК):</b> {html.escape(crim)}\n"
+            f"📢 <b>Источник:</b> {html.escape(src)}\n"
+            f"📎 <b>Дополнительно:</b> {html.escape(extra)}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📞 <b>Отдел кадров:</b> <code>+7 (8422) 58-46-60</code>"
+        )
 
     if isinstance(event, types.CallbackQuery):
         await event.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")

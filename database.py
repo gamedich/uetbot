@@ -337,28 +337,33 @@ class ResumeDB:
     async def async_update_status(self, ticket_id: int, new_status: str):
         """Неблокирующее обновление статуса анкеты."""
         return await asyncio.to_thread(self.update_status, ticket_id, new_status)
+        
+        
+    def get_candidate_by_user_id(self, user_id: str, platform: str = "tg") -> Optional[Tuple]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                       birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json
+                FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1
+                """,
+                (str(user_id), platform),
+            )
+            return cursor.fetchone()
 
     def get_candidate(self, ticket_id: int) -> Optional[Tuple]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at 
+                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                       birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json
                 FROM candidates WHERE ticket_id = ?
                 """,
                 (ticket_id,),
-            )
-            return cursor.fetchone()
-
-    def get_candidate_by_user_id(self, user_id: str, platform: str = "tg") -> Optional[Tuple]:
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at
-                FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1
-                """,
-                (str(user_id), platform),
             )
             return cursor.fetchone()
 

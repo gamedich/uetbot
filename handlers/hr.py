@@ -159,8 +159,69 @@ async def cb_admin_list(callback: types.CallbackQuery):
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
+
+def format_hr_card_full(cand: tuple) -> str:
+    """Формирует карточку со всеми 16 полями для кадровой службы."""
+    t_id = cand[0] if len(cand) > 0 else 0
+    plat = cand[1] if len(cand) > 1 else 'TG'
+    name = cand[3] if len(cand) > 3 else 'Не указано'
+    phone = cand[4] if len(cand) > 4 else 'Не указан'
+    vac = cand[5] if len(cand) > 5 else 'Не выбрана'
+    exp = cand[6] if len(cand) > 6 else 'Без опыта'
+    status = cand[7] if len(cand) > 7 else 'Новая'
+    admin_note = cand[8] if len(cand) > 8 else ''
+    created = cand[9] if len(cand) > 9 else 'Только что'
+    birth = cand[10] if len(cand) > 10 else 'Не указана'
+    city = cand[11] if len(cand) > 11 else 'Не указан'
+    lic = cand[12] if len(cand) > 12 else 'Нет'
+    edu = cand[13] if len(cand) > 13 else 'Не указано'
+    reloc = cand[14] if len(cand) > 14 else 'Нет'
+    dorm = cand[15] if len(cand) > 15 else 'Нет'
+    shift = cand[16] if len(cand) > 16 else 'Да'
+    med = cand[17] if len(cand) > 17 else 'Нет'
+    crim = cand[18] if len(cand) > 18 else 'Нет'
+    src = cand[19] if len(cand) > 19 else 'Не указан'
+    extra = cand[20] if len(cand) > 20 else 'Нет'
+    consent_ts = cand[21] if len(cand) > 21 else 'Получено'
+
+    is_test_cand = t_id >= 900000
+    prefix = '🧪 ТЕСТОВАЯ АНКЕТА' if is_test_cand else '📑 АНКЕТА'
+    db_label = '<code>resumes_test.db</code>' if is_test_cand else '<code>resumes.db</code>'
+    note_line = f"\n📝 <b>Заметка кадровика:</b> <i>{html.escape(admin_note)}</i>\n" if admin_note else ""
+
+    return (
+        f"<b>{prefix} СОИСКАТЕЛЯ #{t_id} [{plat.upper()}]</b>\n"
+        f"📁 <b>База:</b> {db_label}\n"
+        f"📌 <b>Статус:</b> <b>{status}</b>\n"
+        f"👤 <b>ФИО:</b> {html.escape(name)}\n"
+        f"🎂 <b>Дата рождения:</b> <code>{html.escape(birth or 'Не указана')}</code>\n"
+        f"📞 <b>Телефон:</b> <code>{html.escape(phone)}</code>\n"
+        f"🏙 <b>Город:</b> {html.escape(city or 'Не указан')}\n"
+        f"🎯 <b>Должность:</b> <b>{html.escape(vac)}</b>\n"
+        f"🚗 <b>Водительские права:</b> {html.escape(lic or 'Нет')}\n"
+        f"💼 <b>Опыт работы:</b> {html.escape(exp)}\n"
+        f"🎓 <b>Образование:</b> {html.escape(edu or 'Не указано')}\n"
+        f"🏠 <b>Готовность к переезду:</b> {html.escape(reloc or 'Нет')}\n"
+        f"🛏 <b>Общежитие:</b> {html.escape(dorm or 'Нет')}\n"
+        f"🕐 <b>Сменный график:</b> {html.escape(shift or 'Да')}\n"
+        f"⚕️ <b>Противопоказания:</b> {html.escape(med or 'Нет')}\n"
+        f"⚖️ <b>Судимость (ст. 86 УК):</b> {html.escape(crim or 'Нет')}\n"
+        f"📢 <b>Источник:</b> {html.escape(src or 'Не указан')}\n"
+        f"📎 <b>Дополнительно:</b> {html.escape(extra or 'Нет')}\n"
+        f"⚖️ <b>Согласие 152-ФЗ:</b> <code>✅ Получено ({consent_ts})</code>\n"
+        f"⏱ <b>Время подачи:</b> <code>{created}</code>\n"
+        f"{note_line}"
+        f"━━━━━━━━━━━━━━━━━━━━━"
+    )
 @hr_router.callback_query(F.data.startswith("view_"))
 async def cb_view_ticket(callback: types.CallbackQuery):
+
+    card = format_hr_card_full(cand)
+    try:
+        await callback.message.edit_text(card, reply_markup=make_ticket_keyboard(ticket_id), parse_mode="HTML")
+    except Exception:
+        pass
+    await callback.answer()
     allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
     if not allowed:
         return await callback.message.edit_text(err_text, parse_mode="HTML")

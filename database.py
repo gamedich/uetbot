@@ -582,7 +582,7 @@ class ResumeDB:
             query = f"SELECT ticket_id, full_name, vacancy, status, created_at, platform FROM candidates WHERE {filter_clause} ORDER BY ticket_id DESC LIMIT ?"
             cursor.execute(query, (limit,))
             return cursor.fetchall()
-
+        set_candidate_note = update_admin_note
     def update_admin_note(self, ticket_id: int, note: str):
         """Обновление служебной заметки кадровика по анкете."""
         with self._get_connection() as conn:

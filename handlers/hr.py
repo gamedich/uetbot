@@ -1408,3 +1408,82 @@ async def process_cand_note(message: types.Message, state: FSMContext):
         db.update_admin_note(ticket_id, text)
         await state.clear()
         await safe_answer(message, f"✅ Заметка к анкете #{ticket_id} сохранена:\n<i>{html.escape(text)}</i>", parse_mode="HTML")
+        # ==================== ЗАМЕТКИ КАДРОВИКА К АНКЕТЕ ====================
+
+@hr_router.callback_query(F.data.startswith("cand_note_"))
+async def cb_cand_note_start(callback: types.CallbackQuery, state: FSMContext):
+    ticket_id = int(callback.data.split("_")[-1])
+    cand = db.get_candidate(ticket_id)
+    if not cand:
+        return await callback.answer("⚠️ Анкета не найдена!", show_alert=True)
+
+    cand_name = cand[3] if len(cand) > 3 else "Кандидат"
+    cur_note = cand[8] if len(cand) > 8 and cand[8] else ""
+
+    await state.update_data(note_ticket_id=ticket_id)
+    await state.set_state(CandidateNoteForm.waiting_note)
+
+    builder = InlineKeyboardBuilder()
+    if cur_note:
+        builder.button(text="🗑 Удалить заметку", callback_data=f"cand_notedel_{ticket_id}")
+    builder.button(text="❌ Отмена", callback_data=f"view_{ticket_id}")
+    builder.adjust(1)
+
+    if cur_note:
+        text = (
+            f"📝 <b>Заметка к анкете #{ticket_id} ({html.escape(cand_name)}):</b>\n\n"
+            f"📌 <b>Текущий текст:</b>\n<i>«{html.escape(cur_note)}»</i>\n\n"
+            "• Отправьте <b>новый текст</b>, чтобы изменить заметку.\n"
+            "• Либо нажмите <b>«Удалить заметку»</b> внизу."
+        )
+    else:
+        text = (
+            f"📝 <b>Новая заметка к анкете #{ticket_id} ({html.escape(cand_name)}):</b>\n\n"
+            "Отправьте текст комментария/заметки для этой анкеты:"
+        )
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@hr_router.callback_query(F.data.startswith("cand_notedel_"))
+async def cb_cand_note_delete(callback: types.CallbackQuery, state: FSMContext):
+    """Удаление заметки по инлайн-кнопке."""
+    await state.clear()
+    ticket_id = int(callback.data.split("_")[-1])
+    db.update_admin_note(ticket_id, "")
+    await callback.answer("🗑 Заметка удалена!", show_alert=True)
+
+    # Возврат в карточку соискателя с обновлённым текстом
+    cand = db.get_candidate(ticket_id)
+    if cand:
+        card = texts.format_hr_card_full(cand)
+        await callback.message.edit_text(card, reply_markup=make_ticket_keyboard(ticket_id), parse_mode="HTML")
+
+
+@hr_router.message(CandidateNoteForm.waiting_note)
+async def process_cand_note_save(message: types.Message, state: FSMContext):
+    """Сохранение нового или изменённого текста заметки."""
+    data = await state.get_data()
+    ticket_id = data.get("note_ticket_id")
+    await state.clear()
+
+    note_text = (message.text or "").strip()
+    if not note_text or note_text == "/cancel":
+        return await safe_answer(message, "❌ Действие отменено.")
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text=f"📑 Открыть анкету #{ticket_id}", callback_data=f"view_{ticket_id}")
+
+    if note_text == "-":
+        db.update_admin_note(ticket_id, "")
+        await safe_answer(message, f"🗑 Заметка к анкете #{ticket_id} удалена.", reply_markup=builder.as_markup())
+    else:
+        # ✅ ВЫЗЫВАЕМ ПРАВИЛЬНЫЙ МЕТОД: update_admin_note
+        db.update_admin_note(ticket_id, note_text)
+        await safe_answer(
+            message,
+            f"✅ <b>Заметка к анкете #{ticket_id} сохранена:</b>\n<i>«{html.escape(note_text)}»</i>",
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML"
+        )

@@ -768,55 +768,58 @@ HR_WELCOME_NOTIFICATION = (
 )
 
 def format_hr_card_full(cand: tuple) -> str:
-    """Единый шаблон карточки кандидата со всеми 16 полями для кадровой службы."""
+    """Красивый блочный дизайн карточки кандидата для кадровой службы."""
     t_id = cand[0] if len(cand) > 0 else 0
-    plat = cand[1] if len(cand) > 1 else 'TG'
-    name = cand[3] if len(cand) > 3 else 'Не указано'
-    phone = cand[4] if len(cand) > 4 else 'Не указан'
-    vac = cand[5] if len(cand) > 5 else 'Не выбрана'
-    exp = cand[6] if len(cand) > 6 else 'Без опыта'
-    status = cand[7] if len(cand) > 7 else 'Новая'
-    admin_note = cand[8] if len(cand) > 8 else ''
-    created = cand[9] if len(cand) > 9 else 'Только что'
-    birth = cand[10] if len(cand) > 10 else 'Не указана'
-    city = cand[11] if len(cand) > 11 else 'Не указан'
-    lic = cand[12] if len(cand) > 12 else 'Нет'
-    edu = cand[13] if len(cand) > 13 else 'Не указано'
-    reloc = cand[14] if len(cand) > 14 else 'Нет'
-    dorm = cand[15] if len(cand) > 15 else 'Нет'
-    shift = cand[16] if len(cand) > 16 else 'Да'
-    med = cand[17] if len(cand) > 17 else 'Нет'
-    crim = cand[18] if len(cand) > 18 else 'Нет'
-    src = cand[19] if len(cand) > 19 else 'Не указан'
-    extra = cand[20] if len(cand) > 20 else 'Нет'
-    consent_ts = cand[21] if len(cand) > 21 else 'Получено'
+    plat = cand[1] if len(cand) > 1 else "TG"
+    name = html.escape(cand[3]) if len(cand) > 3 and cand[3] else "Не указано"
+    phone = html.escape(cand[4]) if len(cand) > 4 and cand[4] else "Не указан"
+    vac = html.escape(cand[5]) if len(cand) > 5 and cand[5] else "Не выбрана"
+    exp = html.escape(cand[6]) if len(cand) > 6 and cand[6] else "Без опыта"
+    status = cand[7] if len(cand) > 7 else "Новая"
+    admin_note = cand[8] if len(cand) > 8 else ""
+    created = cand[9] if len(cand) > 9 else "Только что"
+    birth = html.escape(cand[10]) if len(cand) > 10 and cand[10] else "Не указана"
+    city = html.escape(cand[11]) if len(cand) > 11 and cand[11] else "Не указан"
+    lic = html.escape(cand[12]) if len(cand) > 12 and cand[12] else "Нет"
+    edu = html.escape(cand[13]) if len(cand) > 13 and cand[13] else "Не указано"
+    reloc = html.escape(cand[14]) if len(cand) > 14 and cand[14] else "Нет"
+    dorm = html.escape(cand[15]) if len(cand) > 15 and cand[15] else "Нет"
+    shift = html.escape(cand[16]) if len(cand) > 16 and cand[16] else "Да"
+    med = html.escape(cand[17]) if len(cand) > 17 and cand[17] else "Нет"
+    crim = html.escape(cand[18]) if len(cand) > 18 and cand[18] else "Нет"
+    src = html.escape(cand[19]) if len(cand) > 19 and cand[19] else "Не указан"
+    extra = html.escape(cand[20]) if len(cand) > 20 and cand[20] else "Нет"
+    consent_ts = html.escape(cand[21]) if len(cand) > 21 else "Получено"
 
     is_test_cand = t_id >= 900000
-    prefix = '🧪 ТЕСТОВАЯ АНКЕТА' if is_test_cand else '📑 АНКЕТА'
-    db_label = '<code>resumes_test.db</code>' if is_test_cand else '<code>resumes.db</code>'
-    note_line = f"\n📝 <b>Заметка кадровика:</b> <i>{html.escape(admin_note)}</i>\n" if admin_note else ""
+    prefix = "🧪 ТЕСТОВАЯ АНКЕТА" if is_test_cand else "📑 АНКЕТА СОИСКАТЕЛЯ"
+    status_icon = "🆕" if status == "Новая" else ("🟡" if status == "В работе" else ("🟢" if "Приглашен" in status else "🔴"))
+    note_block = f"\n📝 <b>Заметка кадровика:</b>\n<i>{html.escape(admin_note)}</i>\n" if admin_note else ""
 
     return (
-        f"<b>{prefix} СОИСКАТЕЛЯ #{t_id} [{plat.upper()}]</b>\n"
-        f"📁 <b>База:</b> {db_label}\n"
-        f"📌 <b>Статус:</b> <b>{status}</b>\n"
-        f"👤 <b>ФИО:</b> {html.escape(name)}\n"
-        f"🎂 <b>Дата рождения:</b> <code>{html.escape(birth or 'Не указана')}</code>\n"
-        f"📞 <b>Телефон:</b> <code>{html.escape(phone)}</code>\n"
-        f"🏙 <b>Город:</b> {html.escape(city or 'Не указан')}\n"
-        f"🎯 <b>Должность:</b> <b>{html.escape(vac)}</b>\n"
-        f"🚗 <b>Водительские права:</b> {html.escape(lic or 'Нет')}\n"
-        f"💼 <b>Опыт работы:</b> {html.escape(exp)}\n"
-        f"🎓 <b>Образование:</b> {html.escape(edu or 'Не указано')}\n"
-        f"🏠 <b>Готовность к переезду:</b> {html.escape(reloc or 'Нет')}\n"
-        f"🛏 <b>Общежитие:</b> {html.escape(dorm or 'Нет')}\n"
-        f"🕐 <b>Сменный график:</b> {html.escape(shift or 'Да')}\n"
-        f"⚕️ <b>Противопоказания:</b> {html.escape(med or 'Нет')}\n"
-        f"⚖️ <b>Судимость (ст. 86 УК):</b> {html.escape(crim or 'Нет')}\n"
-        f"📢 <b>Источник:</b> {html.escape(src or 'Не указан')}\n"
-        f"📎 <b>Дополнительно:</b> {html.escape(extra or 'Нет')}\n"
-        f"⚖️ <b>Согласие 152-ФЗ:</b> <code>✅ Получено ({consent_ts})</code>\n"
-        f"⏱ <b>Время подачи:</b> <code>{created}</code>\n"
-        f"{note_line}"
+        f"<b>{prefix} #{t_id}</b> [{plat.upper()}]\n"
+        f"{status_icon} <b>Статус:</b> <code>{status}</code> | ⏱ <code>{created}</code>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>СОИСКАТЕЛЬ</b>\n"
+        f"• <b>ФИО:</b> {name}\n"
+        f"• <b>Возраст/Дата:</b> <code>{birth}</code>\n"
+        f"• <b>Город:</b> {city}\n"
+        f"• <b>Телефон:</b> <code>{phone}</code>\n\n"
+        f"🎯 <b>КВАЛИФИКАЦИЯ И ВАКАНСИЯ</b>\n"
+        f"• <b>Должность:</b> <b>{vac}</b>\n"
+        f"• <b>Опыт:</b> {exp}\n"
+        f"• <b>Водительские права:</b> {lic}\n"
+        f"• <b>Образование:</b> {edu}\n\n"
+        f"⚙️ <b>УСЛОВИЯ И ГОТОВНОСТЬ</b>\n"
+        f"• <b>Сменный график:</b> {shift}\n"
+        f"• <b>Переезд:</b> {reloc} | <b>Общежитие:</b> {dorm}\n\n"
+        f"⚖️ <b>БЕЗОПАСНОСТЬ И СОГЛАСИЕ (152-ФЗ)</b>\n"
+        f"• <b>Мед. противопоказания:</b> {med}\n"
+        f"• <b>Судимость (ст. 86 УК):</b> {crim}\n"
+        f"• <b>Согласие на ПДн:</b> ✅ {consent_ts}\n\n"
+        f"📢 <b>ДОПОЛНИТЕЛЬНО</b>\n"
+        f"• <b>Источник:</b> {src}\n"
+        f"• <b>О себе:</b> {extra}\n"
+        f"{note_block}"
         f"━━━━━━━━━━━━━━━━━━━━━"
     )

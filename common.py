@@ -556,3 +556,40 @@ async def send_photo_to_candidate(user_id: str, photo_bytes: bytes, caption: str
             logger.error(f"Сбой отправки фото в VK: {e}")
             return False
     return False
+
+import json
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+
+def get_all_vacancies() -> List[str]:
+    """Возвращает список всех актуальных вакансий."""
+    try:
+        data_dir = BASE_DIR / 'data'
+        vac_file = data_dir / 'vacancies.json'
+        if vac_file.exists():
+            with open(vac_file, 'r', encoding='utf-8') as f:
+                loaded = json.load(f)
+                if isinstance(loaded, list) and loaded:
+                    return loaded
+    except Exception as e:
+        logging.getLogger('UET_COMMON').warning(f'Не удалось загрузить vacancies.json: {e}')
+    return list(VACANCIES)
+
+def save_all_vacancies(vacancies: List[str]) -> bool:
+    """Сохраняет обновленный список вакансий в data/vacancies.json."""
+    try:
+        data_dir = BASE_DIR / 'data'
+        data_dir.mkdir(parents=True, exist_ok=True)
+        vac_file = data_dir / 'vacancies.json'
+        with open(vac_file, 'w', encoding='utf-8') as f:
+            json.dump(vacancies, f, ensure_ascii=False, indent=2)
+        global VACANCIES
+        VACANCIES = list(vacancies)
+        return True
+    except Exception as e:
+        logging.getLogger('UET_COMMON').error(f'Не удалось сохранить vacancies.json: {e}')
+        return False
+
+get_vacancies = get_all_vacancies
+save_vacancies = save_all_vacancies

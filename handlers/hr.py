@@ -108,6 +108,7 @@ async def cb_admin_stats(callback: types.CallbackQuery):
     if not allowed:
         return await callback.message.edit_text(err_text, parse_mode="HTML")
     stats = db.get_statistics()
+    now_time = datetime.now().strftime("%H:%M:%S")
     text = (
         "📊 <b>СТАТИСТИКА ОТДЕЛА КАДРОВ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
@@ -117,11 +118,14 @@ async def cb_admin_stats(callback: types.CallbackQuery):
         f"🟢 Приглашены: <b>{stats['invited']}</b>\n"
         f"🔴 Отклонены: <b>{stats['rejected']}</b>\n"
         f"📦 В архиве: <b>{stats.get('archive', 0)}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔄 <i>Обновлено в {now_time}</i>"
     )
-    await callback.message.edit_text(text, reply_markup=make_admin_menu_keyboard(callback.from_user.id), parse_mode="HTML")
-    await callback.answer()
-
+    try:
+        await callback.message.edit_text(text, reply_markup=make_admin_menu_keyboard(callback.from_user.id), parse_mode="HTML")
+    except Exception:
+        pass
+    await callback.answer("Данные обновлены!")
 @hr_router.callback_query(F.data.in_(["admin_list_all", "admin_list_new", "admin_list_in_progress", "admin_list_archive"]))
 async def cb_admin_list(callback: types.CallbackQuery):
     allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
@@ -1359,62 +1363,6 @@ async def cb_hr_toggle_cooldown(callback: types.CallbackQuery):
         await callback.message.edit_reply_markup(reply_markup=make_admin_menu_keyboard(callback.from_user.id))
     except Exception:
         pass
-@hr_router.callback_query(F.data.startswith("cand_note_") | F.data.startswith("note_"))
-async def cb_cand_note_ask(callback: types.CallbackQuery, state: FSMContext):
-    allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
-    if not allowed:
-        return await callback.answer("🔒 В режиме PROD доступ закрыт для разработчика (152-ФЗ)!", show_alert=True)
-    ticket_id = int(callback.data.split("_")[-1])
-    cand = db.get_candidate(ticket_id)
-    if not cand:
-        return await callback.answer("Анкета не найдена!", show_alert=True)
-
-    cand_name = cand[3]
-    cur_note = cand[8] if len(cand) > 8 and cand[8] else "отсутствует"
-    await state.set_state(CandidateNoteForm.waiting_note)
-    await state.update_data(ticket_id=ticket_id)
-
-    builder = InlineKeyboardBuilder()
-    builder.button(text="❌ Отмена", callback_data=f"view_{ticket_id}")
-    prompt_text = (
-        f"📝 <b>Заметка к анкете #{ticket_id} ({html.escape(cand_name)})</b>\n\n"
-        f"📌 <b>Текущая заметка:</b> <i>{html.escape(cur_note)}</i>\n\n"
-        "Отправьте текст новой заметки (или отправьте <code>-</code> для очистки):"
-    )
-    try:
-        await callback.message.reply(prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
-    except Exception:
-        await safe_answer(callback.message, prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
-    await callback.answer()
-
-
-@hr_router.message(CandidateNoteForm.waiting_note)
-async def process_cand_note(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    ticket_id = data.get("ticket_id")
-    cand = db.get_candidate(ticket_id)
-    if not cand:
-        await state.clear()
-        return await safe_answer(message, "⚠️ Анкета не найдена.")
-
-    text = (message.text or "").strip()
-    builder = InlineKeyboardBuilder()
-    builder.button(text=f"📑 Открыть анкету #{ticket_id}", callback_data=f"view_{ticket_id}")
-    if text == "-":
-        db.update_admin_note(ticket_id, "")
-        await state.clear()
-        await safe_answer(message, f"🗑 Заметка к анкете #{ticket_id} удалена.", reply_markup=builder.as_markup())
-    else:
-        db.update_admin_note(ticket_id, text)
-        await state.clear()
-        await safe_answer(
-            message,
-            f"✅ Заметка к анкете #{ticket_id} сохранена:\n«<i>{html.escape(text)}</i>»",
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML"
-        )
-
-
 # Альтернативный способ: быстрая команда в чате
 @hr_router.message(Command("note", "admin_note"))
 async def cmd_set_note(message: types.Message):

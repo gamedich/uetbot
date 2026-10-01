@@ -152,21 +152,28 @@ def make_inquiry_admin_keyboard(inquiry_id: int) -> types.InlineKeyboardMarkup:
 
 def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    # 1 ряд — фильтры резюме
     builder.button(text="📑 Все резюме", callback_data="admin_list_all")
     builder.button(text="📥 Новые", callback_data="admin_list_new")
     builder.button(text="🟡 В работе", callback_data="admin_list_in_progress")
     builder.button(text="📦 Архив", callback_data="admin_list_archive")
-    builder.button(text="📊 Статистика", callback_data="admin_stats")
-    builder.button(text="🎯 Вакансии и набор (Вкл/Выкл)", callback_data="tech_vacancies_menu")
+    
+    # 2 ряд — полезные действия вместо дубля статистики:
+    builder.button(text="📊 Скачать Excel (/export)", callback_data="hr_export_excel")
+    builder.button(text="🔄 Обновить", callback_data="admin_stats")
+    
+    # 3 ряд — управление
+    builder.button(text="🎯 Вакансии и набор", callback_data="tech_vacancies_menu")
 
     cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
     cd_label = f"{cur_cd // 60} мин" if cur_cd > 0 else "0 (выкл)"
-    builder.button(text=f"⏱ Таймаут вопросов: [{cd_label}]", callback_data="hr_toggle_cooldown")
+    builder.button(text=f"⏱ Таймаут: [{cd_label}]", callback_data="hr_toggle_cooldown")
 
     is_enabled = db.get_admin_notify_status(user_id)
     toggle_text = "🔔 Уведы в ЛС: [ВКЛ]" if is_enabled else "🔕 Уведы в ЛС: [ВЫКЛ]"
     builder.button(text=toggle_text, callback_data="toggle_dm_notify")
-    builder.adjust(3, 2, 2, 1)
+    
+    builder.adjust(2, 2, 2, 1, 2)
     return builder.as_markup()
 
 def make_admins_menu_keyboard(all_admins: list) -> types.InlineKeyboardMarkup:

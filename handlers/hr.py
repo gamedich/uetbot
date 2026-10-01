@@ -373,22 +373,7 @@ async def cb_change_status(callback: types.CallbackQuery):
     try:
         updated_cand = db.get_candidate(ticket_id)
         if updated_cand:
-            t_id, plat, _, name, phone, vac, exp, st, _, created, *rest = updated_cand
-            db_label = "<code>resumes_test.db</code> (Тестовая)" if t_id >= 900000 else "<code>resumes.db</code> (Боевая)"
-            prefix = "🧪 <b>ТЕСТОВАЯ АНКЕТА</b>" if t_id >= 900000 else "📑 <b>АНКЕТА</b>"
-            updated_card = (
-                f"{prefix} СОИСКАТЕЛЯ #{t_id}\n"
-                f"📁 <b>База:</b> {db_label}\n"
-                f"🌐 <b>Источник:</b> <code>{plat.upper()}</code> | Статус: <b>{st}</b>\n"
-                f"⏱ <b>Дата подачи:</b> <code>{created}</code>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"👤 <b>ФИО:</b> {name}\n"
-                f"📞 <b>Телефон:</b> <code>{phone}</code>\n"
-                f"🎯 <b>Должность:</b> {vac}\n"
-                f"💼 <b>Опыт работы:</b> {exp}\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"<i>Текущий статус: <b>{st}</b></i>"
-            )
+            updated_card = format_hr_card_full(updated_cand)
             await callback.message.edit_text(updated_card, reply_markup=make_ticket_keyboard(ticket_id), parse_mode="HTML")
     except Exception:
         try:

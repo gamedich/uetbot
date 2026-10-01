@@ -418,19 +418,26 @@ def format_my_application(ticket_id: int, full_name: str, vacancy: str, created_
         "Архив": "Анкета перенесена в архив предприятия."
     }.get(status, "Статус рассматривается специалистами предприятия.")
 
+    date_str = created_at if created_at else "Только что"
+
     return (
         "📑 <b>ВАША АНКЕТА В МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"🔢 <b>Номер заявки:</b> #{ticket_id}\n"
         f"👤 <b>Соискатель:</b> {full_name}\n"
         f"🎯 <b>Должность:</b> {vacancy}\n"
-        f"⏱ <b>Дата подачи:</b> <code>{created_at}</code>\n"
+        f"⏱ <b>Дата подачи:</b> <code>{date_str}</code>\n"
         f"📌 <b>Текущий статус:</b> <b>{status}</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"ℹ️ <i>{status_desc}</i>\n\n"
-        f"📞 <i>Контакты отдела кадров:</i> <code>{CONFIG['HR_PHONE']}</code>"
+        "📞 <b>ОТДЕЛ КАДРОВ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📍 <b>Адрес:</b> {CONFIG['HR_ADDRESS']}\n"
+        f"📞 <b>Телефон:</b> <code>{CONFIG['HR_PHONE']}</code>\n"
+        f"🕐 <b>График работы:</b> {CONFIG['HR_SCHEDULE']}\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Вы также можете задать вопрос прямо в этом боте с помощью кнопки «Задать вопрос по анкете»."
     )
-
 def format_already_applied(ticket_id: int, vacancy: str, created_at: str, status: str) -> str:
     return (
         f"⚠️ <b>У вас уже есть активная анкета №{ticket_id}!</b>\n\n"

@@ -276,7 +276,7 @@ async def cb_cand_my_application(event: types.CallbackQuery | types.Message):
         ticket_id = cand_tuple[0]
         full_name = cand_tuple[3]
         vacancy = cand_tuple[5]
-        created_at = cand_tuple[8]
+        created_at = cand_tuple[9] if len(cand_tuple) > 9 and cand_tuple[9] else "Только что"
         status = cand_tuple[7]
         builder.button(text="💬 Задать вопрос / Связаться", callback_data="cand_ask_question")
         builder.button(text="📚 Частые вопросы (FAQ)", callback_data="cand_faq_menu")

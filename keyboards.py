@@ -327,11 +327,11 @@ def make_step4_city_kb() -> types.InlineKeyboardMarkup:
 
 def make_step5_vacancies_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="🚋 Водитель трамвая", callback_data="vac_Водитель трамвая")
-    builder.button(text="🚎 Водитель троллейбуса", callback_data="vac_Водитель троллейбуса")
-    builder.button(text="🎫 Кондуктор", callback_data="vac_Кондуктор")
-    builder.button(text="🔧 Слесарь по ремонту ПС", callback_data="vac_Слесарь по ремонту подвижного состава")
-    builder.button(text="⚡ Электромонтёр контактной сети", callback_data="vac_Электромонтёр контактной сети")
+    builder.button(text="🚋 Водитель трамвая", callback_data="vac_tram")
+    builder.button(text="🚎 Водитель троллейбуса", callback_data="vac_troll")
+    builder.button(text="🎫 Кондуктор", callback_data="vac_conductor")
+    builder.button(text="🔧 Слесарь по ремонту ПС", callback_data="vac_slesar")
+    builder.button(text="⚡ Электромонтёр контактной сети", callback_data="vac_electro")
     builder.button(text="📋 Другая должность", callback_data="vac_other")
     builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")

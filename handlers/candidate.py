@@ -769,6 +769,7 @@ async def cb_city_select(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+@candidate_router.message(CandidateForm.city)
 @candidate_router.message(CandidateForm.city_manual)
 async def process_city_manual(message: types.Message, state: FSMContext):
     c = (message.text or "").strip()
@@ -783,10 +784,20 @@ async def process_city_manual(message: types.Message, state: FSMContext):
 
 
 # --- ШАГ 5: ВАКАНСИЯ ---
+VACANCY_MAP = {
+    "tram": "Водитель трамвая",
+    "troll": "Водитель троллейбуса",
+    "conductor": "Кондуктор",
+    "slesar": "Слесарь по ремонту подвижного состава",
+    "electro": "Электромонтёр контактной сети",
+    "other": "other",
+}
+
 @candidate_router.callback_query(CandidateForm.vacancy, F.data.startswith("vac_"))
 async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext):
     vac_raw = callback.data.replace("vac_", "")
-    if vac_raw == "other":
+    vac_name = VACANCY_MAP.get(vac_raw, vac_raw)
+    if vac_raw == "other" or vac_name == "other":
         await state.set_state(CandidateForm.custom_vacancy)
         await callback.message.edit_text(
             texts.SURVEY_STEP5_1_CUSTOM,
@@ -795,28 +806,14 @@ async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext):
         )
         return await callback.answer()
 
-    await state.update_data(vacancy=vac_raw)
+    await state.update_data(vacancy=vac_name)
     await state.set_state(CandidateForm.has_license)
     await callback.message.edit_text(
-        f"🎯 Вакансия: <b>{vac_raw}</b>\n\n" + texts.SURVEY_STEP6_LICENSE,
+        f"🎯 Вакансия: <b>{vac_name}</b>\n\n{texts.SURVEY_STEP6_LICENSE}",
         reply_markup=make_step6_license_kb(),
         parse_mode="HTML"
     )
     await callback.answer()
-
-
-@candidate_router.message(CandidateForm.custom_vacancy)
-async def process_custom_vacancy(message: types.Message, state: FSMContext):
-    vac = (message.text or "").strip()
-    await state.update_data(vacancy=vac)
-    await state.set_state(CandidateForm.has_license)
-    await safe_answer(
-        message,
-        texts.SURVEY_STEP6_LICENSE,
-        reply_markup=make_step6_license_kb(),
-        parse_mode="HTML"
-    )
-
 
 # --- ШАГ 6: ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ ---
 @candidate_router.callback_query(CandidateForm.has_license, F.data.in_(["lic_yes", "lic_no"]))

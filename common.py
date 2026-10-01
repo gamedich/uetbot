@@ -12,9 +12,7 @@ import re
 import sys
 import time
 from datetime import datetime
-from typing import Dict, Tuple, Any,Optional,List
-import json
-from aiogram.types import BotCommand, BotCommandScopeChat
+from typing import Dict, Tuple, Any, Optional, List
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
 from aiogram import Bot, Dispatcher, types
@@ -37,99 +35,6 @@ except ImportError:
         pass
 
 from database import ResumeDB
-
-import json
-from aiogram.types import BotCommand, BotCommandScopeChat, BotCommandScopeDefault
-
-# 1. Состояние для ввода названия вакансии
-# Добавьте в AdminManageState:
-class AdminManageState(StatesGroup):
-    waiting_hr_id = State()
-    waiting_tech_id = State()
-    waiting_vacancy_name = State()
-#Добавьте состояние FSM для заметок:
-class CandidateNoteForm(StatesGroup):
-    waiting_note = State()
-# 2. Функции динамического списка вакансий в БД
-DEFAULT_VACANCIES = [
-    "Водитель трамвая",
-    "Водитель троллейбуса",
-    "Кондуктор",
-    "Слесарь по ремонту подвижного состава",
-    "Электромонтер контактной сети",
-]
-
-def get_all_vacancies() -> list[str]:
-    """Возвращает актуальные вакансии из БД."""
-    raw = db.get_setting("all_vacancies", "")
-    if raw:
-        try:
-            val = json.loads(raw)
-            if isinstance(val, list) and val:
-                return val
-        except Exception:
-            pass
-    return list(DEFAULT_VACANCIES)
-
-def save_all_vacancies(vacs: list[str]):
-    db.set_setting("all_vacancies", json.dumps(vacs, ensure_ascii=False))
-
-
-# 3. Синхронизация меню [/] по ролям и мгновенная очистка при отзыве прав
-async def sync_user_commands(bot_instance: Bot, user_id: int):
-    """Обновляет или очищает персональное меню команд Telegram для пользователя."""
-    try:
-        super_id = CONFIG.get("SUPER_ADMIN_ID")
-        tech_id = CONFIG.get("TECH_ADMIN_ID")
-        role = db.get_admin_role(user_id)
-
-        scope = BotCommandScopeChat(chat_id=user_id)
-
-        if user_id == super_id or role == "superadmin":
-            cmds = [
-                BotCommand(command="start", description="Главное меню / Перезапуск"),
-                BotCommand(command="hr", description="Кадровая панель"),
-                BotCommand(command="tech", description="Инженерный мониторинг"),
-                BotCommand(command="tests", description="Панель тестов"),
-                BotCommand(command="admins", description="Управление доступом"),
-                BotCommand(command="backups", description="Бэкапы базы данных"),
-                BotCommand(command="logs", description="Логи системы"),
-                BotCommand(command="blacklist", description="Черный список"),
-                BotCommand(command="id", description="Узнать свой ID"),
-                BotCommand(command="help", description="Полная справка"),
-                BotCommand(command="cancel", description="Отмена ввода"),
-            ]
-            await bot_instance.set_my_commands(cmds, scope=scope)
-        elif user_id == tech_id or role == "tech":
-            cmds = [
-                BotCommand(command="start", description="Главное меню"),
-                BotCommand(command="tech", description="Инженерный мониторинг"),
-                BotCommand(command="tests", description="Панель тестов"),
-                BotCommand(command="logs", description="Логи"),
-                BotCommand(command="backup", description="Сделать бэкап"),
-                BotCommand(command="backups", description="Управление бэкапами"),
-                BotCommand(command="id", description="Мой ID"),
-                BotCommand(command="help", description="Справка"),
-                BotCommand(command="cancel", description="Отмена"),
-            ]
-            await bot_instance.set_my_commands(cmds, scope=scope)
-        elif role == "hr":
-            cmds = [
-                BotCommand(command="start", description="Главное меню"),
-                BotCommand(command="hr", description="Кадровая панель анкет"),
-                BotCommand(command="blacklist", description="Черный список"),
-                BotCommand(command="stop", description="Завершить диалог"),
-                BotCommand(command="id", description="Мой ID"),
-                BotCommand(command="help", description="Справка"),
-                BotCommand(command="cancel", description="Отмена"),
-            ]
-            await bot_instance.set_my_commands(cmds, scope=scope)
-        else:
-            # Права отозваны или обычный соискатель: удаляем чат-команды!
-            # Telegram мгновенно возвращает стандартное меню соискателя
-            await bot_instance.delete_my_commands(scope=scope)
-    except Exception as e:
-        logger.debug(f"Ошибка синхронизации команд {user_id}: {e}")
 
 # Безопасный вывод кодировок для консоли Windows
 if sys.platform.startswith("win"):
@@ -164,6 +69,7 @@ class MemoryLogHandler(logging.Handler):
 memory_log_handler = MemoryLogHandler(capacity=120)
 memory_log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 logging.getLogger().addHandler(memory_log_handler)
+
 
 class SQLiteFSMStorage(BaseStorage):
     """Персистентное хранилище FSM в базе SQLite (resumes.db)."""
@@ -232,6 +138,7 @@ class PersistentSessions(dict):
             pass
         return super().pop(key, default)
 
+
 db = ResumeDB()
 bot = Bot(
     token=CONFIG.get("TG_BOT_TOKEN", ""),
@@ -250,9 +157,6 @@ SYSTEM_METRICS = {
 saved_env = db.get_setting("environment", "")
 if saved_env:
     CONFIG["ENVIRONMENT"] = saved_env
-saved_maint = db.get_setting("maintenance_mode", "")
-if saved_maint:
-    CONFIG["MAINTENANCE_MODE"] = (saved_maint == "1")    
 
 saved_group = db.get_setting("hr_group_id", "")
 if saved_group and saved_group.lstrip("-").isdigit():
@@ -270,12 +174,47 @@ for saved_admin, role in db.get_all_admins():
         CONFIG["TARGET_CHATS"].append(saved_admin)
 
 # ==================== FSM СОСТОЯНИЯ ====================
+class AdminManageState(StatesGroup):
+    waiting_hr_id = State()
+    waiting_tech_id = State()
+    waiting_vacancy_name = State()
+
 class CandidateForm(StatesGroup):
     waiting_consent = State()
     full_name = State()
+    birth_date = State()
     phone = State()
+    city = State()
+    city_manual = State()
     vacancy = State()
+    custom_vacancy = State()
+    has_license = State()
+    license_categories = State()
+    license_categories_manual = State()
+    has_experience = State()
     experience = State()
+    education_level = State()
+    education_manual = State()
+    education_facility = State()
+    relocation = State()
+    relocation_manual = State()
+    dormitory = State()
+    dormitory_manual = State()
+    schedule = State()
+    schedule_manual = State()
+    health = State()
+    health_manual = State()
+    criminal = State()
+    criminal_manual = State()
+    source = State()
+    source_manual = State()
+    extra_info = State()
+    confirm_review = State()
+    edit_field_select = State()
+    edit_field_input = State()
+
+class RevokeConsentForm(StatesGroup):
+    waiting_confirm = State()
 
 class InquiryForm(StatesGroup):
     waiting_consent = State()
@@ -289,8 +228,13 @@ class CandidateDirectMsgForm(StatesGroup):
 
 class HRReplyForm(StatesGroup):
     waiting_reply = State()
+
+class CandidateNoteForm(StatesGroup):
+    waiting_note = State()
+
 class SupportForm(StatesGroup):
     waiting_message = State()
+
 VACANCIES = [
     "Водитель трамвая",
     "Водитель троллейбуса",
@@ -564,15 +508,17 @@ async def send_response_to_candidate(platform: str, user_id: str, message_text: 
 async def setup_bot_commands(bot_instance: Bot):
     commands = [
         BotCommand(command="start", description="Главное меню / Перезапуск бота"),
-        BotCommand(command="apply", description="Подать анкету на работу"),
+        BotCommand(command="apply", description="Подать анкету на работу (16 шагов)"),
         BotCommand(command="my", description="Моя анкета / Статус заявки"),
+        BotCommand(command="mydata", description="Выгрузка персональных данных (152-ФЗ)"),
+        BotCommand(command="revoke", description="Отзыв согласия на обработку ПДн"),
+        BotCommand(command="training", description="Обучение на водителя со стипендией"),
         BotCommand(command="ask", description="Задать вопрос отделу кадров"),
         BotCommand(command="faq", description="Частые вопросы и ответы (FAQ)"),
         BotCommand(command="contacts", description="Контакты и телефоны депо"),
         BotCommand(command="privacy", description="Политика обработки данных (152-ФЗ)"),
         BotCommand(command="id", description="Узнать свой Telegram ID"),
         BotCommand(command="cancel", description="Отменить текущий опрос или ввод"),
-        BotCommand(command="hr", description="Кадровая панель (резюме, набор, вакансии)"),
     ]
     try:
         await bot_instance.set_my_commands(commands)
@@ -610,113 +556,99 @@ async def send_photo_to_candidate(user_id: str, photo_bytes: bytes, caption: str
             logger.error(f"Сбой отправки фото в VK: {e}")
             return False
     return False
-# динамические вакансии 
-DEFAULT_VACANCIES = [
-    "Водитель трамвая",
-    "Водитель троллейбуса",
-    "Кондуктор",
-    "Слесарь по ремонту подвижного состава",
-    "Электромонтер контактной сети",
-]
 
-def get_all_vacancies() -> list[str]:
-    raw = db.get_setting("all_vacancies", "")
-    if raw:
-        try:
-            val = json.loads(raw)
-            if isinstance(val, list) and val:
-                return val
-        except Exception:
-            pass
-    return list(DEFAULT_VACANCIES)
+import json
+from pathlib import Path
 
-def save_all_vacancies(vacs: list[str]):
-    db.set_setting("all_vacancies", json.dumps(vacs, ensure_ascii=False))
+BASE_DIR = Path(__file__).resolve().parent
 
-async def sync_user_commands(bot_instance: Bot, user_id: int):
-    """Синхронизирует быстрое меню команд [/] и очищает его при отзыве прав."""
+def get_all_vacancies() -> List[str]:
+    """Возвращает список всех актуальных вакансий."""
     try:
-        super_id = CONFIG.get("SUPER_ADMIN_ID")
-        tech_id = CONFIG.get("TECH_ADMIN_ID")
-        role = db.get_admin_role(user_id)
-        scope = BotCommandScopeChat(chat_id=user_id)
+        data_dir = BASE_DIR / 'data'
+        vac_file = data_dir / 'vacancies.json'
+        if vac_file.exists():
+            with open(vac_file, 'r', encoding='utf-8') as f:
+                loaded = json.load(f)
+                if isinstance(loaded, list) and loaded:
+                    return loaded
+    except Exception as e:
+        logging.getLogger('UET_COMMON').warning(f'Не удалось загрузить vacancies.json: {e}')
+    return list(VACANCIES)
 
-        if user_id == super_id or role == "superadmin":
-            cmds = [
-                BotCommand(command="start", description="Главное меню / Перезапуск"),
-                BotCommand(command="hr", description="Кадровая панель анкет"),
-                BotCommand(command="tech", description="Инженерный мониторинг"),
-                BotCommand(command="tests", description="Панель тестов"),
-                BotCommand(command="admins", description="Управление доступом"),
-                BotCommand(command="export", description="Выгрузка базы в Excel"),
-                BotCommand(command="backups", description="Бэкапы базы данных"),
-                BotCommand(command="logs", description="Системные логи"),
-                BotCommand(command="blacklist", description="Черный список"),
-                BotCommand(command="help", description="Справка по командам"),
-                BotCommand(command="cancel", description="Отмена ввода"),
-            ]
-            await bot_instance.set_my_commands(cmds, scope=scope)
-        elif user_id == tech_id or role == "tech":
-            cmds = [
-                BotCommand(command="start", description="Главное меню"),
-                BotCommand(command="tech", description="Инженерный мониторинг"),
-                BotCommand(command="tests", description="Панель тестов"),
-                BotCommand(command="logs", description="Логи"),
-                BotCommand(command="backup", description="Сделать бэкап"),
-                BotCommand(command="backups", description="Управление бэкапами"),
-                BotCommand(command="help", description="Справка"),
-                BotCommand(command="cancel", description="Отмена"),
-            ]
-            await bot_instance.set_my_commands(cmds, scope=scope)
-        elif role == "hr":
-            cmds = [
-                BotCommand(command="start", description="Главное меню"),
-                BotCommand(command="hr", description="Кадровая панель"),
-                BotCommand(command="export", description="Выгрузка в Excel"),
-                BotCommand(command="blacklist", description="Черный список"),
-                BotCommand(command="stop", description="Завершить диалог"),
-                BotCommand(command="help", description="Справка"),
-                BotCommand(command="cancel", description="Отмена"),
-            ]
-            await bot_instance.set_my_commands(cmds, scope=scope)
-        else:
-            await bot_instance.delete_my_commands(scope=scope)
-    except Exception:
-        pass
-
-import subprocess
-
-def get_git_info() -> dict:
-    """Определение текущей активной ветки Git и хеша коммита."""
-    branch = "unknown"
-    commit = "unknown"
-
-    # 1. Читаем текущую ветку из .git/HEAD
+def save_all_vacancies(vacancies: List[str]) -> bool:
+    """Сохраняет обновленный список вакансий в data/vacancies.json."""
     try:
-        if os.path.exists(".git/HEAD"):
-            with open(".git/HEAD", "r", encoding="utf-8") as f:
-                ref = f.read().strip()
-                if ref.startswith("ref: refs/heads/"):
-                    branch = ref.replace("ref: refs/heads/", "")
-                else:
-                    branch = ref[:7]
-    except Exception:
-        pass
+        data_dir = BASE_DIR / 'data'
+        data_dir.mkdir(parents=True, exist_ok=True)
+        vac_file = data_dir / 'vacancies.json'
+        with open(vac_file, 'w', encoding='utf-8') as f:
+            json.dump(vacancies, f, ensure_ascii=False, indent=2)
+        global VACANCIES
+        VACANCIES = list(vacancies)
+        return True
+    except Exception as e:
+        logging.getLogger('UET_COMMON').error(f'Не удалось сохранить vacancies.json: {e}')
+        return False
 
-    # 2. Читаем короткий хеш коммита
+get_vacancies = get_all_vacancies
+save_vacancies = save_all_vacancies
+
+async def sync_user_commands(bot_instance: Optional[Bot] = None, user_id: Optional[int] = None, role: Optional[str] = None, **kwargs) -> bool:
+    """Синхронизирует команды бота (глобально или с учётом роли пользователя)."""
     try:
-        commit = subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"],
-            stderr=subprocess.DEVNULL
-        ).decode().strip()
-    except Exception:
-        pass
+        target_bot = bot_instance or bot
+        if target_bot:
+            await setup_bot_commands(target_bot)
+            return True
+    except Exception as e:
+        logger.warning(f"Ошибка sync_user_commands: {e}")
+    return False
 
-    is_beta = (branch == "beta")
-    badge = "🧪 BETA (Тестовая)" if is_beta else "🛡 MAIN (Стабильная)"
-    return {
-        "branch": branch,
-        "commit": commit,
-        "is_beta": is_beta,
-        "badge": badge
-    }
+import json
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+
+def get_all_vacancies() -> List[str]:
+    """Возвращает список всех актуальных вакансий."""
+    try:
+        data_dir = BASE_DIR / 'data'
+        vac_file = data_dir / 'vacancies.json'
+        if vac_file.exists():
+            with open(vac_file, 'r', encoding='utf-8') as f:
+                loaded = json.load(f)
+                if isinstance(loaded, list) and loaded:
+                    return loaded
+    except Exception as e:
+        logger.warning(f"Не удалось загрузить vacancies.json: {e}")
+    return list(VACANCIES)
+
+def save_all_vacancies(vacancies: List[str]) -> bool:
+    """Сохраняет обновленный список вакансий в data/vacancies.json."""
+    try:
+        data_dir = BASE_DIR / 'data'
+        data_dir.mkdir(parents=True, exist_ok=True)
+        vac_file = data_dir / 'vacancies.json'
+        with open(vac_file, 'w', encoding='utf-8') as f:
+            json.dump(vacancies, f, ensure_ascii=False, indent=2)
+        global VACANCIES
+        VACANCIES = list(vacancies)
+        return True
+    except Exception as e:
+        logger.error(f"Не удалось сохранить vacancies.json: {e}")
+        return False
+
+async def sync_user_commands(bot_instance: Optional[Bot] = None, user_id: Optional[int] = None, role: Optional[str] = None, **kwargs) -> bool:
+    """Синхронизирует команды бота (глобально или с учётом роли пользователя)."""
+    try:
+        target_bot = bot_instance or bot
+        if target_bot:
+            await setup_bot_commands(target_bot)
+            return True
+    except Exception as e:
+        logger.warning(f"Ошибка sync_user_commands: {e}")
+    return False
+
+get_vacancies = get_all_vacancies
+save_vacancies = save_all_vacancies

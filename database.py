@@ -6,16 +6,16 @@
 """
 
 import os
-import sqlite3
-import json
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Optional, List, Tuple, Dict, Any
 import asyncio
+import json
+import sqlite3
 try:
     import aiosqlite
 except ImportError:
     aiosqlite = None
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional, List, Tuple, Dict, Any
 
 class ResumeDB:
     def __init__(self, db_path: str = "resumes.db"):
@@ -43,6 +43,7 @@ class ResumeDB:
         await conn.execute("PRAGMA cache_size=-64000;")
         await conn.execute("PRAGMA temp_store=MEMORY;")
         return conn
+
     def _init_and_migrate_db(self):
         """Создание таблиц, миграция структуры и установка высокоскоростных индексов"""
         with self._get_connection() as conn:
@@ -78,6 +79,24 @@ class ResumeDB:
                 cursor.execute("ALTER TABLE candidates ADD COLUMN is_test INTEGER DEFAULT 0")
             if "consent_timestamp" not in cand_cols:
                 cursor.execute("ALTER TABLE candidates ADD COLUMN consent_timestamp TEXT DEFAULT ''")
+
+            new_columns = [
+                ("birth_date", "TEXT DEFAULT ''"),
+                ("city", "TEXT DEFAULT ''"),
+                ("driver_license", "TEXT DEFAULT ''"),
+                ("education", "TEXT DEFAULT ''"),
+                ("relocation", "TEXT DEFAULT ''"),
+                ("dormitory", "TEXT DEFAULT ''"),
+                ("shift_work", "TEXT DEFAULT ''"),
+                ("medical_restrictions", "TEXT DEFAULT ''"),
+                ("criminal_record", "TEXT DEFAULT ''"),
+                ("source", "TEXT DEFAULT ''"),
+                ("extra_info", "TEXT DEFAULT ''"),
+                ("raw_data_json", "TEXT DEFAULT '{}'"),
+            ]
+            for col_name, col_def in new_columns:
+                if col_name not in cand_cols:
+                    cursor.execute(f"ALTER TABLE candidates ADD COLUMN {col_name} {col_def}")
 
 
 
@@ -180,13 +199,22 @@ class ResumeDB:
                 )
                 """
             )
+
+            # Индексы для ускорения поиска на больших объемах
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_user_plat ON candidates(user_id, platform)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_status ON candidates(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_user ON inquiries(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_status ON inquiries(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_dialog_op ON active_dialogs(operator_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_admins_role_dm ON admins(role, notify_dm)")
+
             # 9. Таблица персистентных FSM состояний (aiogram 3)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS fsm_storage (
                     storage_key TEXT PRIMARY KEY,
                     state TEXT,
-                    data TEXT DEFAULT '{}',
+                    data TEXT DEFAULT "{}",
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """
@@ -198,20 +226,12 @@ class ResumeDB:
                 CREATE TABLE IF NOT EXISTS external_sessions (
                     platform TEXT NOT NULL,
                     user_id TEXT NOT NULL,
-                    data TEXT DEFAULT '{}',
+                    data TEXT DEFAULT "{}",
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (platform, user_id)
                 )
                 """
             )
-
-            # Индексы для ускорения поиска на больших объемах
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_user_plat ON candidates(user_id, platform)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_status ON candidates(status)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_user ON inquiries(user_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_status ON inquiries(status)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_dialog_op ON active_dialogs(operator_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_admins_role_dm ON admins(role, notify_dm)")
 
             conn.commit()
 
@@ -230,27 +250,65 @@ class ResumeDB:
     # ==================== УПРАВЛЕНИЕ АНКЕТАМИ СОИСКАТЕЛЕЙ ====================
     def add_candidate(
         self, platform: str, user_id: str, full_name: str, phone: str, vacancy: str, experience: str,
-        is_test: bool = False, consent_timestamp: Optional[str] = None
+        is_test: bool = False, consent_timestamp: Optional[str] = None,
+        birth_date: str = "", city: str = "", driver_license: str = "", education: str = "",
+        relocation: str = "", dormitory: str = "", shift_work: str = "",
+        medical_restrictions: str = "", criminal_record: str = "", source: str = "", extra_info: str = "",
+        raw_data_json: str = "{}"
     ) -> int:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO candidates (platform, user_id, full_name, phone, vacancy, experience, is_test, consent_timestamp, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO candidates (
+                    platform, user_id, full_name, phone, vacancy, experience, is_test, consent_timestamp,
+                    birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                    medical_restrictions, criminal_record, source, extra_info, raw_data_json, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """,
-                (platform, str(user_id), full_name, phone, vacancy, experience, 1 if is_test else 0, consent_timestamp or ""),
+                (
+                    platform, str(user_id), full_name, phone, vacancy, experience, 1 if is_test else 0, consent_timestamp or "",
+                    birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                    medical_restrictions, criminal_record, source, extra_info, raw_data_json
+                ),
             )
             conn.commit()
             return cursor.lastrowid
 
+    def delete_candidate_by_user(self, user_id: str, platform: str = "tg") -> Optional[int]:
+        """Удаление анкеты пользователя при отзыве согласия на обработку ПДн (ст. 21 152-ФЗ)."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT ticket_id FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1",
+                (str(user_id), platform)
+            )
+            row = cursor.fetchone()
+            if row:
+                t_id = row[0]
+                cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (t_id,))
+                conn.commit()
+                return t_id
+            return None
+
+    def get_candidate_dict_by_user(self, user_id: str, platform: str = "tg") -> Optional[Dict[str, Any]]:
+        """Получение словаря данных анкеты для команды /mydata (ст. 14 152-ФЗ)."""
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1",
+                (str(user_id), platform)
+            )
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+            return None
+
     async def async_add_candidate(self, *args, **kwargs) -> int:
         """Неблокирующее асинхронное добавление анкеты."""
         return await asyncio.to_thread(self.add_candidate, *args, **kwargs)
-
-    async def async_add_inquiry(self, *args, **kwargs) -> int:
-        """Неблокирующее асинхронное добавление вопроса."""
-        return await asyncio.to_thread(self.add_inquiry, *args, **kwargs)
 
     async def async_get_candidate(self, ticket_id: int) -> Optional[Tuple]:
         """Неблокирующее получение анкеты по ID."""
@@ -279,60 +337,75 @@ class ResumeDB:
     async def async_update_status(self, ticket_id: int, new_status: str):
         """Неблокирующее обновление статуса анкеты."""
         return await asyncio.to_thread(self.update_status, ticket_id, new_status)
-
-    def get_candidate(self, ticket_id: int) -> Optional[Tuple]:
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at 
-                FROM candidates WHERE ticket_id = ?
-                """,
-                (ticket_id,),
-            )
-            return cursor.fetchone()
-
+        
+        
     def get_candidate_by_user_id(self, user_id: str, platform: str = "tg") -> Optional[Tuple]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at
+                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                       birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json
                 FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1
                 """,
                 (str(user_id), platform),
             )
             return cursor.fetchone()
 
-    def check_candidate_can_apply(self, user_id: str, platform: str = "tg") -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    def get_candidate(self, ticket_id: int) -> Optional[Tuple]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at, updated_at
+                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                       birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json
+                FROM candidates WHERE ticket_id = ?
+                """,
+                (ticket_id,),
+            )
+            return cursor.fetchone()
+
+    def check_candidate_can_apply(self, user_id: str, platform: str = "tg") -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+        uid_str = str(user_id)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # 1. Проверяем, есть ли активная анкета на рассмотрении (Новая, В работе, Приглашен)
+            cursor.execute(
+                """
+                SELECT ticket_id, status, created_at, full_name, vacancy 
                 FROM candidates 
-                WHERE user_id = ? AND platform = ? 
+                WHERE user_id = ? AND platform = ? AND (status IN ('Новая', 'В работе', 'Приглашен') OR status LIKE 'Приглашен%')
                 ORDER BY ticket_id DESC LIMIT 1
                 """,
-                (str(user_id), platform),
+                (uid_str, platform),
             )
-            row = cursor.fetchone()
-            if not row:
-                return True, "ok", None
-
-            ticket_id, _, _, full_name, phone, vacancy, experience, status, admin_note, created_at, updated_at = row
-
-            if status in ("Новая", "В работе", "Приглашен") or "Приглашен" in status:
+            active_row = cursor.fetchone()
+            if active_row:
+                t_id, st, cr, fn, vc = active_row
                 return False, "unprocessed", {
-                    "ticket_id": ticket_id,
-                    "status": status,
-                    "created_at": created_at,
-                    "full_name": full_name,
-                    "vacancy": vacancy,
+                    "ticket_id": t_id,
+                    "status": st,
+                    "created_at": cr,
+                    "full_name": fn,
+                    "vacancy": vc,
                 }
 
-            if status == "Отказ" or status.startswith("Отказ"):
-                refuse_ts = updated_at or created_at
+            # 2. Проверяем, есть ли недавний отказ за последние 90 дней (3 месяца)
+            cursor.execute(
+                """
+                SELECT ticket_id, status, created_at, updated_at, full_name, vacancy 
+                FROM candidates 
+                WHERE user_id = ? AND platform = ? AND (status = 'Отказ' OR status LIKE 'Отказ%')
+                ORDER BY ticket_id DESC LIMIT 1
+                """,
+                (uid_str, platform),
+            )
+            refuse_row = cursor.fetchone()
+            if refuse_row:
+                t_id, st, cr, up, fn, vc = refuse_row
+                refuse_ts = up or cr
                 refuse_dt = self._parse_ts(refuse_ts)
                 now = datetime.now()
                 diff_days = (now - refuse_dt).days
@@ -341,20 +414,16 @@ class ResumeDB:
                     available_dt = refuse_dt + timedelta(days=cooldown_days)
                     days_left = max(1, (available_dt - now).days + 1)
                     return False, "rejected_cooldown", {
-                        "ticket_id": ticket_id,
-                        "status": status,
+                        "ticket_id": t_id,
+                        "status": st,
                         "refuse_date": refuse_dt.strftime("%d.%m.%Y"),
                         "available_date": available_dt.strftime("%d.%m.%Y"),
                         "days_left": days_left,
-                        "full_name": full_name,
-                        "vacancy": vacancy,
+                        "full_name": fn,
+                        "vacancy": vc,
                     }
 
-            return True, "ok", {
-                "ticket_id": ticket_id,
-                "status": status,
-                "created_at": created_at,
-            }
+            return True, "ok", None
 
 
 
@@ -502,16 +571,8 @@ class ResumeDB:
             cursor.execute(query, (limit,))
             return cursor.fetchall()
 
-    def update_status(self, ticket_id: int, new_status: str):
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE candidates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
-                (new_status, ticket_id),
-            )
-            conn.commit()
-    def set_candidate_note(self, ticket_id: int, note: str):
-        """Сохраняет внутреннюю заметку кадровика к анкете."""
+    def update_admin_note(self, ticket_id: int, note: str):
+        """Обновление служебной заметки кадровика по анкете."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -520,18 +581,14 @@ class ResumeDB:
             )
             conn.commit()
 
-    def get_all_candidates_for_export(self) -> List[Tuple]:
-        """Возвращает всех соискателей для выгрузки в Excel."""
+    def update_status(self, ticket_id: int, new_status: str):
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                """
-                SELECT ticket_id, created_at, full_name, phone, vacancy, experience, status, admin_note, platform, user_id
-                FROM candidates
-                ORDER BY ticket_id DESC
-                """
+                "UPDATE candidates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
+                (new_status, ticket_id),
             )
-            return cursor.fetchall()        
+            conn.commit()
 
     def get_statistics(self) -> Dict[str, int]:
         with self._get_connection() as conn:
@@ -705,8 +762,8 @@ class ResumeDB:
             return inquiry_id
 
     async def async_add_inquiry(self, *args, **kwargs) -> int:
-        """Асинхронная совместимая обертка добавления вопроса."""
-        return self.add_inquiry(*args, **kwargs)
+        """Неблокирующее асинхронное добавление вопроса."""
+        return await asyncio.to_thread(self.add_inquiry, *args, **kwargs)
 
     def get_inquiry(self, inquiry_id: int) -> Optional[Tuple]:
         with self._get_connection() as conn:
@@ -881,6 +938,7 @@ class ResumeDB:
                 files.append({
                     "filename": fn,
                     "path": fp,
+                    "size_bytes": st.st_size,
                     "size_kb": round(st.st_size / 1024, 1),
                     "created_at": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
                 })
@@ -892,22 +950,35 @@ class ResumeDB:
         clean_name = os.path.basename(backup_filename)
         backup_path = os.path.join(backup_dir, clean_name)
         if not os.path.exists(backup_path):
-            return False, f"Файл бэкапа {clean_name} не найден."
+            return False, f"Файл бэкапа {clean_name} не найден в {backup_dir}."
 
-        # Страховочная копия перед откатом
+        # 1. Сначала делаем экстренную копию текущего состояния базы перед откатом
         pre_restore_path = self.backup_database(backup_dir)
         pre_restore_name = os.path.basename(pre_restore_path)
 
+        # 2. Накатываем бэкап на боевую базу через SQLite Backup API
         try:
             with sqlite3.connect(backup_path) as src_conn:
                 with self._get_connection() as dst_conn:
                     src_conn.backup(dst_conn)
-            return True, f"База успешно восстановлена из <code>{clean_name}</code>.\nСтраховочная копия: <code>{pre_restore_name}</code>"
+            return True, f"База успешно восстановлена из <code>{clean_name}</code>.\nСтраховочная копия создана: <code>{pre_restore_name}</code>"
         except Exception as e:
             return False, f"Ошибка восстановления базы: {e}"
 
+    def delete_backup(self, backup_filename: str, backup_dir: str = "backups") -> Tuple[bool, str]:
+        """Удаление указанного файла бэкапа."""
+        clean_name = os.path.basename(backup_filename)
+        backup_path = os.path.join(backup_dir, clean_name)
+        if not os.path.exists(backup_path):
+            return False, "Файл не найден."
+        try:
+            os.remove(backup_path)
+            return True, f"Файл <code>{clean_name}</code> успешно удален."
+        except Exception as e:
+            return False, f"Ошибка при удалении: {e}"
+
     def cleanup_old_backups(self, keep_count: int = 5, backup_dir: str = "backups") -> Tuple[int, List[str]]:
-        """Оставляет только keep_count самых свежих бэкапов, удаляя старые."""
+        """Оставляет последние keep_count бэкапов, остальные удаляет для экономии диска сервера."""
         backups = self.list_backups(backup_dir)
         if len(backups) <= keep_count:
             return 0, []
@@ -931,7 +1002,7 @@ class ResumeDB:
                 cursor.execute(
                     """
                     INSERT INTO fsm_storage (storage_key, state, data, updated_at)
-                    VALUES (?, ?, '{}', CURRENT_TIMESTAMP)
+                    VALUES (?, ?, "{}", CURRENT_TIMESTAMP)
                     ON CONFLICT(storage_key) DO UPDATE SET state = ?, updated_at = CURRENT_TIMESTAMP
                     """,
                     (key, state, state)
@@ -1003,12 +1074,3 @@ class ResumeDB:
                     d = {}
                 sessions.append((plat, uid, d))
         return sessions
-def update_admin_note(self, ticket_id: int, note: str):
-    """Обновление служебной заметки кадровика по анкете."""
-    with self._get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE candidates SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
-            (note, ticket_id),
-        )
-        conn.commit()

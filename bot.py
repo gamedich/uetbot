@@ -50,7 +50,7 @@ async def main():
         SYSTEM_METRICS["tg_online"] = False
 
     # 3. Регистрация системных команд меню Telegram
-    await setup_bot_commands(bot)
+    asyncio.create_task(setup_bot_commands(bot))
 
     # 4. Фоновые шлюзы внешних мессенджеров (ВКонтакте и МАКС)
     vk_task = asyncio.create_task(run_vk_gateway(bot, db))
@@ -68,7 +68,7 @@ async def main():
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"<i>Уведомление отправлено только вам в ЛС (SuperAdmin).</i>"
     )
-    await notify_super_admin(start_msg)
+    asyncio.create_task(notify_super_admin(start_msg))
 
     # 6. Главный цикл диспетчера с гарантированным завершением фоновых задач
     try:

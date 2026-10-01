@@ -20,7 +20,8 @@ import csv
 import io
 from aiogram.types import BufferedInputFile
 from aiogram.fsm.state import State, StatesGroup
-
+from texts import format_hr_card_full
+import texts
 class CandidateNoteState(StatesGroup):
     waiting_note = State()
 
@@ -159,32 +160,22 @@ async def cb_admin_list(callback: types.CallbackQuery):
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
+
+
 @hr_router.callback_query(F.data.startswith("view_"))
 async def cb_view_ticket(callback: types.CallbackQuery):
     allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
     if not allowed:
-        return await callback.message.edit_text(err_text, parse_mode="HTML")
+        return await callback.answer(err_text or "🚫 Доступ ограничен.", show_alert=True)
+
     ticket_id = int(callback.data.split("_")[1])
     cand = db.get_candidate(ticket_id)
     if not cand:
-        return await callback.answer("Анкета не найдена!", show_alert=True)
+        return await callback.answer("⚠️ Анкета не найдена!", show_alert=True)
 
-    t_id, plat, _, name, phone, vac, exp, status, admin_note, created = cand
-    note_line = f"\n📝 <b>Заметка HR:</b> <i>{html.escape(admin_note)}</i>\n" if admin_note else ""
-    card = (
-        f"📑 <b>АНКЕТА СОИСКАТЕЛЯ #{t_id}</b>\n"
-        f"🌐 <b>Источник:</b> <code>{plat.upper()}</code> | Статус: <b>{status}</b>\n"
-        f"⏱ <b>Дата подачи:</b> <code>{created}</code>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 <b>ФИО:</b> {name}\n"
-        f"📞 <b>Телефон:</b> <code>{phone}</code>\n"
-        f"🎯 <b>Должность:</b> {vac}\n"
-        f"💼 <b>Опыт работы:</b> {exp}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━"
-        f"{note_line}"
-    )
+    card = texts.format_hr_card_full(cand)
     try:
-        await callback.message.edit_text(card, reply_markup=make_ticket_keyboard(t_id), parse_mode="HTML")
+        await callback.message.edit_text(card, reply_markup=make_ticket_keyboard(ticket_id), parse_mode="HTML")
     except Exception:
         pass
     await callback.answer()
@@ -312,22 +303,7 @@ async def cb_change_status(callback: types.CallbackQuery):
     try:
         updated_cand = db.get_candidate(ticket_id)
         if updated_cand:
-            t_id, plat, _, name, phone, vac, exp, st, _, created, *rest = updated_cand
-            db_label = "<code>resumes_test.db</code> (Тестовая)" if t_id >= 900000 else "<code>resumes.db</code> (Боевая)"
-            prefix = "🧪 <b>ТЕСТОВАЯ АНКЕТА</b>" if t_id >= 900000 else "📑 <b>АНКЕТА</b>"
-            updated_card = (
-                f"{prefix} СОИСКАТЕЛЯ #{t_id}\n"
-                f"📁 <b>База:</b> {db_label}\n"
-                f"🌐 <b>Источник:</b> <code>{plat.upper()}</code> | Статус: <b>{st}</b>\n"
-                f"⏱ <b>Дата подачи:</b> <code>{created}</code>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"👤 <b>ФИО:</b> {name}\n"
-                f"📞 <b>Телефон:</b> <code>{phone}</code>\n"
-                f"🎯 <b>Должность:</b> {vac}\n"
-                f"💼 <b>Опыт работы:</b> {exp}\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"<i>Текущий статус: <b>{st}</b></i>"
-            )
+            updated_card = format_hr_card_full(updated_cand)
             await callback.message.edit_text(updated_card, reply_markup=make_ticket_keyboard(ticket_id), parse_mode="HTML")
     except Exception:
         try:
@@ -1334,16 +1310,16 @@ async def process_export_candidates(event: types.Message | types.CallbackQuery):
     for c in candidates:
         # Корректное безопасное извлечение по индексам кортежа:
         row = [
-            str(c[0]),                 # ID
-            str(c or ""),           # Дата подачи
-            str(c or ""),           # ФИО
-            str(c or ""),           # Телефон
-            str(c or ""),           # Вакансия
-            str(c or ""),           # Опыт работы
-            str(c or ""),           # Статус
-            str(c or ""),           # Заметка HR
-            str(c or "").upper(),   # Платформа (TG / VK / MAX)
-            str(c or ""),           # ID пользователя
+            str(c[0]),                             # ID
+            str(c[9] if len(c) > 9 else ""),       # Дата подачи
+            str(c[3] if len(c) > 3 else ""),       # ФИО
+            str(c[4] if len(c) > 4 else ""),       # Телефон
+            str(c[5] if len(c) > 5 else ""),       # Вакансия
+            str(c[6] if len(c) > 6 else ""),       # Опыт работы
+            str(c[7] if len(c) > 7 else ""),       # Статус
+            str(c[8] if len(c) > 8 else ""),       # Заметка HR
+            str(c[1] if len(c) > 1 else "").upper(), # Платформа (TG / VK / MAX)
+            str(c[2] if len(c) > 2 else ""),       # ID пользователя
         ]
         writer.writerow(row)
 

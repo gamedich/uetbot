@@ -95,7 +95,7 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
         builder.button(text="📦 В архив", callback_data=f"status_{ticket_id}_Архив")
 
     # 5. Заметка к анкете
-    builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
+    #builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
 
     # 6. Дата встречи и удаление (без дублирования!)
     builder.button(text="📅 Дата встречи", callback_data=f"invite_custom_{ticket_id}")

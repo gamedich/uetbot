@@ -1266,24 +1266,6 @@ async def process_live_dialog_photo(message: types.Message, state: FSMContext, b
         logger.error(f"Ошибка пересылки фото от кадровика: {e}")
         await safe_answer(message, f"❌ Ошибка пересылки фото: {e}")
         #заметки и выгрузка 
-@hr_router.callback_query(F.data.startswith("cand_note_"))
-async def cb_cand_note_start(callback: types.CallbackQuery, state: FSMContext):
-    ticket_id = int(callback.data.split("_")[-1])
-    await state.update_data(note_ticket_id=ticket_id)
-    await state.set_state(CandidateNoteState.waiting_note)
-    await safe_answer(callback.message, f"📝 <b>Заметка к анкете #{ticket_id}:</b>\nОтправьте текст комментария (/cancel для отмены):", parse_mode="HTML")
-    await callback.answer()
-
-@hr_router.message(CandidateNoteState.waiting_note)
-async def process_cand_note_save(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    ticket_id = data.get("note_ticket_id")
-    await state.clear()
-    note_text = (message.text or "").strip()
-    if not note_text or note_text.startswith("/"):
-        return await safe_answer(message, "Действие отменено.")
-    db.set_candidate_note(ticket_id, note_text)
-    await safe_answer(message, f"✅ <b>Заметка к анкете #{ticket_id} сохранена:</b>\n<i>«{html.escape(note_text)}»</i>", parse_mode="HTML")
 
 @hr_router.message(Command("export"))
 @hr_router.callback_query(F.data == "hr_export_excel")

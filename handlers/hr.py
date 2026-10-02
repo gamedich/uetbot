@@ -19,6 +19,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 import csv
 import io
 from aiogram.types import BufferedInputFile
+from aiogram.types import ChatMemberAdministrator, ChatMemberOwner
 from aiogram.fsm.state import State, StatesGroup
 from texts import format_hr_card_full
 import texts
@@ -45,6 +46,10 @@ from keyboards import (
     make_inquiry_admin_keyboard,
     make_candidate_main_keyboard
 )
+
+
+
+
 # блко обработки автовыдачи прав и снятия
 logger = logging.getLogger("HR_HANDLER")
 hr_router = Router(name="hr")
@@ -1498,3 +1503,149 @@ async def process_cand_note_save(message: types.Message, state: FSMContext):
             reply_markup=builder.as_markup(),
             parse_mode="HTML"
         )
+
+# =====================================================================
+# ПРОВЕРКА ПРАВ ГРУППЫ И ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ
+# =====================================================================
+
+@hr_router.callback_query(F.data == "hr_check_group_perms")
+@hr_router.message(Command("check_group"))
+async def cb_check_group_perms(event: types.CallbackQuery | types.Message, bot: Bot):
+    """Диагностика привязки кадровой группы и прав бота в ней."""
+    user_id = event.from_user.id
+    chat_id = event.message.chat.id if isinstance(event, types.CallbackQuery) else event.chat.id
+    allowed, err = check_hr_access_or_block(user_id, chat_id)
+    if not allowed:
+        if isinstance(event, types.CallbackQuery):
+            return await event.answer("🚫 Доступ ограничен!", show_alert=True)
+        return await safe_answer(event, "🚫 Доступ ограничен.")
+
+    hr_group = CONFIG.get("HR_GROUP_ID", 0)
+    if not hr_group:
+        msg = (
+            "⚠️ <b>Кадровая группа не привязана!</b>\n\n"
+            "Добавьте бота в чат отдела кадров и отправьте там команду <code>/set_group</code>."
+        )
+        if isinstance(event, types.CallbackQuery):
+            await event.message.edit_text(msg, parse_mode="HTML")
+            return await event.answer()
+        return await safe_answer(event, msg, parse_mode="HTML")
+
+    try:
+        # 1. Получаем информацию о группе
+        chat = await bot.get_chat(hr_group)
+        chat_title = chat.title or "Группа отдела кадров"
+
+        # 2. Проверяем статус самого бота в группе
+        bot_member = await bot.get_chat_member(hr_group, bot.id)
+        is_bot_admin = isinstance(bot_member, (ChatMemberAdministrator, ChatMemberOwner))
+
+        status_bot_str = "🟢 Администратор" if is_bot_admin else "🔴 Обычный участник (НУЖНЫ ПРАВА АДМИНА!)"
+
+        # 3. Получаем администраторов группы
+        admins = await bot.get_chat_administrators(hr_group)
+        human_admins = [a.user for a in admins if not a.user.is_bot]
+
+        text = (
+            "🛡 <b>ДИАГНОСТИКА КАДРОВОЙ ГРУППЫ</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏢 <b>Чат:</b> <b>{html.escape(chat_title)}</b>\n"
+            f"🆔 <b>ID чата:</b> <code>{hr_group}</code>\n"
+            f"🤖 <b>Статус бота:</b> {status_bot_str}\n"
+            f"👥 <b>Сотрудников в руководстве:</b> <code>{len(human_admins)} чел.</code>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+        )
+
+        if not is_bot_admin:
+            text += (
+                "⚠️ <b>Внимание:</b> Бот не является администратором группы!\n"
+                "Выдайте боту права администратора в чате, чтобы он мог отслеживать участников.\n"
+            )
+        else:
+            text += "✅ Бот имеет все необходимые права для публикации анкет и синхронизации."
+
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🔄 Синхронизировать права сейчас", callback_data="hr_sync_group_admins")
+        builder.button(text="⬅️ Назад в меню", callback_data="admin_stats")
+        builder.adjust(1)
+
+        if isinstance(event, types.CallbackQuery):
+            await event.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+            await event.answer()
+        else:
+            await safe_answer(event, text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+    except Exception as e:
+        err_msg = f"❌ <b>Ошибка проверки группы:</b> <code>{html.escape(str(e))}</code>"
+        if isinstance(event, types.CallbackQuery):
+            await event.message.edit_text(err_msg, parse_mode="HTML")
+            await event.answer()
+        else:
+            await safe_answer(event, err_msg, parse_mode="HTML")
+
+
+@hr_router.callback_query(F.data == "hr_sync_group_admins")
+@hr_router.message(Command("sync_group"))
+async def cb_sync_group_admins(event: types.CallbackQuery | types.Message, bot: Bot):
+    """Принудительный опрос группы и автоматическая выдача прав HR всем админам группы."""
+    user_id = event.from_user.id
+    chat_id = event.message.chat.id if isinstance(event, types.CallbackQuery) else event.chat.id
+    allowed, _ = check_hr_access_or_block(user_id, chat_id)
+    if not allowed:
+        return await safe_answer(event, "🚫 Доступ ограничен.")
+
+    hr_group = CONFIG.get("HR_GROUP_ID", 0)
+    super_admin = CONFIG.get("SUPER_ADMIN_ID", 0)
+
+    if not hr_group:
+        msg = "⚠️ Кадровая группа не привязана! Сначала привяжите чат через /set_group."
+        if isinstance(event, types.CallbackQuery):
+            return await event.answer(msg, show_alert=True)
+        return await safe_answer(event, msg)
+
+    try:
+        # Запрашиваем всех админов кадровой группы через Telegram API
+        chat_admins = await bot.get_chat_administrators(hr_group)
+        group_user_ids = set()
+        added_count = 0
+
+        for a in chat_admins:
+            if not a.user.is_bot:
+                uid = a.user.id
+                group_user_ids.add(uid)
+                # Если у сотрудника ещё нет роли HR — выдаём
+                current_role = db.get_admin_role(uid)
+                if current_role != "hr" and uid != super_admin:
+                    db.unblock_user(uid)
+                    db.add_admin(uid, role="hr")
+                    added_count += 1
+                    logger.info(f"[SYNC] Пользователю {a.user.full_name} ({uid}) выдана роль HR")
+
+        report = (
+            "✅ <b>СИНХРОНИЗАЦИЯ ПРАВ УСПЕШНО ЗАВЕРШЕНА</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👥 Найдено сотрудников в группе: <b>{len(group_user_ids)}</b>\n"
+            f"➕ Назначено новых HR: <b>{added_count}</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Все администраторы чата кадров получили доступ к кадровой панели (/admin).</i>"
+        )
+
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🛡 Проверить статус группы", callback_data="hr_check_group_perms")
+        builder.button(text="⬅️ В меню кадров", callback_data="admin_stats")
+        builder.adjust(1)
+
+        if isinstance(event, types.CallbackQuery):
+            await event.message.edit_text(report, reply_markup=builder.as_markup(), parse_mode="HTML")
+            await event.answer("Синхронизация завершена!")
+        else:
+            await safe_answer(event, report, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+    except Exception as e:
+        logger.error(f"Ошибка синхронизации прав группы: {e}")
+        err_text = f"❌ <b>Сбой синхронизации:</b> <code>{html.escape(str(e))}</code>"
+        if isinstance(event, types.CallbackQuery):
+            await event.answer("Ошибка синхронизации!", show_alert=True)
+            await event.message.edit_text(err_text, parse_mode="HTML")
+        else:
+            await safe_answer(event, err_text, parse_mode="HTML")

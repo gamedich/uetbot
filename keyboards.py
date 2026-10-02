@@ -172,7 +172,10 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     is_enabled = db.get_admin_notify_status(user_id)
     toggle_text = "🔔 Уведы в ЛС: [ВКЛ]" if is_enabled else "🔕 Уведы в ЛС: [ВЫКЛ]"
     builder.button(text=toggle_text, callback_data="toggle_dm_notify")
-    
+    # 4 ряд тесты 
+    # Кнопки проверки группы и принудительной синхронизации:
+    builder.button(text="🛡 Проверить группу кадров тестого", callback_data="hr_check_group_perms")
+    builder.button(text="🔄 Синхронизировать права", callback_data="hr_sync_group_admins")
     builder.adjust(2, 2, 2, 1, 2)
     return builder.as_markup()
 

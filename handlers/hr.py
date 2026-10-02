@@ -1651,13 +1651,21 @@ async def cb_sync_group_admins(event: types.CallbackQuery | types.Message, bot: 
             await event.message.edit_text(err_text, parse_mode="HTML")
         else:
             await safe_answer(event, err_text, parse_mode="HTML")
+def format_user_label(user: types.User) -> str:
+    """Форматирует отображение пользователя с приоритетом на @username."""
+    full_name = html.escape(user.full_name or "Сотрудник")
+    if user.username:
+        return f"@{user.username} ({full_name})"
+    return f"{full_name} [ID: <code>{user.id}</code>]"
+
+
 # =====================================================================
-# 1. АВТО-ПРАВА И ПРИВЕТСТВИЕ В ГРУППЕ ПРИ ВХОДЕ/ВЫХОДЕ
+# 1. АВТО-ПРИВЕТСТВИЕ И ДОСТУП ПРИ ДОБАВЛЕНИИ В ГРУППУ
 # =====================================================================
 
 @hr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
 async def on_hr_member_joined(event: types.ChatMemberUpdated, bot: Bot):
-    """Срабатывает, когда нового сотрудника добавляют в чат отдела кадров."""
+    """Приветствует нового сотрудника в чате по нику и даёт права."""
     hr_group = CONFIG.get("HR_GROUP_ID")
     if hr_group and event.chat.id == hr_group:
         new_user = event.new_chat_member.user
@@ -1665,37 +1673,23 @@ async def on_hr_member_joined(event: types.ChatMemberUpdated, bot: Bot):
             db.unblock_user(new_user.id)
             db.add_admin(new_user.id, role="hr")
 
-            # ✅ ПРИВЕТСТВИЕ ПРЯМО В ГРУППУ (не блокируется Telegram)
-            user_mention = f"@{new_user.username}" if new_user.username else new_user.full_name
+            user_mention = f"@{new_user.username}" if new_user.username else html.escape(new_user.full_name)
             welcome_text = (
                 f"👋 <b>Добро пожаловать в кадровую службу, {user_mention}!</b>\n\n"
-                f"Вам автоматически открыт доступ к кадровой панели управления по команде <code>/admin</code>.\n\n"
-                f"💡 <i>Чтобы бот мог присылать вам уведомления о новых анкетах в ЛС, "
-                f"перейдите в диалог с ботом и нажмите команду <b>/start</b>.</i>"
+                f"Вам автоматически выдан доступ к кадровой панели управления: <code>/admin</code>.\n\n"
+                f"💡 <i>Чтобы бот мог направлять вам анкеты соискателей в личные сообщения, "
+                f"откройте диалог с ботом и нажмите <b>/start</b>.</i>"
             )
             await safe_send(bot, hr_group, welcome_text)
 
 
-@hr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION))
-async def on_hr_member_left(event: types.ChatMemberUpdated):
-    """Срабатывает при выходе или удалении сотрудника из группы."""
-    hr_group = CONFIG.get("HR_GROUP_ID")
-    super_admin = CONFIG.get("SUPER_ADMIN_ID")
-    if hr_group and event.chat.id == hr_group:
-        old_user = event.old_chat_member.user
-        if old_user.id != super_admin and not old_user.is_bot:
-            db.remove_admin(old_user.id)
-            logger.info(f"Сотрудник {old_user.id} удалён из кадровой группы — права HR отозваны.")
-
-
 # =====================================================================
-# 2. ЕДИНАЯ КОМАНДА СИНХРОНИЗАЦИИ ВСЁ-В-ОДНОМ (/sync)
+# 2. ЕДИНАЯ СИНХРОНИЗАЦИЯ С ОТОБРАЖЕНИЕМ ПО НИКАМ (/sync)
 # =====================================================================
 
 @hr_router.message(Command("sync", "sync_group"))
 @hr_router.callback_query(F.data == "hr_sync_all_in_one")
 async def cmd_sync_group_all_in_one(event: types.Message | types.CallbackQuery, bot: Bot):
-    """Проверяет группу, бота и синхронизирует всех сотрудников за 1 шаг."""
     user_id = event.from_user.id
     chat_id = event.message.chat.id if isinstance(event, types.CallbackQuery) else event.chat.id
     allowed, err = check_hr_access_or_block(user_id, chat_id)
@@ -1709,45 +1703,71 @@ async def cmd_sync_group_all_in_one(event: types.Message | types.CallbackQuery, 
         return await safe_answer(
             event,
             "⚠️ <b>Кадровая группа не привязана!</b>\n"
-            "Добавьте бота в чат отдела кадров и отправьте там команду <code>/set_group</code>.",
+            "Добавьте бота в чат отдела кадров и отправьте там <code>/set_group</code>.",
             parse_mode="HTML"
         )
 
     try:
-        # Проверяем самого бота в группе
+        # Проверяем права бота в группе
         bot_member = await bot.get_chat_member(hr_group, bot.id)
         if not isinstance(bot_member, (ChatMemberAdministrator, ChatMemberOwner)):
             return await safe_answer(
                 event,
                 "⚠️ <b>Бот не является администратором группы кадров!</b>\n"
-                "Выдайте боту права администратора в чате отдела кадров, чтобы он мог управлять доступом.",
+                "Выдайте боту права администратора в чате, чтобы он видел участников.",
                 parse_mode="HTML"
             )
 
-        # Сканируем всех сотрудников руководства группы
+        # Получаем всех живых администраторов группы
         admins = await bot.get_chat_administrators(hr_group)
         human_admins = [a.user for a in admins if not a.user.is_bot]
-        added_count = 0
+        
+        staff_lines = []
+        newly_added_tags = []
 
         for a in human_admins:
-            if a.id != super_admin:
-                if db.get_admin_role(a.id) != "hr":
+            user_label = format_user_label(a)
+            user_tag = f"@{a.username}" if a.username else html.escape(a.full_name)
+
+            if a.id == super_admin:
+                staff_lines.append(f"👑 <b>{user_label}</b> — <i>Главный администратор</i>")
+            else:
+                current_role = db.get_admin_role(a.id)
+                if current_role != "hr":
                     db.unblock_user(a.id)
                     db.add_admin(a.id, role="hr")
-                    added_count += 1
+                    newly_added_tags.append(user_tag)
+                    staff_lines.append(f"🆕 <b>{user_label}</b> — <b>выдан доступ HR</b>")
+                else:
+                    staff_lines.append(f"👤 <b>{user_label}</b> — доступ HR активен ✅")
+
+        staff_list_text = "\n".join(staff_lines) if staff_lines else "<i>Сотрудников не найдено</i>"
 
         result_msg = (
             "✅ <b>СИНХРОНИЗАЦИЯ КАДРОВОЙ ГРУППЫ ВЫПОЛНЕНА</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🏢 Чат ID: <code>{hr_group}</code> (Бот — Администратор ✅)\n"
-            f"👥 Найдено сотрудников в группе: <b>{len(human_admins)}</b>\n"
-            f"➕ Выдано новых доступов HR: <b>{added_count}</b>\n"
+            f"🏢 <b>Чат:</b> <code>{hr_group}</code> (Бот — Администратор ✅)\n\n"
+            f"👥 <b>Сотрудники кадровой службы ({len(human_admins)}):</b>\n"
+            f"{staff_list_text}\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Все сотрудники группы имеют актуальный доступ к /admin.</i>"
         )
+
+        if newly_added_tags:
+            result_msg += f"➕ <b>Новые права выданы:</b> {', '.join(newly_added_tags)}\n\n"
+            
+            # Уведомление в саму группу с тегами сотрудников
+            group_notice = (
+                f"🔔 <b>Внимание сотрудникам:</b> {', '.join(newly_added_tags)}!\n"
+                f"Вам открыт доступ к кадровой панели: <code>/admin</code>.\n\n"
+                f"💡 <i>Чтобы бот мог присылать вам анкеты в ЛС, нажмите команду <b>/start</b> в личном диалоге с ботом.</i>"
+            )
+            await safe_send(bot, hr_group, group_notice)
+        else:
+            result_msg += "<i>Все сотрудники имеют актуальный доступ к кадровой панели /admin.</i>"
+
         if isinstance(event, types.CallbackQuery):
             await event.message.edit_text(result_msg, parse_mode="HTML")
-            await event.answer("Синхронизировано!")
+            await event.answer("Синхронизация завершена!")
         else:
             await safe_answer(event, result_msg, parse_mode="HTML")
 

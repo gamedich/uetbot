@@ -1625,3 +1625,60 @@ async def cb_git_forward_confirm(callback: types.CallbackQuery):
         os.system("systemctl restart uet_bot")
 
     asyncio.create_task(_do_restart())
+
+
+@tech_router.message(Command("add_hr"))
+async def cmd_add_hr(message: types.Message, bot: Bot):
+    if not is_privileged_user(message.from_user.id):
+        return await safe_answer(message, "🚫 Доступ ограничен администрацией.")
+
+    new_id = None
+    user_display = None
+
+    # Если ответили на сообщение пользователя в группе
+    if message.reply_to_message and message.reply_to_message.from_user:
+        u = message.reply_to_message.from_user
+        new_id = u.id
+        user_display = f"@{u.username} ({html.escape(u.full_name)})" if u.username else html.escape(u.full_name)
+    else:
+        # Если ввели ID цифрами
+        digits = re.findall(r"\d+", message.text or "")
+        if digits:
+            digits.sort(key=len, reverse=True)
+            new_id = int(digits[0])
+            try:
+                chat_info = await bot.get_chat(new_id)
+                escaped_name = html.escape(chat_info.full_name or "Сотрудник")
+                user_display = f"@{chat_info.username} ({escaped_name})" if chat_info.username else escaped_name
+            except Exception:
+                user_display = f"ID: <code>{new_id}</code>"
+
+    if not new_id:
+        return await safe_answer(
+            message,
+            "ℹ️ <b>Формат:</b> <code>/add_hr TELEGRAM_ID</code> или ответьте на сообщение сотрудника в группе.",
+            parse_mode="HTML"
+        )
+
+    db.unblock_user(new_id)
+    db.add_admin(new_id, role="hr")
+
+    # Уведомление в ЛС (если открыто)
+    notify_text = (
+        "🎉 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
+        "📋 <b>Роль:</b> <b>Специалист отдела кадров (HR)</b>\n"
+        "• Вам доступна кадровая панель: <code>/admin</code>\n"
+        "• Вы будете получать новые анкеты соискателей в личные сообщения.\n"
+    )
+    sent = await safe_send(bot, new_id, notify_text)
+    note = "✅ Уведомление отправлено в ЛС." if sent else "⚠️ <i>Сотруднику нужно нажать /start в боте для получения анкет в ЛС.</i>"
+
+    await safe_answer(
+        message,
+        f"✅ <b>Сотрудник отдела кадров успешно назначен!</b>\n\n"
+        f"👤 <b>Сотрудник:</b> {user_display}\n"
+        f"📋 <b>Роль:</b> HR-специалист\n"
+        f"{note}",
+        reply_markup=make_admins_menu_keyboard(db.get_all_admins()),
+        parse_mode="HTML"
+    )

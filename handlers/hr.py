@@ -18,6 +18,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import csv
 import io
+from aiogram.filters.chat_member_updated import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
+from aiogram.types import ChatMemberAdministrator, ChatMemberOwner
 from aiogram.types import BufferedInputFile
 from aiogram.types import ChatMemberAdministrator, ChatMemberOwner
 from aiogram.fsm.state import State, StatesGroup
@@ -1649,3 +1651,105 @@ async def cb_sync_group_admins(event: types.CallbackQuery | types.Message, bot: 
             await event.message.edit_text(err_text, parse_mode="HTML")
         else:
             await safe_answer(event, err_text, parse_mode="HTML")
+# =====================================================================
+# 1. АВТО-ПРАВА И ПРИВЕТСТВИЕ В ГРУППЕ ПРИ ВХОДЕ/ВЫХОДЕ
+# =====================================================================
+
+@hr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
+async def on_hr_member_joined(event: types.ChatMemberUpdated, bot: Bot):
+    """Срабатывает, когда нового сотрудника добавляют в чат отдела кадров."""
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    if hr_group and event.chat.id == hr_group:
+        new_user = event.new_chat_member.user
+        if not new_user.is_bot:
+            db.unblock_user(new_user.id)
+            db.add_admin(new_user.id, role="hr")
+
+            # ✅ ПРИВЕТСТВИЕ ПРЯМО В ГРУППУ (не блокируется Telegram)
+            user_mention = f"@{new_user.username}" if new_user.username else new_user.full_name
+            welcome_text = (
+                f"👋 <b>Добро пожаловать в кадровую службу, {user_mention}!</b>\n\n"
+                f"Вам автоматически открыт доступ к кадровой панели управления по команде <code>/admin</code>.\n\n"
+                f"💡 <i>Чтобы бот мог присылать вам уведомления о новых анкетах в ЛС, "
+                f"перейдите в диалог с ботом и нажмите команду <b>/start</b>.</i>"
+            )
+            await safe_send(bot, hr_group, welcome_text)
+
+
+@hr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION))
+async def on_hr_member_left(event: types.ChatMemberUpdated):
+    """Срабатывает при выходе или удалении сотрудника из группы."""
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    super_admin = CONFIG.get("SUPER_ADMIN_ID")
+    if hr_group and event.chat.id == hr_group:
+        old_user = event.old_chat_member.user
+        if old_user.id != super_admin and not old_user.is_bot:
+            db.remove_admin(old_user.id)
+            logger.info(f"Сотрудник {old_user.id} удалён из кадровой группы — права HR отозваны.")
+
+
+# =====================================================================
+# 2. ЕДИНАЯ КОМАНДА СИНХРОНИЗАЦИИ ВСЁ-В-ОДНОМ (/sync)
+# =====================================================================
+
+@hr_router.message(Command("sync", "sync_group"))
+@hr_router.callback_query(F.data == "hr_sync_all_in_one")
+async def cmd_sync_group_all_in_one(event: types.Message | types.CallbackQuery, bot: Bot):
+    """Проверяет группу, бота и синхронизирует всех сотрудников за 1 шаг."""
+    user_id = event.from_user.id
+    chat_id = event.message.chat.id if isinstance(event, types.CallbackQuery) else event.chat.id
+    allowed, err = check_hr_access_or_block(user_id, chat_id)
+    if not allowed:
+        return await safe_answer(event, err or "🚫 Доступ ограничен.")
+
+    hr_group = CONFIG.get("HR_GROUP_ID", 0)
+    super_admin = CONFIG.get("SUPER_ADMIN_ID", 0)
+
+    if not hr_group:
+        return await safe_answer(
+            event,
+            "⚠️ <b>Кадровая группа не привязана!</b>\n"
+            "Добавьте бота в чат отдела кадров и отправьте там команду <code>/set_group</code>.",
+            parse_mode="HTML"
+        )
+
+    try:
+        # Проверяем самого бота в группе
+        bot_member = await bot.get_chat_member(hr_group, bot.id)
+        if not isinstance(bot_member, (ChatMemberAdministrator, ChatMemberOwner)):
+            return await safe_answer(
+                event,
+                "⚠️ <b>Бот не является администратором группы кадров!</b>\n"
+                "Выдайте боту права администратора в чате отдела кадров, чтобы он мог управлять доступом.",
+                parse_mode="HTML"
+            )
+
+        # Сканируем всех сотрудников руководства группы
+        admins = await bot.get_chat_administrators(hr_group)
+        human_admins = [a.user for a in admins if not a.user.is_bot]
+        added_count = 0
+
+        for a in human_admins:
+            if a.id != super_admin:
+                if db.get_admin_role(a.id) != "hr":
+                    db.unblock_user(a.id)
+                    db.add_admin(a.id, role="hr")
+                    added_count += 1
+
+        result_msg = (
+            "✅ <b>СИНХРОНИЗАЦИЯ КАДРОВОЙ ГРУППЫ ВЫПОЛНЕНА</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏢 Чат ID: <code>{hr_group}</code> (Бот — Администратор ✅)\n"
+            f"👥 Найдено сотрудников в группе: <b>{len(human_admins)}</b>\n"
+            f"➕ Выдано новых доступов HR: <b>{added_count}</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Все сотрудники группы имеют актуальный доступ к /admin.</i>"
+        )
+        if isinstance(event, types.CallbackQuery):
+            await event.message.edit_text(result_msg, parse_mode="HTML")
+            await event.answer("Синхронизировано!")
+        else:
+            await safe_answer(event, result_msg, parse_mode="HTML")
+
+    except Exception as e:
+        await safe_answer(event, f"❌ <b>Сбой синхронизации:</b> <code>{html.escape(str(e))}</code>", parse_mode="HTML")

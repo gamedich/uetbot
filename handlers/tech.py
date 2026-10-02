@@ -811,9 +811,18 @@ async def cb_test_do_reset(event: types.Message | types.CallbackQuery, state: FS
 # =====================================================================
 # 3. УПРАВЛЕНИЕ АДМИНИСТРАТОРАМИ (/admins, /transfer_owner)
 # =====================================================================
-
+async def resolve_user_display(bot: Bot, user_id: int) -> tuple[str, str]:
+    """Возвращает (полный текст с ником, короткий текст для кнопки)."""
+    try:
+        chat = await bot.get_chat(user_id)
+        name = html.escape(chat.full_name or "Сотрудник")
+        if chat.username:
+            return f"@{chat.username} ({name})", f"@{chat.username}"
+        return f"{name} [ID: <code>{user_id}</code>]", name
+    except Exception:
+        return f"ID: <code>{user_id}</code>", f"ID: {user_id}"
 @tech_router.message(Command("admins", "team"))
-async def cmd_admins_menu(message: types.Message):
+async def cmd_admins_menu(message: types.Message, bot: Bot):
     user_id = message.from_user.id
     if user_id != CONFIG.get("SUPER_ADMIN_ID") and not is_tech_admin(user_id):
         return await safe_answer(message, "🚫 Доступ ограничен администраторами.")
@@ -821,66 +830,82 @@ async def cmd_admins_menu(message: types.Message):
     all_admins = db.get_all_admins()
     super_id = CONFIG.get("SUPER_ADMIN_ID")
 
+    tasks = [resolve_user_display(bot, adm_id) for adm_id, _ in all_admins]
+    resolved = await asyncio.gather(*tasks)
+    owner_full, _ = await resolve_user_display(bot, super_id)
+
     text = (
         "👥 <b>УПРАВЛЕНИЕ СОТРУДНИКАМИ И РОЛЯМИ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👑 <b>Главный администратор (Владелец):</b> <code>{super_id}</code>\n"
+        f"👑 <b>Главный администратор:</b> {owner_full}\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "<b>Текущий список сотрудников с доступом:</b>\n"
     )
 
-    if not all_admins:
-        text += "<i>Список пуст (только главный администратор).</i>\n"
-    else:
-        for adm_id, role in all_admins:
-            is_owner = (adm_id == super_id)
-            if is_owner:
-                text += f"• <code>{adm_id}</code> — 👑 Владелец системы\n"
-            elif role == "hr":
-                text += f"• <code>{adm_id}</code> — 📋 Кадры (HR)\n"
-            elif role == "tech":
-                text += f"• <code>{adm_id}</code> — 🛠 Инженер (Tech)\n"
-            else:
-                text += f"• <code>{adm_id}</code> — 👤 {role}\n"
+    for (adm_id, role), (full_label, _) in zip(all_admins, resolved):
+        if adm_id == super_id:
+            text += f"• 👑 <b>{full_label}</b> — Владелец\n"
+        elif role == "hr":
+            text += f"• 📋 <b>{full_label}</b> — Кадры (HR)\n"
+        elif role == "tech":
+            text += f"• 🛠 <b>{full_label}</b> — Инженер (Tech)\n"
+        else:
+            text += f"• 👤 <b>{full_label}</b> — {role}\n"
 
     text += (
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "💡 <i>Нажмите кнопку ниже для выдачи прав новому сотруднику:</i>"
+        "💡 <i>Нажмите кнопку ниже для выдачи или отзыва прав:</i>"
     )
     await safe_answer(message, text, reply_markup=make_admins_menu_keyboard(all_admins), parse_mode="HTML")
 
-
 @tech_router.callback_query(F.data == "adm_ui_refresh")
-async def cb_adm_ui_refresh(callback: types.CallbackQuery):
+async def cb_adm_ui_refresh(callback: types.CallbackQuery, bot: Bot):
     all_admins = db.get_all_admins()
     super_id = CONFIG.get("SUPER_ADMIN_ID")
+
+    tasks = [resolve_user_display(bot, adm_id) for adm_id, _ in all_admins]
+    resolved = await asyncio.gather(*tasks)
+    owner_full, _ = await resolve_user_display(bot, super_id)
 
     text = (
         "👥 <b>УПРАВЛЕНИЕ СОТРУДНИКАМИ И РОЛЯМИ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👑 <b>Главный администратор (Владелец):</b> <code>{super_id}</code>\n"
+        f"👑 <b>Главный администратор:</b> {owner_full}\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "<b>Текущий список сотрудников с доступом:</b>\n"
     )
 
-    for adm_id, role in all_admins:
-        is_owner = (adm_id == super_id)
-        if is_owner:
-            text += f"• <code>{adm_id}</code> — 👑 Владелец системы\n"
+    for (adm_id, role), (full_label, _) in zip(all_admins, resolved):
+        if adm_id == super_id:
+            text += f"• 👑 <b>{full_label}</b> — Владелец\n"
         elif role == "hr":
-            text += f"• <code>{adm_id}</code> — 📋 Кадры (HR)\n"
+            text += f"• 📋 <b>{full_label}</b> — Кадры (HR)\n"
         elif role == "tech":
-            text += f"• <code>{adm_id}</code> — 🛠 Инженер (Tech)\n"
+            text += f"• 🛠 <b>{full_label}</b> — Инженер (Tech)\n"
 
-    text += (
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "💡 <i>Нажмите кнопку ниже для выдачи прав:</i>"
-    )
+    text += "━━━━━━━━━━━━━━━━━━━━━\n💡 <i>Нажмите кнопку ниже для выдачи прав:</i>"
     try:
         await callback.message.edit_text(text, reply_markup=make_admins_menu_keyboard(all_admins), parse_mode="HTML")
     except Exception:
         pass
     await callback.answer("Список обновлен")
+
+
+@tech_router.callback_query(F.data == "adm_ui_remove_list")
+async def cb_adm_ui_remove_list(callback: types.CallbackQuery, bot: Bot):
+    all_admins = db.get_all_admins()
+    admins_with_names = []
+    for adm_id, role in all_admins:
+        _, short_label = await resolve_user_display(bot, adm_id)
+        admins_with_names.append((adm_id, role, short_label))
+
+    text = (
+        "➖ <b>ОТЗЫВ ПРАВ ДОСТУПА СОТРУДНИКА</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Выберите сотрудника для отзыва прав:"
+    )
+    await callback.message.edit_text(text, reply_markup=make_remove_admin_keyboard(admins_with_names), parse_mode="HTML")
+    await callback.answer()
 
 
 @tech_router.message(Command("add_hr"))
@@ -1682,3 +1707,4 @@ async def cmd_add_hr(message: types.Message, bot: Bot):
         reply_markup=make_admins_menu_keyboard(db.get_all_admins()),
         parse_mode="HTML"
     )
+

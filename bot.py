@@ -72,7 +72,7 @@ async def main():
 
     # 6. Главный цикл диспетчера с гарантированным завершением фоновых задач
     try:
-        await dp.start_polling(bot, skip_updates=True)
+        await dp.start_polling(bot, skip_updates=True,allowed_updates=["message", "callback_query", "chat_member", "my_chat_member"])
     finally:
         logger.info("Остановка бота: завершение фоновых шлюзов...")
         stop_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")

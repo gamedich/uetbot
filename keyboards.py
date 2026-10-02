@@ -193,14 +193,18 @@ def make_admins_menu_keyboard(all_admins: list) -> types.InlineKeyboardMarkup:
     builder.adjust(1, 1, 1, 1)
     return builder.as_markup()
 
-def make_remove_admin_keyboard(all_admins: list) -> types.InlineKeyboardMarkup:
+def make_remove_admin_keyboard(admins_with_names: list) -> types.InlineKeyboardMarkup:
+    """Генерирует кнопки отзыва прав с отображением ника и имени."""
     builder = InlineKeyboardBuilder()
     super_id = CONFIG.get("SUPER_ADMIN_ID")
-    for adm_id, role in all_admins:
+    for adm_id, role, name_label in admins_with_names:
         if adm_id == super_id:
             continue
-        role_label = "Кадры" if role == "hr" else "Инженер"
-        builder.button(text=f"❌ {adm_id} ({role_label})", callback_data=f"adm_del_id_{adm_id}")
+        role_label = "HR" if role == "hr" else "Tech"
+        btn_text = f"❌ {name_label} ({role_label})"
+        if len(btn_text) > 35:
+            btn_text = btn_text[:32] + "..."
+        builder.button(text=btn_text, callback_data=f"adm_del_id_{adm_id}")
     builder.button(text="⬅️ Назад в меню", callback_data="adm_ui_refresh")
     builder.adjust(1)
     return builder.as_markup()

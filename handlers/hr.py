@@ -1773,3 +1773,222 @@ async def cmd_sync_group_all_in_one(event: types.Message | types.CallbackQuery, 
 
     except Exception as e:
         await safe_answer(event, f"❌ <b>Сбой синхронизации:</b> <code>{html.escape(str(e))}</code>", parse_mode="HTML")
+# =====================================================================
+# АВТО-УПРАВЛЕНИЕ РОЛЯМИ В КАДРОВОМ ЧАТЕ (ВХОД, ВЫХОД, СООБЩЕНИЯ)
+# =====================================================================
+
+async def grant_hr_role_and_welcome(user: types.User, chat_id: int, bot: Bot):
+    """Выдаёт роль HR в базе и отправляет приветствие с тегом по нику."""
+    if user.is_bot or user.id == CONFIG.get("SUPER_ADMIN_ID"):
+        return
+
+    # Записываем в базу роль hr
+    db.unblock_user(user.id)
+    db.add_admin(user.id, role="hr")
+
+    name_escaped = html.escape(user.full_name or "Сотрудник")
+    user_tag = f"@{user.username}" if user.username else name_escaped
+
+    welcome_msg = (
+        f"👋 <b>Добро пожаловать в кадровую службу, {user_tag}!</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"✅ Вам <b>автоматически открыт доступ</b> к кадровой панели: <code>/admin</code>.\n\n"
+        f"💡 <i>Чтобы бот мог пересылать вам анкеты соискателей в личные сообщения, "
+        f"откройте диалог с ботом и нажмите <b>/start</b>.</i>"
+    )
+    await safe_send(bot, chat_id, welcome_msg)
+
+
+# 1. Когда сотрудника ДОБАВИЛИ в группу
+@hr_router.message(F.new_chat_members)
+async def on_hr_user_added(message: types.Message, bot: Bot):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    if hr_group and message.chat.id == hr_group:
+        for new_user in message.new_chat_members:
+            await grant_hr_role_and_welcome(new_user, message.chat.id, bot)
+
+
+# 2. Когда сотрудник САМ ЗАШЁЛ по ссылке-приглашению
+@hr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
+async def on_hr_user_joined(event: types.ChatMemberUpdated, bot: Bot):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    if hr_group and event.chat.id == hr_group:
+        await grant_hr_role_and_welcome(event.new_chat_member.user, hr_group, bot)
+
+
+# 3. Для тех, кто УЖЕ в группе (выдаёт роль при первом отправленном сообщении)
+@hr_router.message(F.chat.type.in_({"group", "supergroup"}))
+async def on_existing_hr_member_message(message: types.Message, bot: Bot):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    if not hr_group or message.chat.id != hr_group or message.from_user.is_bot:
+        return
+
+    user_id = message.from_user.id
+    if user_id != CONFIG.get("SUPER_ADMIN_ID"):
+        if db.get_admin_role(user_id) != "hr":
+            await grant_hr_role_and_welcome(message.from_user, hr_group, bot)
+
+
+# 4. Когда сотрудника КИКНУЛИ или он САМ ВЫШЕЛ — роль снимается из базы
+@hr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION))
+async def on_hr_member_left(event: types.ChatMemberUpdated, bot: Bot):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    super_admin = CONFIG.get("SUPER_ADMIN_ID")
+    if not hr_group or event.chat.id != hr_group:
+        return
+
+    user = event.old_chat_member.user
+    if user.is_bot or user.id == super_admin:
+        return
+
+    # Моментально отзываем роль HR из базы данных
+    db.remove_admin(user.id)
+
+    name_escaped = html.escape(user.full_name or "Сотрудник")
+    user_tag = f"@{user.username} ({name_escaped})" if user.username else f"{name_escaped} [ID: <code>{user.id}</code>]"
+    actor = event.from_user
+
+    action_text = "исключён из чата" if (actor and actor.id != user.id) else "покинул чат"
+    await safe_send(
+        bot,
+        hr_group,
+        f"⛔ <b>Сотрудник {action_text}:</b> {user_tag}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔒 <b>Роль HR аннулирована в базе данных.</b> Доступ к <code>/admin</code> закрыт."
+    )
+
+
+# 5. Быстрый кик администратором чата через команду /kick (ответом на сообщение)
+@hr_router.message(Command("kick", "kick_hr"))
+async def cmd_kick_hr_reply(message: types.Message, bot: Bot):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    super_admin = CONFIG.get("SUPER_ADMIN_ID")
+    user_id = message.from_user.id
+
+    if user_id != super_admin and not is_tech_admin(user_id):
+        try:
+            m = await bot.get_chat_member(message.chat.id, user_id)
+            if not isinstance(m, (ChatMemberAdministrator, ChatMemberOwner)):
+                return await safe_answer(message, "🚫 Исключать сотрудников могут только администраторы чата.")
+        except Exception:
+            return await safe_answer(message, "🚫 Недостаточно прав.")
+
+    if not message.reply_to_message or not message.reply_to_message.from_user:
+        return await safe_answer(message, "ℹ️ Ответьте командой <code>/kick</code> на сообщение сотрудника в группе.", parse_mode="HTML")
+
+    target = message.reply_to_message.from_user
+    if target.is_bot or target.id == super_admin:
+        return await safe_answer(message, "🚫 Нельзя исключить данного пользователя.")
+
+    db.remove_admin(target.id)
+    try:
+        await bot.ban_chat_member(message.chat.id, target.id)
+        await bot.unban_chat_member(message.chat.id, target.id)
+    except Exception:
+        pass
+
+    target_tag = f"@{target.username}" if target.username else html.escape(target.full_name)
+    await safe_answer(
+        message,
+        f"✅ <b>Сотрудник {target_tag} исключён из кадровой группы.</b>\n"
+        f"Роль HR удалена из базы, доступ к панели <code>/admin</code> аннулирован.",
+        parse_mode="HTML"
+    )
+
+
+# =====================================================================
+# 6. ДВУХСТОРОННЯЯ СИНХРОНИЗАЦИЯ (/sync): ВЫДАЕТ И ЗАБИРАЕТ РОЛИ
+# =====================================================================
+
+@hr_router.message(Command("sync", "sync_group"))
+@hr_router.callback_query(F.data == "hr_sync_all_in_one")
+async def cmd_sync_group_two_way(event: types.Message | types.CallbackQuery, bot: Bot):
+    user_id = event.from_user.id
+    chat_id = event.message.chat.id if isinstance(event, types.CallbackQuery) else event.chat.id
+    allowed, err = check_hr_access_or_block(user_id, chat_id)
+    if not allowed:
+        return await safe_answer(event, err or "🚫 Доступ ограничен.")
+
+    hr_group = CONFIG.get("HR_GROUP_ID", 0)
+    super_admin = CONFIG.get("SUPER_ADMIN_ID", 0)
+
+    if not hr_group:
+        return await safe_answer(event, "⚠️ Кадровая группа не привязана! Используйте <code>/set_group</code> в группе.")
+
+    try:
+        # 1. Получаем список действующих администраторов группы
+        group_admins = await bot.get_chat_administrators(hr_group)
+        current_admin_ids = {a.user.id for a in group_admins if not a.user.is_bot}
+
+        # 2. Получаем всех, кто сейчас записан в базе с ролью HR
+        db_hr_ids = [adm_id for adm_id, role in db.get_all_admins() if role == "hr"]
+
+        active_list = []
+        added_list = []
+        removed_list = []
+
+        # А) Проверяем администраторов группы -> выдаём роль в базе
+        for a in group_admins:
+            u = a.user
+            if u.is_bot:
+                continue
+
+            name = html.escape(u.full_name or "Сотрудник")
+            user_label = f"@{u.username} ({name})" if u.username else f"{name} [ID: <code>{u.id}</code>]"
+
+            if u.id == super_admin:
+                active_list.append(f"👑 <b>{user_label}</b> — Владелец")
+                continue
+
+            if db.get_admin_role(u.id) != "hr":
+                db.unblock_user(u.id)
+                db.add_admin(u.id, role="hr")
+                added_list.append(user_label)
+                active_list.append(f"➕ <b>{user_label}</b> — <b>выдана роль HR</b>")
+            else:
+                active_list.append(f"👤 <b>{user_label}</b> — роль HR активна ✅")
+
+        # Б) Проверяем тех, кто в базе, но кого нет в группе -> ЗАБИРАЕМ РОЛЬ
+        for old_hr_id in db_hr_ids:
+            if old_hr_id == super_admin:
+                continue
+
+            try:
+                member = await bot.get_chat_member(hr_group, old_hr_id)
+                is_still_in_group = member.status not in ("left", "kicked")
+            except Exception:
+                is_still_in_group = False
+
+            if not is_still_in_group:
+                db.remove_admin(old_hr_id)
+                try:
+                    c = await bot.get_chat(old_hr_id)
+                    rem_label = f"@{c.username}" if c.username else c.full_name
+                except Exception:
+                    rem_label = f"ID: <code>{old_hr_id}</code>"
+                removed_list.append(rem_label)
+
+        # Формируем наглядный отчет
+        report = (
+            "🔄 <b>СИНХРОНИЗАЦИЯ БАЗЫ ДАННЫХ И ЧАТА</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏢 <b>Кадровый чат:</b> <code>{hr_group}</code>\n\n"
+            f"👥 <b>Сотрудники кадровой службы в базе:</b>\n"
+            + ("\n".join(active_list) if active_list else "<i>Список пуст</i>")
+            + "\n━━━━━━━━━━━━━━━━━━━━━\n"
+        )
+        if added_list:
+            report += f"➕ <b>Выдана роль HR ({len(added_list)}):</b>\n" + "\n".join(f"• {x}" for x in added_list) + "\n\n"
+        if removed_list:
+            report += f"➖ <b>Забрана роль HR (покинули чат) ({len(removed_list)}):</b>\n" + "\n".join(f"• {x}" for x in removed_list) + "\n\n"
+
+        report += "<i>Все права зафиксированы в базе данных и соответствуют чату.</i>"
+
+        if isinstance(event, types.CallbackQuery):
+            await event.message.edit_text(report, parse_mode="HTML")
+            await event.answer("Синхронизировано!")
+        else:
+            await safe_answer(event, report, parse_mode="HTML")
+
+    except Exception as e:
+        await safe_answer(event, f"❌ Ошибка синхронизации: <code>{html.escape(str(e))}</code>", parse_mode="HTML")

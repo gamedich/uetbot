@@ -45,10 +45,39 @@ from keyboards import (
     make_inquiry_admin_keyboard,
     make_candidate_main_keyboard
 )
-
+# блко обработки автовыдачи прав и снятия
 logger = logging.getLogger("HR_HANDLER")
 hr_router = Router(name="hr")
+from aiogram.filters.chat_member_updated import (
+    ChatMemberUpdatedFilter,
+    JOIN_TRANSITION,
+    LEAVE_TRANSITION
+)
 
+# 1. Автоматическая выдача роли HR при входе / добавлении в кадровый чат
+@hr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
+async def on_hr_member_joined(event: types.ChatMemberUpdated):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    # Проверяем, что событие произошло именно в кадровом чате
+    if hr_group and event.chat.id == hr_group:
+        new_user = event.new_chat_member.user
+        if not new_user.is_bot:
+            db.unblock_user(new_user.id)
+            db.add_admin(new_user.id, role="hr")
+            logger.info(f"✅ Пользователь {new_user.full_name} ({new_user.id}) добавлен в группу кадров -> автоматически выдана роль HR.")
+
+
+# 2. Автоматическое снятие роли HR при выходе / удалении из кадрового чата
+@hr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION))
+async def on_hr_member_left(event: types.ChatMemberUpdated):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    super_admin = CONFIG.get("SUPER_ADMIN_ID")
+    if hr_group and event.chat.id == hr_group:
+        old_user = event.old_chat_member.user
+        # Главного администратора не трогаем ни при каких условиях
+        if old_user.id != super_admin and not old_user.is_bot:
+            db.remove_admin(old_user.id)
+            logger.info(f"❌ Пользователь {old_user.full_name} ({old_user.id}) покинул группу кадров -> роль HR автоматически отозвана.")
 def check_hr_access_or_block(user_id: int, chat_id: int) -> tuple[bool, str | None]:
     """Строгая проверка доступа к кадровой информации:
     - Главный администратор (SUPER_ADMIN_ID) имеет полный доступ всегда.

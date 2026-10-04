@@ -339,4 +339,227 @@ def make_consent_survey_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Не даю согласие", callback_data="cand_consent_refuse")
     builder.button(text="📄 Политика обработки данных", callback_data="cand_privacy_policy")
     builder.adjust(2, 1)
-    return builder.as_
+    return builder.as_markup()
+
+
+def make_step_nav_kb(can_skip: bool = False) -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    if can_skip:
+        builder.button(text="⏭ Пропустить", callback_data="cand_nav_skip")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(1 if can_skip else 2, 2 if can_skip else 0)
+    return builder.as_markup()
+
+
+def make_step2_birthdate_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📅 01.01.1980", callback_data="bd_01.01.1980")
+    builder.button(text="📅 01.01.1985", callback_data="bd_01.01.1985")
+    builder.button(text="📅 01.01.1990", callback_data="bd_01.01.1990")
+    builder.button(text="📅 01.01.1995", callback_data="bd_01.01.1995")
+    builder.button(text="📅 01.01.2000", callback_data="bd_01.01.2000")
+    builder.button(text="✏️ Ввести вручную", callback_data="bd_manual")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 2, 2, 2)
+    return builder.as_markup()
+
+
+def make_step4_city_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🏙 Ульяновск", callback_data="city_Ульяновск")
+    builder.button(text="🏙 Димитровград", callback_data="city_Димитровград")
+    builder.button(text="🏙 Новоульяновск", callback_data="city_Новоульяновск")
+    builder.button(text="🏙 Барыш", callback_data="city_Барыш")
+    builder.button(text="✏️ Другой город (вручную)", callback_data="city_manual")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 2, 1, 2)
+    return builder.as_markup()
+
+
+def make_step5_vacancies_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🚋 Водитель трамвая", callback_data="vac_tram")
+    builder.button(text="🚎 Водитель троллейбуса", callback_data="vac_troll")
+    builder.button(text="🎫 Кондуктор", callback_data="vac_conductor")
+    builder.button(text="🔧 Слесарь по ремонту ПС", callback_data="vac_slesar")
+    builder.button(text="⚡ Электромонтёр контактной сети", callback_data="vac_electro")
+    builder.button(text="📋 Другая должность", callback_data="vac_other")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(1, 1, 1, 1, 1, 1, 2)
+    return builder.as_markup()
+
+
+def make_step6_license_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Да", callback_data="lic_yes")
+    builder.button(text="❌ Нет", callback_data="lic_no")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 2)
+    return builder.as_markup()
+
+
+def make_step6_1_categories_kb(selected: Optional[List[str]] = None) -> types.InlineKeyboardMarkup:
+    selected = selected or []
+    builder = InlineKeyboardBuilder()
+    cats = ["A", "B", "C", "D", "E", "Трамвай", "Троллейбус"]
+    for c in cats:
+        mark = "✅ " if c in selected else ""
+        builder.button(text=f"{mark}{c}", callback_data=f"cat_toggle_{c}")
+    builder.button(text="✏️ Вписать вручную", callback_data="cat_manual")
+    builder.button(text="✅ Готово", callback_data="cat_done")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(3, 2, 2, 2, 2)
+    return builder.as_markup()
+
+
+def make_step7_experience_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Да", callback_data="exp_yes")
+    builder.button(text="❌ Нет", callback_data="exp_no")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 2)
+    return builder.as_markup()
+
+
+def make_step8_education_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🎓 Среднее", callback_data="edu_Среднее")
+    builder.button(text="🎓 Среднее специальное", callback_data="edu_Среднее специальное")
+    builder.button(text="🎓 Неоконченное высшее", callback_data="edu_Неоконченное высшее")
+    builder.button(text="🎓 Высшее", callback_data="edu_Высшее")
+    builder.button(text="🎓 Учёная степень", callback_data="edu_Учёная степень")
+    builder.button(text="✏️ Вписать свой вариант", callback_data="edu_manual")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 2, 2, 2)
+    return builder.as_markup()
+
+
+def make_step9_relocation_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Да", callback_data="reloc_yes")
+    builder.button(text="❌ Нет", callback_data="reloc_no")
+    builder.button(text="✏️ Указать город переезда", callback_data="reloc_manual")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 1, 2)
+    return builder.as_markup()
+
+
+def make_step10_dormitory_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Да", callback_data="dorm_yes")
+    builder.button(text="❌ Нет", callback_data="dorm_no")
+    builder.button(text="✏️ Добавить комментарий", callback_data="dorm_manual")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 1, 2)
+    return builder.as_markup()
+
+
+def make_step11_schedule_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Да", callback_data="sched_yes")
+    builder.button(text="❌ Нет", callback_data="sched_no")
+    builder.button(text="✏️ Указать предпочтения", callback_data="sched_manual")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 1, 2)
+    return builder.as_markup()
+
+
+def make_step12_health_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❌ Нет", callback_data="health_no")
+    builder.button(text="✅ Да", callback_data="health_yes")
+    builder.button(text="✏️ Описать противопоказания", callback_data="health_manual")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 1, 2)
+    return builder.as_markup()
+
+
+def make_step13_criminal_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❌ Нет", callback_data="crim_no")
+    builder.button(text="✅ Да", callback_data="crim_yes")
+    builder.button(text="✏️ Описать", callback_data="crim_manual")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 1, 2)
+    return builder.as_markup()
+
+
+def make_step14_source_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🌐 Сайт предприятия", callback_data="src_Сайт предприятия")
+    builder.button(text="✈️ Telegram-бот", callback_data="src_Telegram-бот")
+    builder.button(text="🟦 ВКонтакте", callback_data="src_ВКонтакте")
+    builder.button(text="💼 МАКС / VK Teams", callback_data="src_МАКС / VK Teams")
+    builder.button(text="🏢 Центр занятости", callback_data="src_Центр занятости")
+    builder.button(text="👥 Знакомые", callback_data="src_Знакомые")
+    builder.button(text="✏️ Вписать свой вариант", callback_data="src_manual")
+    builder.button(text="⏭ Пропустить", callback_data="src_skip")
+    builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(2, 2, 2, 2, 2)
+    return builder.as_markup()
+
+
+def make_step16_confirm_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Подтверждаю", callback_data="cand_submit_final")
+    builder.button(text="✏️ Изменить данные", callback_data="cand_edit_fields_menu")
+    builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+    builder.adjust(1, 1, 1)
+    return builder.as_markup()
+
+
+def make_step16_edit_menu_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    fields = [
+        ("👤 ФИО", "edit_fio"),
+        ("🎂 Дата рождения", "edit_birth"),
+        ("📞 Телефон", "edit_phone"),
+        ("🏙 Город", "edit_city"),
+        ("💼 Вакансия", "edit_vac"),
+        ("🚗 Водительские права", "edit_lic"),
+        ("📝 Опыт работы", "edit_exp"),
+        ("🎓 Образование", "edit_edu"),
+        ("🏠 Переезд", "edit_reloc"),
+        ("🛏 Общежитие", "edit_dorm"),
+        ("🕐 Сменный график", "edit_sched"),
+        ("⚕️ Противопоказания", "edit_health"),
+        ("⚖️ Судимость", "edit_crim"),
+        ("📢 Источник", "edit_src"),
+        ("📎 Дополнительно", "edit_extra"),
+    ]
+    for title, cb in fields:
+        builder.button(text=title, callback_data=cb)
+    builder.button(text="⬅️ Назад к проверке", callback_data="edit_back_review")
+    builder.adjust(2, 2, 2, 2, 2, 2, 2, 1, 1)
+    return builder.as_markup()
+
+
+def make_mydata_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="💬 Запросить уточнение", callback_data="cand_ask_question")
+    builder.button(text="❌ Отозвать согласие", callback_data="cand_revoke_ask")
+    builder.button(text="🏠 Главное меню", callback_data="cand_back_to_menu")
+    builder.adjust(1, 1, 1)
+    return builder.as_markup()
+
+
+def make_revoke_confirm_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Да, отозвать согласие", callback_data="cand_revoke_confirm")
+    builder.button(text="❌ Отмена", callback_data="cand_back_to_menu")
+    builder.adjust(1, 1)
+    return builder.as_markup()

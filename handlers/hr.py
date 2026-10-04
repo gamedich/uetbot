@@ -2,29 +2,44 @@
 """
 Обработчики кадровой службы МУП «Ульяновскэлектротранс»:
 - Команда /admin и кадровая аналитика
-- Просмотр и изменение статусов анкет (В работу, Пригласить, Отказ)
+- Просмотр и изменение статусов анкет (В работу, Пригласить, Отказ, Архив)
 - Мост прямого диалога (живой чат соискателя и кадровика)
-- Обработка входящих вопросов соискателей
+- Обработка входящих вопросов соискателей (/ask)
+- Заметки кадровика к анкетам
+- Экспорт базы соискателей в Excel/CSV (/export)
 - Привязка кадрового чата (/set_group) и черный список
+- Авто-выдача и авто-снятие ролей при входе/выходе из группы
+- Двухсторонняя синхронизация состава группы (/sync)
+- Быстрый кик нарушителей (/kick)
 """
+
+from __future__ import annotations
+
+import csv
+import html
+import io
+import logging
 import os
 import re
-import html
-import logging
 from datetime import datetime
+from typing import Optional, List, Tuple, Any
+
 from aiogram import Router, F, types, Bot
 from aiogram.filters import Command, StateFilter
+from aiogram.filters.chat_member_updated import (
+    ChatMemberUpdatedFilter,
+    JOIN_TRANSITION,
+    LEAVE_TRANSITION
+)
 from aiogram.fsm.context import FSMContext
+from aiogram.types import (
+    BufferedInputFile,
+    ChatMemberAdministrator,
+    ChatMemberOwner
+)
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-import csv
-import io
-from aiogram.types import BufferedInputFile
-from aiogram.fsm.state import State, StatesGroup
-from texts import format_hr_card_full
-import texts
-class CandidateNoteState(StatesGroup):
-    waiting_note = State()
 
+import texts
 from common import (
     CONFIG,
     db,
@@ -33,11 +48,11 @@ from common import (
     safe_answer,
     safe_send,
     send_response_to_candidate,
+    send_photo_to_candidate,
     CustomInviteForm,
     CandidateDirectMsgForm,
     HRReplyForm,
     CandidateNoteForm
-    
 )
 from keyboards import (
     make_admin_menu_keyboard,
@@ -49,36 +64,30 @@ from keyboards import (
 logger = logging.getLogger("HR_HANDLER")
 hr_router = Router(name="hr")
 
+
 def check_hr_access_or_block(user_id: int, chat_id: int) -> tuple[bool, str | None]:
-    """Строгая проверка доступа к кадровой информации:
-    - Главный администратор (SUPER_ADMIN_ID) имеет полный доступ всегда.
-    - В официальной кадровой группе (HR_GROUP_ID) доступ открыт для сотрудников.
-    - Авторизованный кадровик (роль 'hr' в базе) имеет доступ.
-    - В режиме TEST технический инженер также имеет доступ для отладки.
-    - Любым посторонним пользователям и обычным соискателям доступ строго закрыт!
+    """Проверка прав доступа к кадровой информации и анкетам:
+    - Главный администратор (SUPER_ADMIN_ID) и технический администратор/разработчик (is_tech_admin) имеют полный доступ.
+    - Авторизованный сотрудник отдела кадров (is_hr_admin / роль 'hr') имеет полный доступ.
+    - В официальной кадровой группе (HR_GROUP_ID) доступ открыт для всех участников чата.
+    - Посторонним пользователям и соискателям доступ строго закрыт.
     """
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     hr_group = CONFIG.get("HR_GROUP_ID", 0)
-    user_role = db.get_admin_role(user_id)
 
-    # 1. Главный администратор (создатель системы) — полный доступ всегда (на себя ограничения не накладываются)
-    if super_id and user_id == super_id:
+    # 1. Администраторы системы (Superadmin, Tech Admin / разработчик)
+    if (super_id and user_id == super_id) or is_tech_admin(user_id):
         return True, None
 
-    # 2. В официальной рабочей группе отдела кадров — доступ открыт
+    # 2. Сотрудники отдела кадров (роль HR)
+    if is_hr_admin(user_id):
+        return True, None
+
+    # 3. В официальной рабочей группе отдела кадров
     if hr_group and chat_id == hr_group:
         return True, None
 
-    # 3. Авторизованный сотрудник отдела кадров (роль HR) — доступ открыт
-    if user_role == "hr":
-        return True, None
-
-    # 4. В режиме TEST технический инженер имеет доступ для отладки
-    env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
-    if env_mode != "PROD" and is_tech_admin(user_id):
-        return True, None
-
-    # Всем остальным посторонним доступ категорически закрыт
+    # Всем остальным посторонним доступ закрыт
     return False, "🚫 <b>Доступ ограничен.</b> Кадровая панель доступна только сотрудникам отдела кадров МУП «Ульяновскэлектротранс»."
 
 
@@ -160,8 +169,6 @@ async def cb_admin_list(callback: types.CallbackQuery):
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
-
-
 @hr_router.callback_query(F.data.startswith("view_"))
 async def cb_view_ticket(callback: types.CallbackQuery):
     allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
@@ -190,11 +197,82 @@ async def cb_cand_call(callback: types.CallbackQuery):
     name = cand[3]
     await callback.answer(f"📞 Телефон {name}: {phone}", show_alert=True)
 
+
+@hr_router.callback_query(F.data.startswith("cand_note_") | F.data.startswith("note_"))
+async def cb_cand_note_ask(callback: types.CallbackQuery, state: FSMContext):
+    allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
+    if not allowed:
+        return await callback.answer("🚫 Доступ ограничен. Только для сотрудников отдела кадров.", show_alert=True)
+    ticket_id = int(callback.data.split("_")[-1])
+    cand = db.get_candidate(ticket_id)
+    if not cand:
+        return await callback.answer("Анкета не найдена!", show_alert=True)
+
+    cand_name = cand[3]
+    cur_note = cand[8] if len(cand) > 8 and cand[8] else "отсутствует"
+    await state.set_state(CandidateNoteForm.waiting_note)
+    await state.update_data(ticket_id=ticket_id)
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❌ Отмена", callback_data=f"view_{ticket_id}")
+    prompt_text = (
+        f"📝 <b>Заметка к анкете #{ticket_id} ({html.escape(cand_name)})</b>\n\n"
+        f"📌 <b>Текущая заметка:</b> <i>{html.escape(cur_note)}</i>\n\n"
+        "Отправьте текст новой заметки (или отправьте <code>-</code> для удаления):"
+    )
+    try:
+        await callback.message.reply(prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception:
+        await safe_answer(callback.message, prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@hr_router.message(CandidateNoteForm.waiting_note)
+async def process_cand_note(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    ticket_id = data.get("ticket_id")
+    cand = db.get_candidate(ticket_id)
+    if not cand:
+        await state.clear()
+        return await safe_answer(message, "⚠️ Анкета не найдена.")
+
+    text = (message.text or "").strip()
+    builder = InlineKeyboardBuilder()
+    builder.button(text=f"📑 Открыть анкету #{ticket_id}", callback_data=f"view_{ticket_id}")
+    if text == "-":
+        db.update_admin_note(ticket_id, "")
+        await state.clear()
+        await safe_answer(message, f"🗑 Заметка к анкете #{ticket_id} удалена.", reply_markup=builder.as_markup())
+    else:
+        db.update_admin_note(ticket_id, text)
+        await state.clear()
+        await safe_answer(message, f"✅ Заметка к анкете #{ticket_id} сохранена:\n«<i>{html.escape(text)}</i>»", reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@hr_router.message(Command("note", "admin_note"))
+async def cmd_set_note(message: types.Message):
+    allowed, err_text = check_hr_access_or_block(message.from_user.id, message.chat.id)
+    if not allowed:
+        return await safe_answer(message, err_text, parse_mode="HTML")
+    parts = (message.text or "").split(maxsplit=2)
+    if len(parts) < 3 or not parts[1].isdigit():
+        return await safe_answer(
+            message,
+            "ℹ️ Использование: <code>/note <номер_анкеты> <текст заметки></code>\nПример: <code>/note 12 Созвонились, ждём в четверг</code>",
+            parse_mode="HTML"
+        )
+    t_id = int(parts[1])
+    note_text = parts[2].strip()
+    db.update_admin_note(t_id, note_text)
+    builder = InlineKeyboardBuilder()
+    builder.button(text=f"📑 Открыть анкету #{t_id}", callback_data=f"view_{t_id}")
+    await safe_answer(message, f"✅ Заметка к анкете #{t_id} обновлена:\n«<i>{html.escape(note_text)}</i>»", reply_markup=builder.as_markup(), parse_mode="HTML")
+
 @hr_router.callback_query(F.data.startswith("cand_msg_"))
 async def cb_cand_direct_msg(callback: types.CallbackQuery, state: FSMContext):
     allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
     if not allowed:
-        return await callback.answer("🔒 В режиме PROD доступ закрыт для разработчика (152-ФЗ)!", show_alert=True)
+        return await callback.answer("🚫 Доступ ограничен. Только для сотрудников отдела кадров.", show_alert=True)
     ticket_id = int(callback.data.split("_")[2])
     cand = db.get_candidate(ticket_id)
     if not cand:
@@ -247,7 +325,7 @@ async def process_candidate_direct_msg(message: types.Message, state: FSMContext
 async def cb_change_status(callback: types.CallbackQuery):
     allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
     if not allowed:
-        return await callback.answer("🔒 В режиме PROD доступ к анкетам открыт только в кадровом чате (152-ФЗ)!", show_alert=True)
+        return await callback.answer("🚫 Доступ ограничен. Только для сотрудников отдела кадров.", show_alert=True)
 
     if callback.data.startswith("status_noop_"):
         return await callback.answer("ℹ️ Анкета уже имеет данный статус!", show_alert=True)
@@ -303,7 +381,7 @@ async def cb_change_status(callback: types.CallbackQuery):
     try:
         updated_cand = db.get_candidate(ticket_id)
         if updated_cand:
-            updated_card = format_hr_card_full(updated_cand)
+            updated_card = texts.format_hr_card_full(updated_cand)
             await callback.message.edit_text(updated_card, reply_markup=make_ticket_keyboard(ticket_id), parse_mode="HTML")
     except Exception:
         try:
@@ -434,7 +512,7 @@ async def cb_delete_ticket(callback: types.CallbackQuery):
 async def cb_block_candidate(callback: types.CallbackQuery):
     allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
     if not allowed:
-        return await callback.answer("🔒 В режиме PROD доступ закрыт для разработчика (152-ФЗ)!", show_alert=True)
+        return await callback.answer("🚫 Доступ ограничен. Только для сотрудников отдела кадров.", show_alert=True)
     data_parts = callback.data.split("_")
     ticket_id = int(data_parts[-1])
     cand = db.get_candidate(ticket_id)
@@ -535,7 +613,7 @@ async def cb_unblock_candidate(callback: types.CallbackQuery):
 async def cb_invite_menu(callback: types.CallbackQuery):
     allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
     if not allowed:
-        return await callback.answer("🔒 В режиме PROD доступ закрыт для разработчика (152-ФЗ)!", show_alert=True)
+        return await callback.answer("🚫 Доступ ограничен. Только для сотрудников отдела кадров.", show_alert=True)
     ticket_id = int(callback.data.split("_")[2])
     cand = db.get_candidate(ticket_id)
     if not cand:
@@ -1021,6 +1099,32 @@ async def cb_toggle_dm_notify(callback: types.CallbackQuery):
         pass
 
 
+@hr_router.callback_query(F.data == "hr_toggle_cooldown")
+async def cb_hr_toggle_cooldown(callback: types.CallbackQuery):
+    allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
+    if not allowed:
+        return await callback.answer(err_text or "🚫 Нет прав!", show_alert=True)
+
+    cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
+    if cur_cd >= 1200:
+        new_cd = 300
+    elif cur_cd >= 300:
+        new_cd = 60
+    elif cur_cd >= 60:
+        new_cd = 0
+    else:
+        new_cd = 1200
+
+    db.set_setting("cooldown_seconds", str(new_cd))
+    CONFIG["COOLDOWN_SECONDS"] = new_cd
+    cd_label = f"{new_cd // 60} мин" if new_cd > 0 else "0 сек (без задержки)"
+    await callback.answer(f"Таймаут вопросов: {cd_label}", show_alert=True)
+    try:
+        await callback.message.edit_reply_markup(reply_markup=make_admin_menu_keyboard(callback.from_user.id))
+    except Exception:
+        pass
+
+
 @hr_router.message(Command("block", "ban"))
 async def cmd_block_user(message: types.Message):
     """Блокировка пользователя в боте (добавление в ЧС с полным оповещением и закрытием заявок)."""
@@ -1261,25 +1365,7 @@ async def process_live_dialog_photo(message: types.Message, state: FSMContext, b
     except Exception as e:
         logger.error(f"Ошибка пересылки фото от кадровика: {e}")
         await safe_answer(message, f"❌ Ошибка пересылки фото: {e}")
-        #заметки и выгрузка 
-@hr_router.callback_query(F.data.startswith("cand_note_"))
-async def cb_cand_note_start(callback: types.CallbackQuery, state: FSMContext):
-    ticket_id = int(callback.data.split("_")[-1])
-    await state.update_data(note_ticket_id=ticket_id)
-    await state.set_state(CandidateNoteState.waiting_note)
-    await safe_answer(callback.message, f"📝 <b>Заметка к анкете #{ticket_id}:</b>\nОтправьте текст комментария (/cancel для отмены):", parse_mode="HTML")
-    await callback.answer()
 
-@hr_router.message(CandidateNoteState.waiting_note)
-async def process_cand_note_save(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    ticket_id = data.get("note_ticket_id")
-    await state.clear()
-    note_text = (message.text or "").strip()
-    if not note_text or note_text.startswith("/"):
-        return await safe_answer(message, "Действие отменено.")
-    db.set_candidate_note(ticket_id, note_text)
-    await safe_answer(message, f"✅ <b>Заметка к анкете #{ticket_id} сохранена:</b>\n<i>«{html.escape(note_text)}»</i>", parse_mode="HTML")
 
 @hr_router.message(Command("export"))
 @hr_router.callback_query(F.data == "hr_export_excel")
@@ -1300,6 +1386,8 @@ async def process_export_candidates(event: types.Message | types.CallbackQuery):
             return await event.message.answer(msg)
         return await safe_answer(event, msg)
 
+    import csv, io
+    from aiogram.types import BufferedInputFile
     output = io.StringIO()
     writer = csv.writer(output, delimiter=";", quoting=csv.QUOTE_MINIMAL)
     writer.writerow([
@@ -1308,22 +1396,20 @@ async def process_export_candidates(event: types.Message | types.CallbackQuery):
     ])
 
     for c in candidates:
-        # Корректное безопасное извлечение по индексам кортежа:
         row = [
             str(c[0]),                             # ID
-            str(c[9] if len(c) > 9 else ""),       # Дата подачи
-            str(c[3] if len(c) > 3 else ""),       # ФИО
-            str(c[4] if len(c) > 4 else ""),       # Телефон
-            str(c[5] if len(c) > 5 else ""),       # Вакансия
-            str(c[6] if len(c) > 6 else ""),       # Опыт работы
-            str(c[7] if len(c) > 7 else ""),       # Статус
-            str(c[8] if len(c) > 8 else ""),       # Заметка HR
-            str(c[1] if len(c) > 1 else "").upper(), # Платформа (TG / VK / MAX)
-            str(c[2] if len(c) > 2 else ""),       # ID пользователя
+            str(c[9] if len(c) > 9 and c[9] else ""),       # Дата подачи
+            str(c[3] if len(c) > 3 and c[3] else ""),       # ФИО
+            str(c[4] if len(c) > 4 and c[4] else ""),       # Телефон
+            str(c[5] if len(c) > 5 and c[5] else ""),       # Вакансия
+            str(c[6] if len(c) > 6 and c[6] else ""),       # Опыт работы
+            str(c[7] if len(c) > 7 and c[7] else ""),       # Статус
+            str(c[8] if len(c) > 8 and c[8] else ""),       # Заметка HR
+            str(c[1] if len(c) > 1 and c[1] else "").upper(), # Платформа (TG / VK / MAX)
+            str(c[2] if len(c) > 2 and c[2] else ""),       # ID пользователя
         ]
         writer.writerow(row)
 
-    from datetime import datetime
     file_bytes = output.getvalue().encode("utf-8-sig")
     filename = f"candidates_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
     doc = BufferedInputFile(file_bytes, filename=filename)
@@ -1335,128 +1421,229 @@ async def process_export_candidates(event: types.Message | types.CallbackQuery):
         parse_mode="HTML"
     )
 
-@hr_router.callback_query(F.data == "hr_toggle_cooldown")
-async def cb_hr_toggle_cooldown(callback: types.CallbackQuery):
-    allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
-    if not allowed:
-        return await callback.answer(err_text or "🚫 Нет прав!", show_alert=True)
 
-    cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
-    if cur_cd >= 1200:
-        new_cd = 300
-    elif cur_cd >= 300:
-        new_cd = 60
-    elif cur_cd >= 60:
-        new_cd = 0
-    else:
-        new_cd = 1200
 
-    db.set_setting("cooldown_seconds", str(new_cd))
-    CONFIG["COOLDOWN_SECONDS"] = new_cd
-    cd_label = f"{new_cd // 60} мин" if new_cd > 0 else "0 сек (без задержки)"
-    await callback.answer(f"Таймаут вопросов: {cd_label}", show_alert=True)
+# =====================================================================
+# АВТО-УПРАВЛЕНИЕ РОЛЯМИ В КАДРОВОМ ЧАТЕ (ВХОД, ВЫХОД, СООБЩЕНИЯ)
+# =====================================================================
+
+async def grant_hr_role_and_welcome(user: types.User, chat_id: int, bot: Bot) -> None:
+    """Выдаёт роль HR в базе и отправляет приветствие с тегом по нику."""
+    if user.is_bot or user.id == CONFIG.get("SUPER_ADMIN_ID"):
+        return
+
+    # Записываем в базу роль hr
+    db.unblock_user(user.id)
+    db.add_admin(user.id, role="hr")
+
+    name_escaped = html.escape(user.full_name or "Сотрудник")
+    user_tag = f"@{user.username}" if user.username else name_escaped
+
+    welcome_msg = (
+        f"👋 <b>Добро пожаловать в кадровую службу, {user_tag}!</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"✅ Вам <b>автоматически открыт доступ</b> к кадровой панели: <code>/admin</code>.\n\n"
+        f"💡 <i>Чтобы бот мог пересылать вам анкеты соискателей в личные сообщения, "
+        f"откройте диалог с ботом и нажмите <b>/start</b>.</i>"
+    )
+    await safe_send(bot, chat_id, welcome_msg)
+
+
+# 1. Когда сотрудника ДОБАВИЛИ в группу
+@hr_router.message(F.new_chat_members)
+async def on_hr_user_added(message: types.Message, bot: Bot):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    if hr_group and message.chat.id == hr_group:
+        for new_user in message.new_chat_members:
+            await grant_hr_role_and_welcome(new_user, message.chat.id, bot)
+
+
+# 2. Когда сотрудник САМ ЗАШЁЛ по ссылке-приглашению
+@hr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
+async def on_hr_user_joined(event: types.ChatMemberUpdated, bot: Bot):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    if hr_group and event.chat.id == hr_group:
+        await grant_hr_role_and_welcome(event.new_chat_member.user, hr_group, bot)
+
+
+# 3. Для тех, кто УЖЕ в группе (выдаёт роль при первом отправленном сообщении)
+@hr_router.message(F.chat.type.in_({"group", "supergroup"}))
+async def on_existing_hr_member_message(message: types.Message, bot: Bot):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    if not hr_group or message.chat.id != hr_group or message.from_user.is_bot:
+        return
+
+    user_id = message.from_user.id
+    if user_id != CONFIG.get("SUPER_ADMIN_ID"):
+        if db.get_admin_role(user_id) != "hr":
+            await grant_hr_role_and_welcome(message.from_user, hr_group, bot)
+
+
+# 4. Когда сотрудника КИКНУЛИ или он САМ ВЫШЕЛ — роль снимается из базы
+@hr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION))
+async def on_hr_member_left(event: types.ChatMemberUpdated, bot: Bot):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    super_admin = CONFIG.get("SUPER_ADMIN_ID")
+    if not hr_group or event.chat.id != hr_group:
+        return
+
+    user = event.old_chat_member.user
+    if user.is_bot or user.id == super_admin:
+        return
+
+    # Моментально отзываем роль HR из базы данных
+    db.remove_admin(user.id)
+
+    name_escaped = html.escape(user.full_name or "Сотрудник")
+    user_tag = f"@{user.username} ({name_escaped})" if user.username else f"{name_escaped} [ID: <code>{user.id}</code>]"
+    actor = event.from_user
+
+    action_text = "исключён из чата" if (actor and actor.id != user.id) else "покинул чат"
+    await safe_send(
+        bot,
+        hr_group,
+        f"⛔ <b>Сотрудник {action_text}:</b> {user_tag}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔒 <b>Роль HR аннулирована в базе данных.</b> Доступ к <code>/admin</code> закрыт."
+    )
+
+
+# 5. Быстрый кик администратором чата через команду /kick (ответом на сообщение)
+@hr_router.message(Command("kick", "kick_hr"))
+async def cmd_kick_hr_reply(message: types.Message, bot: Bot):
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    super_admin = CONFIG.get("SUPER_ADMIN_ID")
+    user_id = message.from_user.id
+
+    if user_id != super_admin and not is_tech_admin(user_id):
+        try:
+            m = await bot.get_chat_member(message.chat.id, user_id)
+            if not isinstance(m, (ChatMemberAdministrator, ChatMemberOwner)):
+                return await safe_answer(message, "🚫 Исключать сотрудников могут только администраторы чата.")
+        except Exception:
+            return await safe_answer(message, "🚫 Недостаточно прав.")
+
+    if not message.reply_to_message or not message.reply_to_message.from_user:
+        return await safe_answer(message, "ℹ️ Ответьте командой <code>/kick</code> на сообщение сотрудника в группе.", parse_mode="HTML")
+
+    target = message.reply_to_message.from_user
+    if target.is_bot or target.id == super_admin:
+        return await safe_answer(message, "🚫 Нельзя исключить данного пользователя.")
+
+    db.remove_admin(target.id)
     try:
-        await callback.message.edit_reply_markup(reply_markup=make_admin_menu_keyboard(callback.from_user.id))
+        await bot.ban_chat_member(message.chat.id, target.id)
+        await bot.unban_chat_member(message.chat.id, target.id)
     except Exception:
         pass
-@hr_router.callback_query(F.data.startswith("cand_note_") | F.data.startswith("note_"))
-async def cb_cand_note_ask(callback: types.CallbackQuery, state: FSMContext):
-    allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
-    if not allowed:
-        return await callback.answer("🔒 В режиме PROD доступ закрыт для разработчика (152-ФЗ)!", show_alert=True)
-    ticket_id = int(callback.data.split("_")[-1])
-    cand = db.get_candidate(ticket_id)
-    if not cand:
-        return await callback.answer("Анкета не найдена!", show_alert=True)
 
-    cand_name = cand[3]
-    cur_note = cand[8] if len(cand) > 8 and cand[8] else "отсутствует"
-    await state.set_state(CandidateNoteForm.waiting_note)
-    await state.update_data(ticket_id=ticket_id)
-
-    builder = InlineKeyboardBuilder()
-    builder.button(text="❌ Отмена", callback_data=f"view_{ticket_id}")
-    prompt_text = (
-        f"📝 <b>Заметка к анкете #{ticket_id} ({html.escape(cand_name)})</b>\n\n"
-        f"📌 <b>Текущая заметка:</b> <i>{html.escape(cur_note)}</i>\n\n"
-        "Отправьте текст новой заметки (или отправьте <code>-</code> для очистки):"
-    )
-    try:
-        await callback.message.reply(prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
-    except Exception:
-        await safe_answer(callback.message, prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
-    await callback.answer()
-
-
-@hr_router.message(CandidateNoteForm.waiting_note)
-async def process_cand_note(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    ticket_id = data.get("ticket_id")
-    cand = db.get_candidate(ticket_id)
-    if not cand:
-        await state.clear()
-        return await safe_answer(message, "⚠️ Анкета не найдена.")
-
-    text = (message.text or "").strip()
-    builder = InlineKeyboardBuilder()
-    builder.button(text=f"📑 Открыть анкету #{ticket_id}", callback_data=f"view_{ticket_id}")
-    if text == "-":
-        db.update_admin_note(ticket_id, "")
-        await state.clear()
-        await safe_answer(message, f"🗑 Заметка к анкете #{ticket_id} удалена.", reply_markup=builder.as_markup())
-    else:
-        db.update_admin_note(ticket_id, text)
-        await state.clear()
-        await safe_answer(
-            message,
-            f"✅ Заметка к анкете #{ticket_id} сохранена:\n«<i>{html.escape(text)}</i>»",
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML"
-        )
-
-
-# Альтернативный способ: быстрая команда в чате
-@hr_router.message(Command("note", "admin_note"))
-async def cmd_set_note(message: types.Message):
-    """Позволяет поставить заметку командой: /note 15 Ждём на собеседование"""
-    allowed, err_text = check_hr_access_or_block(message.from_user.id, message.chat.id)
-    if not allowed:
-        return await safe_answer(message, err_text, parse_mode="HTML")
-    parts = (message.text or "").split(maxsplit=2)
-    if len(parts) < 3 or not parts[1].isdigit():
-        return await safe_answer(
-            message,
-            "ℹ️ Формат команды: <code>/note <номер_анкеты> <текст заметки></code>\nПример: <code>/note 15 Созвонились, ждём в четверг</code>",
-            parse_mode="HTML"
-        )
-    t_id = int(parts[1])
-    note_text = parts[2].strip()
-    db.update_admin_note(t_id, note_text)
-    builder = InlineKeyboardBuilder()
-    builder.button(text=f"📑 Открыть анкету #{t_id}", callback_data=f"view_{t_id}")
+    target_tag = f"@{target.username}" if target.username else html.escape(target.full_name)
     await safe_answer(
         message,
-        f"✅ Заметка к анкете #{t_id} обновлена:\n«<i>{html.escape(note_text)}</i>»",
-        reply_markup=builder.as_markup(),
+        f"✅ <b>Сотрудник {target_tag} исключён из кадровой группы.</b>\n"
+        f"Роль HR удалена из базы, доступ к панели <code>/admin</code> аннулирован.",
         parse_mode="HTML"
     )
 
 
-@hr_router.message(CandidateNoteForm.waiting_note)
-async def process_cand_note(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    ticket_id = data.get("ticket_id")
-    cand = db.get_candidate(ticket_id)
-    if not cand:
-        await state.clear()
-        return await safe_answer(message, "⚠️ Анкета не найдена.")
+# =====================================================================
+# 6. ДВУХСТОРОННЯЯ СИНХРОНИЗАЦИЯ (/sync): ВЫДАЕТ И ЗАБИРАЕТ РОЛИ
+# =====================================================================
 
-    text = (message.text or "").strip()
-    if text == "-":
-        db.update_admin_note(ticket_id, "")
-        await state.clear()
-        await safe_answer(message, f"🗑 Заметка к анкете #{ticket_id} удалена.")
-    else:
-        db.update_admin_note(ticket_id, text)
-        await state.clear()
-        await safe_answer(message, f"✅ Заметка к анкете #{ticket_id} сохранена:\n<i>{html.escape(text)}</i>", parse_mode="HTML")
+@hr_router.message(Command("sync", "sync_group"))
+@hr_router.callback_query(F.data == "hr_sync_all_in_one")
+async def cmd_sync_group_two_way(event: types.Message | types.CallbackQuery, bot: Bot):
+    user_id = event.from_user.id
+    chat_id = event.message.chat.id if isinstance(event, types.CallbackQuery) else event.chat.id
+    allowed, err = check_hr_access_or_block(user_id, chat_id)
+    if not allowed:
+        return await safe_answer(event, err or "🚫 Доступ ограничен.")
+
+    hr_group = CONFIG.get("HR_GROUP_ID", 0)
+    super_admin = CONFIG.get("SUPER_ADMIN_ID", 0)
+
+    if not hr_group:
+        return await safe_answer(event, "⚠️ Кадровая группа не привязана! Используйте <code>/set_group</code> в группе.")
+
+    try:
+        # Проверяем бота в группе
+        bot_member = await bot.get_chat_member(hr_group, bot.id)
+        if not isinstance(bot_member, (ChatMemberAdministrator, ChatMemberOwner)):
+            return await safe_answer(event, "⚠️ <b>Бот не является администратором группы кадров!</b>\nВыдайте боту права администратора в чате.")
+
+        # 1. Получаем список действующих администраторов группы
+        group_admins = await bot.get_chat_administrators(hr_group)
+        current_admin_ids = {a.user.id for a in group_admins if not a.user.is_bot}
+
+        # 2. Получаем всех, кто сейчас записан в базе с ролью HR
+        db_hr_ids = [adm_id for adm_id, role in db.get_all_admins() if role == "hr"]
+
+        active_list = []
+        added_list = []
+        removed_list = []
+
+        # А) Проверяем администраторов группы -> выдаём роль в базе
+        for a in group_admins:
+            u = a.user
+            if u.is_bot:
+                continue
+
+            name = html.escape(u.full_name or "Сотрудник")
+            user_label = f"@{u.username} ({name})" if u.username else f"{name} [ID: <code>{u.id}</code>]"
+
+            if u.id == super_admin:
+                active_list.append(f"👑 <b>{user_label}</b> — Владелец")
+                continue
+
+            if db.get_admin_role(u.id) != "hr":
+                db.unblock_user(u.id)
+                db.add_admin(u.id, role="hr")
+                added_list.append(user_label)
+                active_list.append(f"➕ <b>{user_label}</b> — <b>выдана роль HR</b>")
+            else:
+                active_list.append(f"👤 <b>{user_label}</b> — роль HR активна ✅")
+
+        # Б) Проверяем тех, кто в базе, но кого нет в группе -> ЗАБИРАЕМ РОЛЬ
+        for old_hr_id in db_hr_ids:
+            if old_hr_id == super_admin:
+                continue
+
+            try:
+                member = await bot.get_chat_member(hr_group, old_hr_id)
+                is_still_in_group = member.status not in ("left", "kicked")
+            except Exception:
+                is_still_in_group = False
+
+            if not is_still_in_group:
+                db.remove_admin(old_hr_id)
+                try:
+                    c = await bot.get_chat(old_hr_id)
+                    rem_label = f"@{c.username}" if c.username else c.full_name
+                except Exception:
+                    rem_label = f"ID: <code>{old_hr_id}</code>"
+                removed_list.append(rem_label)
+
+        # Формируем наглядный отчет
+        report = (
+            "🔄 <b>СИНХРОНИЗАЦИЯ БАЗЫ ДАННЫХ И ЧАТА</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏢 <b>Кадровый чат:</b> <code>{hr_group}</code>\n\n"
+            f"👥 <b>Сотрудники кадровой службы в базе:</b>\n"
+            + ("\n".join(active_list) if active_list else "<i>Список пуст</i>")
+            + "\n━━━━━━━━━━━━━━━━━━━━━\n"
+        )
+        if added_list:
+            report += f"➕ <b>Выдана роль HR ({len(added_list)}):</b>\n" + "\n".join(f"• {x}" for x in added_list) + "\n\n"
+        if removed_list:
+            report += f"➖ <b>Забрана роль HR (покинули чат) ({len(removed_list)}):</b>\n" + "\n".join(f"• {x}" for x in removed_list) + "\n\n"
+
+        report += "<i>Все права зафиксированы в базе данных и соответствуют чату.</i>"
+
+        if isinstance(event, types.CallbackQuery):
+            await event.message.edit_text(report, parse_mode="HTML")
+            await event.answer("Синхронизировано!")
+        else:
+            await safe_answer(event, report, parse_mode="HTML")
+
+    except Exception as e:
+        await safe_answer(event, f"❌ Ошибка синхронизации: <code>{html.escape(str(e))}</code>", parse_mode="HTML")

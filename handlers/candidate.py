@@ -439,7 +439,7 @@ async def cb_cand_ask_question(event: types.CallbackQuery | types.Message, state
     is_admin = (user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id))
     env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
     if env_mode in ("PROD", "PRODUCTION") and not is_admin:
-        allowed, seconds_left = db.can_send_inquiry(str(user_id), cooldown_seconds=CONFIG.get("COOLDOWN_SECONDS", 1200))
+        allowed, seconds_left = db.check_inquiry_cooldown(str(user_id), cooldown_seconds=CONFIG.get("COOLDOWN_SECONDS", 1200))
         if not allowed:
             mins = (seconds_left // 60) + 1
             msg_text = texts.format_inquiry_cooldown(mins)
@@ -499,7 +499,7 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
         full_name=full_name,
         phone=phone,
         vacancy=vacancy,
-        question=q_text,
+        question_text=q_text,
         is_test=is_test_inq,
         consent_timestamp=consent_ts
     )
@@ -811,6 +811,23 @@ async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext):
         parse_mode="HTML"
     )
     await callback.answer()
+
+
+
+@candidate_router.message(CandidateForm.custom_vacancy)
+async def process_custom_vacancy_text(message: types.Message, state: FSMContext):
+    val = (message.text or "").strip()
+    if not val:
+        return await safe_answer(message, "⚠️ Пожалуйста, впишите желаемую должность текстом.")
+    await state.update_data(vacancy=val)
+    await state.set_state(CandidateForm.has_license)
+    await safe_answer(
+        message,
+        f"🎯 Вакансия: <b>{html.escape(val)}</b>\n\n{texts.SURVEY_STEP6_LICENSE}",
+        reply_markup=make_step6_license_kb(),
+        parse_mode="HTML"
+    )
+
 
 # --- ШАГ 6: ВОДИТЕЛЬСКОЕ УДОСТОВЕРЕНИЕ ---
 @candidate_router.callback_query(CandidateForm.has_license, F.data.in_(["lic_yes", "lic_no"]))

@@ -295,6 +295,7 @@ def make_tests_menu_keyboard() -> types.InlineKeyboardMarkup:
     builder.button(text="📡 Проверить шлюз ВКонтакте", callback_data="test_ping_vk")
     builder.button(text="♻️ Сбросить мою анкету (/reset)", callback_data="test_do_reset")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")
+    builder.button(text="🔕 Переключить ЛС-уведы всем HR", callback_data="tech_force_toggle_hr_dm")
     builder.adjust(1, 1, 1, 1, 1, 1)
     return builder.as_markup()
 

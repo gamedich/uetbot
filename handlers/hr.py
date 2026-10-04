@@ -23,6 +23,7 @@ import os
 import re
 from datetime import datetime
 from typing import Optional, List, Tuple, Any
+from common import HRAccessMiddleware  # добавить в импорты из common
 
 from aiogram import Router, F, types, Bot
 from aiogram.filters import Command, StateFilter
@@ -63,6 +64,9 @@ from keyboards import (
 
 logger = logging.getLogger("HR_HANDLER")
 hr_router = Router(name="hr")
+
+hr_router.message.middleware(HRAccessMiddleware())
+hr_router.callback_query.middleware(HRAccessMiddleware())
 
 
 def check_hr_access_or_block(user_id: int, chat_id: int) -> tuple[bool, str | None]:

@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 Шлюз интеграции с корпоративным мессенджером МАКС (VK Teams / MyTeam) для МУП «Ульяновскэлектротранс».
-Работает внутри единого процесса бота в фоновой задаче asyncio.
-Автоматически активируется при наличии MAX_BOT_TOKEN в .env.
+Поддерживает:
+- Автономный Long Poll для API MyTeam (VK Teams).
+- Интеграцию с единым сервисным слоем CandidateService и texts.py.
+- Полный контур 152-ФЗ РФ (согласие перед анкетой и вопросом).
+- Двусторонний мост прямого диалога соискателя из МАКС со специалистом кадровой службы в Telegram.
+- Автоматически активируется при наличии MAX_BOT_TOKEN в .env.
 """
+from __future__ import annotations
+
 import asyncio
 import html
 import json
@@ -11,10 +17,12 @@ import logging
 import re
 from datetime import datetime
 from typing import Optional, Dict, Any, List
+
 from aiohttp import ClientSession, ClientTimeout
 from aiogram import Bot
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+import texts
 from common import (
     CONFIG,
     VACANCIES,
@@ -24,6 +32,7 @@ from common import (
     route_new_inquiry_ticket,
     safe_send
 )
+from candidate_service import candidate_service
 from database import ResumeDB
 from keyboards import make_ticket_keyboard, make_inquiry_admin_keyboard
 
@@ -146,7 +155,7 @@ async def handle_max_message(
             f"━━━━━━━━━━━━━━━━━━━━━"
         )
         builder = InlineKeyboardBuilder()
-        builder.button(text="⏹ Завершить диалог", callback_data=f"stop_live_{user_id}")
+        builder.button(text="⏹ Завершить диалог", callback_data=f"end_live_dlg_{user_id}")
         await safe_send(tg_bot, op_id, relayed, reply_markup=builder.as_markup())
         return
 
@@ -213,33 +222,24 @@ async def handle_max_message(
             )
         return await send_max_message(session, api_base, token, chat_id, my_text, keyboard=make_max_main_keyboard())
 
-    # 5. Контакты
+    # 5. Контакты (синхронизировано с texts.py)
     if clean_lower in ("контакты", "/contacts") or payload_cmd == "contacts":
-        text_contacts = (
-            f"🏢 <b>МУП «Ульяновскэлектротранс» (Отдел кадров)</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━\n"
-            f"📍 Адрес: {CONFIG['HR_ADDRESS']}\n"
-            f"☎️ Телефон: {CONFIG['HR_PHONE']}\n"
-            f"⏰ График приёма: {CONFIG['HR_SCHEDULE']}\n\n"
-            "🚋 Проезд трамваями № 4, 22 до остановки «Улица Гончарова» или «ЦУМ»."
-        )
+        text_contacts = texts.CONTACTS_SCREEN
         return await send_max_message(session, api_base, token, chat_id, text_contacts, keyboard=make_max_main_keyboard())
 
-    # 6. FAQ
+    # 6. FAQ (синхронизировано с texts.py)
     if clean_lower in ("faq", "/faq", "вопросы") or payload_cmd == "faq":
         faq_text = (
             "📚 <b>ЧАСТЫЕ ВОПРОСЫ (FAQ)</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            "🎓 <b>Обучение на водителя:</b>\n"
-            "Бесплатное обучение от 4.5 до 6 месяцев со стипендией и 100% трудоустройством.\n\n"
-            "🛡 <b>Соцпакет:</b>\n"
-            "Бесплатный проезд на электротранспорте, доставка служебными рейсами, льготная пенсия для водителей."
+            f"{texts.FAQ_DATA.get('faq_training', '')}\n\n"
+            f"{texts.FAQ_DATA.get('faq_salary', '')}"
         )
         return await send_max_message(session, api_base, token, chat_id, faq_text, keyboard=make_max_main_keyboard())
 
-    # 7. Подача анкеты (/apply)
+    # 7. Подача анкеты (/apply) через CandidateService
     if clean_lower in ("/apply", "подать анкету", "заполнить анкету") or payload_cmd == "apply":
-        can_apply, reason, info = db.check_candidate_can_apply(str(user_id), platform="max")
+        can_apply, reason, info = candidate_service.check_can_apply(str(user_id), platform="max")
         if not can_apply and info:
             ticket_id = info.get("ticket_id")
             if reason == "unprocessed":
@@ -258,12 +258,7 @@ async def handle_max_message(
 
         EXTERNAL_SESSIONS[key] = {"step": "waiting_consent_apply", "data": {}}
         apply_prompt = (
-            "⚖️ <b>СОГЛАСИЕ НА ОБРАБОТКУ ПЕРСОНАЛЬНЫХ ДАННЫХ (152-ФЗ РФ)</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━\n"
-            "Для подачи анкеты на трудоустройство в МУП «Ульяновскэлектротранс» (г. Ульяновск, ул. Гончарова, 17) "
-            "требуется ваше согласие на обработку персональных данных (ФИО, телефон, опыт работы).\n\n"
-            "🎯 <b>Цель:</b> рассмотрение кандидатуры на трудоустройство.\n"
-            "🔒 <b>Защита:</b> данные защищены и уничтожаются по вашему требованию (ст. 21 152-ФЗ).\n"
+            f"{texts.CONSENT_SURVEY_PROMPT}\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Для продолжения нажмите кнопку «✅ Согласен» ниже:</i>"
         )
@@ -281,10 +276,8 @@ async def handle_max_message(
 
         EXTERNAL_SESSIONS[key] = {"step": "waiting_consent_ask", "data": {}}
         ask_prompt = (
-            "⚖️ <b>СОГЛАСИЕ НА ОБРАБОТКУ ПЕРСОНАЛЬНЫХ ДАННЫХ (152-ФЗ РФ)</b>\n"
+            f"{texts.CONSENT_INQUIRY_PROMPT}\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            "Направляя обращение в кадровую службу МУП «Ульяновскэлектротранс», вы подтверждаете согласие "
-            "на обработку контактных данных для рассмотрения вопроса и связи с вами.\n\n"
             "<i>Для продолжения нажмите кнопку «✅ Согласен» ниже:</i>"
         )
         return await send_max_message(session, api_base, token, chat_id, ask_prompt, keyboard=make_max_consent_keyboard("consent_ask"))
@@ -309,23 +302,22 @@ async def handle_max_message(
 
         # Б. Ввод ФИО
         elif step == "name":
-            if len(clean.split()) < 2:
+            is_valid, clean_name, err = candidate_service.validate_fio(clean)
+            if not is_valid:
                 return await send_max_message(
                     session, api_base, token, chat_id,
-                    "⚠️ Пожалуйста, укажите имя и фамилию полностью (минимум 2 слова):",
+                    f"⚠️ {err or 'Пожалуйста, укажите имя и фамилию полностью (минимум 2 слова):'}",
                     keyboard=make_max_cancel_keyboard()
                 )
-            session_data["data"]["full_name"] = clean
+            session_data["data"]["full_name"] = clean_name
             session_data["step"] = "phone"
             prompt = "2️⃣ Укажите ваш <b>контактный номер телефона</b> (например: <code>+79001234567</code> или <code>89001234567</code>):"
             return await send_max_message(session, api_base, token, chat_id, prompt, keyboard=make_max_cancel_keyboard())
 
         # В. Ввод телефона
         elif step == "phone":
-            digits = re.sub(r'\D', '', clean)
-            if len(digits) == 11 and digits.startswith(('7', '8')):
-                norm_phone = "+7" + digits[1:]
-            else:
+            is_valid, norm_phone, err = candidate_service.validate_phone(clean)
+            if not is_valid:
                 return await send_max_message(
                     session, api_base, token, chat_id,
                     "⚠️ Некорректный номер. Введите 11 цифр (например: <code>+79001234567</code>):",
@@ -362,6 +354,219 @@ async def handle_max_message(
                 exp_text = "Без опыта"
             else:
                 exp_text = clean or "Указан в резюме"
-async def run_max_gateway(bot, db):
-    pass
 
+            session_data["data"]["experience"] = exp_text
+            cand_data = session_data["data"]
+            if key in EXTERNAL_SESSIONS:
+                del EXTERNAL_SESSIONS[key]
+
+            cand_data["user_id"] = str(user_id)
+            ticket_id, meta = candidate_service.register_candidate(cand_data, platform="max")
+            fn = meta["full_name"]
+            ph = meta["phone"]
+            vc = meta["vacancy"]
+            cand_consent = meta["consent_timestamp"]
+            recom_line = "\n💡 <b>Рекомендация:</b> кандидат без опыта, можно предложить обучение\n" if meta["offer_training"] else ""
+
+            safe_fn = html.escape(fn)
+            safe_ph = html.escape(ph)
+            safe_vc = html.escape(vc)
+            safe_ex = html.escape(exp_text)
+
+            admin_card = (
+                f"📑 <b>НОВАЯ АНКЕТА СОИСКАТЕЛЯ #{ticket_id} [MAX]</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📁 <b>База:</b> <code>resumes.db</code> (Боевая)\n"
+                f"👤 <b>ФИО:</b> {safe_fn}\n"
+                f"📞 <b>Телефон:</b> <code>{safe_ph}</code>\n"
+                f"🎯 <b>Должность:</b> {safe_vc}\n"
+                f"💼 <b>Опыт:</b> {safe_ex}\n"
+                f"⚖️ <b>Согласие 152-ФЗ:</b> <code>✅ Получено ({cand_consent})</code>\n"
+                f"⏱ <b>Время подачи:</b> <code>{datetime.now().strftime('%d.%m.%Y %H:%M')}</code>\n"
+                f"{recom_line}"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"<i>Действия кадровой службы:</i>"
+            )
+            try:
+                await route_new_candidate_ticket(tg_bot, admin_card, reply_markup=make_ticket_keyboard(ticket_id))
+                logger.info(f"Анкета #{ticket_id} [MAX] успешно доставлена в Telegram!")
+            except Exception as e:
+                logger.error(f"Ошибка отправки анкеты #{ticket_id} в Telegram: {e}")
+
+            resp_text = (
+                f"🎉 Спасибо! Ваша анкета #{ticket_id} успешно отправлена.\n\n"
+                f"Специалисты отдела кадров свяжутся с вами по телефону {ph}.\n"
+                f"Статус заявки доступен по кнопке «📑 Моя анкета».\n"
+                f"Телефон отдела кадров: {CONFIG['HR_PHONE']}."
+            )
+            return await send_max_message(session, api_base, token, chat_id, resp_text, keyboard=make_max_main_keyboard())
+
+        # Е. Согласие перед вопросом
+        elif step == "waiting_consent_ask":
+            if payload_cmd == "consent_ask" or clean_lower in ("согласен", "да", "✅ согласен"):
+                session_data["data"]["consent_timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                session_data["step"] = "waiting_question"
+                msg = "💬 Напишите ваш вопрос <b>одним сообщением</b>. Он будет передан специалисту кадровой службы:"
+                return await send_max_message(session, api_base, token, chat_id, msg, keyboard=make_max_cancel_keyboard())
+            else:
+                return await send_max_message(
+                    session, api_base, token, chat_id,
+                    "⚠️ Для отправки вопроса нажмите кнопку «✅ Согласен» ниже:",
+                    keyboard=make_max_consent_keyboard("consent_ask")
+                )
+
+        # Ж. Текст вопроса
+        elif step == "waiting_question":
+            is_valid, clean_q, err = candidate_service.validate_question(clean)
+            if not is_valid:
+                return await send_max_message(
+                    session, api_base, token, chat_id,
+                    f"⚠️ {err or 'Напишите ваш вопрос текстом в одном сообщении:'}",
+                    keyboard=make_max_cancel_keyboard()
+                )
+
+            inq_consent = session_data.get("data", {}).get("consent_timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if key in EXTERNAL_SESSIONS:
+                del EXTERNAL_SESSIONS[key]
+
+            last_cand = db.get_candidate_by_user_id(str(user_id), platform="max")
+            if last_cand:
+                ticket_id = last_cand[0]
+                full_name = last_cand[3]
+                phone = last_cand[4]
+                vacancy = last_cand[5]
+            else:
+                ticket_id = None
+                full_name = f"Пользователь МАКС id{user_id}"
+                phone = "Не указан"
+                vacancy = "Анкета не подана"
+
+            ok, status_msg, inquiry_id = candidate_service.submit_inquiry(
+                user_id=str(user_id),
+                question_text=clean_q,
+                platform="max",
+                ticket_id=ticket_id,
+                full_name=full_name,
+                phone=phone,
+                vacancy=vacancy,
+                consent_timestamp=inq_consent
+            )
+
+            safe_clean = html.escape(clean_q)
+            safe_full = html.escape(full_name)
+            card_text = (
+                f"📩 <b>ОБРАЩЕНИЕ СОИСКАТЕЛЯ #{inquiry_id} [MAX]</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📁 <b>База:</b> <code>resumes.db</code> (Боевая)\n"
+                f"👤 <b>Кандидат:</b> {safe_full}\n"
+                f"📞 <b>Телефон:</b> <code>{html.escape(phone)}</code>\n"
+                f"🎯 <b>Вакансия:</b> {html.escape(vacancy)}\n"
+                f"⚖️ <b>Согласие 152-ФЗ:</b> <code>✅ Получено ({inq_consent})</code>\n"
+                f"⏱ <b>Время:</b> <code>{datetime.now().strftime('%d.%m.%Y %H:%M')}</code>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"❓ <b>Вопрос:</b>\n"
+                f"«{safe_clean}»"
+            )
+            try:
+                await route_new_inquiry_ticket(tg_bot, card_text, reply_markup=make_inquiry_admin_keyboard(inquiry_id))
+                logger.info(f"Вопрос #{inquiry_id} [MAX] успешно доставлен в Telegram!")
+            except Exception as e:
+                logger.error(f"Ошибка отправки вопроса #{inquiry_id} в Telegram: {e}")
+
+            conf_text = (
+                f"✅ Ваш вопрос принят! (Обращение #{inquiry_id})\n\n"
+                f"Специалист рассмотрит его в рабочее время ({CONFIG['HR_SCHEDULE']}). Ответ поступит прямо в этот диалог.\n\n"
+                f"Телефон отдела кадров: {CONFIG['HR_PHONE']}."
+            )
+            return await send_max_message(session, api_base, token, chat_id, conf_text, keyboard=make_max_main_keyboard())
+
+    # Главное меню по умолчанию
+    welcome = (
+        "👋 Здравствуйте! Вас приветствует официальный бот по подбору персонала <b>МУП «Ульяновскэлектротранс»</b> в мессенджере МАКС.\n\n"
+        "Воспользуйтесь кнопками меню ниже для подачи анкеты или связи с кадровой службой:"
+    )
+    return await send_max_message(session, api_base, token, chat_id, welcome, keyboard=make_max_main_keyboard())
+
+# ==================== ГЛАВНЫЙ ЦИКЛ LONG POLL ДЛЯ МАКС ====================
+
+async def run_max_gateway(bot: Bot, db: ResumeDB):
+    """Фоновый воркер Long Poll для мессенджера МАКС внутри единого процесса бота."""
+    token = CONFIG.get("MAX_BOT_TOKEN", "").strip()
+    api_base = CONFIG.get("MAX_API_BASE", "https://api.myteam.mail.ru/bot/v1").rstrip("/")
+
+    if not token:
+        logger.info("МАКС: токен не указан в .env (MAX_BOT_TOKEN пуст). Шлюз ожидает настройки.")
+        return
+
+    logger.info("Запуск фонового шлюза МАКС внутри единого процесса бота...")
+    timeout = ClientTimeout(total=45)
+    last_event_id = 0
+
+    while True:
+        try:
+            async with ClientSession(timeout=timeout) as session:
+                SYSTEM_METRICS["max_online"] = True
+                logger.info("МАКС: подключение к серверу мессенджера успешно установлено.")
+
+                while True:
+                    poll_url = f"{api_base}/events/get"
+                    params = {"token": token, "lastEventId": last_event_id, "pollTime": 25}
+                    async with session.get(poll_url, params=params) as resp:
+                        if resp.status != 200:
+                            await asyncio.sleep(5)
+                            continue
+                        events_data = await resp.json()
+
+                    for event in events_data.get("events", []):
+                        last_event_id = max(last_event_id, event.get("eventId", last_event_id))
+                        ev_type = event.get("type")
+
+                        if ev_type == "newMessage":
+                            payload = event.get("payload", {})
+                            chat_id = payload.get("chat", {}).get("chatId")
+                            from_user = payload.get("from", {}).get("userId") or chat_id
+                            text = payload.get("text", "")
+                            if chat_id and text:
+                                asyncio.create_task(
+                                    handle_max_message(
+                                        user_id=str(from_user),
+                                        chat_id=str(chat_id),
+                                        text=text,
+                                        db=db,
+                                        tg_bot=bot,
+                                        session=session,
+                                        api_base=api_base,
+                                        token=token
+                                    )
+                                )
+
+                        elif ev_type == "callbackQuery":
+                            payload = event.get("payload", {})
+                            query_id = payload.get("queryId")
+                            cb_data = payload.get("callbackData", "")
+                            chat_id = payload.get("message", {}).get("chat", {}).get("chatId")
+                            from_user = payload.get("from", {}).get("userId") or chat_id
+                            if query_id:
+                                asyncio.create_task(answer_max_callback(session, api_base, token, query_id))
+                            if chat_id:
+                                asyncio.create_task(
+                                    handle_max_message(
+                                        user_id=str(from_user),
+                                        chat_id=str(chat_id),
+                                        text="",
+                                        db=db,
+                                        tg_bot=bot,
+                                        session=session,
+                                        api_base=api_base,
+                                        token=token,
+                                        payload_cmd=cb_data
+                                    )
+                                )
+
+        except asyncio.CancelledError:
+            logger.info("Фоновый шлюз МАКС остановлен.")
+            break
+        except Exception as e:
+            logger.warning(f"Сбой цикла Long Poll МАКС: {e}. Переподключение через 5 сек...")
+            SYSTEM_METRICS["max_online"] = False
+            await asyncio.sleep(5)

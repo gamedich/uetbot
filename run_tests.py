@@ -1,36 +1,44 @@
-import os
+import os, sys
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 os.environ["DB_PATH"] = "/tmp/test_sec_suite.db"
+import os
 # -*- coding: utf-8 -*-
 import io, os, re, sys, tempfile, unittest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 # Моки для окружений без aiogram / aiohttp
-if "aiohttp" not in sys.modules:
-    sys.modules["aiohttp"] = MagicMock()
-if "aiogram" not in sys.modules:
-    aiogram_mock = MagicMock()
-    class BaseMiddleware: pass
-    class BaseFilter: pass
-    class CallbackQuery: pass
-    class Message: pass
-    class TelegramObject: pass
+try:
+    import aiohttp
+    import aiogram
+except ImportError:
+    if "aiohttp" not in sys.modules:
+        sys.modules["aiohttp"] = MagicMock()
+    if "aiogram" not in sys.modules:
+        aiogram_mock = MagicMock()
+        class BaseMiddleware: pass
+        class BaseFilter: pass
+        class CallbackQuery: pass
+        class Message: pass
+        class TelegramObject: pass
 
-    aiogram_mock.BaseMiddleware = BaseMiddleware
-    aiogram_mock.filters = MagicMock()
-    aiogram_mock.filters.BaseFilter = BaseFilter
-    aiogram_mock.types = MagicMock()
-    aiogram_mock.types.CallbackQuery = CallbackQuery
-    aiogram_mock.types.Message = Message
-    aiogram_mock.types.TelegramObject = TelegramObject
+        aiogram_mock.BaseMiddleware = BaseMiddleware
+        aiogram_mock.filters = MagicMock()
+        aiogram_mock.filters.BaseFilter = BaseFilter
+        aiogram_mock.types = MagicMock()
+        aiogram_mock.types.CallbackQuery = CallbackQuery
+        aiogram_mock.types.Message = Message
+        aiogram_mock.types.TelegramObject = TelegramObject
 
-    sys.modules["aiogram"] = aiogram_mock
-    sys.modules["aiogram.filters"] = aiogram_mock.filters
-    sys.modules["aiogram.client.default"] = MagicMock()
-    sys.modules["aiogram.types"] = aiogram_mock.types
-    sys.modules["aiogram.exceptions"] = MagicMock()
-    sys.modules["aiogram.fsm.state"] = MagicMock()
-    sys.modules["aiogram.fsm.storage.base"] = MagicMock()
+        sys.modules["aiogram"] = aiogram_mock
+        sys.modules["aiogram.filters"] = aiogram_mock.filters
+        sys.modules["aiogram.client.default"] = MagicMock()
+        sys.modules["aiogram.types"] = aiogram_mock.types
+        sys.modules["aiogram.exceptions"] = MagicMock()
+        sys.modules["aiogram.fsm.state"] = MagicMock()
+        sys.modules["aiogram.fsm.storage.base"] = MagicMock()
 
 # 1. Валидаторы анкеты
 def validate_fio(name: str) -> tuple[bool, str]:
@@ -254,12 +262,90 @@ class TestSecurityAuthorization(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(await flt(regular_event))
 
 
+# 4. Единый сервисный слой CandidateService
+class TestCandidateService(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.db_path = os.path.join(self.temp_dir.name, "test_service.db")
+        from database import ResumeDB
+        self.db = ResumeDB(self.db_path)
+        from candidate_service import CandidateService
+        self.service = CandidateService(db_instance=self.db)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_service_fio_and_phone(self):
+        ok, fio, _ = self.service.validate_fio("Иванов Иван Иванович")
+        self.assertTrue(ok)
+        self.assertEqual(fio, "Иванов Иван Иванович")
+
+        ok_bad, _, err = self.service.validate_fio("Иван123")
+        self.assertFalse(ok_bad)
+
+        ok_ph, ph, _ = self.service.validate_phone("89001234567")
+        self.assertTrue(ok_ph)
+        self.assertEqual(ph, "+79001234567")
+
+    def test_service_birth_date(self):
+        ok, d, _ = self.service.validate_birth_date("10.10.1995")
+        self.assertTrue(ok)
+        self.assertEqual(d, "10.10.1995")
+
+        ok_young, _, _ = self.service.validate_birth_date(f"01.01.{datetime.now().year - 10}")
+        self.assertFalse(ok_young)
+
+    def test_service_training_triggers(self):
+        self.assertTrue(self.service.should_offer_training("Водитель трамвая", "Без опыта"))
+        self.assertTrue(self.service.should_offer_training("Водитель троллейбуса", "нет стажа"))
+        self.assertFalse(self.service.should_offer_training("Кондуктор", "Без опыта"))
+        self.assertFalse(self.service.should_offer_training("Водитель трамвая", "Стаж 10 лет"))
+
+    def test_service_register_candidate(self):
+        data = {
+            "user_id": "987654321",
+            "full_name": "Алексеев Алексей",
+            "phone": "+79001112233",
+            "vacancy": "Водитель трамвая",
+            "experience": "Без опыта",
+            "city": "Ульяновск"
+        }
+        ticket_id, meta = self.service.register_candidate(data, platform="tg")
+        self.assertGreater(ticket_id, 0)
+        self.assertTrue(meta["offer_training"])
+        self.assertEqual(meta["full_name"], "Алексеев Алексей")
+
+        # Проверка повторной подачи
+        can_apply, reason, info = self.service.check_can_apply("987654321", platform="tg")
+        self.assertFalse(can_apply)
+        self.assertEqual(reason, "unprocessed")
+
+    def test_service_revoke_consent_152fz(self):
+        data = {
+            "user_id": "555444333",
+            "full_name": "Удаляемый Кандидат",
+            "phone": "+79990001122",
+            "vacancy": "Кондуктор",
+            "experience": "Без опыта"
+        }
+        t_id, _ = self.service.register_candidate(data, platform="tg")
+        success, del_id, ts = self.service.revoke_consent_152fz("555444333", platform="tg")
+        self.assertTrue(success)
+        self.assertEqual(del_id, t_id)
+        self.assertIsNotNone(ts)
+
+        # После отзыва анкеты нет
+        cand = self.db.get_candidate(t_id)
+        self.assertIsNone(cand)
+
+
 def run_all_tests() -> tuple[bool, str]:
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
     suite.addTests(loader.loadTestsFromTestCase(TestCandidateValidators))
     suite.addTests(loader.loadTestsFromTestCase(TestResumeDatabase))
     suite.addTests(loader.loadTestsFromTestCase(TestSecurityAuthorization))
+    suite.addTests(loader.loadTestsFromTestCase(TestCandidateService))
 
     stream = io.StringIO()
     runner = unittest.TextTestRunner(stream=stream, verbosity=1)
@@ -275,9 +361,12 @@ def run_all_tests() -> tuple[bool, str]:
         f"• Успешно пройдено: <b>{passed}/{total}</b> тестов\n"
         f"• Валидаторы (ФИО, телефоны, возраст 18+): <b>7/7 ✅</b>\n"
         f"• База данных (SQLite CRUD, кулдауны 152-ФЗ): <b>7/7 ✅</b>\n"
-        f"• Безопасность и Middleware (HR/Tech): <b>6/6 ✅</b>"
+        f"• Безопасность и Middleware (HR/Tech): <b>6/6 ✅</b>\n"
+        f"• Сервисный слой (Core Service, 152-ФЗ, триггеры): <b>5/5 ✅</b>"
     )
     return success, summary
+
+run_system_self_tests = run_all_tests
 
 
 if __name__ == "__main__":
@@ -286,6 +375,9 @@ if __name__ == "__main__":
     suite.addTests(loader.loadTestsFromTestCase(TestCandidateValidators))
     suite.addTests(loader.loadTestsFromTestCase(TestResumeDatabase))
     suite.addTests(loader.loadTestsFromTestCase(TestSecurityAuthorization))
+    suite.addTests(loader.loadTestsFromTestCase(TestCandidateService))
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
+
+

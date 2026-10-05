@@ -14,6 +14,15 @@ from typing import Dict, Any, Optional, Union
 from typing import Dict, Any, Optional, Union, Tuple
 
 from config import CONFIG
+import re
+
+def clean_html(raw_html: str) -> str:
+    """Удаляет HTML-разметку для каналов без поддержки HTML (ВКонтакте и др.)."""
+    if not raw_html:
+        return ""
+    res = re.sub(r"<br\s*/?>", "\n", raw_html)
+    res = re.sub(r"</?(b|strong|i|em|code|pre|blockquote|a|u|s)[^>]*>", "", res)
+    return res.strip()
 
 
 # ==============================================================================

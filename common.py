@@ -651,18 +651,18 @@ async def send_response_to_candidate(platform: str, user_id: str, message_text: 
 
 async def setup_bot_commands(bot_instance: Bot):
     commands = [
-        BotCommand(command="start", description="Главное меню / Перезапуск бота"),
-        BotCommand(command="apply", description="Подать анкету на работу (16 шагов)"),
-        BotCommand(command="my", description="Моя анкета / Статус заявки"),
+        BotCommand(command="start", description="Главное меню / Перезапуск"),
+        BotCommand(command="apply", description="Заполнить анкету на работу (16 шагов)"),
+        BotCommand(command="my", description="Моя анкета / Статус рассмотрения"),
         BotCommand(command="mydata", description="Выгрузка персональных данных (152-ФЗ)"),
-        BotCommand(command="revoke", description="Отзыв согласия на обработку ПДн"),
-        BotCommand(command="training", description="Обучение на водителя со стипендией"),
-        BotCommand(command="ask", description="Задать вопрос отделу кадров"),
-        BotCommand(command="faq", description="Частые вопросы и ответы (FAQ)"),
+        BotCommand(command="revoke", description="Отозвать согласие и удалить анкету"),
+        BotCommand(command="training", description="Бесплатное обучение на водителя"),
+        BotCommand(command="ask", description="Задать вопрос специалисту кадров"),
+        BotCommand(command="faq", description="Частые вопросы (зарплата, жилье)"),
         BotCommand(command="contacts", description="Контакты и телефоны депо"),
-        BotCommand(command="privacy", description="Политика обработки данных (152-ФЗ)"),
-        BotCommand(command="id", description="Узнать свой Telegram ID"),
-        BotCommand(command="cancel", description="Отменить текущий опрос или ввод"),
+        BotCommand(command="support", description="Экстренная связь с техподдержкой"),
+        BotCommand(command="cancel", description="Отменить текущее действие"),
+        BotCommand(command="help", description="Справочник команд бота"),
     ]
     try:
         await bot_instance.set_my_commands(commands)

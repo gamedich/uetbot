@@ -68,6 +68,11 @@ from keyboards import (
 
 logger = logging.getLogger("TECH_HANDLER")
 tech_router = Router(name="tech")
+from common import TechAccessMiddleware  # добавить в импорты из common
+
+tech_router = Router(name="tech")
+tech_router.message.middleware(TechAccessMiddleware())
+tech_router.callback_query.middleware(TechAccessMiddleware())
 
 
 def is_privileged_user(user_id: int) -> bool:

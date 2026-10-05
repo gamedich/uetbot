@@ -23,6 +23,7 @@ import os
 import re
 from datetime import datetime
 from typing import Optional, List, Tuple, Any
+from common import HRAccessMiddleware  # добавить в импорты из common
 
 from aiogram import Router, F, types, Bot
 from aiogram.filters import Command, StateFilter
@@ -63,6 +64,9 @@ from keyboards import (
 
 logger = logging.getLogger("HR_HANDLER")
 hr_router = Router(name="hr")
+
+hr_router.message.middleware(HRAccessMiddleware())
+hr_router.callback_query.middleware(HRAccessMiddleware())
 
 
 def check_hr_access_or_block(user_id: int, chat_id: int) -> tuple[bool, str | None]:
@@ -648,11 +652,11 @@ async def cb_invite_custom(callback: types.CallbackQuery, state: FSMContext):
     builder.button(text="❌ Отмена", callback_data=f"view_{ticket_id}")
     
     text = (
-        f"📅 <b>ВВЕДИТЕ ДАТУ, ВРЕМЯ И МЕСТО ВСТРЕЧИ</b>\n"
-        f"для соискателя <b>{cand[3]}</b> (Анкета #{ticket_id}):\n\n"
-        "<i>Пример:</i>\n"
-        "<code>Завтра (17 сентября) к 10:00. Адрес: ул. Гончарова, 17, каб. 104 (Отдел кадров). При себе иметь паспорт и трудовую.</code>"
-    )
+    f"📅 <b>ПРИГЛАШЕНИЕ НА СОБЕСЕДОВАНИЕ</b>\n"
+    f"для соискателя <b>{cand[3]}</b> (Анкета #{ticket_id}):\n\n"
+    "Напишите ответным сообщением дату, время, кабинет и любые пояснения для кандидата в свободной форме.\n\n"
+    "<i>Сообщение будет отправлено соискателю. Для отмены нажмите кнопку ниже:</i>"
+)
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 

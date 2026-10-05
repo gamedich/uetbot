@@ -17,7 +17,7 @@ from aiogram import Router, F, types, Bot
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
+from candidate_service import candidate_service
 import texts
 from common import (
     CONFIG,

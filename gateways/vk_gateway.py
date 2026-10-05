@@ -3,14 +3,15 @@
 Шлюз интеграции с ВКонтакте для МУП «Ульяновскэлектротранс».
 Поддерживает:
 - Автономный Long Poll с экспоненциальной задержкой (Exponential Backoff).
-- Интерактивные цветные клавиатуры ВКонтакте (Главное меню, Моя анкета, Вакансии, Опыт, FAQ, Отмена).
-- Мгновенное переключение между режимами (Связаться с кадровиком, Моя анкета, Меню, FAQ, Контакты).
-- Строгая проверка повторной подачи анкет и 3-месячного кулдауна при отказе с кнопкой тестового сброса.
-- Гарантированная доставка анкет в Telegram-группу и ЛС супер-администратору с html.escape.
-- Встроенный тестовый режим администратора (/reset, /test_apply, /status) для сквозной отладки прямо в ВК.
+- Интерактивные цветные клавиатуры ВКонтакте.
+- Централизованный сервисный слой (CandidateService) и единую карту текстов (texts.py).
+- Контур 152-ФЗ: проверка повторной подачи, кулдаунов и фиксация согласия.
+- Доставка анкет и обращений в Telegram-группу кадровой службы в реальном времени.
 - Двусторонний потоковый обмен медиафайлами и фото документов в ОЗУ (без сохранения на диск по 152-ФЗ).
-- Мост прямого диалога соискателя из ВК с кадровиком в Telegram.
+- Сквозной Live-Chat мост соискателя из ВК с кадровиком в Telegram.
 """
+from __future__ import annotations
+
 import asyncio
 import html
 import io
@@ -20,7 +21,6 @@ import random
 import re
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from common import db, get_all_vacancies
 
 import aiohttp
 from aiohttp import ClientSession, ClientTimeout
@@ -28,6 +28,8 @@ from aiogram import Bot
 from aiogram.types import BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+import texts
+from texts import clean_html
 from common import (
     CONFIG,
     VACANCIES,
@@ -35,49 +37,25 @@ from common import (
     SYSTEM_METRICS,
     route_new_candidate_ticket,
     route_new_inquiry_ticket,
-    safe_send
+    safe_send,
+    db,
+    get_all_vacancies
 )
+from candidate_service import candidate_service
 from database import ResumeDB
 from keyboards import make_ticket_keyboard, make_inquiry_admin_keyboard
 
 logger = logging.getLogger("VK_GATEWAY")
 
+# ==================== БАЗА ЗНАНИЙ (СИНХРОНИЗИРОВАНА С TEXTS.PY) ====================
+
 VK_FAQ_DATA = {
-    "training": (
-        "🎓 ОБУЧЕНИЕ НА ВОДИТЕЛЯ ТРАМВАЯ И ТРОЛЛЕЙБУСА\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "• Стоимость: Обучение полностью БЕСПЛАТНОЕ за счёт предприятия.\n"
-        "• Стипендия: На весь период обучения выплачивается ежемесячная стипендия.\n"
-        "• Срок подготовки: От 3 до 5 месяцев (теория + практическое вождение).\n"
-        "• Гарантия: 100% официальное трудоустройство после сдачи экзаменов.\n"
-        "• Требования: Возраст от 21 года, отсутствие медицинских противопоказаний."
-    ),
-    "housing": (
-        "🏠 ЖИЛЬЕ И ОБЩЕЖИТИЕ ДЛЯ СОТРУДНИКОВ\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "• Иногородним кандидатам и обучающимся предоставляется место в комфортабельном общежитии предприятия.\n"
-        "• Либо действует программа компенсации аренды жилья для дефицитных специальностей."
-    ),
-    "salary": (
-        "💰 УСЛОВИЯ ТРУДА, ЗАРПЛАТА И ЛЬГОТЫ\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "• График работы: Сменный (утренние/вечерние смены, 2/2 или по графику депо).\n"
-        "• Льготный стаж: Водители трамваев и троллейбусов имеют право на досрочный выход на пенсию!\n"
-        "• Проезд: Бесплатный проезд на всём городском электротранспорте г. Ульяновска.\n"
-        "• Соцпакет: Полная оплата больничных, отпусков, путевки на санаторное лечение."
-    ),
-    "docs": (
-        "📄 НЕОБХОДИМЫЕ ДОКУМЕНТЫ ДЛЯ ТРУДОУСТРОЙСТВА\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "1. Паспорт гражданина РФ\n"
-        "2. Трудовая книжка (или сведения СТД-Р)\n"
-        "3. Документ об образовании\n"
-        "4. Водительское удостоверение (при наличии)\n"
-        "5. СНИЛС и ИНН\n"
-        "6. Документы воинского учета (для военнообязанных)\n"
-        "7. Медосмотр (направление выдаётся отделом кадров бесплатно)."
-    ),
+    "training": clean_html(texts.FAQ_DATA.get("faq_training", "")),
+    "housing": clean_html(texts.FAQ_DATA.get("faq_housing", "")),
+    "salary": clean_html(texts.FAQ_DATA.get("faq_salary", "")),
+    "docs": clean_html(texts.FAQ_DATA.get("faq_docs", "")),
 }
+
 
 class VKPhotoService:
     """Сервис взаимодействия с мультимедиа API ВКонтакте."""
@@ -125,15 +103,17 @@ class VKPhotoService:
         return best.get("url")
 
 
+# ==================== КЛАВИАТУРЫ ВКОНТАКТЕ ====================
+
 def make_vk_main_keyboard() -> str:
     """Главное меню ВКонтакте с постоянными цветными кнопками."""
     buttons = [
-        [{"action": {"type": "text", "label": "📝 Заполнить анкету", "payload": "{\"command\":\"apply\"}"}, "color": "positive"}],
-        [{"action": {"type": "text", "label": "📑 Моя анкета", "payload": "{\"command\":\"my_app\"}"}, "color": "primary"}],
-        [{"action": {"type": "text", "label": "💬 Связаться с кадровиком", "payload": "{\"command\":\"ask\"}"}, "color": "secondary"}],
+        [{"action": {"type": "text", "label": "📝 Заполнить анкету", "payload": json.dumps({"command": "apply"})}, "color": "positive"}],
+        [{"action": {"type": "text", "label": "📑 Моя анкета", "payload": json.dumps({"command": "my_app"})}, "color": "primary"}],
+        [{"action": {"type": "text", "label": "💬 Связаться с кадровиком", "payload": json.dumps({"command": "ask"})}, "color": "secondary"}],
         [
-            {"action": {"type": "text", "label": "📚 Частые вопросы (FAQ)", "payload": "{\"command\":\"faq\"}"}, "color": "secondary"},
-            {"action": {"type": "text", "label": "📞 Контакты", "payload": "{\"command\":\"contacts\"}"}, "color": "secondary"}
+            {"action": {"type": "text", "label": "📚 Частые вопросы (FAQ)", "payload": json.dumps({"command": "faq"})}, "color": "secondary"},
+            {"action": {"type": "text", "label": "📞 Контакты", "payload": json.dumps({"command": "contacts"})}, "color": "secondary"}
         ]
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
@@ -141,9 +121,6 @@ def make_vk_main_keyboard() -> str:
 
 def make_vk_vacancies_keyboard() -> str:
     """Динамическая клавиатура вакансий ВКонтакте со скрытием закрытых позиций."""
-    import json
-    from common import db, get_all_vacancies
-
     val = db.get_setting("closed_vacancies", "[]")
     try:
         closed = set(json.loads(val))
@@ -154,7 +131,6 @@ def make_vk_vacancies_keyboard() -> str:
     active_vacs = [v for v in vacancies if v not in closed]
 
     buttons = []
-    # Выводим кнопки только для активных вакансий
     for vac in active_vacs:
         buttons.append([{
             "action": {
@@ -165,7 +141,6 @@ def make_vk_vacancies_keyboard() -> str:
             "color": "primary"
         }])
 
-    # Сервисные кнопки
     buttons.append([{
         "action": {
             "type": "text",
@@ -189,8 +164,8 @@ def make_vk_vacancies_keyboard() -> str:
 def make_vk_experience_keyboard() -> str:
     """Клавиатура для шага опыта работы."""
     buttons = [
-        [{"action": {"type": "text", "label": "Без опыта", "payload": "{\"exp\":\"no_exp\"}"}, "color": "primary"}],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": "{\"command\":\"cancel\"}"}, "color": "negative"}]
+        [{"action": {"type": "text", "label": "Без опыта", "payload": json.dumps({"exp": "no_exp"})}, "color": "primary"}],
+        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}]
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -198,12 +173,9 @@ def make_vk_experience_keyboard() -> str:
 def make_vk_cancel_keyboard() -> str:
     """Клавиатура с кнопкой отмены."""
     buttons = [
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": "{\"command\":\"cancel\"}"}, "color": "negative"}]
+        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}]
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
-
-
-
 
 
 def make_vk_faq_keyboard() -> str:
@@ -214,21 +186,20 @@ def make_vk_faq_keyboard() -> str:
         [{"action": {"type": "text", "label": "💰 Зарплата и льготная пенсия"}, "color": "secondary"}],
         [{"action": {"type": "text", "label": "📄 Необходимые документы"}, "color": "secondary"}],
         [
-            {"action": {"type": "text", "label": "📝 Заполнить анкету", "payload": "{\"command\":\"apply\"}"}, "color": "positive"},
-            {"action": {"type": "text", "label": "⬅️ Главное меню", "payload": "{\"command\":\"start\"}"}, "color": "secondary"}
+            {"action": {"type": "text", "label": "📝 Заполнить анкету", "payload": json.dumps({"command": "apply"})}, "color": "positive"},
+            {"action": {"type": "text", "label": "⬅️ Главное меню", "payload": json.dumps({"command": "start"})}, "color": "secondary"}
         ]
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
-def make_vk_blocked_apply_keyboard(show_test_reset: bool = False) -> str:
-    """Клавиатура при наличии активной анкеты (в PROD только официальные кнопки, в TEST с кнопкой сброса)."""
+
+def make_vk_blocked_apply_keyboard() -> str:
+    """Клавиатура при наличии активной анкеты."""
     buttons = [
-        [{"action": {"type": "text", "label": "📑 Моя анкета", "payload": "{\"command\":\"my_app\"}"}, "color": "primary"}],
-        [{"action": {"type": "text", "label": "💬 Связаться с кадровиком", "payload": "{\"command\":\"ask\"}"}, "color": "secondary"}]
+        [{"action": {"type": "text", "label": "📑 Моя анкета", "payload": json.dumps({"command": "my_app"})}, "color": "primary"}],
+        [{"action": {"type": "text", "label": "💬 Связаться с кадровиком", "payload": json.dumps({"command": "ask"})}, "color": "secondary"}],
+        [{"action": {"type": "text", "label": "⬅️ Главное меню", "payload": json.dumps({"command": "start"})}, "color": "secondary"}]
     ]
-    if show_test_reset:
-        buttons.append([{"action": {"type": "text", "label": "🧪 Сбросить анкету (для теста)", "payload": "{\"command\":\"reset\"}"}, "color": "negative"}])
-    buttons.append([{"action": {"type": "text", "label": "⬅️ Главное меню", "payload": "{\"command\":\"start\"}"}, "color": "secondary"}])
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
 
@@ -256,6 +227,8 @@ def make_vk_reply_keyboard(ticket_id: int = 0) -> str:
     ]
     return json.dumps({"inline": True, "buttons": buttons}, ensure_ascii=False)
 
+
+# ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
 def parse_phone_number(raw_text: str) -> Optional[str]:
     """Универсальный парсер российских телефонных номеров."""
@@ -342,6 +315,8 @@ async def send_vk_message(
         return False
 
 
+# ==================== ГЛАВНЫЙ ОБРАБОТЧИК СООБЩЕНИЙ ====================
+
 async def handle_vk_message(
     user_id: str,
     text: str,
@@ -357,11 +332,11 @@ async def handle_vk_message(
         clean = (text or "").strip()
         clean_lower = clean.lower()
 
-      # 1. Проверка блокировки в ЧС
+        # 1. Проверка блокировки в ЧС
         if db.is_blocked(user_id, super_admin_id=CONFIG.get("SUPER_ADMIN_ID")):
             return
 
-        # 2. Разбор payload кнопки (переносим выше, чтобы знать, что нажал человек)
+        # 2. Разбор payload кнопки
         payload_dict = {}
         cmd_from_payload = ""
         if payload:
@@ -371,30 +346,23 @@ async def handle_vk_message(
             except Exception:
                 pass
 
-        # 3. Режим техобслуживания — блокирует ТОЛЬКО подачу анкет! Контакты, FAQ и диалоги работают
+        # 3. Режим техобслуживания — блокирует ТОЛЬКО подачу анкет
         is_apply_attempt = (
             cmd_from_payload in ["apply", "start_survey"] or 
             clean_lower in ["подать анкету", "заполнить анкету", "анкета", "работа", "/apply"]
         )
         if CONFIG.get("MAINTENANCE_MODE") and is_apply_attempt:
+            maint_msg = (
+                "⚠️ Приём анкет временно приостановлен (технический перерыв).\n"
+                "Пожалуйста, повторите попытку позже.\n\n"
+                f"📞 По срочным вопросам: {CONFIG.get('HR_PHONE', '58-46-60')}"
+            )
             await send_vk_message(
                 session, token, int(user_id),
-                "⚠️ <b>Приём анкет временно приостановлен</b> (технический перерыв).\n"
-                "Пожалуйста, повторите попытку позже.\n\n"
-                f"📞 По срочным вопросам: {CONFIG.get('HR_PHONE', '58-46-60')}",
+                maint_msg,
                 keyboard=make_vk_main_keyboard()
             )
             return
-
-        # 3. Разбор payload кнопки
-        payload_dict = {}
-        cmd_from_payload = ""
-        if payload:
-            try:
-                payload_dict = json.loads(payload) if isinstance(payload, str) else payload
-                cmd_from_payload = payload_dict.get("command", "")
-            except Exception:
-                pass
 
         # 4. Мост прямого диалога (кадровик в TG <-> соискатель в VK)
         dlg = db.get_dialog_by_user(user_id)
@@ -402,7 +370,6 @@ async def handle_vk_message(
             operator_id = dlg[1]
             name = dlg[3] or f"id{user_id}"
 
-            # Команда завершения диалога со стороны кандидата
             if cmd_from_payload == "stop" or clean_lower in ["/stop", "стоп", "завершить", "⏹ завершить диалог"]:
                 db.end_direct_dialog(user_id=user_id)
                 await send_vk_message(
@@ -420,7 +387,7 @@ async def handle_vk_message(
             builder = InlineKeyboardBuilder()
             builder.button(text="⏹ Завершить диалог", callback_data=f"end_live_dlg_{user_id}")
 
-            # Пересылка фотографий из ВК в Telegram
+            # Пересылка фото в Telegram в ОЗУ (без сохранения на диск по 152-ФЗ)
             for att in attachments:
                 if att.get("type") == "photo":
                     photo_url = VKPhotoService.extract_best_photo_url(att.get("photo", {}).get("sizes", []))
@@ -462,7 +429,6 @@ async def handle_vk_message(
                         except Exception as e:
                             logger.error(f"Не удалось переслать документ из VK в TG: {e}")
 
-            # Если пришел только текст
             if clean and not attachments:
                 relayed = (
                     f"💬 <b>[Соискатель из VK {name}]:</b>\n"
@@ -476,20 +442,10 @@ async def handle_vk_message(
         key = ("vk", user_id)
         session_data = EXTERNAL_SESSIONS.get(key)
 
-        # 5. Определение намерений (Intent Routing) — ГЛОБАЛЬНЫЕ КОМАНДЫ
+        # 5. Маршрутизация глобальных намерений
         is_cancel = (
             cmd_from_payload == "cancel"
             or clean_lower in ["/cancel", "отмена", "отменить", "назад", "стоп", "/stop", "❌ отмена"]
-        )
-
-        is_reset = (
-            cmd_from_payload == "reset"
-            or clean_lower in ["/reset", "reset", "сброс", "сбросить", "/test_reset", "🧪 сбросить анкету (для теста)", "🧪 сбросить анкету"]
-        )
-
-        is_test_apply = (
-            cmd_from_payload == "test_apply"
-            or clean_lower in ["/test_apply", "/test", "тест", "тестовая анкета", "тест анкеты"]
         )
 
         is_my_app = (
@@ -509,18 +465,16 @@ async def handle_vk_message(
         is_apply = (
             cmd_from_payload == "apply"
             or clean_lower in [
-                "/apply", "apply", "еплай", "эплай", "аплай", "подать анкету",
-                "заполнить анкету", "📝 заполнить анкету", "анкета", "работа",
-                "вакансии", "трудоустройство", "хочу работать"
+                "/apply", "apply", "подать анкету", "заполнить анкету",
+                "📝 заполнить анкету", "анкета", "работа", "вакансии", "трудоустройство"
             ]
         )
 
         is_ask = (
             cmd_from_payload == "ask"
             or clean_lower in [
-                "/ask", "ask", "вопрос", "задать вопрос", "связаться", "связатся",
-                "кадровик", "связаться с кадровиком", "связатся с кадровиком",
-                "💬 связаться с кадровиком", "обращение", "написать кадровику"
+                "/ask", "ask", "вопрос", "задать вопрос", "связаться",
+                "кадровик", "связаться с кадровиком", "💬 связаться с кадровиком"
             ]
             or "связат" in clean_lower
         )
@@ -532,7 +486,7 @@ async def handle_vk_message(
 
         is_reply_hr = (
             cmd_from_payload == "reply_hr"
-            or clean_lower in ["ответить", "ответить кадровику", "💬 ответить кадровику", "написать кадровику", "ответ кадровику"]
+            or clean_lower in ["ответить", "ответить кадровику", "💬 ответить кадровику", "ответ кадровику"]
         )
 
         is_contacts = (
@@ -541,58 +495,20 @@ async def handle_vk_message(
         )
 
         # -------------------------------------------------------------
-        # ОБРАБОТКА ГЛОБАЛЬНЫХ КОМАНД
+        # ОБРАБОТКА КОМАНД МЕНЮ
         # -------------------------------------------------------------
 
-        # А. ТЕСТОВЫЙ СБРОС АНКЕТЫ (/reset)
-        if is_reset:
+        # А. ОТМЕНА
+        if is_cancel:
             if key in EXTERNAL_SESSIONS:
                 del EXTERNAL_SESSIONS[key]
-            db.reset_all_test_data()
-            db.reset_candidate_for_test(user_id, platform="vk")
-            reset_text = (
-                "🧹 ТЕСТОВАЯ БАЗА ОЧИЩЕНА!\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "• Тестовая база resumes_test.db сброшена.\n"
-                "• Ограничения на повторную подачу для вашего аккаунта сняты.\n"
-                "• Боевая база реальных кандидатов resumes.db защищена.\n\n"
-                "Теперь вы можете протестировать работу анкеты заново с помощью кнопки «📝 Заполнить анкету»."
+            return await send_vk_message(
+                session, token, int(user_id),
+                "🚫 Ввод отменён. Вы возвращены в главное меню.",
+                keyboard=make_vk_main_keyboard()
             )
-            return await send_vk_message(session, token, int(user_id), reset_text, keyboard=make_vk_main_keyboard())
 
-        # Б. ТЕСТОВЫЙ ВЫЗОВ АНКЕТЫ (/test_apply)
-        if is_test_apply:
-            if key in EXTERNAL_SESSIONS:
-                del EXTERNAL_SESSIONS[key]
-            t_id = db.add_candidate("vk", user_id, "Иванов Иван (Тест VK)", "+79991234567", "Водитель трамвая", "Без опыта (Тестовый запуск из ВК)", is_test=True)
-            admin_card = (
-                f"🧪 <b>ТЕСТОВАЯ АНКЕТА СОИСКАТЕЛЯ #{t_id} [VK]</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📁 <b>База:</b> <code>resumes_test.db</code> (Изолированная тестовая)\n"
-                f"👤 <b>ФИО:</b> Иванов Иван (Тест VK)\n"
-                f"📞 <b>Телефон:</b> <code>+79991234567</code>\n"
-                f"🎯 <b>Должность:</b> Водитель трамвая\n"
-                f"💼 <b>Опыт:</b> Без опыта (Тестовый запуск из ВК)\n"
-                f"⏱ <b>Время:</b> <code>{datetime.now().strftime('%d.%m.%Y %H:%M')}</code>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"<i>🧪 Это тестовый запуск из ВКонтакте. Все кнопки ниже активны (изменяют только resumes_test.db):</i>"
-            )
-            try:
-                await route_new_candidate_ticket(tg_bot, admin_card, reply_markup=make_ticket_keyboard(t_id))
-                logger.info(f"Тестовая анкета #{t_id} успешно отправлена в Telegram")
-            except Exception as e:
-                logger.error(f"Ошибка доставки тестовой анкеты #{t_id} в Telegram: {e}")
-
-            test_resp = (
-                f"🧪 ТЕСТОВАЯ АНКЕТА #{t_id} УСПЕШНО СОЗДАНА!\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "• Вакансия: Водитель трамвая\n"
-                "• Соискатель: Иванов Иван (Тест VK)\n\n"
-                "✅ Карточка со всеми кнопками управления отправлена в Telegram кадровой службы!"
-            )
-            return await send_vk_message(session, token, int(user_id), test_resp, keyboard=make_vk_main_keyboard())
-
-        # В. МОЯ АНКЕТА / СТАТУС
+        # Б. МОЯ АНКЕТА / СТАТУС
         if is_my_app:
             if key in EXTERNAL_SESSIONS:
                 del EXTERNAL_SESSIONS[key]
@@ -606,9 +522,7 @@ async def handle_vk_message(
                 st = cand[7]
                 admin_note = cand[8] if len(cand) > 8 else ""
                 created = cand[9] if len(cand) > 9 else ""
-                meeting_line = ""
-                if "Приглашен" in st and admin_note:
-                    meeting_line = f"\n📍 Назначенное собеседование: {admin_note}\n"
+                meeting_line = f"\n📍 Назначенное собеседование: {admin_note}\n" if "Приглашен" in st and admin_note else ""
 
                 my_text = (
                     "📑 ВАША АНКЕТА В МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»\n"
@@ -631,17 +545,7 @@ async def handle_vk_message(
                 )
             return await send_vk_message(session, token, int(user_id), my_text, keyboard=make_vk_main_keyboard())
 
-        # Г. ОТМЕНА
-        if is_cancel:
-            if key in EXTERNAL_SESSIONS:
-                del EXTERNAL_SESSIONS[key]
-            return await send_vk_message(
-                session, token, int(user_id),
-                "🚫 Ввод отменён. Вы возвращены в главное меню.",
-                keyboard=make_vk_main_keyboard()
-            )
-
-        # Д. СВЯЗАТЬСЯ С КАДРОВИКОМ
+        # В. СВЯЗАТЬСЯ С КАДРОВИКОМ (/ask)
         if is_ask:
             is_prod = (CONFIG.get("ENVIRONMENT") == "PROD")
             cooldown = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200)))) if is_prod else 0
@@ -650,25 +554,22 @@ async def handle_vk_message(
                 minutes_left = max(1, (seconds_left + 59) // 60)
                 msg_text = (
                     f"⏳ Вы сможете задать следующий вопрос через {minutes_left} мин.\n"
-                    f"Срочные вопросы по телефону отдела кадров: {CONFIG['HR_PHONE']}\n\n"
-                    "Для сброса ожидания в тестовом режиме отправьте: /reset"
+                    f"Срочные вопросы по телефону отдела кадров: {CONFIG['HR_PHONE']}"
                 )
                 return await send_vk_message(session, token, int(user_id), msg_text, keyboard=make_vk_main_keyboard())
 
             EXTERNAL_SESSIONS[key] = {"step": "waiting_question", "data": {}}
             ask_prompt = (
-                "⚖️ Уведомление в соответствии со ст. 9 152-ФЗ:\n"
-                "Направляя обращение, вы даёте согласие МУП «Ульяновскэлектротранс» на обработку "
-                "персональных данных для рассмотрения вопроса и связи с вами.\n\n"
+                clean_html(texts.CONSENT_INQUIRY_PROMPT) + "\n\n"
                 "💬 Пожалуйста, напишите ваш вопрос одним сообщением. "
                 "Он будет передан специалисту кадровой службы предприятия.\n\n"
                 "Для отмены нажмите «❌ Отмена» ниже:"
             )
             return await send_vk_message(session, token, int(user_id), ask_prompt, keyboard=make_vk_cancel_keyboard())
 
-        # Е. ПОДАТЬ АНКЕТУ (проверка повторной подачи работает ВСЕГДА)
+        # Г. ПОДАТЬ АНКЕТУ (/apply) ЧЕРЕЗ CANDIDATE_SERVICE
         if is_apply:
-            can_apply, reason, info = db.check_candidate_can_apply(user_id, platform="vk")
+            can_apply, reason, info = candidate_service.check_can_apply(user_id, platform="vk")
             if not can_apply and info:
                 ticket_id = info.get("ticket_id")
                 if reason == "unprocessed":
@@ -682,30 +583,26 @@ async def handle_vk_message(
                         "Подать новую анкету нельзя, пока предыдущая заявка находится на рассмотрении кадровой службы.\n"
                         f"Специалисты обязательно свяжутся с вами. Телефон отдела кадров: {CONFIG['HR_PHONE']}."
                     )
-                    is_test = (CONFIG.get("ENVIRONMENT", "TEST").upper() == "TEST")
-                    return await send_vk_message(session, token, int(user_id), msg, keyboard=make_vk_blocked_apply_keyboard(show_test_reset=is_test))
+                    return await send_vk_message(session, token, int(user_id), msg, keyboard=make_vk_blocked_apply_keyboard())
                 elif reason in ("cooldown", "rejected_cooldown"):
                     msg = (
                         f"⏳ Подача повторной анкеты временно недоступна.\n"
                         "━━━━━━━━━━━━━━━━━━━━━\n"
                         f"По вашей предыдущей анкете №{ticket_id} было принято решение об отказе ({info.get('refuse_date')}).\n"
-                        f"По регламенту МУП «Ульяновскэлектротранс», повторная подача анкеты на трудоустройство возможна через 3 месяца — начиная с {info.get('available_date')} (осталось {info.get('days_left')} дн.).\n"
+                        f"По регламенту предприятия, повторная подача анкеты возможна через 3 месяца — начиная с {info.get('available_date')} (осталось {info.get('days_left')} дн.).\n"
                         "━━━━━━━━━━━━━━━━━━━━━\n"
                         f"Телефон для справок: {CONFIG['HR_PHONE']}."
                     )
-                    is_test = (CONFIG.get("ENVIRONMENT", "TEST").upper() == "TEST")
-                    return await send_vk_message(session, token, int(user_id), msg, keyboard=make_vk_blocked_apply_keyboard(show_test_reset=is_test))
+                    return await send_vk_message(session, token, int(user_id), msg, keyboard=make_vk_blocked_apply_keyboard())
 
             EXTERNAL_SESSIONS[key] = {"step": "name", "data": {}}
             apply_intro = (
-                "👋 Служба подбора персонала МУП «Ульяновскэлектротранс».\n\n"
-                "Заполните короткую анкету для рассмотрения вашей кандидатуры на работу.\n\n"
-                "⚖️ Отправляя анкету, вы даёте согласие на обработку персональных данных в соответствии со ст. 9 152-ФЗ РФ.\n\n"
+                clean_html(texts.CONSENT_SURVEY_PROMPT) + "\n\n"
                 "1️⃣ Введите ваши ФИО полностью (например: Иванов Иван Иванович):"
             )
             return await send_vk_message(session, token, int(user_id), apply_intro, keyboard=make_vk_cancel_keyboard())
 
-        # Ж. БАЗА ЗНАНИЙ (FAQ)
+        # Д. БАЗА ЗНАНИЙ (FAQ)
         if is_faq:
             if key in EXTERNAL_SESSIONS:
                 del EXTERNAL_SESSIONS[key]
@@ -717,7 +614,6 @@ async def handle_vk_message(
             )
             return await send_vk_message(session, token, int(user_id), faq_text, keyboard=make_vk_faq_keyboard())
 
-        # Темы FAQ
         if "обучение" in clean_lower or "🎓" in clean:
             return await send_vk_message(session, token, int(user_id), VK_FAQ_DATA["training"], keyboard=make_vk_faq_keyboard())
         if "жиль" in clean_lower or "общежит" in clean_lower or "🏠" in clean:
@@ -727,22 +623,17 @@ async def handle_vk_message(
         if "документ" in clean_lower or "📄" in clean:
             return await send_vk_message(session, token, int(user_id), VK_FAQ_DATA["docs"], keyboard=make_vk_faq_keyboard())
 
-        # З. КОНТАКТЫ
+        # Е. КОНТАКТЫ (СИНХРОНИЗИРОВАНО С TEXTS.PY)
         if is_contacts:
             if key in EXTERNAL_SESSIONS:
                 del EXTERNAL_SESSIONS[key]
             contacts_text = (
-                "🏢 ОТДЕЛ КАДРОВ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📍 Адрес: {CONFIG['HR_ADDRESS']}\n"
-                f"📞 Телефон: {CONFIG['HR_PHONE']}\n"
-                f"🕒 График работы: {CONFIG['HR_SCHEDULE']}\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
+                clean_html(texts.CONTACTS_SCREEN) + "\n\n"
                 "Вы также можете отправить анкету или задать вопрос прямо в этом диалоге."
             )
             return await send_vk_message(session, token, int(user_id), contacts_text, keyboard=make_vk_main_keyboard())
 
-        # ОТВЕТ НА СООБЩЕНИЕ КАДРОВИКА
+        # Ж. ОТВЕТ НА СООБЩЕНИЕ КАДРОВИКА
         if is_reply_hr:
             cand_t_id = payload_dict.get("ticket_id")
             if not cand_t_id:
@@ -755,13 +646,13 @@ async def handle_vk_message(
                 "data": {"ticket_id": cand_t_id}
             }
             prompt = (
-                "💬 <b>Ответ специалисту отдела кадров МУП «Ульяновскэлектротранс»</b>\n\n"
-                "Напишите ваш ответ в одном сообщении. Вы также можете прикрепить фото или сканы документов (права, диплом).\n\n"
-                "<i>Для отмены нажмите кнопку «❌ Отмена» ниже:</i>"
+                "💬 Ответ специалисту отдела кадров МУП «Ульяновскэлектротранс»\n\n"
+                "Напишите ваш ответ в одном сообщении. Вы также можете прикрепить фото или сканы документов.\n\n"
+                "Для отмены нажмите кнопку «❌ Отмена» ниже:"
             )
             return await send_vk_message(session, token, int(user_id), prompt, keyboard=make_vk_cancel_keyboard())
 
-        # И. СТАРТ / ГЛАВНОЕ МЕНЮ
+        # З. СТАРТ / ГЛАВНОЕ МЕНЮ
         if is_start_menu:
             if key in EXTERNAL_SESSIONS:
                 del EXTERNAL_SESSIONS[key]
@@ -782,10 +673,11 @@ async def handle_vk_message(
 
             # Шаг: Вопрос в кадры
             if step == "waiting_question":
-                if not clean:
+                is_valid, clean_q, err = candidate_service.validate_question(clean)
+                if not is_valid:
                     return await send_vk_message(
                         session, token, int(user_id),
-                        "⚠️ Пожалуйста, напишите ваш вопрос текстом в одном сообщении:",
+                        f"⚠️ {err or 'Пожалуйста, напишите ваш вопрос текстом в одном сообщении:'}",
                         keyboard=make_vk_cancel_keyboard()
                     )
 
@@ -801,16 +693,16 @@ async def handle_vk_message(
                     phone = "Не указан"
                     vacancy = "Анкета не подана"
 
-                inquiry_id = db.add_inquiry(
-                    platform="vk",
+                del EXTERNAL_SESSIONS[key]
+                ok, status_msg, inquiry_id = candidate_service.submit_inquiry(
                     user_id=str(user_id),
-                    question_text=clean,
+                    question_text=clean_q,
+                    platform="vk",
                     ticket_id=ticket_id,
                     full_name=full_name,
                     phone=phone,
                     vacancy=vacancy
                 )
-                del EXTERNAL_SESSIONS[key]
 
                 conf_text = (
                     f"✅ Ваш вопрос принят и передан в отдел кадров!\n"
@@ -820,7 +712,7 @@ async def handle_vk_message(
                 )
                 await send_vk_message(session, token, int(user_id), conf_text, keyboard=make_vk_main_keyboard())
 
-                safe_clean = html.escape(clean)
+                safe_clean = html.escape(clean_q)
                 safe_full = html.escape(full_name)
                 card_text = (
                     f"📩 <b>ОБРАЩЕНИЕ СОИСКАТЕЛЯ #{inquiry_id} [VK]</b>\n"
@@ -835,20 +727,21 @@ async def handle_vk_message(
                 )
                 try:
                     await route_new_inquiry_ticket(tg_bot, card_text, reply_markup=make_inquiry_admin_keyboard(inquiry_id))
-                    logger.info(f"Вопрос #{inquiry_id} успешно доставлен в Telegram!")
+                    logger.info(f"Вопрос #{inquiry_id} [VK] успешно доставлен в Telegram!")
                 except Exception as e:
                     logger.error(f"Ошибка отправки вопроса #{inquiry_id} в Telegram: {e}")
                 return
 
             # Шаг: Ввод ФИО
             elif step == "name":
-                if len(clean.split()) < 2:
+                is_valid, clean_name, err = candidate_service.validate_fio(clean)
+                if not is_valid:
                     return await send_vk_message(
                         session, token, int(user_id),
-                        "⚠️ Пожалуйста, укажите фамилию и имя полностью (минимум 2 слова, например: Иванов Иван):",
+                        f"⚠️ {err or 'Пожалуйста, укажите фамилию и имя полностью (минимум 2 слова, например: Иванов Иван):'}",
                         keyboard=make_vk_cancel_keyboard()
                     )
-                session_data["data"]["full_name"] = clean
+                session_data["data"]["full_name"] = clean_name
                 session_data["step"] = "phone"
                 phone_prompt = (
                     "2️⃣ Укажите контактный номер телефона для связи с отделом кадров:\n\n"
@@ -866,7 +759,8 @@ async def handle_vk_message(
                 if not parsed_phone:
                     parsed_phone = parse_phone_number(clean)
 
-                if not parsed_phone:
+                is_valid, norm_phone, err = candidate_service.validate_phone(parsed_phone or clean)
+                if not is_valid:
                     return await send_vk_message(
                         session, token, int(user_id),
                         "⚠️ Не удалось распознать номер телефона.\n"
@@ -874,11 +768,11 @@ async def handle_vk_message(
                         keyboard=make_vk_cancel_keyboard()
                     )
 
-                session_data["data"]["phone"] = parsed_phone
+                session_data["data"]["phone"] = norm_phone
                 session_data["step"] = "vacancy"
 
                 vac_prompt = (
-                    f"✅ Номер телефона принят: {parsed_phone}\n\n"
+                    f"✅ Номер телефона принят: {norm_phone}\n\n"
                     "3️⃣ Выберите вакансию, которая вас интересует, нажав на кнопку ниже (или напишите цифрой 1-6):"
                 )
                 return await send_vk_message(
@@ -890,7 +784,6 @@ async def handle_vk_message(
             # Шаг: Выбор вакансии
             elif step == "vacancy":
                 chosen_vac = resolve_vacancy(clean, payload_dict)
-
                 session_data["data"]["vacancy"] = chosen_vac
                 session_data["step"] = "experience"
                 exp_prompt = (
@@ -904,7 +797,7 @@ async def handle_vk_message(
                     keyboard=make_vk_experience_keyboard()
                 )
 
-            # Шаг: Опыт работы и отправка анкеты
+            # Шаг: Опыт работы и регистрация анкеты
             elif step == "experience":
                 if payload_dict.get("exp") == "no_exp" or clean_lower in ["без опыта", "нет опыта", "нет", "0", "-"]:
                     exp_text = "Без опыта"
@@ -913,25 +806,17 @@ async def handle_vk_message(
 
                 session_data["data"]["experience"] = exp_text
                 cand_data = session_data["data"]
+                cand_data["user_id"] = str(user_id)
                 del EXTERNAL_SESSIONS[key]
 
-                cand_consent = cand_data.get("consent_timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                ticket_id = db.add_candidate(
-                    platform="vk",
-                    user_id=user_id,
-                    full_name=cand_data["full_name"],
-                    phone=cand_data["phone"],
-                    vacancy=cand_data["vacancy"],
-                    experience=cand_data["experience"],
-                    consent_timestamp=cand_consent
-                )
-
-                safe_fn = html.escape(cand_data["full_name"])
-                safe_ph = html.escape(cand_data["phone"])
-                safe_vc = html.escape(cand_data["vacancy"])
+                ticket_id, meta = candidate_service.register_candidate(cand_data, platform="vk")
+                safe_fn = html.escape(meta["full_name"])
+                safe_ph = html.escape(meta["phone"])
+                safe_vc = html.escape(meta["vacancy"])
                 safe_ex = html.escape(cand_data["experience"])
+                cand_consent = meta["consent_timestamp"]
+                recom_line = "\n💡 <b>Рекомендация:</b> кандидат без опыта, можно предложить обучение\n" if meta["offer_training"] else ""
 
-                # Отправка карточки в Telegram-группу отдела кадров
                 admin_card = (
                     f"📑 <b>НОВАЯ АНКЕТА СОИСКАТЕЛЯ #{ticket_id} [VK]</b>\n"
                     f"━━━━━━━━━━━━━━━━━━━━━\n"
@@ -942,16 +827,16 @@ async def handle_vk_message(
                     f"💼 <b>Опыт:</b> {safe_ex}\n"
                     f"⚖️ <b>Согласие 152-ФЗ:</b> <code>✅ Получено ({cand_consent})</code>\n"
                     f"⏱ <b>Время подачи:</b> <code>{datetime.now().strftime('%d.%m.%Y %H:%M')}</code>\n"
+                    f"{recom_line}"
                     f"━━━━━━━━━━━━━━━━━━━━━\n"
                     f"<i>Действия кадровой службы:</i>"
                 )
                 try:
                     await route_new_candidate_ticket(tg_bot, admin_card, reply_markup=make_ticket_keyboard(ticket_id))
-                    logger.info(f"Анкета #{ticket_id} успешно доставлена в Telegram!")
+                    logger.info(f"Анкета #{ticket_id} [VK] успешно доставлена в Telegram!")
                 except Exception as e:
                     logger.error(f"Ошибка доставки анкеты #{ticket_id} в Telegram: {e}")
 
-                # Пересылка фото/документов
                 if attachments:
                     for att in attachments:
                         if att.get("type") == "photo":
@@ -980,7 +865,7 @@ async def handle_vk_message(
                 )
                 return await send_vk_message(session, token, int(user_id), resp_text, keyboard=make_vk_main_keyboard())
 
-        # Если сообщение не распознано — показываем главное меню
+        # Подсказка по умолчанию
         hint = (
             "👋 Здравствуйте! Вас приветствует официальный бот по подбору персонала МУП «Ульяновскэлектротранс».\n\n"
             "Воспользуйтесь кнопками меню ниже:\n"
@@ -1044,7 +929,6 @@ async def run_vk_gateway(bot: Bot, db: ResumeDB):
                         async with session.get(lp_url, timeout=35) as lp_resp:
                             lp_data = await lp_resp.json()
                     except (asyncio.TimeoutError, aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError):
-                        # Штатный таймаут ожидания событий ВКонтакте (новых сообщений нет)
                         continue
                     except Exception as poll_err:
                         logger.debug(f"Временная задержка связи VK Long Poll: {poll_err}")
@@ -1056,7 +940,6 @@ async def run_vk_gateway(bot: Bot, db: ResumeDB):
                     if "failed" in lp_data:
                         code = lp_data.get("failed")
                         if code == 1:
-                            # В спецификации VK Long Poll при failed=1 обновляем ts и продолжаем без разрыва
                             ts = lp_data.get("ts", ts)
                             continue
                         elif code in (2, 3):

@@ -156,7 +156,8 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     builder.button(text="📥 Новые", callback_data="admin_list_new")
     builder.button(text="🟡 В работе", callback_data="admin_list_in_progress")
     builder.button(text="📦 Архив", callback_data="admin_list_archive")
-    builder.button(text="📊 Статистика", callback_data="admin_stats")
+    builder.button(text="📊 Скачать Excel (/export)", callback_data="hr_export_excel")
+    builder.button(text="🔄 Обновить", callback_data="admin_stats")
     builder.button(text="🎯 Вакансии и набор (Вкл/Выкл)", callback_data="tech_vacancies_menu")
 
     cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
@@ -239,7 +240,6 @@ def make_git_menu_keyboard(current_branch: str = "main") -> types.InlineKeyboard
 
 def make_tests_menu_keyboard() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="🔬 Запустить автотесты (27 проверок)", callback_data="test_run_all_suites")
     builder.button(text="🧪 Отправить анкету из TG", callback_data="test_send_tg")
     builder.button(text="🧪 Отправить анкету из VK", callback_data="test_send_vk")
     builder.button(text="❓ Отправить вопрос кандидата", callback_data="test_send_inquiry")

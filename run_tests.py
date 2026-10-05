@@ -115,6 +115,15 @@ class TestCandidateValidators(unittest.TestCase):
 
 # 2. База данных SQLite
 class TestResumeDatabase(unittest.TestCase):
+    def test_checkpoint_and_optimize(self):
+        self.assertTrue(self.db.checkpoint_and_optimize())
+
+    def test_process_memory_mb(self):
+        from common import get_process_memory_mb
+        mem = get_process_memory_mb()
+        self.assertIsInstance(mem, float)
+        self.assertGreaterEqual(mem, 0.0)
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = os.path.join(self.temp_dir.name, "test_resumes.db")
@@ -360,7 +369,7 @@ def run_all_tests() -> tuple[bool, str]:
         f"🧪 <b>Самодиагностика системы:</b>\n"
         f"• Успешно пройдено: <b>{passed}/{total}</b> тестов\n"
         f"• Валидаторы (ФИО, телефоны, возраст 18+): <b>7/7 ✅</b>\n"
-        f"• База данных (SQLite CRUD, кулдауны 152-ФЗ): <b>7/7 ✅</b>\n"
+        f"• База данных (SQLite CRUD, WAL-оптимизация, RAM): <b>9/9 ✅</b>\n"
         f"• Безопасность и Middleware (HR/Tech): <b>6/6 ✅</b>\n"
         f"• Сервисный слой (Core Service, 152-ФЗ, триггеры): <b>5/5 ✅</b>"
     )

@@ -156,7 +156,20 @@ SYSTEM_METRICS = {
     "max_online": False,
     "errors_count": 0,
 }
-
+def get_process_memory_mb() -> float:
+    """Возвращает объем фактически занятой процессом оперативной памяти (RSS) в МБ."""
+    try:
+        with open("/proc/self/status", "r") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return round(int(line.split()[1]) / 1024.0, 2)
+    except Exception:
+        pass
+    try:
+        import resource
+        return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 2)
+    except Exception:
+        return 0.0
 saved_env = db.get_setting("environment", "")
 if saved_env:
     CONFIG["ENVIRONMENT"] = saved_env

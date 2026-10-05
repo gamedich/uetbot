@@ -257,8 +257,11 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
     maint_status = "🟡 Включен (прием на паузе)" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Работа в штатном режиме"
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
     check_time = datetime.now().strftime("%H:%M:%S")
-    from common import get_process_memory_mb
-    ram_mb = get_process_memory_mb()
+    try:
+        from common import get_process_memory_mb
+        ram_mb = get_process_memory_mb()
+    except Exception:
+        ram_mb = 0.0
     ram_note = "🟢 Норма" if ram_mb < 250 else ("🟡 Повышено" if ram_mb < 500 else "🔴 Высокое")
 
     text = (

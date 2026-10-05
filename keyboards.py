@@ -29,7 +29,7 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
             builder.button(text="🛠 Панель инженера (/tech)", callback_data="tech_refresh")
             builder.button(text="🚀 Управление Git (/git)", callback_data="tech_git_menu")
         if is_hr:
-            builder.button(text="📋 Кадровая панель (/admin)", callback_data="admin_stats")
+            builder.button(text="📋 Кадровая панель (/hr)", callback_data="admin_stats")
         if is_tech and is_hr:
             builder.adjust(1, 1, 1, 1, 1, 1, 1, 2, 1)
         elif is_tech:
@@ -167,6 +167,8 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     is_enabled = db.get_admin_notify_status(user_id)
     toggle_text = "🔔 Уведы в ЛС: [ВКЛ]" if is_enabled else "🔕 Уведы в ЛС: [ВЫКЛ]"
     builder.button(text=toggle_text, callback_data="toggle_dm_notify")
+
+    
     builder.adjust(3, 2, 2, 1)
     return builder.as_markup()
 
@@ -235,6 +237,14 @@ def make_git_menu_keyboard(current_branch: str = "main") -> types.InlineKeyboard
     builder.button(text="⚡ Быстрый рестарт", callback_data="git_action_restart_only")
     builder.button(text="🔄 Обновить статус Git", callback_data="tech_git_menu")
     builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
+    # 5 ряд — Telegram Mini App / Веб-панель управления
+    web_url = CONFIG.get("WEB_APP_URL", "")
+    if web_url and web_url.startswith("https://"):
+        builder.button(text="🌐 Веб-панель (Mini App)", web_app=types.WebAppInfo(url=web_url))
+    elif web_url:
+        builder.button(text="🌐 Веб-панель (браузер)", url=web_url)
+    else:
+        builder.button(text="🌐 Веб-панель (Mini App)", callback_data="adm_webapp_info")
     builder.adjust(1, 1, 2, 2, 1)
     return builder.as_markup()
 

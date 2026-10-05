@@ -1651,3 +1651,27 @@ async def cmd_sync_group_two_way(event: types.Message | types.CallbackQuery, bot
 
     except Exception as e:
         await safe_answer(event, f"❌ Ошибка синхронизации: <code>{html.escape(str(e))}</code>", parse_mode="HTML")
+@hr_router.callback_query(F.data == "adm_webapp_info")
+async def cb_adm_webapp_info(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if not is_hr_admin(user_id) and not is_tech_admin(user_id) and user_id != CONFIG.get("SUPER_ADMIN_ID"):
+        return await callback.answer("🚫 Нет прав!", show_alert=True)
+    
+    port = CONFIG.get("WEB_APP_PORT", 8080)
+    lines = [
+        "🌐 <b>ВЕБ-ПАНЕЛЬ И TELEGRAM MINI APP (TMA)</b>",
+        "━━━━━━━━━━━━━━━━━━━━━",
+        f"Сервер веб-панели МУП «Ульяновскэлектротранс» работает на порту <code>{port}</code>.",
+        "",
+        "<b>Возможности панели:</b>",
+        "• Мгновенная смена текстов бота (Приветствие, FAQ, Обучение, Контакты) без перезапуска;",
+        "• Переключение режимов работы (PROD / TEST, режим ТО);",
+        "• Встроенный интеллектуальный помощник с шаблонами официальных писем и валидатором HTML.",
+        "",
+        f"🔗 <b>Прямой доступ в браузере:</b> <code>http://IP_СЕРВЕРА:{port}</code>",
+        "",
+        "<i>Для открытия прямо в Telegram через кнопку Mini App добавьте в <code>.env</code> параметр:</i>",
+        "<code>WEB_APP_URL=https://ваш-домен.ru/app</code>"
+    ]
+    await callback.message.answer("\n".join(lines), parse_mode="HTML")
+    await callback.answer()

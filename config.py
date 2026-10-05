@@ -124,6 +124,10 @@ CONFIG: Dict[str, Any] = AppConfig({
     "MAINTENANCE_MODE": _get_bool("MAINTENANCE_MODE", False),
     "ANONYMIZE_LOGS": _get_bool("ANONYMIZE_LOGS", True),
     "ALLOW_TEST_SUBMISSIONS_IN_PROD": _get_bool("ALLOW_TEST_SUBMISSIONS_IN_PROD", False),
+    # Telegram Mini App / Веб-панель
+    "WEB_APP_URL": os.getenv("WEB_APP_URL", "").strip(),
+    "WEB_APP_HOST": os.getenv("WEB_APP_HOST", "0.0.0.0").strip(),
+    "WEB_APP_PORT": _get_int("WEB_APP_PORT", 8080),
 })
 
 # Заполнение списка чатов для гарантированной доставки уведомлений

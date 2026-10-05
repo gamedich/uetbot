@@ -9,6 +9,7 @@ import os
 import asyncio
 import json
 import sqlite3
+import logging
 try:
     import aiosqlite
 except ImportError:
@@ -919,6 +920,26 @@ class ResumeDB:
             cursor = conn.cursor()
             cursor.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)", (key, str(value)))
             conn.commit()
+    def get_all_settings(self) -> Dict[str, str]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT key, value FROM system_settings WHERE key NOT LIKE 'text_override:%'")
+            return {row[0]: row[1] for row in cursor.fetchall()}
+
+    def get_all_text_overrides(self) -> Dict[str, str]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT key, value FROM system_settings WHERE key LIKE 'text_override:%'")
+            return {row[0].replace('text_override:', ''): row[1] for row in cursor.fetchall()}
+
+    def get_dynamic_text(self, text_key: str, default_val: str = '') -> str:
+        override = self.get_setting(f'text_override:{text_key}', '')
+        return override if override else default_val
+
+    def set_dynamic_text(self, text_key: str, value: str):
+        self.set_setting(f'text_override:{text_key}', value)
+
+
 
     def get_admin_role(self, user_id: int) -> Optional[str]:
         with self._get_connection() as conn:

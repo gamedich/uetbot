@@ -1614,3 +1614,19 @@ async def cmd_generate_destruction_act(message: types.Message) -> None:
     except Exception as e:
         logger.error("Ошибка генерации Акта: %s", e)
         await safe_answer(message, f"❌ Ошибка генерации документа: {e}")
+@hr_router.callback_query(F.data == "hr_mute_all_dm")
+async def cb_hr_mute_all_dm(callback: types.CallbackQuery):
+    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    if callback.from_user.id != super_id:
+        return await callback.answer("🚫 Это действие доступно только Главному администратору!", show_alert=True)
+
+    count = db.disable_all_hr_notifications()
+    await callback.answer(
+        f"🔕 Уведомления в ЛС принудительно отключены для всех кадровиков ({count} чел.)!\n"
+        f"Анкеты теперь будут поступать строго в общую группу кадров.",
+        show_alert=True
+    )
+    try:
+        await callback.message.edit_reply_markup(reply_markup=make_admin_menu_keyboard(callback.from_user.id))
+    except Exception:
+        pass        

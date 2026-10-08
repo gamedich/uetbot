@@ -33,7 +33,11 @@ from aiogram.types import BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import texts
-from candidate_service import candidate_service
+try:
+    from services.candidate_service import candidate_service
+except ImportError:
+    from services.candidate_service import candidate_service
+
 from common import (
     CONFIG,
     EXTERNAL_SESSIONS,

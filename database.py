@@ -27,62 +27,49 @@ logger = logging.getLogger("UET_DATABASE")
 
 
 class ResumeDB:
-    """
-    Основной класс управления хранилищем SQLite предприятия.
-    Обеспечивает атомарность транзакций, защиту от блокировок и аудит ПДн.
-    """
-
-    def __init__(self, db_path: str = "resumes.db") -> None:
-        env_db = os.getenv("DB_PATH")
-        if (db_path == "resumes.db" or not db_path) and env_db:
-            db_path = env_db
-
+    def __init__(self, db_path: str = "resumes.db", test_db_path: str = "resumes_test.db"):
         self.db_path = db_path
-        # Гарантируем создание родительской директории
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        self._init_and_migrate_db()
+        self.test_db_path = test_db_path
+        self._init_and_migrate_db(is_test=False)
+        self._init_and_migrate_db(is_test=True)
 
-    def _get_raw_connection(self) -> sqlite3.Connection:
-        """Создание соединения с оптимизациями многопоточного доступа и WAL."""
-        conn = sqlite3.connect(self.db_path, timeout=30.0)
-        try:
-            conn.execute("PRAGMA journal_mode=WAL;")
-        except sqlite3.OperationalError:
-            conn.execute("PRAGMA journal_mode=DELETE;")
+    def connection(self, is_test: bool = False) -> sqlite3.Connection:
+        """Алиас для вызовов self.connection()"""
+        return self._get_connection(is_test=is_test)
+
+    def _get_connection(self, is_test: bool = False) -> sqlite3.Connection:
+        """Создание соединения с оптимизациями для многопоточного доступа и WAL"""
+        target = self.test_db_path if is_test else self.db_path
+        conn = sqlite3.connect(target, timeout=30.0)
+        conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA busy_timeout=30000;")
         conn.execute("PRAGMA synchronous=NORMAL;")
-        conn.execute("PRAGMA cache_size=-2000;")
+        conn.execute("PRAGMA cache_size=-64000;")
         conn.execute("PRAGMA temp_store=MEMORY;")
         return conn
-
-    @contextlib.contextmanager
-    def connection(self) -> Generator[sqlite3.Connection, None, None]:
-        """
-        Контекстный менеджер соединения без утечек (Resource Leak Prevention).
-        Обеспечивает автоматический commit/rollback транзакции и закрытие соединения.
-        """
-        conn = self._get_raw_connection()
-        try:
-            with conn:
-                yield conn
-        finally:
-            conn.close()
-
-    async def get_async_connection(self):
-        """Создание асинхронного соединения через aiosqlite (при наличии)."""
+    def disable_all_hr_notifications(self) -> int:
+        
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE admins SET notify_dm = 0 WHERE role = 'hr'")
+            conn.commit()
+            return cursor.rowcount
+    async def get_async_connection(self, is_test: bool = False):
+        """Создание асинхронного соединения через aiosqlite."""
         if aiosqlite is None:
             raise RuntimeError("Пакет aiosqlite не установлен. Установите: pip install aiosqlite")
-        conn = await aiosqlite.connect(self.db_path, timeout=30.0)
+        target = self.test_db_path if is_test else self.db_path
+        conn = await aiosqlite.connect(target, timeout=30.0)
         await conn.execute("PRAGMA journal_mode=WAL;")
         await conn.execute("PRAGMA busy_timeout=30000;")
         await conn.execute("PRAGMA synchronous=NORMAL;")
-        await conn.execute("PRAGMA cache_size=-2000;")
+        await conn.execute("PRAGMA cache_size=-64000;")
         await conn.execute("PRAGMA temp_store=MEMORY;")
         return conn
 
-    def _init_and_migrate_db(self) -> None:
-        """Создание таблиц, миграция структуры и установка высокоскоростных индексов."""
-        with self.connection() as conn:
+    def _init_and_migrate_db(self, is_test: bool = False):
+        """Создание таблиц, миграция структуры и установка высокоскоростных индексов"""
+        with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
 
             # 1. Таблица соискателей
@@ -107,12 +94,16 @@ class ResumeDB:
             # Миграции полей кандидатов
             cursor.execute("PRAGMA table_info(candidates)")
             cand_cols = [row[1] for row in cursor.fetchall()]
+            if "admin_note" not in cand_cols:
+                cursor.execute("ALTER TABLE candidates ADD COLUMN admin_note TEXT DEFAULT ''")
+            if "updated_at" not in cand_cols:
+                cursor.execute("ALTER TABLE candidates ADD COLUMN updated_at TIMESTAMP DEFAULT NULL")
+            if "is_test" not in cand_cols:
+                cursor.execute("ALTER TABLE candidates ADD COLUMN is_test INTEGER DEFAULT 0")
+            if "consent_timestamp" not in cand_cols:
+                cursor.execute("ALTER TABLE candidates ADD COLUMN consent_timestamp TEXT DEFAULT ''")
 
-            migrations = [
-                ("admin_note", "TEXT DEFAULT ''"),
-                ("updated_at", "TIMESTAMP DEFAULT NULL"),
-                ("is_test", "INTEGER DEFAULT 0"),
-                ("consent_timestamp", "TEXT DEFAULT ''"),
+            new_columns = [
                 ("birth_date", "TEXT DEFAULT ''"),
                 ("city", "TEXT DEFAULT ''"),
                 ("driver_license", "TEXT DEFAULT ''"),
@@ -126,9 +117,15 @@ class ResumeDB:
                 ("extra_info", "TEXT DEFAULT ''"),
                 ("raw_data_json", "TEXT DEFAULT '{}'"),
             ]
-            for col_name, col_def in migrations:
+            for col_name, col_def in new_columns:
                 if col_name not in cand_cols:
                     cursor.execute(f"ALTER TABLE candidates ADD COLUMN {col_name} {col_def}")
+
+            # Если инициализируем тестовую базу — стартуем нумерацию с 900000
+            if is_test:
+                cursor.execute("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('candidates', 900000)")
+                cursor.execute("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('inquiries', 900000)")
+                conn.commit()
 
             # 2. Таблица администраторов
             cursor.execute(
@@ -153,23 +150,7 @@ class ResumeDB:
                 """
             )
 
-            # 4. Журнал уничтожения персональных данных (Приказ Роскомнадзора № 179)
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS destruction_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    candidate_id INTEGER,
-                    user_id TEXT,
-                    platform TEXT,
-                    reason TEXT,
-                    destroyed_at TEXT,
-                    act_number TEXT,
-                    operator TEXT DEFAULT 'МУП Ульяновскэлектротранс'
-                )
-                """
-            )
-
-            # 5. Служебные настройки
+            # 4. Служебные настройки
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS system_settings (
@@ -179,7 +160,7 @@ class ResumeDB:
                 """
             )
 
-            # 6. Таблица обращений соискателей (вопросы по анкете)
+            # 5. Таблица обращений соискателей (вопросы по анкете)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS inquiries (
@@ -199,6 +180,7 @@ class ResumeDB:
                 """
             )
 
+            # Миграции полей обращений
             cursor.execute("PRAGMA table_info(inquiries)")
             inq_cols = [row[1] for row in cursor.fetchall()]
             if "is_test" not in inq_cols:
@@ -206,7 +188,7 @@ class ResumeDB:
             if "consent_timestamp" not in inq_cols:
                 cursor.execute("ALTER TABLE inquiries ADD COLUMN consent_timestamp TEXT DEFAULT ''")
 
-            # 7. Таблица кулдауна обращений (антифлуд)
+            # 6. Таблица кулдауна обращений (антифлуд)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_cooldowns (
@@ -215,8 +197,8 @@ class ResumeDB:
                 )
                 """
             )
-
-            # 8. Таблица активных прямых диалогов (живой мост Кадровик <-> Кандидат)
+            
+            # 7. Таблица активных прямых диалогов (живой мост Кадровик <-> Кандидат)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS active_dialogs (
@@ -235,7 +217,7 @@ class ResumeDB:
             if "platform" not in dlg_cols:
                 cursor.execute("ALTER TABLE active_dialogs ADD COLUMN platform TEXT DEFAULT 'tg'")
 
-            # 9. Таблица согласий на обработку персональных данных (152-ФЗ)
+            # 8. Таблица согласий на обработку персональных данных (152-ФЗ)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_consents (
@@ -245,42 +227,40 @@ class ResumeDB:
                 """
             )
 
-            # 10. Таблица персистентных FSM состояний (aiogram 3)
+            # Индексы для ускорения поиска на больших объемах
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_user_plat ON candidates(user_id, platform)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_status ON candidates(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_user ON inquiries(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_status ON inquiries(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_dialog_op ON active_dialogs(operator_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_admins_role_dm ON admins(role, notify_dm)")
+
+            # 9. Таблица персистентных FSM состояний (aiogram 3)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS fsm_storage (
                     storage_key TEXT PRIMARY KEY,
                     state TEXT,
-                    data TEXT DEFAULT '{}',
+                    data TEXT DEFAULT "{}",
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
 
-            # 11. Таблица сессий внешних мессенджеров (VK / MAX)
+            # 10. Таблица сессий внешних мессенджеров (VK / MAX)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS external_sessions (
                     platform TEXT NOT NULL,
                     user_id TEXT NOT NULL,
-                    data TEXT DEFAULT '{}',
+                    data TEXT DEFAULT "{}",
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (platform, user_id)
                 )
                 """
             )
-
-            # Высокоскоростные индексы для быстрого поиска
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_user_plat ON candidates(user_id, platform)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_status ON candidates(status)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_created ON candidates(created_at)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_user ON inquiries(user_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_status ON inquiries(status)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_dialog_op ON active_dialogs(operator_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_admins_role_dm ON admins(role, notify_dm)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_destruct_cand ON destruction_logs(candidate_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_destruct_user ON destruction_logs(user_id)")
-
+            
+            conn.commit()
     @staticmethod
     def _parse_ts(ts_str: Optional[str]) -> datetime:
         """Безопасный парсинг временных меток разных форматов."""

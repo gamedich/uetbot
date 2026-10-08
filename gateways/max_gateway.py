@@ -32,7 +32,7 @@ from common import (
     route_new_inquiry_ticket,
     safe_send
 )
-from candidate_service import candidate_service
+from services.candidate_service import candidate_service
 from database import ResumeDB
 from keyboards import make_ticket_keyboard, make_inquiry_admin_keyboard
 

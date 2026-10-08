@@ -183,7 +183,31 @@ async def cb_tech_toggle_env(callback: types.CallbackQuery) -> None:
         await callback.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
     except Exception:
         pass
+@tech_router.callback_query(F.data == "tech_toggle_db")
+async def cb_tech_toggle_db(callback: types.CallbackQuery):
+    if not is_privileged_user(callback.from_user.id):
+        return await callback.answer("🚫 Недостаточно прав!", show_alert=True)
 
+    cur_db = db.get_setting("active_db_target", "resumes.db")
+    new_db = "resumes_test.db" if cur_db == "resumes.db" else "resumes.db"
+    
+    # Записываем выбор в базу и память
+    db.set_setting("active_db_target", new_db)
+    CONFIG["ACTIVE_DB_TARGET"] = new_db
+
+    alert = (
+        "🧪 Активирована ТЕСТОВАЯ база (resumes_test.db)!\nВсе тестовые анкеты будут изолированы с номерами #900000+."
+        if new_db == "resumes_test.db" else
+        "📁 Активирована БОЕВАЯ база (resumes.db)!\nВсе заявки сохраняются в официальную базу предприятия."
+    )
+    await callback.answer(alert, show_alert=True)
+
+    # Обновляем экран /tech с новым статусом
+    screen_text, kb = get_tech_screen_data(callback.from_user.id)
+    try:
+        await callback.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        pass
 
 @tech_router.callback_query(F.data == "tech_toggle_maint")
 async def cb_tech_toggle_maint(callback: types.CallbackQuery) -> None:

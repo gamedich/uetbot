@@ -23,7 +23,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import texts
-from candidate_service import candidate_service
+try:
+    from services.candidate_service import candidate_service
+except ImportError:
+    from services.candidate_service import candidate_service
+
 from common import (
     CONFIG,
     CandidateDirectMsgForm,
@@ -526,7 +530,7 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
         or is_hr_admin(int(user_id))
         or is_tech_admin(int(user_id))
     )
-    is_test_inq = is_admin and (CONFIG.get("ENVIRONMENT") == "TEST" or "тест" in q_text.lower())
+    is_test_inq = is_admin and (db.get_setting("active_db_target", "resumes.db") == "resumes_test.db" or "тест" in q_text.lower())
     cooldown = CONFIG.get("COOLDOWN_SECONDS", 1200) if not is_admin else 0
 
     success, msg, inq_id = candidate_service.submit_inquiry(
@@ -1389,7 +1393,7 @@ async def cb_submit_final(callback: types.CallbackQuery, state: FSMContext, bot:
         or is_tech_admin(int(user_id))
     )
     full_name = data.get("full_name", "")
-    is_test_cand = is_admin and (CONFIG.get("ENVIRONMENT") == "TEST" or "тест" in full_name.lower())
+    is_test_cand = is_admin and (db.get_setting("active_db_target", "resumes.db") == "resumes_test.db" or "тест" in full_name.lower())
     data["is_test"] = is_test_cand
 
     # Регистрация анкеты через сервисный слой (16 полей, триггер обучения со стипендией)

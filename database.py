@@ -27,12 +27,18 @@ logger = logging.getLogger("UET_DATABASE")
 
 
 class ResumeDB:
-    def __init__(self, db_path: str = "resumes.db", test_db_path: str = "resumes_test.db"):
+    def __init__(self, db_path: str = "data/resumes.db", test_db_path: str = "data/resumes_test.db"):
         self.db_path = db_path
         self.test_db_path = test_db_path
+
+        # Автоматически создаем папку data/, если её нет
+        for p in (self.db_path, self.test_db_path):
+            parent = os.path.dirname(p)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+
         self._init_and_migrate_db(is_test=False)
         self._init_and_migrate_db(is_test=True)
-
     def connection(self, is_test: bool = False) -> sqlite3.Connection:
         """Алиас для вызовов self.connection()"""
         return self._get_connection(is_test=is_test)

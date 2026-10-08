@@ -4,7 +4,7 @@
 - Команда /tech (чистый мониторинг систем, базы данных, статуса шлюзов, аптайма)
 - Команда /tests (отдельная структурированная панель всех тестов)
 - Отдельные команды:
-    /test_tg   — тестовая анкета Telegram в кадры
+    /test_tg   — тестовая анкета Telegram в кадры (16 шагов)
     /test_vk   — тестовая анкета ВКонтакте через шлюз
     /check_vk  — пинг и диагностика связи с API ВКонтакте
     /logs      — оперативный журнал логов прямо в Telegram
@@ -24,59 +24,58 @@ import logging
 import os
 import random
 import re
-import subprocess
 import sys
 import time
 from datetime import datetime
-from typing import Optional, List, Tuple, Dict, Any, Set
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from aiohttp import ClientSession, ClientTimeout
-from aiogram import Router, F, types, Bot
+from aiogram import Bot, F, Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import FSInputFile
+from aiogram.types import BufferedInputFile, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import texts
 from common import (
     CONFIG,
-    db,
-    is_tech_admin,
-    is_hr_admin,
-    safe_answer,
-    safe_send,
-    update_env_mode,
-    memory_log_handler,
     SYSTEM_METRICS,
     AdminManageState,
+    TechAccessMiddleware,
+    db,
     get_all_vacancies,
+    is_hr_admin,
+    is_tech_admin,
+    memory_log_handler,
+    route_new_candidate_ticket,
+    route_new_inquiry_ticket,
+    safe_answer,
+    safe_send,
     save_all_vacancies,
     sync_user_commands,
-    route_new_candidate_ticket,
-    route_new_inquiry_ticket
+    update_env_mode,
 )
 from keyboards import (
     get_tech_screen_data,
-    make_tech_menu_keyboard,
-    make_git_menu_keyboard,
-    make_tests_menu_keyboard,
     make_admins_menu_keyboard,
+    make_git_menu_keyboard,
+    make_inquiry_admin_keyboard,
     make_remove_admin_keyboard,
+    make_tech_menu_keyboard,
+    make_tests_menu_keyboard,
     make_ticket_keyboard,
-    make_inquiry_admin_keyboard
 )
 
 logger = logging.getLogger("TECH_HANDLER")
-tech_router = Router(name="tech")
-from common import TechAccessMiddleware  # добавить в импорты из common
 
+# Инициализация инженерного роутера с middleware авторизации
 tech_router = Router(name="tech")
 tech_router.message.middleware(TechAccessMiddleware())
 tech_router.callback_query.middleware(TechAccessMiddleware())
 
 
 def is_privileged_user(user_id: int) -> bool:
-    """Проверка прав: Главный администратор или Технический инженер (или TEST режим)."""
+    """Проверка прав: Главный администратор или Технический инженер (или TEST режим для HR)."""
     if user_id == CONFIG.get("SUPER_ADMIN_ID"):
         return True
     if is_tech_admin(user_id):
@@ -86,8 +85,8 @@ def is_privileged_user(user_id: int) -> bool:
     return False
 
 
-async def resolve_user_display(bot: Bot, user_id: int) -> tuple[str, str]:
-    """Возвращает (полный текст с ником, короткий текст для кнопки)."""
+async def resolve_user_display(bot: Bot, user_id: int) -> Tuple[str, str]:
+    """Возвращает кортеж: (полный текст с никнеймом, короткий текст для кнопки)."""
     try:
         chat = await bot.get_chat(user_id)
         name = html.escape(chat.full_name or "Сотрудник")
@@ -98,12 +97,25 @@ async def resolve_user_display(bot: Bot, user_id: int) -> tuple[str, str]:
         return f"ID: <code>{user_id}</code>", f"ID: {user_id}"
 
 
-# =====================================================================
+async def run_shell_cmd(cmd: str) -> Tuple[int, str]:
+    """Асинхронный запуск системных команд без блокировки Event Loop."""
+    proc = await asyncio.create_subprocess_shell(
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    out = (stdout or b"").decode("utf-8", errors="replace").strip()
+    err = (stderr or b"").decode("utf-8", errors="replace").strip()
+    return proc.returncode or 0, out or err
+
+
+# ==============================================================================
 # 1. МОНИТОРИНГ И ИНЖЕНЕРНАЯ ПАНЕЛЬ (/tech)
-# =====================================================================
+# ==============================================================================
 
 @tech_router.message(Command("tech"))
-async def cmd_tech(message: types.Message):
+async def cmd_tech(message: types.Message) -> None:
     user_id = message.from_user.id
     if not is_privileged_user(user_id):
         text = (
@@ -113,7 +125,8 @@ async def cmd_tech(message: types.Message):
             "💡 <i>Если это ваш аккаунт, укажите его в файле <code>.env</code>:\n"
             f"<code>SUPER_ADMIN_ID={user_id}</code> и перезапустите бота.</i>"
         )
-        return await safe_answer(message, text, parse_mode="HTML")
+        await safe_answer(message, text, parse_mode="HTML")
+        return
 
     SYSTEM_METRICS["tg_online"] = True
     screen_text, kb = get_tech_screen_data(user_id)
@@ -122,12 +135,14 @@ async def cmd_tech(message: types.Message):
 
 @tech_router.message(Command("status", "refresh", "metrics"))
 @tech_router.callback_query(F.data == "tech_refresh")
-async def cb_tech_refresh(event: types.Message | types.CallbackQuery):
+async def cb_tech_refresh(event: Union[types.Message, types.CallbackQuery]) -> None:
     user_id = event.from_user.id
     if not is_privileged_user(user_id):
         if isinstance(event, types.CallbackQuery):
-            return await event.answer("🚫 Доступ ограничен!", show_alert=True)
-        return await safe_answer(event, "🚫 Доступ ограничен.")
+            await event.answer("🚫 Доступ ограничен!", show_alert=True)
+            return
+        await safe_answer(event, "🚫 Доступ ограничен.")
+        return
 
     if isinstance(event, types.CallbackQuery):
         try:
@@ -148,9 +163,10 @@ async def cb_tech_refresh(event: types.Message | types.CallbackQuery):
 
 
 @tech_router.callback_query(F.data == "tech_toggle_env")
-async def cb_tech_toggle_env(callback: types.CallbackQuery):
+async def cb_tech_toggle_env(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Недостаточно прав!", show_alert=True)
+        await callback.answer("🚫 Недостаточно прав!", show_alert=True)
+        return
 
     current_env = CONFIG.get("ENVIRONMENT", "TEST")
     new_env = "PROD" if current_env == "TEST" else "TEST"
@@ -158,8 +174,8 @@ async def cb_tech_toggle_env(callback: types.CallbackQuery):
 
     alert_msg = (
         "🛡 Активирован режим PROD!\nВключены строгие требования 152-ФЗ, 3 мес. отказ и антифлуд."
-        if new_env == "PROD" else
-        "🧪 Активирован режим TEST!\nВсе ограничения и лимиты сняты для отладки."
+        if new_env == "PROD"
+        else "🧪 Активирован режим TEST!\nВсе ограничения и лимиты сняты для отладки."
     )
     await callback.answer(alert_msg, show_alert=True)
     screen_text, kb = get_tech_screen_data(callback.from_user.id)
@@ -170,9 +186,10 @@ async def cb_tech_toggle_env(callback: types.CallbackQuery):
 
 
 @tech_router.callback_query(F.data == "tech_toggle_maint")
-async def cb_tech_toggle_maint(callback: types.CallbackQuery):
+async def cb_tech_toggle_maint(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав доступа!", show_alert=True)
+        await callback.answer("🚫 Нет прав доступа!", show_alert=True)
+        return
 
     CONFIG["MAINTENANCE_MODE"] = not CONFIG.get("MAINTENANCE_MODE", False)
     db.set_setting("maintenance_mode", "1" if CONFIG["MAINTENANCE_MODE"] else "0")
@@ -186,21 +203,22 @@ async def cb_tech_toggle_maint(callback: types.CallbackQuery):
         pass
 
 
-# =====================================================================
+# ==============================================================================
 # УПРАВЛЕНИЕ РЕЗЕРВНЫМИ КОПИЯМИ (/backups, /backup, /restore)
-# =====================================================================
+# ==============================================================================
 
 @tech_router.message(Command("backup"))
-async def cmd_backup(message: types.Message):
-    """Создание горячего бэкапа и моментальная отправка файла прямо в чат Telegram."""
+async def cmd_backup(message: types.Message) -> None:
+    """Создание горячего бэкапа и отправка файла в чат Telegram."""
     if not is_privileged_user(message.from_user.id):
-        return await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        return
     try:
         path = await asyncio.to_thread(db.backup_database)
         filename = os.path.basename(path)
         file_size_kb = round(os.path.getsize(path) / 1024, 1)
         caption = (
-            f"💾 <b>Резервная копия базы данных успешно создана:</b>\n\n"
+            "💾 <b>Резервная копия базы данных успешно создана:</b>\n\n"
             f"📁 <b>Файл:</b> <code>{filename}</code>\n"
             f"📦 <b>Размер:</b> <code>{file_size_kb} КБ</code>\n"
             f"📍 <b>Директория:</b> <code>backups/</code>\n\n"
@@ -210,13 +228,14 @@ async def cmd_backup(message: types.Message):
             doc = FSInputFile(path, filename=filename)
             await message.answer_document(doc, caption=caption, parse_mode="HTML")
         except Exception as send_err:
-            logger.warning(f"Не удалось отправить файл документом: {send_err}")
+            logger.warning("Не удалось отправить файл документом: %s", send_err)
             await safe_answer(message, caption, parse_mode="HTML")
     except Exception as e:
         await safe_answer(message, f"❌ Ошибка резервного копирования: {e}")
 
 
 def make_backups_menu_keyboard(backups_count: int) -> types.InlineKeyboardMarkup:
+    """Формирует меню управления архивами."""
     builder = InlineKeyboardBuilder()
     builder.button(text="➕ Создать и скачать бэкап", callback_data="tech_backup_create_send")
     if backups_count > 0:
@@ -230,13 +249,15 @@ def make_backups_menu_keyboard(backups_count: int) -> types.InlineKeyboardMarkup
 
 @tech_router.message(Command("backups"))
 @tech_router.callback_query(F.data.in_(["tech_manage_backups", "tech_backup_db"]))
-async def cmd_manage_backups(event: types.Message | types.CallbackQuery):
+async def cmd_manage_backups(event: Union[types.Message, types.CallbackQuery]) -> None:
     """Центр управления резервными копиями: список, скачивание, откат и очистка."""
     user_id = event.from_user.id
     if not is_privileged_user(user_id):
         if isinstance(event, types.CallbackQuery):
-            return await event.answer("🚫 Нет прав!", show_alert=True)
-        return await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+            await event.answer("🚫 Нет прав!", show_alert=True)
+            return
+        await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+        return
 
     backups = await asyncio.to_thread(db.list_backups)
     total_count = len(backups)
@@ -255,8 +276,7 @@ async def cmd_manage_backups(event: types.Message | types.CallbackQuery):
     else:
         text += "<b>Доступные копии на сервере:</b>\n"
         for i, b in enumerate(backups[:8], 1):
-            text += f"<b>{i}.</b> <code>{b['filename']}</code>\n"
-            text += f"   📅 {b['created_at']} | 📦 {b['size_kb']} КБ\n"
+            text += f"<b>{i}.</b> <code>{b['filename']}</code>\n   📅 {b['created_at']} | 📦 {b['size_kb']} КБ\n"
 
         if total_count > 8:
             text += f"\n<i>...и ещё {total_count - 8} более ранних копий.</i>\n"
@@ -270,9 +290,10 @@ async def cmd_manage_backups(event: types.Message | types.CallbackQuery):
 
 
 @tech_router.callback_query(F.data == "tech_backup_create_send")
-async def cb_tech_backup_create_send(callback: types.CallbackQuery):
+async def cb_tech_backup_create_send(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
     await callback.answer("⏳ Создание бэкапа...")
     try:
         path = await asyncio.to_thread(db.backup_database)
@@ -281,28 +302,30 @@ async def cb_tech_backup_create_send(callback: types.CallbackQuery):
         await callback.message.answer_document(
             doc,
             caption=f"💾 <b>Свежая резервная копия базы данных:</b>\n<code>{filename}</code>",
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
         await cmd_manage_backups(callback)
     except Exception as e:
-        logger.error(f"Сбой создания бэкапа: {e}")
+        logger.error("Сбой создания бэкапа: %s", e)
         await callback.answer(f"❌ Ошибка: {e}", show_alert=True)
 
 
 @tech_router.callback_query(F.data == "tech_backup_download_latest")
-async def cb_tech_backup_download_latest(callback: types.CallbackQuery):
+async def cb_tech_backup_download_latest(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
     backups = await asyncio.to_thread(db.list_backups)
     if not backups:
-        return await callback.answer("⚠️ Нет сохранённых бэкапов!", show_alert=True)
+        await callback.answer("⚠️ Нет сохранённых бэкапов!", show_alert=True)
+        return
     latest = backups[0]
     try:
         doc = FSInputFile(latest["path"], filename=latest["filename"])
         await callback.message.answer_document(
             doc,
             caption=f"📥 <b>Последний бэкап ({latest['created_at']}):</b>\n<code>{latest['filename']}</code>",
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
         await callback.answer()
     except Exception as e:
@@ -310,14 +333,16 @@ async def cb_tech_backup_download_latest(callback: types.CallbackQuery):
 
 
 @tech_router.message(Command("restore"))
-async def cmd_restore(message: types.Message):
+async def cmd_restore(message: types.Message) -> None:
     """Команда отката базы данных к выбранному бэкапу (только для SUPER_ADMIN_ID)."""
     user_id = message.from_user.id
     if user_id != CONFIG.get("SUPER_ADMIN_ID"):
-        return await safe_answer(message, "🚫 Команда отката базы данных доступна только Главному администратору.")
+        await safe_answer(message, "🚫 Команда отката базы данных доступна только Главному администратору.")
+        return
     backups = await asyncio.to_thread(db.list_backups)
     if not backups:
-        return await safe_answer(message, "⚠️ Нет доступных бэкапов для восстановления.")
+        await safe_answer(message, "⚠️ Нет доступных бэкапов для восстановления.")
+        return
     text = (
         "♻️ <b>ВЫБЕРИТЕ КОПИЮ ДЛЯ ВОССТАНОВЛЕНИЯ БАЗЫ ДАННЫХ:</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
@@ -337,14 +362,16 @@ async def cmd_restore(message: types.Message):
 
 
 @tech_router.callback_query(F.data == "tech_backup_restore_list")
-async def cb_tech_backup_restore_list(callback: types.CallbackQuery):
+async def cb_tech_backup_restore_list(callback: types.CallbackQuery) -> None:
     user_id = callback.from_user.id
     if user_id != CONFIG.get("SUPER_ADMIN_ID"):
-        return await callback.answer("🚫 Откат базы данных разрешён только Главному администратору!", show_alert=True)
+        await callback.answer("🚫 Откат базы данных разрешён только Главному администратору!", show_alert=True)
+        return
 
     backups = await asyncio.to_thread(db.list_backups)
     if not backups:
-        return await callback.answer("⚠️ Нет бэкапов для восстановления!", show_alert=True)
+        await callback.answer("⚠️ Нет бэкапов для восстановления!", show_alert=True)
+        return
 
     text = (
         "♻️ <b>ВЫБЕРИТЕ КОПИЮ ДЛЯ ВОССТАНОВЛЕНИЯ БАЗЫ</b>\n"
@@ -366,16 +393,18 @@ async def cb_tech_backup_restore_list(callback: types.CallbackQuery):
 
 
 @tech_router.callback_query(F.data.startswith("bkp_res_ask_"))
-async def cb_tech_restore_ask(callback: types.CallbackQuery):
+async def cb_tech_restore_ask(callback: types.CallbackQuery) -> None:
     user_id = callback.from_user.id
     if user_id != CONFIG.get("SUPER_ADMIN_ID"):
-        return await callback.answer("🚫 Откат разрешён только Главному администратору!", show_alert=True)
+        await callback.answer("🚫 Откат разрешён только Главному администратору!", show_alert=True)
+        return
 
     raw_fn = callback.data.replace("bkp_res_ask_", "")
     backups = await asyncio.to_thread(db.list_backups)
     matched = next((b["filename"] for b in backups if b["filename"].startswith(raw_fn)), None)
     if not matched:
-        return await callback.answer("❌ Файл не найден!", show_alert=True)
+        await callback.answer("❌ Файл не найден!", show_alert=True)
+        return
 
     text = (
         "⚠️ <b>ПОДТВЕРЖДЕНИЕ ВОССТАНОВЛЕНИЯ БАЗЫ ДАННЫХ</b>\n"
@@ -396,16 +425,18 @@ async def cb_tech_restore_ask(callback: types.CallbackQuery):
 
 
 @tech_router.callback_query(F.data.startswith("bkp_res_do_"))
-async def cb_tech_restore_do(callback: types.CallbackQuery):
+async def cb_tech_restore_do(callback: types.CallbackQuery) -> None:
     user_id = callback.from_user.id
     if user_id != CONFIG.get("SUPER_ADMIN_ID"):
-        return await callback.answer("🚫 Доступ только для Главного администратора!", show_alert=True)
+        await callback.answer("🚫 Доступ только для Главного администратора!", show_alert=True)
+        return
 
     raw_fn = callback.data.replace("bkp_res_do_", "")
     backups = await asyncio.to_thread(db.list_backups)
     matched = next((b["filename"] for b in backups if b["filename"].startswith(raw_fn)), None)
     if not matched:
-        return await callback.answer("❌ Файл не найден!", show_alert=True)
+        await callback.answer("❌ Файл не найден!", show_alert=True)
+        return
 
     await callback.answer("⏳ Выполняется восстановление...")
     ok, res_msg = await asyncio.to_thread(db.restore_database, matched)
@@ -427,10 +458,11 @@ async def cb_tech_restore_do(callback: types.CallbackQuery):
 
 
 @tech_router.callback_query(F.data == "tech_backup_cleanup_confirm")
-async def cb_tech_backup_cleanup(callback: types.CallbackQuery):
+async def cb_tech_backup_cleanup(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
-    deleted_cnt, names = await asyncio.to_thread(db.cleanup_old_backups, 5)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
+    deleted_cnt, _ = await asyncio.to_thread(db.cleanup_old_backups, 5)
     if deleted_cnt > 0:
         await callback.answer(f"🧹 Удалено старых копий: {deleted_cnt}. Оставлено 5 свежих бэкапов.", show_alert=True)
     else:
@@ -439,9 +471,10 @@ async def cb_tech_backup_cleanup(callback: types.CallbackQuery):
 
 
 @tech_router.callback_query(F.data == "tech_toggle_cooldown")
-async def cb_tech_toggle_cooldown(callback: types.CallbackQuery):
+async def cb_tech_toggle_cooldown(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
     if cur_cd >= 1200:
@@ -465,41 +498,49 @@ async def cb_tech_toggle_cooldown(callback: types.CallbackQuery):
 
 
 @tech_router.message(Command("set_cooldown"))
-async def cmd_set_cooldown(message: types.Message):
+async def cmd_set_cooldown(message: types.Message) -> None:
     if not is_privileged_user(message.from_user.id):
-        return await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        return
 
     parts = message.text.strip().split()
     if len(parts) < 2 or not parts[1].isdigit():
         cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200)))) // 60
-        return await safe_answer(
+        await safe_answer(
             message,
-            f"ℹ️ <b>Управление таймаутом между вопросами (антифлуд):</b>\n\n"
+            "ℹ️ <b>Управление таймаутом между вопросами (антифлуд):</b>\n\n"
             f"Текущий таймаут: <b>{cur_cd} мин.</b>\n\n"
             "Формат команды: <code>/set_cooldown МИНУТЫ</code>\n"
             "<i>(Например: <code>/set_cooldown 0</code> для тестов или <code>/set_cooldown 5</code>)</i>",
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
+        return
 
     minutes = int(parts[1])
     new_seconds = minutes * 60
     db.set_setting("cooldown_seconds", str(new_seconds))
     CONFIG["COOLDOWN_SECONDS"] = new_seconds
-    await safe_answer(message, f"✅ Таймаут между вопросами соискателя установлен: <b>{minutes} мин.</b>", parse_mode="HTML")
+    await safe_answer(
+        message,
+        f"✅ Таймаут между вопросами соискателя установлен: <b>{minutes} мин.</b>",
+        parse_mode="HTML",
+    )
 
 
-# =====================================================================
+# ==============================================================================
 # 2. ПАНЕЛЬ ТЕСТОВ И ДИАГНОСТИКИ (/tests)
-# =====================================================================
+# ==============================================================================
 
 @tech_router.message(Command("tests", "test", "test_menu"))
 @tech_router.callback_query(F.data == "test_menu_back")
-async def cmd_tests_menu(event: types.Message | types.CallbackQuery):
+async def cmd_tests_menu(event: Union[types.Message, types.CallbackQuery]) -> None:
     user_id = event.from_user.id
     if not is_privileged_user(user_id):
         if isinstance(event, types.CallbackQuery):
-            return await event.answer("🚫 Доступ только для администраторов!", show_alert=True)
-        return await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+            await event.answer("🚫 Доступ только для администраторов!", show_alert=True)
+            return
+        await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+        return
 
     text = (
         "🧪 <b>ПАНЕЛЬ ТЕСТИРОВАНИЯ И ДИАГНОСТИКИ</b>\n"
@@ -526,7 +567,7 @@ async def cmd_tests_menu(event: types.Message | types.CallbackQuery):
 
 @tech_router.message(Command("changelog", "version"))
 @tech_router.callback_query(F.data == "tech_changelog")
-async def cmd_view_changelog(event: types.Message | types.CallbackQuery):
+async def cmd_view_changelog(event: Union[types.Message, types.CallbackQuery]) -> None:
     changelog_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "CHANGELOG.md")
     version = CONFIG.get("BOT_VERSION", "1.3.0")
     header = f"🚀 <b>Бот v{version}</b>\n━━━━━━━━━━━━━━━━━━━━━\n"
@@ -543,18 +584,23 @@ async def cmd_view_changelog(event: types.Message | types.CallbackQuery):
     await safe_answer(target, text, parse_mode="HTML")
 
 
-def generate_random_candidate(platform: str = "tg") -> dict:
+def generate_random_candidate(platform: str = "tg") -> Dict[str, Any]:
     """Генерирует полноценную тестовую анкету со всеми 16 шагами опросника."""
     names_m = [
-        "Смирнов Алексей Сергеевич", "Васильев Дмитрий Андреевич",
-        "Кузнецов Михаил Игоревич", "Морозов Артем Владимирович", "Федоров Илья Николаевич"
+        "Смирнов Алексей Сергеевич",
+        "Васильев Дмитрий Андреевич",
+        "Кузнецов Михаил Игоревич",
+        "Морозов Артем Владимирович",
+        "Федоров Илья Николаевич",
     ]
     names_f = [
-        "Смирнова Анна Павловна", "Кузнецова Ольга Ивановна",
-        "Васильева Елена Сергеевна", "Новикова Мария Александровна"
+        "Смирнова Анна Павловна",
+        "Кузнецова Ольга Ивановна",
+        "Васильева Елена Сергеевна",
+        "Новикова Мария Александровна",
     ]
     fio = random.choice(names_m if random.random() > 0.3 else names_f)
-    phone = f"+7 ({random.choice(['927', '902', '937', '960'])}) {random.randint(100, 999)}-{random.randint(10, 99)}-{random.randint(10, 99)}"
+    phone = f"+7927{random.randint(1000000, 9999999)}"
 
     vacs = get_all_vacancies()
     vac = random.choice(vacs) if vacs else "Водитель трамвая"
@@ -562,14 +608,14 @@ def generate_random_candidate(platform: str = "tg") -> dict:
         "Без опыта работы, готов пройти обучение со стипендией.",
         "Водительский стаж категории B, C более 4 лет, хочу обучиться на трамвай.",
         "Опыт работы кондуктором 2 года в городском транспорте.",
-        "Слесарь-ремонтник 4 разряда, стаж 5 лет, разбираюсь в подвижном составе."
+        "Слесарь-ремонтник 4 разряда, стаж 5 лет, разбираюсь в подвижном составе.",
     ]
     cities = ["Ульяновск", "Димитровград", "Новоульяновск", "Барыш"]
     edus = [
         "Среднее специальное, Ульяновский электромеханический колледж",
         "Среднее, Школа № 25 г. Ульяновска",
         "Высшее, УлГТУ (Инженерный факультет)",
-        "Среднее профессиональное, Автомеханический техникум"
+        "Среднее профессиональное, Автомеханический техникум",
     ]
     licenses = ["B, C", "B", "A, B", "Нет", "B, Трамвай"]
     sources = ["Объявление в трамвае", "Сайт предприятия", "ВКонтакте", "Центр занятости населения", "Знакомые"]
@@ -604,7 +650,7 @@ def generate_random_candidate(platform: str = "tg") -> dict:
 
 @tech_router.message(Command("test_tg", "test_apply"))
 @tech_router.callback_query(F.data == "test_send_tg")
-async def cb_test_send_tg(event: types.Message | types.CallbackQuery, bot: Bot):
+async def cb_test_send_tg(event: Union[types.Message, types.CallbackQuery], bot: Bot) -> None:
     c = generate_random_candidate("tg")
     t_id = db.add_candidate(
         platform="tg",
@@ -625,19 +671,20 @@ async def cb_test_send_tg(event: types.Message | types.CallbackQuery, bot: Bot):
         medical_restrictions=c["medical_restrictions"],
         criminal_record=c["criminal_record"],
         source=c["source"],
-        extra_info=c["extra_info"]
+        extra_info=c["extra_info"],
     )
-    # Получаем созданную анкету и форматируем полную карточку
     cand = db.get_candidate(t_id)
     card = texts.format_hr_card_full(cand) if cand else f"🧪 ТЕСТОВАЯ АНКЕТА #{t_id}"
     await route_new_candidate_ticket(bot, card, reply_markup=make_ticket_keyboard(t_id))
+
+    if isinstance(event, types.CallbackQuery):
+        await event.answer("Тестовая анкета TG отправлена!")
     await safe_answer(event, f"✅ Сгенерирована тестовая анкета #{t_id} с 16 шагами ({c['vacancy']})", parse_mode="HTML")
 
 
 @tech_router.message(Command("test_vk"))
-@tech_router.message(Command("test_vk"))
 @tech_router.callback_query(F.data == "test_send_vk")
-async def cb_test_send_vk(event: types.Message | types.CallbackQuery, bot: Bot):
+async def cb_test_send_vk(event: Union[types.Message, types.CallbackQuery], bot: Bot) -> None:
     c = generate_random_candidate("vk")
     fake_uid = str(random.randint(100000000, 999999999))
     t_id = db.add_candidate(
@@ -659,25 +706,30 @@ async def cb_test_send_vk(event: types.Message | types.CallbackQuery, bot: Bot):
         medical_restrictions=c["medical_restrictions"],
         criminal_record=c["criminal_record"],
         source=c["source"],
-        extra_info=c["extra_info"]
+        extra_info=c["extra_info"],
     )
     cand = db.get_candidate(t_id)
     card = texts.format_hr_card_full(cand) if cand else f"🧪 ТЕСТОВАЯ АНКЕТА VK #{t_id}"
     await route_new_candidate_ticket(bot, card, reply_markup=make_ticket_keyboard(t_id))
+
+    if isinstance(event, types.CallbackQuery):
+        await event.answer("Тестовая анкета VK отправлена!")
     await safe_answer(event, f"✅ Сгенерирована тестовая анкета VK #{t_id} с 16 шагами ({c['vacancy']})", parse_mode="HTML")
-RANDOM_QUESTIONS_POOL = [
+
+
+RANDOM_QUESTIONS_POOL: List[str] = [
     "Здравствуйте! Подскажите, какой график работы у водителей трамвая и есть ли вечерняя развозка?",
     "Добрый день! Выплачивается ли стипендия во время обучения на водителя троллейбуса и сколько она составляет?",
     "Здравствуйте, предоставляется ли общежитие или компенсация жилья для иногородних сотрудников?",
-    "У меня есть права категорий B и C. Можно ли переучиться на трамвай по ускоренной двухмесячной программе?",
+    "У меня есть права категорий B и C. Можно ли переучиться на трамвай по ускоренной программе?",
     "Добрый день! Какая заработная плата у слесаря по ремонту подвижного состава 4 разряда?",
     "Здравствуйте, есть ли вакансии кондуктора с частичной занятостью или со сменным графиком 2 через 2?",
     "Подскажите, через сколько лет водители трамваев имеют право выйти на досрочную льготную пенсию?",
-    "Добрый день! Нужен ли опыт работы для трудоустройства электромонтёром контактной сети?"
+    "Добрый день! Нужен ли опыт работы для трудоустройства электромонтёром контактной сети?",
 ]
 
 
-def generate_random_inquiry(platform: str = "tg") -> dict:
+def generate_random_inquiry(platform: str = "tg") -> Dict[str, str]:
     """Генератор уникальных тестовых обращений с вопросами."""
     c = generate_random_candidate(platform)
     question = random.choice(RANDOM_QUESTIONS_POOL)
@@ -685,17 +737,20 @@ def generate_random_inquiry(platform: str = "tg") -> dict:
         "full_name": c["full_name"],
         "phone": c["phone"],
         "vacancy": c["vacancy"],
-        "question": question
+        "question": question,
     }
+
 
 @tech_router.message(Command("test_inquiry", "test_question"))
 @tech_router.callback_query(F.data == "test_send_inquiry")
-async def cb_test_send_inquiry(event: types.Message | types.CallbackQuery, bot: Bot):
+async def cb_test_send_inquiry(event: Union[types.Message, types.CallbackQuery], bot: Bot) -> None:
     user_id = event.from_user.id
     if not is_privileged_user(user_id):
-        return await safe_answer(event, "🚫 Доступ ограничен.")
+        await safe_answer(event, "🚫 Доступ ограничен.")
+        return
 
     inq_data = generate_random_inquiry("tg")
+    consent_ts = datetime.now().strftime("%d.%m.%Y %H:%M")
     inq_id = db.add_inquiry(
         platform="tg",
         user_id=str(user_id),
@@ -703,22 +758,23 @@ async def cb_test_send_inquiry(event: types.Message | types.CallbackQuery, bot: 
         full_name=inq_data["full_name"],
         phone=inq_data["phone"],
         vacancy=inq_data["vacancy"],
-        is_test=True
+        is_test=True,
+        consent_timestamp=consent_ts,
     )
 
-    card_text = (
-        f"📩 <b>ТЕСТОВОЕ ОБРАЩЕНИЕ #{inq_id} [TG]</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 <b>Кандидат:</b> {inq_data['full_name']}\n"
-        f"📞 <b>Телефон:</b> <code>{inq_data['phone']}</code>\n"
-        f"🎯 <b>Вакансия:</b> {inq_data['vacancy']}\n"
-        f"⏱ <b>Время:</b> <code>{datetime.now().strftime('%d.%m.%Y %H:%M')}</code>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"❓ <b>Вопрос:</b>\n"
-        f"«{inq_data['question']}»"
+    card_text = texts.format_inquiry_hr_card(
+        inquiry_id=inq_id,
+        platform="tg",
+        full_name=inq_data["full_name"],
+        phone=inq_data["phone"],
+        vacancy=inq_data["vacancy"],
+        question_text=inq_data["question"],
+        consent_timestamp=consent_ts,
+        is_test=True,
     )
     await route_new_inquiry_ticket(bot, card_text, reply_markup=make_inquiry_admin_keyboard(inq_id))
-    resp = f"✅ <b>Сгенерировано тестовое обращение #{inq_id} (TG):</b>\n<i>«{inq_data['question']}»</i>"
+
+    resp = f"✅ <b>Сгенерировано тестовое обращение #{inq_id} (TG):</b>\n<i>«{html.escape(inq_data['question'])}»</i>"
     if isinstance(event, types.CallbackQuery):
         await event.answer("Вопрос отправлен!")
     await safe_answer(event, resp, parse_mode="HTML")
@@ -726,13 +782,15 @@ async def cb_test_send_inquiry(event: types.Message | types.CallbackQuery, bot: 
 
 @tech_router.message(Command("test_inquiry_vk"))
 @tech_router.callback_query(F.data == "test_send_inquiry_vk")
-async def cb_test_send_inquiry_vk(event: types.Message | types.CallbackQuery, bot: Bot):
+async def cb_test_send_inquiry_vk(event: Union[types.Message, types.CallbackQuery], bot: Bot) -> None:
     user_id = event.from_user.id
     if not is_privileged_user(user_id):
-        return await safe_answer(event, "🚫 Доступ ограничен.")
+        await safe_answer(event, "🚫 Доступ ограничен.")
+        return
 
     inq_data = generate_random_inquiry("vk")
     fake_vk_id = str(random.randint(100000000, 999999999))
+    consent_ts = datetime.now().strftime("%d.%m.%Y %H:%M")
     inq_id = db.add_inquiry(
         platform="vk",
         user_id=fake_vk_id,
@@ -740,22 +798,23 @@ async def cb_test_send_inquiry_vk(event: types.Message | types.CallbackQuery, bo
         full_name=inq_data["full_name"],
         phone=inq_data["phone"],
         vacancy=inq_data["vacancy"],
-        is_test=True
+        is_test=True,
+        consent_timestamp=consent_ts,
     )
 
-    card_text = (
-        f"📩 <b>ТЕСТОВОЕ ОБРАЩЕНИЕ #{inq_id} [VK]</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 <b>Кандидат:</b> {inq_data['full_name']}\n"
-        f"📞 <b>Телефон:</b> <code>{inq_data['phone']}</code>\n"
-        f"🎯 <b>Вакансия:</b> {inq_data['vacancy']}\n"
-        f"⏱ <b>Время:</b> <code>{datetime.now().strftime('%d.%m.%Y %H:%M')}</code>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"❓ <b>Вопрос:</b>\n"
-        f"«{inq_data['question']}»"
+    card_text = texts.format_inquiry_hr_card(
+        inquiry_id=inq_id,
+        platform="vk",
+        full_name=inq_data["full_name"],
+        phone=inq_data["phone"],
+        vacancy=inq_data["vacancy"],
+        question_text=inq_data["question"],
+        consent_timestamp=consent_ts,
+        is_test=True,
     )
     await route_new_inquiry_ticket(bot, card_text, reply_markup=make_inquiry_admin_keyboard(inq_id))
-    resp = f"✅ <b>Сгенерировано тестовое обращение #{inq_id} (VK):</b>\n<i>«{inq_data['question']}»</i>"
+
+    resp = f"✅ <b>Сгенерировано тестовое обращение #{inq_id} (VK):</b>\n<i>«{html.escape(inq_data['question'])}»</i>"
     if isinstance(event, types.CallbackQuery):
         await event.answer("Вопрос VK отправлен!")
     await safe_answer(event, resp, parse_mode="HTML")
@@ -763,7 +822,7 @@ async def cb_test_send_inquiry_vk(event: types.Message | types.CallbackQuery, bo
 
 @tech_router.message(Command("check_vk", "vk_ping"))
 @tech_router.callback_query(F.data == "test_ping_vk")
-async def cb_test_ping_vk(event: types.Message | types.CallbackQuery):
+async def cb_test_ping_vk(event: Union[types.Message, types.CallbackQuery]) -> None:
     token = CONFIG.get("VK_GROUP_TOKEN", "")
     group_id = CONFIG.get("VK_GROUP_ID", "")
 
@@ -776,8 +835,10 @@ async def cb_test_ping_vk(event: types.Message | types.CallbackQuery):
         )
         if isinstance(event, types.CallbackQuery):
             await event.message.answer(text, parse_mode="HTML")
-            return await event.answer()
-        return await safe_answer(event, text, parse_mode="HTML")
+            await event.answer()
+            return
+        await safe_answer(event, text, parse_mode="HTML")
+        return
 
     start_t = time.time()
     try:
@@ -827,40 +888,26 @@ async def cb_test_ping_vk(event: types.Message | types.CallbackQuery):
         await safe_answer(event, text, parse_mode="HTML")
 
 
-
 @tech_router.callback_query(F.data == "tech_force_toggle_hr_dm")
-async def cb_tech_force_toggle_hr_dm(callback: types.CallbackQuery, bot: Bot):
+async def cb_tech_force_toggle_hr_dm(callback: types.CallbackQuery, bot: Bot) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     active_hrs = db.get_hr_admins_with_dm_enabled()
     hr_group = CONFIG.get("HR_GROUP_ID")
 
     if active_hrs:
-        count = db.set_all_hr_notify_dm(0) if hasattr(db, "set_all_hr_notify_dm") else 0
-        if not hasattr(db, "set_all_hr_notify_dm"):
-            with db._get_connection() as conn:
-                cur = conn.cursor()
-                cur.execute("UPDATE admins SET notify_dm = 0 WHERE role = 'hr'")
-                conn.commit()
-                count = cur.rowcount
-
+        count = db.set_all_hr_notify_dm(0)
         notice_text = (
             "🔕 <b>Служебное уведомление:</b>\n"
             "Личные уведомления о новых анкетах в ЛС были <b>принудительно отключены</b> администратором системы.\n\n"
             "Все анкеты соискателей поступают в штатном режиме в этот кадровый чат.\n"
-            "<i>(Если кому-то из сотрудников персонально требуются дубли в ЛС, вы можете снова включить их через команду /admin).</i>"
+            "<i>(Если кому-то из сотрудников персонально требуются дубли в ЛС, их можно включить через /hr).</i>"
         )
         alert_msg = f"🔕 Уведомления в ЛС выключены для {count} сотрудников HR!"
     else:
-        count = db.set_all_hr_notify_dm(1) if hasattr(db, "set_all_hr_notify_dm") else 0
-        if not hasattr(db, "set_all_hr_notify_dm"):
-            with db._get_connection() as conn:
-                cur = conn.cursor()
-                cur.execute("UPDATE admins SET notify_dm = 1 WHERE role = 'hr'")
-                conn.commit()
-                count = cur.rowcount
-
+        count = db.set_all_hr_notify_dm(1)
         notice_text = (
             "🔔 <b>Служебное уведомление:</b>\n"
             "Личные уведомления о новых анкетах в ЛС были <b>включены</b> администратором для всех сотрудников кадровой службы."
@@ -871,7 +918,7 @@ async def cb_tech_force_toggle_hr_dm(callback: types.CallbackQuery, bot: Bot):
         try:
             await safe_send(bot, hr_group, notice_text)
         except Exception as e:
-            logger.warning(f"Не удалось отправить уведомление в чат кадров: {e}")
+            logger.warning("Не удалось отправить уведомление в чат кадров: %s", e)
 
     await callback.answer(alert_msg, show_alert=True)
     await cmd_tests_menu(callback)
@@ -879,19 +926,16 @@ async def cb_tech_force_toggle_hr_dm(callback: types.CallbackQuery, bot: Bot):
 
 @tech_router.message(Command("logs", "log"))
 @tech_router.callback_query(F.data == "tech_show_logs")
-async def cmd_show_logs(event: types.Message | types.CallbackQuery):
+async def cmd_show_logs(event: Union[types.Message, types.CallbackQuery]) -> None:
     """Просмотр оперативного журнала событий прямо в Telegram."""
     user_id = event.from_user.id
     if not is_privileged_user(user_id):
         if isinstance(event, types.CallbackQuery):
-            try:
-                await event.answer("🚫 Доступ только для администраторов!", show_alert=True)
-            except Exception:
-                pass
+            await event.answer("🚫 Доступ только для администраторов!", show_alert=True)
             return
-        return await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+        await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+        return
 
-    # 1. Сразу гасим спиннер на кнопке, чтобы не ловить таймаут
     if isinstance(event, types.CallbackQuery):
         try:
             await event.answer()
@@ -907,9 +951,9 @@ async def cmd_show_logs(event: types.Message | types.CallbackQuery):
             log_content = log_content[-2200:]
         text = (
             "📋 <b>ОПЕРАТИВНЫЙ ЖУРНАЛ СИСТЕМЫ (ПОСЛЕДНИЕ СОБЫТИЯ):</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
             f"<pre>{log_content}</pre>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
             f"⚠️ Ошибок с момента старта: <b>{SYSTEM_METRICS['errors_count']}</b>"
         )
 
@@ -929,7 +973,10 @@ async def cmd_show_logs(event: types.Message | types.CallbackQuery):
 
 @tech_router.message(Command("reset"))
 @tech_router.callback_query(F.data == "test_do_reset")
-async def cb_test_do_reset(event: types.Message | types.CallbackQuery, state: FSMContext = None):
+async def cb_test_do_reset(
+    event: Union[types.Message, types.CallbackQuery],
+    state: Optional[FSMContext] = None,
+) -> None:
     """Безопасный сброс: удаляет ТОЛЬКО анкету текущего администратора-тестировщика."""
     if state:
         await state.clear()
@@ -937,13 +984,15 @@ async def cb_test_do_reset(event: types.Message | types.CallbackQuery, state: FS
     user_id = event.from_user.id
     if not is_privileged_user(user_id):
         if isinstance(event, types.CallbackQuery):
-            return await event.answer("🚫 Доступ только для технических инженеров!", show_alert=True)
-        return await safe_answer(event, "🚫 Команда доступна только администраторам.", parse_mode="HTML")
+            await event.answer("🚫 Доступ только для технических инженеров!", show_alert=True)
+            return
+        await safe_answer(event, "🚫 Команда доступна только администраторам.", parse_mode="HTML")
+        return
 
     try:
         db.backup_database()
     except Exception as e:
-        logger.warning(f"Не удалось сделать автобэкап: {e}")
+        logger.warning("Не удалось сделать автобэкап: %s", e)
 
     db.reset_candidate_for_test(str(user_id), platform="tg")
     db.reset_candidate_for_test(str(user_id), platform="vk")
@@ -967,18 +1016,19 @@ async def cb_test_do_reset(event: types.Message | types.CallbackQuery, state: FS
         await safe_answer(event, resp, reply_markup=make_tests_menu_keyboard(), parse_mode="HTML")
 
 
-# =====================================================================
+# ==============================================================================
 # 3. УПРАВЛЕНИЕ АДМИНИСТРАТОРАМИ (/admins)
-# =====================================================================
+# ==============================================================================
 
 @tech_router.message(Command("admins", "team"))
-async def cmd_admins_menu(message: types.Message, bot: Bot):
+async def cmd_admins_menu(message: types.Message, bot: Bot) -> None:
     user_id = message.from_user.id
     if user_id != CONFIG.get("SUPER_ADMIN_ID") and not is_tech_admin(user_id):
-        return await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        return
 
     all_admins = db.get_all_admins()
-    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
 
     tasks = [resolve_user_display(bot, adm_id) for adm_id, _ in all_admins]
     resolved = await asyncio.gather(*tasks)
@@ -1002,17 +1052,14 @@ async def cmd_admins_menu(message: types.Message, bot: Bot):
         else:
             text += f"• 👤 <b>{full_label}</b> — {role}\n"
 
-    text += (
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "💡 <i>Нажмите кнопку ниже для выдачи или отзыва прав:</i>"
-    )
+    text += "━━━━━━━━━━━━━━━━━━━━━\n💡 <i>Нажмите кнопку ниже для выдачи или отзыва прав:</i>"
     await safe_answer(message, text, reply_markup=make_admins_menu_keyboard(all_admins), parse_mode="HTML")
 
 
 @tech_router.callback_query(F.data == "adm_ui_refresh")
-async def cb_adm_ui_refresh(callback: types.CallbackQuery, bot: Bot):
+async def cb_adm_ui_refresh(callback: types.CallbackQuery, bot: Bot) -> None:
     all_admins = db.get_all_admins()
-    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
 
     tasks = [resolve_user_display(bot, adm_id) for adm_id, _ in all_admins]
     resolved = await asyncio.gather(*tasks)
@@ -1043,9 +1090,9 @@ async def cb_adm_ui_refresh(callback: types.CallbackQuery, bot: Bot):
 
 
 @tech_router.callback_query(F.data == "adm_ui_remove_list")
-async def cb_adm_ui_remove_list(callback: types.CallbackQuery, bot: Bot):
+async def cb_adm_ui_remove_list(callback: types.CallbackQuery, bot: Bot) -> None:
     all_admins = db.get_all_admins()
-    admins_with_names = []
+    admins_with_names: List[Tuple[int, str, str]] = []
     for adm_id, role in all_admins:
         _, short_label = await resolve_user_display(bot, adm_id)
         admins_with_names.append((adm_id, role, short_label))
@@ -1060,11 +1107,12 @@ async def cb_adm_ui_remove_list(callback: types.CallbackQuery, bot: Bot):
 
 
 @tech_router.callback_query(F.data.startswith("adm_del_id_"))
-async def cb_adm_del_id(callback: types.CallbackQuery, bot: Bot):
+async def cb_adm_del_id(callback: types.CallbackQuery, bot: Bot) -> None:
     adm_id = int(callback.data.replace("adm_del_id_", ""))
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     if adm_id == super_id:
-        return await callback.answer("🚫 Нельзя удалить Главного администратора!", show_alert=True)
+        await callback.answer("🚫 Нельзя удалить Главного администратора!", show_alert=True)
+        return
 
     db.remove_admin(adm_id)
 
@@ -1080,7 +1128,7 @@ async def cb_adm_del_id(callback: types.CallbackQuery, bot: Bot):
     all_admins = db.get_all_admins()
     tasks = [resolve_user_display(bot, aid) for aid, _ in all_admins]
     resolved = await asyncio.gather(*tasks)
-    owner_full, _ = await resolve_user_display(bot, super_id)
+    owner_full, _ = await resolve_user_display(bot, super_id or 0)
 
     text = (
         "👥 <b>УПРАВЛЕНИЕ СОТРУДНИКАМИ И РОЛЯМИ</b>\n"
@@ -1104,9 +1152,10 @@ async def cb_adm_del_id(callback: types.CallbackQuery, bot: Bot):
 
 
 @tech_router.message(Command("add_hr"))
-async def cmd_add_hr(message: types.Message, bot: Bot):
+async def cmd_add_hr(message: types.Message, bot: Bot) -> None:
     if not is_privileged_user(message.from_user.id):
-        return await safe_answer(message, "🚫 Доступ ограничен администрацией.")
+        await safe_answer(message, "🚫 Доступ ограничен администрацией.")
+        return
 
     new_id = None
     user_display = None
@@ -1128,11 +1177,12 @@ async def cmd_add_hr(message: types.Message, bot: Bot):
                 user_display = f"ID: <code>{new_id}</code>"
 
     if not new_id:
-        return await safe_answer(
+        await safe_answer(
             message,
             "ℹ️ <b>Формат:</b> <code>/add_hr TELEGRAM_ID</code> или ответьте на сообщение сотрудника в группе.",
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
+        return
 
     db.unblock_user(new_id)
     db.add_admin(new_id, role="hr")
@@ -1140,7 +1190,7 @@ async def cmd_add_hr(message: types.Message, bot: Bot):
     notify_text = (
         "🎉 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
         "📋 <b>Роль:</b> <b>Специалист отдела кадров (HR)</b>\n"
-        "• Вам доступна кадровая панель: <code>/admin</code>\n"
+        "• Вам доступна кадровая панель: <code>/hr</code>\n"
         "• Вы будете получать новые анкеты соискателей в личные сообщения.\n"
     )
     sent = await safe_send(bot, new_id, notify_text)
@@ -1151,25 +1201,28 @@ async def cmd_add_hr(message: types.Message, bot: Bot):
         message,
         f"✅ <b>Сотрудник отдела кадров успешно назначен!</b>\n\n"
         f"👤 <b>Сотрудник:</b> {user_display}\n"
-        f"📋 <b>Роль:</b> HR-специалист\n"
+        "📋 <b>Роль:</b> HR-специалист\n"
         f"{note}",
         reply_markup=make_admins_menu_keyboard(db.get_all_admins()),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
 @tech_router.message(Command("add_tech"))
-async def cmd_add_tech(message: types.Message, bot: Bot):
+async def cmd_add_tech(message: types.Message, bot: Bot) -> None:
     if not is_privileged_user(message.from_user.id):
-        return await safe_answer(message, "🚫 Доступ ограничен администрацией.")
+        await safe_answer(message, "🚫 Доступ ограничен администрацией.")
+        return
 
     parts = message.text.strip().split()
     if len(parts) < 2 or not parts[1].isdigit():
-        return await safe_answer(
+        await safe_answer(
             message,
             "ℹ️ <b>Формат команды:</b> <code>/add_tech TELEGRAM_ID</code>\nНапример: <code>/add_tech 123456789</code>",
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
+        return
+
     new_id = int(parts[1])
     db.unblock_user(new_id)
     db.add_admin(new_id, role="tech")
@@ -1193,28 +1246,29 @@ async def cmd_add_tech(message: types.Message, bot: Bot):
         message,
         f"✅ <b>Технический инженер успешно назначен!</b>\n\n"
         f"👤 <b>Инженер:</b> {full_label}\n"
-        f"🔧 <b>Роль:</b> Tech\n"
+        "🔧 <b>Роль:</b> Tech\n"
         f"{note}",
         reply_markup=make_admins_menu_keyboard(db.get_all_admins()),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
-@tech_router.message(Command("del_admin"))
-@tech_router.message(Command("rm_admin"))
-@tech_router.message(Command("rm_hr"))
-async def cmd_del_admin(message: types.Message, bot: Bot):
+@tech_router.message(Command("del_admin", "rm_admin", "rm_hr"))
+async def cmd_del_admin(message: types.Message, bot: Bot) -> None:
     if not is_privileged_user(message.from_user.id):
-        return await safe_answer(message, "🚫 Доступ ограничен администрацией.")
+        await safe_answer(message, "🚫 Доступ ограничен администрацией.")
+        return
 
     parts = message.text.strip().split()
     if len(parts) < 2 or not parts[1].isdigit():
-        return await safe_answer(message, "ℹ️ <b>Формат команды:</b> <code>/del_admin TELEGRAM_ID</code>", parse_mode="HTML")
+        await safe_answer(message, "ℹ️ <b>Формат команды:</b> <code>/del_admin TELEGRAM_ID</code>", parse_mode="HTML")
+        return
 
     adm_id = int(parts[1])
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     if adm_id == super_id:
-        return await safe_answer(message, "🚫 Нельзя отозвать права у Главного администратора!")
+        await safe_answer(message, "🚫 Нельзя отозвать права у Главного администратора!")
+        return
 
     db.remove_admin(adm_id)
     revoke_text = (
@@ -1230,16 +1284,17 @@ async def cmd_del_admin(message: types.Message, bot: Bot):
         message,
         f"✅ <b>Права администратора для {adm_id} успешно отозваны!</b>\n{note}",
         reply_markup=make_admins_menu_keyboard(db.get_all_admins()),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
 # --- Кнопки интерфейса добавления через меню ---
 
 @tech_router.callback_query(F.data == "adm_ui_add_hr")
-async def cb_adm_ui_add_hr(callback: types.CallbackQuery, state: FSMContext):
+async def cb_adm_ui_add_hr(callback: types.CallbackQuery, state: FSMContext) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Назначать сотрудников может только администратор!", show_alert=True)
+        await callback.answer("🚫 Назначать сотрудников может только администратор!", show_alert=True)
+        return
     await state.set_state(AdminManageState.waiting_hr_id)
     text = (
         "📋 <b>НАЗНАЧЕНИЕ СОТРУДНИКА ОТДЕЛА КАДРОВ (HR)</b>\n"
@@ -1254,10 +1309,11 @@ async def cb_adm_ui_add_hr(callback: types.CallbackQuery, state: FSMContext):
 
 
 @tech_router.message(AdminManageState.waiting_hr_id)
-async def process_add_hr_id(message: types.Message, state: FSMContext, bot: Bot):
+async def process_add_hr_id(message: types.Message, state: FSMContext, bot: Bot) -> None:
     user_input = message.text.strip()
     if not user_input.isdigit():
-        return await safe_answer(message, "⚠️ ID должен состоять только из цифр. Попробуйте снова или отправьте /cancel:")
+        await safe_answer(message, "⚠️ ID должен состоять только из цифр. Попробуйте снова или отправьте /cancel:")
+        return
 
     new_id = int(user_input)
     db.unblock_user(new_id)
@@ -1269,7 +1325,7 @@ async def process_add_hr_id(message: types.Message, state: FSMContext, bot: Bot)
     notify_text = (
         "🎉 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
         "📋 <b>Роль:</b> <b>Специалист отдела кадров (HR)</b>\n"
-        "• Вам доступна кадровая панель резюме: <code>/admin</code>\n"
+        "• Вам доступна кадровая панель резюме: <code>/hr</code>\n"
         "• Вы будете получать новые анкеты соискателей в личные сообщения.\n"
     )
     sent = await safe_send(bot, new_id, notify_text)
@@ -1280,17 +1336,18 @@ async def process_add_hr_id(message: types.Message, state: FSMContext, bot: Bot)
         message,
         f"✅ <b>Сотрудник отдела кадров успешно назначен!</b>\n\n"
         f"👤 <b>Сотрудник:</b> {full_label}\n"
-        f"📋 <b>Роль:</b> HR\n"
+        "📋 <b>Роль:</b> HR\n"
         f"{note}",
         reply_markup=make_admins_menu_keyboard(db.get_all_admins()),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
 @tech_router.callback_query(F.data == "adm_ui_add_tech")
-async def cb_adm_ui_add_tech(callback: types.CallbackQuery, state: FSMContext):
+async def cb_adm_ui_add_tech(callback: types.CallbackQuery, state: FSMContext) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Доступ запрещен!", show_alert=True)
+        await callback.answer("🚫 Доступ запрещен!", show_alert=True)
+        return
     await state.set_state(AdminManageState.waiting_tech_id)
     text = (
         "🛠 <b>НАЗНАЧЕНИЕ ТЕХНИЧЕСКОГО ИНЖЕНЕРА (TECH)</b>\n"
@@ -1304,10 +1361,11 @@ async def cb_adm_ui_add_tech(callback: types.CallbackQuery, state: FSMContext):
 
 
 @tech_router.message(AdminManageState.waiting_tech_id)
-async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bot):
+async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bot) -> None:
     user_input = message.text.strip()
     if not user_input.isdigit():
-        return await safe_answer(message, "⚠️ ID должен состоять только из цифр. Попробуйте снова или отправьте /cancel:")
+        await safe_answer(message, "⚠️ ID должен состоять только из цифр. Попробуйте снова или отправьте /cancel:")
+        return
 
     new_id = int(user_input)
     db.unblock_user(new_id)
@@ -1333,10 +1391,10 @@ async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bo
         message,
         f"✅ <b>Технический инженер успешно назначен!</b>\n\n"
         f"👤 <b>Инженер:</b> {full_label}\n"
-        f"🔧 <b>Роль:</b> Tech\n"
+        "🔧 <b>Роль:</b> Tech\n"
         f"{note}",
         reply_markup=make_admins_menu_keyboard(db.get_all_admins()),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
@@ -1344,7 +1402,7 @@ async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bo
 # 4. УПРАВЛЕНИЕ НАБОРОМ ВАКАНСИЙ
 # ==============================================================================
 
-def get_closed_vacancies() -> set:
+def get_closed_vacancies() -> Set[str]:
     val = db.get_setting("closed_vacancies", "[]")
     try:
         return set(json.loads(val))
@@ -1353,9 +1411,13 @@ def get_closed_vacancies() -> set:
 
 
 @tech_router.callback_query(F.data == "tech_vacancies_menu")
-async def cb_tech_vacancies_menu(callback: types.CallbackQuery, state: FSMContext = None):
+async def cb_tech_vacancies_menu(
+    callback: types.CallbackQuery,
+    state: Optional[FSMContext] = None,
+) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
     if state:
         await state.clear()
 
@@ -1388,14 +1450,16 @@ async def cb_tech_vacancies_menu(callback: types.CallbackQuery, state: FSMContex
 
 
 @tech_router.callback_query(F.data.startswith("vac_tgl_idx_"))
-async def cb_tech_vac_toggle_idx(callback: types.CallbackQuery):
+async def cb_tech_vac_toggle_idx(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     idx = int(callback.data.split("_")[-1])
     vacancies = get_all_vacancies()
     if not (0 <= idx < len(vacancies)):
-        return await callback.answer("Ошибка индекса", show_alert=True)
+        await callback.answer("Ошибка индекса", show_alert=True)
+        return
 
     target_vac = vacancies[idx]
     closed = get_closed_vacancies()
@@ -1412,9 +1476,10 @@ async def cb_tech_vac_toggle_idx(callback: types.CallbackQuery):
 
 
 @tech_router.callback_query(F.data == "vac_ui_add")
-async def cb_vac_ui_add(callback: types.CallbackQuery, state: FSMContext):
+async def cb_vac_ui_add(callback: types.CallbackQuery, state: FSMContext) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
     await state.set_state(AdminManageState.waiting_vacancy_name)
     text = (
         "➕ <b>ДОБАВЛЕНИЕ НОВОЙ ВАКАНСИИ</b>\n"
@@ -1428,11 +1493,12 @@ async def cb_vac_ui_add(callback: types.CallbackQuery, state: FSMContext):
 
 
 @tech_router.message(AdminManageState.waiting_vacancy_name)
-async def process_new_vacancy_title(message: types.Message, state: FSMContext):
+async def process_new_vacancy_title(message: types.Message, state: FSMContext) -> None:
     title = (message.text or "").strip()
     if not title or title.startswith("/"):
         await state.clear()
-        return await safe_answer(message, "Действие отменено.")
+        await safe_answer(message, "Действие отменено.")
+        return
 
     vacancies = get_all_vacancies()
     if title not in vacancies:
@@ -1444,9 +1510,10 @@ async def process_new_vacancy_title(message: types.Message, state: FSMContext):
 
 
 @tech_router.callback_query(F.data == "vac_ui_del_menu")
-async def cb_vac_ui_del_menu(callback: types.CallbackQuery):
+async def cb_vac_ui_del_menu(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     vacancies = get_all_vacancies()
     builder = InlineKeyboardBuilder()
@@ -1465,9 +1532,10 @@ async def cb_vac_ui_del_menu(callback: types.CallbackQuery):
 
 
 @tech_router.callback_query(F.data.startswith("vac_del_idx_"))
-async def cb_vac_del_execute(callback: types.CallbackQuery):
+async def cb_vac_del_execute(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     idx = int(callback.data.split("_")[-1])
     vacancies = get_all_vacancies()
@@ -1482,27 +1550,16 @@ async def cb_vac_del_execute(callback: types.CallbackQuery):
 # 5. ПАНЕЛЬ GITHUB, ДЕПЛОЙ И ПЕРЕЗАПУСК (/git, /restart)
 # ==============================================================================
 
-async def run_shell_cmd(cmd: str) -> tuple[int, str]:
-    """Асинхронный запуск системных команд без блокировки Event Loop."""
-    proc = await asyncio.create_subprocess_shell(
-        cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-    stdout, stderr = await proc.communicate()
-    out = (stdout or b"").decode("utf-8", errors="replace").strip()
-    err = (stderr or b"").decode("utf-8", errors="replace").strip()
-    return proc.returncode, out or err
-
-
 @tech_router.message(Command("git", "deploy", "github"))
 @tech_router.callback_query(F.data == "tech_git_menu")
-async def cb_tech_git_menu(event: types.Message | types.CallbackQuery):
+async def cb_tech_git_menu(event: Union[types.Message, types.CallbackQuery]) -> None:
     user_id = event.from_user.id
     if not is_privileged_user(user_id):
         if isinstance(event, types.CallbackQuery):
-            return await event.answer("🚫 Нет прав!", show_alert=True)
-        return await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+            await event.answer("🚫 Нет прав!", show_alert=True)
+            return
+        await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+        return
 
     _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
     _, last_commit = await run_shell_cmd("git log -1 --pretty=format:'%h - %s (%cd)' --date=relative")
@@ -1535,71 +1592,77 @@ async def cb_tech_git_menu(event: types.Message | types.CallbackQuery):
 
 
 @tech_router.callback_query(F.data == "git_action_pull_restart")
-async def cb_git_pull_restart(callback: types.CallbackQuery):
+async def cb_git_pull_restart(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     await callback.message.edit_text(
         "⏳ <b>Стягиваем обновления из GitHub...</b>\nВыполняется <code>git pull</code>...",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
     code, out = await run_shell_cmd("git pull")
     if code != 0:
-        return await callback.message.edit_text(
+        await callback.message.edit_text(
             f"❌ <b>Ошибка выполнения git pull:</b>\n<code>{out[:500]}</code>",
             reply_markup=make_git_menu_keyboard(),
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
+        return
 
     await callback.message.edit_text(
         f"✅ <b>Обновления получены:</b>\n<code>{out[:300]}</code>\n\n"
         "🔄 <b>Перезапуск службы uet_bot выполняется...</b>\nБот поднимется через 2-3 секунды.",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
     async def _do_restart():
         await asyncio.sleep(1.0)
-        os.system("systemctl restart uet_bot")
+        await run_shell_cmd("systemctl restart uet_bot")
 
     asyncio.create_task(_do_restart())
 
 
 @tech_router.callback_query(F.data.startswith("git_action_switch_"))
-async def cb_git_switch_branch(callback: types.CallbackQuery):
+async def cb_git_switch_branch(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     target_branch = callback.data.replace("git_action_switch_", "")
     await callback.message.edit_text(
-        f"⏳ <b>Переключение на ветку «{target_branch}»...</b>\nВыполняется <code>git checkout {target_branch} && git pull</code>...",
-        parse_mode="HTML"
+        f"⏳ <b>Переключение на ветку «{target_branch}»...</b>\n"
+        f"Выполняется <code>git checkout {target_branch} && git pull</code>...",
+        parse_mode="HTML",
     )
 
     code, out = await run_shell_cmd(f"git checkout {target_branch} && git pull origin {target_branch}")
     if code != 0:
-        return await callback.message.edit_text(
+        await callback.message.edit_text(
             f"❌ <b>Ошибка переключения ветки:</b>\n<code>{out[:500]}</code>",
             reply_markup=make_git_menu_keyboard(target_branch),
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
+        return
 
     await callback.message.edit_text(
         f"✅ Ветка переключена на <b>«{target_branch}»</b>!\n\n🔄 <b>Перезапуск службы uet_bot...</b>",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
     async def _do_restart():
         await asyncio.sleep(1.0)
-        os.system("systemctl restart uet_bot")
+        await run_shell_cmd("systemctl restart uet_bot")
 
     asyncio.create_task(_do_restart())
 
 
 @tech_router.callback_query(F.data == "git_action_rollback_ask")
-async def cb_git_rollback_ask(callback: types.CallbackQuery):
+async def cb_git_rollback_ask(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     builder = InlineKeyboardBuilder()
     builder.button(text="⚠️ ДА, ОТКАТИТЬ НА 1 КОММИТ", callback_data="git_action_rollback_confirm")
@@ -1613,50 +1676,53 @@ async def cb_git_rollback_ask(callback: types.CallbackQuery):
         "Все незакоммиченные локальные правки будут сброшены, а бот перезапущен.\n\n"
         "<b>Вы уверены?</b>",
         reply_markup=builder.as_markup(),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
 @tech_router.callback_query(F.data == "git_action_rollback_confirm")
-async def cb_git_rollback_confirm(callback: types.CallbackQuery):
+async def cb_git_rollback_confirm(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     code, out = await run_shell_cmd("git reset --hard HEAD~1")
     await callback.message.edit_text(
         f"⏪ <b>Откат выполнен:</b>\n<code>{out[:300]}</code>\n\n🔄 Перезапуск службы...",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
     async def _do_restart():
         await asyncio.sleep(1.0)
-        os.system("systemctl restart uet_bot")
+        await run_shell_cmd("systemctl restart uet_bot")
 
     asyncio.create_task(_do_restart())
 
 
 @tech_router.callback_query(F.data == "git_action_restart_only")
-async def cb_git_restart_only(callback: types.CallbackQuery):
+async def cb_git_restart_only(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     await callback.message.edit_text(
         "🔄 <b>Перезапуск службы uet_bot выполняется...</b>\n\nБот поднимется через 2-3 секунды.",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
     await callback.answer()
 
     async def _do_restart():
         await asyncio.sleep(1.0)
-        os.system("systemctl restart uet_bot")
+        await run_shell_cmd("systemctl restart uet_bot")
 
     asyncio.create_task(_do_restart())
 
 
 @tech_router.message(Command("restart", "reboot"))
-async def cmd_restart(message: types.Message):
+async def cmd_restart(message: types.Message) -> None:
     if not is_privileged_user(message.from_user.id):
-        return await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        return
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ ДА, ПЕРЕЗАПУСТИТЬ", callback_data="git_action_restart_only")
     builder.button(text="❌ Отмена", callback_data="tech_git_menu")
@@ -1669,14 +1735,15 @@ async def cmd_restart(message: types.Message):
         "Процесс перезагрузится за 2–3 секунды и применит все изменения в коде.\n\n"
         "<b>Перезапустить сейчас?</b>",
         reply_markup=builder.as_markup(),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
 @tech_router.callback_query(F.data == "git_action_forward_ask")
-async def cb_git_forward_ask(callback: types.CallbackQuery):
+async def cb_git_forward_ask(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
     branch = branch or "main"
@@ -1693,14 +1760,15 @@ async def cb_git_forward_ask(callback: types.CallbackQuery):
         "Все откаты будут отменены, код вернётся к последней версии из GitHub, а бот перезапустится.\n\n"
         "<b>Вернуть актуальную версию?</b>",
         reply_markup=builder.as_markup(),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
 @tech_router.callback_query(F.data == "git_action_forward_confirm")
-async def cb_git_forward_confirm(callback: types.CallbackQuery):
+async def cb_git_forward_confirm(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
 
     _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
     branch = branch or "main"
@@ -1708,54 +1776,59 @@ async def cb_git_forward_confirm(callback: types.CallbackQuery):
     code, out = await run_shell_cmd(f"git fetch origin && git reset --hard origin/{branch}")
     await callback.message.edit_text(
         f"⏩ <b>Возврат выполнен:</b>\n<code>{out[:300]}</code>\n\n🔄 Перезапуск службы uet_bot...",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
     async def _do_restart():
         await asyncio.sleep(1.0)
-        os.system("systemctl restart uet_bot")
+        await run_shell_cmd("systemctl restart uet_bot")
 
     asyncio.create_task(_do_restart())
-# =========================================================================
-# ВЫГРУЗКА ПАКЕТА ДОКУМЕНТАЦИИ (ГОСТ 19.505, ГОСТ 19.503, 152-ФЗ)
-# =========================================================================
+
+
+# ==============================================================================
+# 6. ВЫГРУЗКА ПАКЕТА ДОКУМЕНТАЦИИ (ГОСТ 19.505, ГОСТ 19.503, 152-ФЗ)
+# ==============================================================================
+
 @tech_router.message(Command("docs", "manual"))
-async def cmd_generate_project_docs(message: types.Message):
+async def cmd_generate_project_docs(message: types.Message) -> None:
     """Генерация полного комплекта нормативной и эксплуатационной документации."""
     if not is_privileged_user(message.from_user.id):
-        return await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        return
 
     await safe_answer(message, "⏳ <b>Формирую официальный комплект документации (ГОСТ/152-ФЗ)...</b>")
     try:
-        import sys, os
         root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if root_dir not in sys.path:
             sys.path.insert(0, root_dir)
-        import doc_generator
+
+        import doc_generator  # type: ignore
 
         p_policy = doc_generator.generate_privacy_policy_docx()
         p_manual = doc_generator.generate_operator_manual_docx()
         p_passport = doc_generator.generate_system_passport_docx()
 
-        from aiogram.types import BufferedInputFile
         with open(p_policy, "rb") as f:
             await message.answer_document(
                 BufferedInputFile(f.read(), filename="Политика_обработки_ПДн_МУП_УЭТ.docx"),
                 caption="📑 <b>Политика обработки и защиты ПДн (ст. 18.1 152-ФЗ)</b>",
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
         with open(p_manual, "rb") as f:
             await message.answer_document(
                 BufferedInputFile(f.read(), filename="Руководство_оператора_кадров_ГОСТ_19.505.docx"),
                 caption="📚 <b>Руководство оператора (кадровой службы) по ГОСТ 19.505-79</b>",
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
         with open(p_passport, "rb") as f:
             await message.answer_document(
                 BufferedInputFile(f.read(), filename="Технический_паспорт_АИС_Рекрутинг_Сервис.docx"),
                 caption="🛡 <b>Технический паспорт и архитектура системы (УЗ-3 ФСТЭК)</b>",
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
+    except ImportError:
+        await safe_answer(message, "⚠️ Модуль <code>doc_generator</code> не найден в директории проекта.")
     except Exception as e:
-        logger.error(f"Ошибка формирования документации: {e}")
+        logger.error("Ошибка формирования документации: %s", e)
         await safe_answer(message, f"❌ Ошибка формирования документации: {e}")

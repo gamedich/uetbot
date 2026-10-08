@@ -9,31 +9,63 @@
 from __future__ import annotations
 
 import html
+import re
 from datetime import datetime
-from typing import Dict, Any, Optional, Union
-from typing import Dict, Any, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from config import CONFIG
-import re
+
+
+# ==============================================================================
+# СЛУЖЕБНЫЕ УТИЛИТЫ ФОРМАТИРОВАНИЯ И СИНХРОНИЗАЦИИ КАНАЛОВ (SSOT)
+# ==============================================================================
 
 def clean_html(raw_html: str) -> str:
-    """Удаляет HTML-разметку для каналов без поддержки HTML (ВКонтакте и др.)."""
+    """
+    Удаляет HTML-разметку для каналов без поддержки HTML (ВКонтакте, МАКС и др.).
+    Преобразует гиперссылки в текстовый формат 'Текст (URL)', заменяет переводы
+    строк и декодирует сущности (&quot;, &lt;, &gt;, &amp;).
+    """
     if not raw_html:
         return ""
-    res = re.sub(r"<br\s*/?>", "\n", raw_html)
-    res = re.sub(r"</?(b|strong|i|em|code|pre|blockquote|a|u|s)[^>]*>", "", res)
+    # Сохраняем ссылки: <a href="url">текст</a> -> текст (url)
+    res = re.sub(
+        r'<a\s+[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
+        r"\2 (\1)",
+        raw_html,
+        flags=re.IGNORECASE,
+    )
+    # Заменяем теги переноса строк и параграфов
+    res = re.sub(r"<(br|p|div|blockquote)[^>]*>", "\n", res, flags=re.IGNORECASE)
+    # Удаляем все оставшиеся теги
+    res = re.sub(r"<[^>]+>", "", res)
+    # Декодируем HTML-сущности
+    res = html.unescape(res)
+    # Нормализуем множественные переносы строк
+    res = re.sub(r"\n{3,}", "\n\n", res)
     return res.strip()
+
+
+def _get_config_str(key: str, default: str = "") -> str:
+    """Безопасное получение строкового значения из конфигурации с резервом."""
+    try:
+        val = CONFIG.get(key)
+        return str(val).strip() if val else default
+    except Exception:
+        return default
 
 
 # ==============================================================================
 # 1. ТЕКСТЫ КНОПОК МЕНЮ И КЛАВИАТУР
 # ==============================================================================
 
+# Главное меню пользователя
 BTN_APPLY = "📝 Заполнить анкету на работу"
 BTN_MY_APP = "📑 Моя анкета"
 BTN_ASK_QUESTION = "💬 Связаться с кадровиком / Задать вопрос"
-BTN_FAQ = "❓ Частые вопросы и ответы (FAQ)"
+BTN_FAQ = "📚 Частые вопросы и ответы (FAQ)"
 BTN_CONTACTS = "📞 Контакты отдела кадров"
+BTN_SUPPORT = "🚨 Экстренная техподдержка"
 BTN_PRIVACY = "📄 Политика конфиденциальности"
 BTN_BACK_TO_MENU = "⬅️ Главное меню"
 BTN_CANCEL = "❌ Отмена"
@@ -50,7 +82,7 @@ BTN_NAV_SKIP = "⏭ Пропустить"
 BTN_NAV_CONFIRM = "✅ Подтверждаю"
 BTN_NAV_EDIT = "✏️ Изменить данные"
 
-# Живой диалог и обращения
+# Прямой диалог, обращения и 152-ФЗ
 BTN_DIALOG_STOP = "⏹ Завершить диалог"
 BTN_DIALOG_REPLY = "💬 Ответить кадровику"
 BTN_REQUEST_UPDATE = "💬 Запросить уточнение"
@@ -99,9 +131,27 @@ BTN_EDU_DEGREE = "🎓 Учёная степень"
 BTN_YES = "✅ Да"
 BTN_NO = "❌ Нет"
 
+# Служебные кнопки панелей управления
+BTN_TECH_PANEL = "🛠 Панель инженера (/tech)"
+BTN_GIT_PANEL = "🚀 Управление Git (/git)"
+BTN_HR_PANEL = "📋 Кадровая панель (/hr)"
+BTN_LIVE_DLG_START = "🟢 Начать прямой диалог"
+BTN_CAND_MSG = "💬 Написать через бота"
+BTN_STATUS_IN_PROGRESS = "🟡 В работу"
+BTN_STATUS_INVITE = "🟢 Пригласить"
+BTN_STATUS_REJECT = "🔴 Отказ"
+BTN_STATUS_ARCHIVE = "📦 В архив"
+BTN_STATUS_RESTORE = "↩️ Вернуть в работу"
+BTN_CAND_NOTE = "📝 Заметка"
+BTN_INVITE_CUSTOM = "📅 Дата встречи"
+BTN_DELETE = "🗑 Удалить"
+BTN_BLOCK = "⛔ В ЧС"
+BTN_UNBLOCK = "✅ Снять ЧС"
+BTN_BACK_TO_LIST = "⬅️ К списку анкет"
+
 
 # ==============================================================================
-# 2. ГЛАВНОЕ МЕНЮ И ПРИВЕТСТВИЕ (/start)
+# 2. ГЛАВНОЕ МЕНЮ И ПРИВЕТСТВИЕ (/start, /menu)
 # ==============================================================================
 
 START_WELCOME = (
@@ -140,9 +190,9 @@ CONSENT_SURVEY_PROMPT = (
 CONSENT_REFUSED_TEXT = (
     "ℹ️ <b>Без согласия на обработку персональных данных мы не можем принять вашу анкету.</b>\n\n"
     "Однако вы всегда можете:\n"
-    f"• Позвонить в отдел кадров: <code>{CONFIG['HR_PHONE']}</code>\n"
-    f"• Прийти лично: <b>{CONFIG['HR_ADDRESS']}</b>\n"
-    "• Задать вопрос без обработки персональных данных."
+    f"• Позвонить в отдел кадров: <code>{_get_config_str('HR_PHONE', '+7 (8422) 58-46-60')}</code>\n"
+    f"• Прийти лично: <b>{_get_config_str('HR_ADDRESS', 'г. Ульяновск, ул. Гончарова, 2')}</b>\n"
+    "• Задать общий вопрос без обработки персональных данных."
 )
 
 CONSENT_INQUIRY_PROMPT = (
@@ -159,7 +209,7 @@ PRIVACY_POLICY_TEXT = (
     "(в соответствии с Федеральным законом № 152-ФЗ РФ)\n"
     "━━━━━━━━━━━━━━━━━━━━━\n"
     "1. <b>Оператор персональных данных:</b> Муниципальное унитарное предприятие «Ульяновскэлектротранс» (МУП «УЭТ»).\n"
-    f"📍 Адрес: {CONFIG['HR_ADDRESS']}\n\n"
+    f"📍 Адрес: {_get_config_str('HR_ADDRESS', 'г. Ульяновск, ул. Гончарова, 2')}\n\n"
     "2. <b>Цель сбора и обработки:</b> Рассмотрение кандидатур соискателей на трудоустройство, организация собеседований, формирование кадрового резерва и поддержание оперативной связи с кандидатами.\n\n"
     "3. <b>Состав обрабатываемых данных:</b>\n"
     "• Фамилия, имя, отчество;\n"
@@ -173,7 +223,7 @@ PRIVACY_POLICY_TEXT = (
     "5. <b>Права субъекта персональных данных:</b>\n"
     "В соответствии со ст. 14 и 21 152-ФЗ соискатель вправе запросить выгрузку своих данных (/mydata) либо в любой момент отозвать согласие с формированием автоматического акта об уничтожении (/revoke).\n"
     "━━━━━━━━━━━━━━━━━━━━━\n"
-    f"📞 Телефон отдела кадров: <code>{CONFIG['HR_PHONE']}</code>"
+    f"📞 Телефон отдела кадров: <code>{_get_config_str('HR_PHONE', '+7 (8422) 58-46-60')}</code>"
 )
 
 
@@ -187,7 +237,7 @@ SURVEY_STEP1_NAME = (
     "Введите ваши фамилию, имя и отчество полностью.\n"
     "<i>Пример: Иванов Иван Иванович</i>"
 )
-SURVEY_START_NAME = SURVEY_STEP1_NAME  # для совместимости
+SURVEY_START_NAME = SURVEY_STEP1_NAME
 
 # Шаг 2. Дата рождения
 SURVEY_STEP2_BIRTHDATE = (
@@ -208,8 +258,9 @@ SURVEY_STEP3_PHONE = (
 )
 
 def format_survey_ask_phone(full_name: str) -> str:
+    escaped_name = html.escape(full_name or "Кандидат")
     return (
-        f"📱 <b>Шаг 3 из 16</b> (Кандидат: <b>{full_name}</b>)\n\n"
+        f"📱 <b>Шаг 3 из 16</b> (Кандидат: <b>{escaped_name}</b>)\n\n"
         "Укажите ваш контактный номер телефона.\n"
         "Нажмите кнопку <b>«📱 Поделиться номером телефона»</b> внизу экрана, "
         "либо введите номер вручную в формате <code>+79001234567</code>:"
@@ -230,7 +281,7 @@ SURVEY_STEP5_VACANCY = (
     "🎯 <b>Шаг 5 из 16</b>\n\n"
     "Выберите вакансию, которая вас интересует:"
 )
-SURVEY_ASK_VACANCY = SURVEY_STEP5_VACANCY  # для совместимости
+SURVEY_ASK_VACANCY = SURVEY_STEP5_VACANCY
 
 SURVEY_STEP5_1_CUSTOM = (
     "🎯 <b>Шаг 5.1</b>\n\n"
@@ -266,12 +317,13 @@ SURVEY_STEP7_1_DESC = (
 )
 SURVEY_STEP7_2_NO_EXP = (
     "💼 <b>Шаг 7.2</b>\n\n"
-    "Понял, отметил «Без опыта». Это не помешает рассмотрению вашей кандидатуры — предприятие обучает водителей бесплатно."
+    "Понял, отметил «Без опыта». Это не помешает рассмотрению вашей кандидатуры — предприятие обучает водителей бесплатно со стипендией."
 )
 
 def format_survey_ask_experience(vacancy: str) -> str:
+    escaped_vac = html.escape(vacancy or "Выбранная должность")
     return (
-        f"🎯 Выбранная вакансия: <b>{vacancy}</b>\n\n"
+        f"🎯 Выбранная вакансия: <b>{escaped_vac}</b>\n\n"
         "💼 <b>Шаг 7 из 16</b>\n"
         "Есть ли у вас опыт работы по выбранной специальности?"
     )
@@ -305,11 +357,11 @@ SURVEY_STEP9_MANUAL = (
 # Шаг 10. Общежитие
 SURVEY_STEP10_DORMITORY = (
     "🛏 <b>Шаг 10 из 16</b>\n\n"
-    "Нуждаетесь ли вы в общежитии?"
+    "Нуждаетесь ли вы в общежитии предприятия?"
 )
 SURVEY_STEP10_MANUAL = (
     "✏️ Опишите ваши пожелания по проживанию:\n"
-    "<i>Пример: Нуждаюсь в общежитии для семьи из 3 человек</i>"
+    "<i>Пример: Нуждаюсь в общежитии для семьи из 2 человек</i>"
 )
 
 # Шаг 11. Сменный график
@@ -330,7 +382,7 @@ SURVEY_STEP12_HEALTH = (
 SURVEY_STEP12_MANUAL = (
     "✏️ Опишите медицинские противопоказания (если считаете нужным). "
     "Информация конфиденциальна и используется только для целей трудоустройства.\n"
-    "<i>Пример: Ограничения по зрению, требуется корректировка</i>"
+    "<i>Пример: Ограничения по зрению, требуется очковая коррекция</i>"
 )
 
 # Шаг 13. Судимости
@@ -340,7 +392,7 @@ SURVEY_STEP13_CRIMINAL = (
 )
 SURVEY_STEP13_MANUAL = (
     "✏️ Укажите кратко: статья, срок, погашена ли судимость. Информация конфиденциальна.\n"
-    "<i>Пример: Ст. 158 УК РФ, 2 года условно, погашена в 2018 году</i>"
+    "<i>Пример: Ст. 158 УК РФ, погашена в 2018 году</i>"
 )
 
 # Шаг 14. Источник информации
@@ -350,39 +402,39 @@ SURVEY_STEP14_SOURCE = (
 )
 SURVEY_STEP14_MANUAL = (
     "✏️ Впишите источник информации:\n"
-    "<i>Пример: Газета «Ульяновская правда», объявление в транспорте</i>"
+    "<i>Пример: Объявление в трамвае, сайт предприятия</i>"
 )
 
 # Шаг 15. Дополнительные сведения
 SURVEY_STEP15_EXTRA = (
     "📎 <b>Шаг 15 из 16</b>\n\n"
     "Добавьте дополнительные сведения о себе (если считаете нужным).\n"
-    "<i>Например: наличие наград, курсов, особые навыки, знание языков.</i>\n\n"
+    "<i>Например: наличие наград, смежных удостоверений, особые навыки.</i>\n\n"
     "(Если добавлять нечего, нажмите кнопку <b>«⏭ Пропустить»</b>):"
 )
 
-# Шаг 16. Подтверждение достоверности
+# Шаг 16. Проверка анкеты
 def format_survey_step16_review(data: Dict[str, Any]) -> str:
-    fio = data.get("full_name", "Не указано")
-    birth = data.get("birth_date", "Не указано")
-    phone = data.get("phone", "Не указан")
-    city = data.get("city", "Не указан")
-    vac = data.get("vacancy", "Не выбрана")
-    lic = data.get("driver_license", "Нет")
-    exp = data.get("experience", "Без опыта")
-    edu = data.get("education", "Не указано")
-    reloc = data.get("relocation", "Нет")
-    dorm = data.get("dormitory", "Нет")
-    sched = data.get("shift_work", "Да")
-    health = data.get("medical_restrictions", "Нет")
-    crim = data.get("criminal_record", "Нет")
-    src = data.get("source", "Не указан")
-    extra = data.get("extra_info", "Нет")
+    fio = html.escape(str(data.get("full_name") or "Не указано"))
+    birth = html.escape(str(data.get("birth_date") or "Не указана"))
+    phone = html.escape(str(data.get("phone") or "Не указан"))
+    city = html.escape(str(data.get("city") or "Не указан"))
+    vac = html.escape(str(data.get("vacancy") or "Не выбрана"))
+    lic = html.escape(str(data.get("driver_license") or "Нет"))
+    exp = html.escape(str(data.get("experience") or "Без опыта"))
+    edu = html.escape(str(data.get("education") or "Не указано"))
+    reloc = html.escape(str(data.get("relocation") or "Нет"))
+    dorm = html.escape(str(data.get("dormitory") or "Нет"))
+    sched = html.escape(str(data.get("shift_work") or "Да"))
+    health = html.escape(str(data.get("medical_restrictions") or "Нет"))
+    crim = html.escape(str(data.get("criminal_record") or "Нет"))
+    src = html.escape(str(data.get("source") or "Не указан"))
+    extra = html.escape(str(data.get("extra_info") or "Нет"))
 
     return (
         "📋 <b>Шаг 16 из 16: Проверка анкеты</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "Пожалуйста, подтвердите, что указанные вами сведения достоверны:\n\n"
+        "Пожалуйста, подтвердите достоверность указанных сведений:\n\n"
         f"👤 <b>ФИО:</b> {fio}\n"
         f"🎂 <b>Дата рождения:</b> {birth}\n"
         f"📞 <b>Телефон:</b> <code>{phone}</code>\n"
@@ -404,23 +456,42 @@ def format_survey_step16_review(data: Dict[str, Any]) -> str:
 
 SURVEY_STEP16_EDIT_MENU = "Что вы хотите изменить в анкете?"
 
+EDIT_FIELD_PROMPTS: Dict[str, str] = {
+    "fio": "Введите новые Фамилию, Имя и Отчество полностью:",
+    "birth": "Введите новую дату рождения в формате ДД.ММ.ГГГГ:",
+    "phone": "Введите новый контактный номер телефона в формате +79001234567:",
+    "city": "Введите ваш город фактического проживания:",
+    "vac": "Введите желаемую должность или направление работы:",
+    "lic": "Укажите наличие водительских прав и категории:",
+    "exp": "Опишите ваш опыт работы или стаж по специальности:",
+    "edu": "Укажите ваш уровень образования и учебное заведение:",
+    "reloc": "Укажите готовность к переезду в г. Ульяновск:",
+    "dorm": "Укажите потребность в предоставлении общежития:",
+    "sched": "Укажите готовность к сменному графику работы:",
+    "health": "Укажите медицинские противопоказания (при наличии):",
+    "crim": "Укажите сведения о судимости по ст. 86 УК РФ (при наличии):",
+    "src": "Укажите, откуда вы узнали о вакансии:",
+    "extra": "Укажите дополнительные сведения о квалификации и навыках:",
+}
+
 # Финал подачи анкеты
 def format_survey_success(ticket_id: int, vacancy: str = "", is_driver_no_exp: bool = False) -> str:
+    hr_phone = _get_config_str("HR_PHONE", "+7 (8422) 58-46-60")
     if is_driver_no_exp:
         return (
             "✅ <b>Спасибо! Ваша анкета успешно отправлена.</b>\n\n"
             f"Номер вашей заявки: <b>#{ticket_id}</b>.\n\n"
-            f"💡 <i>Обратите внимание:</i> для вакансии «<b>{vacancy}</b>» предприятие "
+            f"💡 <i>Обратите внимание:</i> для вакансии «<b>{html.escape(vacancy)}</b>» предприятие "
             "предлагает <b>бесплатное обучение с выплатой ежемесячной стипендии</b>.\n"
             "Подробности — в разделе «Обучение».\n\n"
             "Специалисты службы кадров МУП «Ульяновскэлектротранс» свяжутся с вами в ближайшее рабочее время.\n"
-            f"📞 Телефон для справок: <code>{CONFIG['HR_PHONE']}</code>"
+            f"📞 Телефон для справок: <code>{hr_phone}</code>"
         )
     return (
         "✅ <b>Спасибо! Ваша анкета успешно отправлена.</b>\n\n"
         f"Номер вашей заявки: <b>#{ticket_id}</b>.\n\n"
         "Специалисты службы кадров МУП «Ульяновскэлектротранс» свяжутся с вами в ближайшее рабочее время.\n\n"
-        f"При возникновении вопросов вы можете задать их кнопкой ниже или позвонить: <code>{CONFIG['HR_PHONE']}</code>."
+        f"При возникновении вопросов вы можете задать их кнопкой ниже или позвонить: <code>{hr_phone}</code>."
     )
 
 
@@ -439,27 +510,30 @@ def format_my_application(ticket_id: int, full_name: str, vacancy: str, created_
         "Новая": "Ваша анкета зарегистрирована и ожидает рассмотрения специалистом кадровой службы.",
         "В работе": "Специалист отдела кадров изучает ваши данные. О решении уведомим вас здесь.",
         "Приглашен": "🎉 Вы приглашены на очное собеседование! Ожидайте телефонного звонка специалиста.",
-        "Отказ": "В настоящее время мы не готовы предложить вам эту должность. Анкета в кадровом резерве.",
-        "Архив": "Анкета перенесена в архив предприятия."
+        "Отказ": "В настоящее время мы не готовы предложить вам эту должность. Анкета сохранена в кадровом резерве.",
+        "Архив": "Анкета перенесена в архив предприятия.",
     }.get(status, "Статус рассматривается специалистами предприятия.")
 
     date_str = created_at if created_at else "Только что"
+    hr_addr = _get_config_str("HR_ADDRESS", "г. Ульяновск, ул. Гончарова, 2")
+    hr_phone = _get_config_str("HR_PHONE", "+7 (8422) 58-46-60")
+    hr_sched = _get_config_str("HR_SCHEDULE", "пн-пт 08:00–17:00 (перерыв 12:00–13:00)")
 
     return (
         "📑 <b>ВАША АНКЕТА В МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"🔢 <b>Номер заявки:</b> #{ticket_id}\n"
-        f"👤 <b>Соискатель:</b> {full_name}\n"
-        f"🎯 <b>Должность:</b> {vacancy}\n"
+        f"👤 <b>Соискатель:</b> {html.escape(full_name)}\n"
+        f"🎯 <b>Должность:</b> {html.escape(vacancy)}\n"
         f"⏱ <b>Дата подачи:</b> <code>{date_str}</code>\n"
-        f"📌 <b>Текущий статус:</b> <b>{status}</b>\n"
+        f"📌 <b>Текущий статус:</b> <b>{html.escape(status)}</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"ℹ️ <i>{status_desc}</i>\n\n"
         "📞 <b>ОТДЕЛ КАДРОВ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📍 <b>Адрес:</b> {CONFIG['HR_ADDRESS']}\n"
-        f"📞 <b>Телефон:</b> <code>{CONFIG['HR_PHONE']}</code>\n"
-        f"🕐 <b>График работы:</b> {CONFIG['HR_SCHEDULE']}\n"
+        f"📍 <b>Адрес:</b> {hr_addr}\n"
+        f"📞 <b>Телефон:</b> <code>{hr_phone}</code>\n"
+        f"🕐 <b>График работы:</b> {hr_sched}\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "Вы также можете задать вопрос прямо в этом боте с помощью кнопки «Задать вопрос по анкете»."
     )
@@ -468,9 +542,9 @@ def format_my_application(ticket_id: int, full_name: str, vacancy: str, created_
 def format_already_applied(ticket_id: int, vacancy: str, created_at: str, status: str) -> str:
     return (
         f"⚠️ <b>У вас уже есть активная анкета №{ticket_id}!</b>\n\n"
-        f"🎯 <b>Должность:</b> {vacancy}\n"
-        f"📊 <b>Текущий статус:</b> {status}\n"
-        f"⏱ <b>Дата подачи:</b> {created_at}\n\n"
+        f"🎯 <b>Должность:</b> {html.escape(vacancy)}\n"
+        f"📊 <b>Текущий статус:</b> {html.escape(status)}\n"
+        f"⏱ <b>Дата подачи:</b> <code>{created_at}</code>\n\n"
         "Подать новую анкету нельзя, пока ваша предыдущая заявка <b>находится на рассмотрении</b> кадровой службы.\n\n"
         "Специалисты отдела кадров обязательно свяжутся с вами. Если вам требуется задать вопрос или уточнить данные, "
         "воспользуйтесь кнопкой ниже:"
@@ -479,9 +553,10 @@ def format_already_applied(ticket_id: int, vacancy: str, created_at: str, status
 
 def format_rejection_cooldown(ticket_id: int, rejected_date: str, days_left: int, cooldown_end: str = "") -> str:
     cooldown_str = f" — начиная с <b>{cooldown_end}</b>" if cooldown_end else ""
+    date_note = f" ({rejected_date})" if rejected_date else ""
     return (
         "⏳ <b>Подача повторной анкеты временно недоступна.</b>\n\n"
-        f"По вашей предыдущей анкете <b>№{ticket_id}</b> было принято решение об отказе ({rejected_date}).\n\n"
+        f"По вашей предыдущей анкете <b>№{ticket_id}</b> было принято решение об отказе{date_note}.\n\n"
         "По регламенту МУП «Ульяновскэлектротранс», повторная подача анкеты на трудоустройство возможна "
         f"<b>через 3 месяца</b>{cooldown_str} (осталось дней: <b>{days_left}</b>).\n\n"
         "Если у вас изменились квалификация, опыт или есть вопросы, вы всегда можете связаться с кадровой службой:"
@@ -502,18 +577,48 @@ INQUIRY_INPUT_PROMPT = (
 )
 
 def format_inquiry_sent(inquiry_id: int) -> str:
+    hr_sched = _get_config_str("HR_SCHEDULE", "пн-пт 08:00–17:00 (перерыв 12:00–13:00)")
+    hr_phone = _get_config_str("HR_PHONE", "+7 (8422) 58-46-60")
     return (
         "✅ <b>Ваш вопрос принят и передан в отдел кадров!</b>\n\n"
         f"Номер обращения: <b>#{inquiry_id}</b>.\n\n"
-        "Специалист кадровой службы рассмотрит его в рабочее время "
-        f"(<b>{CONFIG['HR_SCHEDULE']}</b>). Ответ поступит прямо в этот чат.\n\n"
-        f"При необходимости вы можете позвонить нам: <code>{CONFIG['HR_PHONE']}</code>"
+        f"Специалист кадровой службы рассмотрит его в рабочее время (<b>{hr_sched}</b>). Ответ поступит прямо в этот чат.\n\n"
+        f"При необходимости вы можете позвонить нам: <code>{hr_phone}</code>"
     )
 
 def format_inquiry_cooldown(minutes_left: int) -> str:
+    hr_phone = _get_config_str("HR_PHONE", "+7 (8422) 58-46-60")
     return (
         f"⏳ Вы сможете задать следующий вопрос через <b>{minutes_left} мин.</b>\n\n"
-        f"Срочные вопросы по телефону: <code>{CONFIG['HR_PHONE']}</code>"
+        f"Срочные вопросы по телефону: <code>{hr_phone}</code>"
+    )
+
+def format_inquiry_hr_card(
+    inquiry_id: int,
+    platform: str,
+    full_name: str,
+    phone: str,
+    vacancy: str,
+    question_text: str,
+    consent_timestamp: str,
+    is_test: bool = False
+) -> str:
+    """Централизованный шаблон карточки обращения соискателя для кадровой службы."""
+    prefix = "🧪 ТЕСТОВОЕ ОБРАЩЕНИЕ" if is_test else "📩 ОБРАЩЕНИЕ"
+    db_label = "<code>Тестовая запись</code>" if is_test else "<code>resumes.db</code>"
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    return (
+        f"<b>{prefix} СОИСКАТЕЛЯ #{inquiry_id} [{platform.upper()}]</b>\n"
+        f"📁 <b>База:</b> {db_label}\n"
+        f"👤 <b>Кандидат:</b> {html.escape(full_name or 'Не указано')}\n"
+        f"📞 <b>Телефон:</b> <code>{html.escape(phone or 'Не указан')}</code>\n"
+        f"🎯 <b>Вакансия:</b> {html.escape(vacancy or 'Анкета не подана')}\n"
+        f"⚖️ <b>Согласие 152-ФЗ:</b> <code>✅ Получено ({html.escape(consent_timestamp or now_str)})</code>\n"
+        f"⏱ <b>Время:</b> <code>{now_str}</code>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "❓ <b>Вопрос:</b>\n"
+        f"<blockquote>{html.escape(question_text)}</blockquote>\n"
+        "━━━━━━━━━━━━━━━━━━━━━"
     )
 
 
@@ -524,9 +629,9 @@ def format_inquiry_cooldown(minutes_left: int) -> str:
 CONTACTS_SCREEN = (
     "📞 <b>ОТДЕЛ КАДРОВ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
     "━━━━━━━━━━━━━━━━━━━━━\n"
-    f"📍 <b>Адрес:</b> {CONFIG['HR_ADDRESS']}\n"
-    f"📞 <b>Телефон:</b> <code>{CONFIG['HR_PHONE']}</code>\n"
-    f"🕐 <b>График работы:</b> {CONFIG['HR_SCHEDULE']}\n"
+    f"📍 <b>Адрес:</b> {_get_config_str('HR_ADDRESS', 'г. Ульяновск, ул. Гончарова, 2')}\n"
+    f"📞 <b>Телефон:</b> <code>{_get_config_str('HR_PHONE', '+7 (8422) 58-46-60')}</code>\n"
+    f"🕐 <b>График работы:</b> {_get_config_str('HR_SCHEDULE', 'пн-пт 08:00–17:00 (перерыв 12:00–13:00)')}\n"
     "━━━━━━━━━━━━━━━━━━━━━\n"
     "Вы также можете задать вопрос прямо в этом боте с помощью кнопки «Задать вопрос по анкете»."
 )
@@ -551,7 +656,7 @@ FAQ_DATA: Dict[str, str] = {
         "🏠 <b>ЖИЛЬЕ И ОБЩЕЖИТИЕ ДЛЯ СОТРУДНИКОВ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "• Иногородним кандидатам и обучающимся предоставляется место в комфортабельном общежитии предприятия.\n"
-        "• Либо действует программа компенсации аренды жилья для дефицитных специальностей."
+        "• Действует программа компенсации аренды жилья для дефицитных рабочих специальностей."
     ),
     "faq_salary": (
         "💰 <b>УСЛОВИЯ ТРУДА, ЗАРПЛАТА И ЛЬГОТЫ</b>\n"
@@ -559,7 +664,7 @@ FAQ_DATA: Dict[str, str] = {
         "• <b>График работы:</b> Сменный (утренние/вечерние смены, 2/2 или по графику депо).\n"
         "• <b>Льготный стаж:</b> Водители трамваев и троллейбусов имеют право на досрочный выход на пенсию!\n"
         "• <b>Проезд:</b> Бесплатный проезд на всём городском электротранспорте г. Ульяновска.\n"
-        "• <b>Соцпакет:</b> Полная оплата больничных, отпусков, путевки на санаторное лечение."
+        "• <b>Соцпакет:</b> Полная оплата больничных, отпусков, путевки на санаторное оздоровление."
     ),
     "faq_docs": (
         "📄 <b>НЕОБХОДИМЫЕ ДОКУМЕНТЫ ДЛЯ ТРУДОУСТРОЙСТВА</b>\n"
@@ -571,7 +676,7 @@ FAQ_DATA: Dict[str, str] = {
         "5. СНИЛС и ИНН\n"
         "6. Документы воинского учета (для военнообязанных)\n"
         "7. Медосмотр (направление выдаётся отделом кадров бесплатно)."
-    )
+    ),
 }
 
 TRAINING_INFO_TEXT = FAQ_DATA["faq_training"]
@@ -582,60 +687,67 @@ TRAINING_INFO_TEXT = FAQ_DATA["faq_training"]
 # ==============================================================================
 
 def format_status_in_progress(full_name: str) -> str:
+    escaped_name = html.escape(full_name or "соискатель")
     return (
-        f"🟡 <b>Здравствуйте, {full_name}!</b>\n\n"
+        f"🟡 <b>Здравствуйте, {escaped_name}!</b>\n\n"
         "Ваша анкета взята <b>в работу</b> специалистами отдела кадров <b>МУП «Ульяновскэлектротранс»</b>.\n"
         "Специалист изучает ваши данные. О решении и дальнейших шагах мы уведомим вас здесь."
     )
 
 def format_status_invited(full_name: str) -> str:
+    escaped_name = html.escape(full_name or "соискатель")
     return (
-        f"🟢 <b>Здравствуйте, {full_name}!</b>\n\n"
+        f"🟢 <b>Здравствуйте, {escaped_name}!</b>\n\n"
         "Ваша анкета рассмотрена специалистами <b>МУП «Ульяновскэлектротранс»</b>.\n"
         "Мы рады <b>пригласить вас на собеседование</b>! В ближайшее время с вами свяжутся по телефону."
     )
 
 def format_hr_invite_custom(full_name: str, datetime_str: str) -> str:
+    escaped_name = html.escape(full_name or "соискатель")
+    hr_addr = _get_config_str("HR_ADDRESS", "г. Ульяновск, ул. Гончарова, 2")
+    hr_phone = _get_config_str("HR_PHONE", "+7 (8422) 58-46-60")
     return (
-        f"🎉 <b>Здравствуйте, {full_name}!</b>\n\n"
+        f"🎉 <b>Здравствуйте, {escaped_name}!</b>\n\n"
         "Ваша анкета рассмотрена кадровой службой <b>МУП «Ульяновскэлектротранс»</b>.\n"
         "Мы рады пригласить вас на очное собеседование!\n\n"
         "📅 <b>Детали встречи:</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📍 <b>Адрес:</b> {CONFIG['HR_ADDRESS']}\n"
-        f"🕐 <b>Назначенное время:</b> <b>{datetime_str}</b>\n"
-        f"📞 <b>Телефон для справок:</b> <code>{CONFIG['HR_PHONE']}</code>\n"
+        f"📍 <b>Адрес:</b> {hr_addr}\n"
+        f"🕐 <b>Назначенное время:</b> <b>{html.escape(datetime_str)}</b>\n"
+        f"📞 <b>Телефон для справок:</b> <code>{hr_phone}</code>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "При себе необходимо иметь паспорт и документы воинского учета (для военнообязанных).\n"
         "Будем рады видеть вас в нашей команде!"
     )
 
 def format_status_rejected(full_name: str) -> str:
+    escaped_name = html.escape(full_name or "соискатель")
     return (
-        f"📋 <b>Здравствуйте, {full_name}!</b>\n\n"
+        f"📋 <b>Здравствуйте, {escaped_name}!</b>\n\n"
         "Благодарим вас за интерес к трудоустройству в <b>МУП «Ульяновскэлектротранс»</b>.\n\n"
         "К сожалению, в настоящее время мы не готовы предложить вам эту должность. "
-        "Ваша анкета сохранена в кадровом резерве предприятия. "
-        "При открытии подходящих вакансий мы обязательно свяжемся с вами.\n\n"
+        "Ваша анкета сохранена в кадровом резерве предприятия.\n\n"
+        "⏳ <i>В соответствии с регламентом предприятия, повторная подача анкеты возможна <b>через 3 месяца</b>.</i>\n\n"
         "Желаем вам успехов в профессиональной деятельности!"
     )
 
-def format_hr_direct_reply(reply_text: str) -> str:
+def format_hr_direct_reply(reply_text: str, ticket_id: int = 0) -> str:
+    ticket_note = f" (по анкете #{ticket_id})" if ticket_id else ""
     return (
-        "📩 <b>Ответ отдела кадров МУП «Ульяновскэлектротранс»:</b>\n"
+        f"📩 <b>Сообщение от отдела кадров МУП «Ульяновскэлектротранс»{ticket_note}:</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"{reply_text}\n"
+        f"{html.escape(reply_text)}\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "<i>При необходимости задать новый вопрос воспользуйтесь кнопкой в меню бота.</i>"
+        "<i>Чтобы ответить кадровику, воспользуйтесь кнопкой ниже:</i>"
     )
 
 def format_hr_inquiry_reply(ticket_id: int, reply_text: str) -> str:
     return (
-        f"📩 <b>Ответ по обращению #{ticket_id}:</b>\n"
+        f"💬 <b>Ответ отдела кадров МУП «Ульяновскэлектротранс»:</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"{reply_text}\n"
+        f"{html.escape(reply_text)}\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "<i>Вы можете отправить новый вопрос в кадровый центр через меню бота.</i>"
+        f"<i>По обращению #{ticket_id}. Чтобы отправить ответ, нажмите кнопку ниже:</i>"
     )
 
 LIVE_CHAT_STARTED = (
@@ -649,20 +761,41 @@ LIVE_CHAT_ENDED = (
     "Спасибо за общение! Вы всегда можете вернуться в главное меню бота."
 )
 
+def format_live_dialog_candidate_msg(full_name: str, message_text: str) -> str:
+    """Форматирование сообщения соискателя, передаваемого в кадровый чат."""
+    esc_name = html.escape(full_name or "Соискатель")
+    esc_text = html.escape(message_text or "")
+    return (
+        f"💬 <b>[Соискатель {esc_name}]:</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{esc_text}\n"
+        "━━━━━━━━━━━━━━━━━━━━━"
+    )
+
+def format_live_dialog_operator_msg(message_text: str) -> str:
+    """Форматирование сообщения кадровика, передаваемого соискателю."""
+    esc_text = html.escape(message_text or "")
+    return (
+        "💬 <b>[Специалист отдела кадров МУП «УЭТ»]:</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{esc_text}\n"
+        "━━━━━━━━━━━━━━━━━━━━━"
+    )
+
 
 # ==============================================================================
-# 9. КОМАНДЫ ПРАВ СУБЪЕКТА 152-ФЗ (/mydata, /revoke)
+# 9. КОМАНДЫ ПРАВ СУБЪЕКТА 152-ФЗ (/mydata, /revoke) И БЕЗОПАСНОСТЬ
 # ==============================================================================
 
 def format_mydata(cand: Dict[str, Any]) -> str:
-    fio = cand.get("full_name", "Не указано")
-    phone = cand.get("phone", "Не указан")
-    vac = cand.get("vacancy", "Не указана")
-    exp = cand.get("experience", "Не указан")
-    created = cand.get("created_at", "Не указана")
-    status = cand.get("status", "Новая")
-    consent_ts = cand.get("consent_timestamp", "Зафиксировано")
-    retention_date = cand.get("retention_date", "Через 6 месяцев")
+    fio = html.escape(str(cand.get("full_name") or "Не указано"))
+    phone = html.escape(str(cand.get("phone") or "Не указан"))
+    vac = html.escape(str(cand.get("vacancy") or "Не указана"))
+    exp = html.escape(str(cand.get("experience") or "Не указан"))
+    created = html.escape(str(cand.get("created_at") or "Не указана"))
+    status = html.escape(str(cand.get("status") or "Новая"))
+    consent_ts = html.escape(str(cand.get("consent_timestamp") or "Зафиксировано"))
+    retention_date = html.escape(str(cand.get("retention_date") or "Через 6 месяцев с момента подачи"))
 
     return (
         "👤 <b>ВАШИ ПЕРСОНАЛЬНЫЕ ДАННЫЕ В СИСТЕМЕ</b>\n"
@@ -677,7 +810,7 @@ def format_mydata(cand: Dict[str, Any]) -> str:
         f"⚖️ <b>Согласие получено:</b> <code>{consent_ts}</code>\n"
         f"🗓 <b>Срок хранения до:</b> <code>{retention_date}</code>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "Вы вправе запросить уточнение сведений или отозвать согласие на обработку."
+        "Вы вправе запросить уточнение сведений или отозвать согласие на обработку (/revoke)."
     )
 
 REVOKE_CONFIRM_PROMPT = (
@@ -688,10 +821,86 @@ REVOKE_CONFIRM_PROMPT = (
 )
 
 def format_revoke_success(ticket_id: int, destroyed_ts: str) -> str:
+    t_str = f"№{ticket_id} " if ticket_id else ""
     return (
         "✅ <b>Ваше согласие отозвано.</b>\n\n"
-        f"Анкета №{ticket_id} удалена, персональные данные уничтожены <code>{destroyed_ts}</code>.\n\n"
+        f"Анкета {t_str}удалена, персональные данные уничтожены <code>{destroyed_ts}</code>.\n\n"
         "📄 <b>Акт об уничтожении персональных данных</b> сформирован автоматически в соответствии с требованиями Роскомнадзора (ст. 21 152-ФЗ)."
+    )
+
+def format_candidate_deleted_notification(ticket_id: int, full_name: str, vacancy: str, destroy_time: str) -> str:
+    esc_name = html.escape(full_name or "Соискатель")
+    esc_vac = html.escape(vacancy or "Должность")
+    return (
+        "🗑 <b>Уведомление об удалении анкеты</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Здравствуйте, <b>{esc_name}</b>!\n\n"
+        f"Ваша анкета <b>№{ticket_id}</b> на вакансию <b>«{esc_vac}»</b> была <b>удалена</b> кадровой службой МУП «Ульяновскэлектротранс».\n\n"
+        "Все связанные персональные данные были безвозвратно уничтожены в соответствии со ст. 21 Федерального закона № 152-ФЗ.\n"
+        f"⏱ <b>Время удаления:</b> <code>{destroy_time}</code>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "<i>При необходимости вы можете подать новую анкету или задать вопрос через главное меню.</i>"
+    )
+
+def format_candidate_deleted_hr_audit(
+    ticket_id: int,
+    full_name: str,
+    vacancy: str,
+    destroy_time: str,
+    operator_name: str,
+    notification_status: str
+) -> str:
+    return (
+        "🗑 <b>АНКЕТА И ПЕРСОНАЛЬНЫЕ ДАННЫЕ УНИЧТОЖЕНЫ (152-ФЗ)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🆔 <b>Номер заявки:</b> #{ticket_id}\n"
+        f"👤 <b>Субъект ПДн:</b> {html.escape(full_name)}\n"
+        f"🎯 <b>Должность:</b> {html.escape(vacancy)}\n"
+        f"⏱ <b>Время уничтожения:</b> <code>{destroy_time}</code>\n"
+        f"👨‍💼 <b>Оператор:</b> {html.escape(operator_name)}\n"
+        f"📢 <b>Статус соискателя:</b> {notification_status}\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "⚖️ <i>Запись полностью удалена из базы данных SQLite.</i>"
+    )
+
+def format_blacklist_notification(full_name: str, reason: str) -> str:
+    hr_phone = _get_config_str("HR_PHONE", "+7 (8422) 58-46-60")
+    return (
+        "⛔ <b>Уведомление об ограничении доступа</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Здравствуйте, <b>{html.escape(full_name or 'Пользователь')}</b>!\n\n"
+        "Информируем вас о том, что ваш аккаунт внесён в <b>чёрный список</b> "
+        "информационной системы МУП «Ульяновскэлектротранс».\n\n"
+        f"📋 <b>Причина:</b> <i>{html.escape(reason)}</i>\n\n"
+        "• Все ваши активные заявки и обращения аннулированы.\n"
+        "• Прямой диалог с кадровой службой прекращен.\n"
+        "• Доступ к отправке анкет и сообщений в боте ограничен.\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📞 <i>При возникновении вопросов:</i> <code>{hr_phone}</code>"
+    )
+
+def format_unblock_notification(full_name: str) -> str:
+    return (
+        "✅ <b>Ограничение доступа снято</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Здравствуйте, <b>{html.escape(full_name or 'Пользователь')}</b>!\n\n"
+        "Блокировка вашего аккаунта в сервисе МУП «Ульяновскэлектротранс» была снята отделом кадров.\n\n"
+        "Вы снова можете пользоваться ботом, задавать вопросы и подавать анкеты на вакансии предприятия.\n"
+        "━━━━━━━━━━━━━━━━━━━━━"
+    )
+
+def format_support_card(user_id: int, user_name: str, username: str, time_str: str, message_text: str) -> str:
+    user_uname = f"@{username}" if username else "Не указан"
+    return (
+        "🚨 <b>ЭКСТРЕННОЕ СООБЩЕНИЕ В ТЕХПОДДЕРЖКУ!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>От пользователя:</b> {html.escape(user_name or 'Пользователь')} (ID: <code>{user_id}</code>)\n"
+        f"⏱ <b>Время:</b> <code>{time_str}</code>\n"
+        f"🌐 <b>Username:</b> {user_uname}\n"
+        "⚠️ <b>Текст обращения:</b>\n"
+        f"<blockquote>{html.escape(message_text or '')}</blockquote>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "<i>Связаться с пользователем можно по ссылке ниже.</i>"
     )
 
 
@@ -724,9 +933,7 @@ ERR_QUESTION_TOO_LONG = (
     "Пожалуйста, сформулируйте вопрос более кратко (до 1000 символов) и отправьте снова:"
 )
 
-ACTION_CANCELLED = (
-    "❌ <b>Действие отменено.</b> Вы возвращены в главное меню."
-)
+ACTION_CANCELLED = "❌ <b>Действие отменено.</b> Вы возвращены в главное меню."
 
 NAV_BACK_TEXT = "⬅️ Возвращаемся на предыдущий шаг."
 NAV_SKIP_TEXT = "⏭ Шаг пропущен."
@@ -743,6 +950,14 @@ UNKNOWN_COMMAND_TEXT = (
 
 ANTIFLOOD_GENERIC_TEXT = (
     "Слишком много сообщений. Пожалуйста, подождите немного перед отправкой."
+)
+
+def format_antiflood_generic(seconds: int) -> str:
+    return f"Слишком много сообщений. Пожалуйста, подождите {seconds} сек."
+
+ERR_INVALID_MANUAL_INPUT = (
+    "Не удалось сохранить ответ. Пожалуйста, попробуйте ещё раз "
+    "или выберите вариант из кнопок выше."
 )
 
 
@@ -762,7 +977,7 @@ def format_id_text(user_id: int, chat_id: int, username: Optional[str] = None) -
         "<i>Используйте этот ID, если кадровик или технический администратор попросят его для проверки.</i>"
     )
 
-def format_help_text(user_id: int = None, is_hr: bool = False, is_tech: bool = False) -> str:
+def format_help_text(user_id: Optional[int] = None, is_hr: bool = False, is_tech: bool = False) -> str:
     lines = [
         "📋 <b>СПРАВОЧНИК КОМАНД БОТА:</b>",
         "",
@@ -796,6 +1011,7 @@ def format_help_text(user_id: int = None, is_hr: bool = False, is_tech: bool = F
             "• <code>/set_group</code> — привязать группу для получения анкет",
             "• <code>/note &lt;id&gt; &lt;текст&gt;</code> — служебная заметка к анкете",
             "• <code>/ban &lt;id&gt;</code> / <code>/unban &lt;id&gt;</code> — черный список соискателей",
+            "• <code>/act &lt;id&gt;</code> — генерация Акта об уничтожении ПДн (РКН № 179)",
         ])
     if is_tech:
         lines.extend([
@@ -810,6 +1026,7 @@ def format_help_text(user_id: int = None, is_hr: bool = False, is_tech: bool = F
             "• <code>/del_admin &lt;id&gt;</code> — безопасный отзыв прав доступа",
             "• <code>/git</code> — управление коммитами, ветками и перезапуском",
             "• <code>/restart</code> — перезапуск системной службы uet_bot",
+            "• <code>/docs</code> — формирование нормативной документации (ГОСТ/152-ФЗ)",
         ])
     return "\n".join(lines)
 
@@ -825,10 +1042,10 @@ HR_WELCOME_NOTIFICATION = (
 # 12. ШАБЛОНЫ КАРТОЧЕК СОИСКАТЕЛЕЙ (HR И СОИСКАТЕЛЬ)
 # ==============================================================================
 
-def format_hr_card_full(cand: Union[Tuple, Dict[str, Any]]) -> str:
+def format_hr_card_full(cand: Union[Tuple[Any, ...], Dict[str, Any]]) -> str:
     """
     Единый централизованный блочный шаблон карточки кандидата для кадровой службы.
-    Принимает как кортеж из базы данных, так и словарь FSM.
+    Принимает как кортеж из базы данных SQLite, так и словарь FSM.
     """
     if isinstance(cand, dict):
         t_id = cand.get("ticket_id", 0)
@@ -837,9 +1054,9 @@ def format_hr_card_full(cand: Union[Tuple, Dict[str, Any]]) -> str:
         phone = html.escape(str(cand.get("phone") or "Не указан"))
         vac = html.escape(str(cand.get("vacancy") or "Не выбрана"))
         exp = html.escape(str(cand.get("experience") or "Без опыта"))
-        status = cand.get("status", "Новая")
-        admin_note = cand.get("admin_note", "")
-        created = cand.get("created_at") or datetime.now().strftime("%d.%m.%Y %H:%M")
+        status = str(cand.get("status") or "Новая")
+        admin_note = str(cand.get("admin_note") or "")
+        created = str(cand.get("created_at") or datetime.now().strftime("%d.%m.%Y %H:%M"))
         birth = html.escape(str(cand.get("birth_date") or "Не указана"))
         city = html.escape(str(cand.get("city") or "Не указан"))
         lic = html.escape(str(cand.get("driver_license") or "Нет"))
@@ -854,15 +1071,15 @@ def format_hr_card_full(cand: Union[Tuple, Dict[str, Any]]) -> str:
         consent_ts = html.escape(str(cand.get("consent_timestamp") or "Получено"))
         is_test_cand = bool(cand.get("is_test", False)) or t_id >= 900000
     else:
-        t_id = cand[0] if len(cand) > 0 else 0
-        plat = cand[1] if len(cand) > 1 else "TG"
+        t_id = cand[0] if len(cand) > 0 and cand[0] is not None else 0
+        plat = cand[1] if len(cand) > 1 and cand[1] is not None else "TG"
         name = html.escape(str(cand[3])) if len(cand) > 3 and cand[3] else "Не указано"
         phone = html.escape(str(cand[4])) if len(cand) > 4 and cand[4] else "Не указан"
         vac = html.escape(str(cand[5])) if len(cand) > 5 and cand[5] else "Не выбрана"
         exp = html.escape(str(cand[6])) if len(cand) > 6 and cand[6] else "Без опыта"
-        status = cand[7] if len(cand) > 7 else "Новая"
-        admin_note = cand[8] if len(cand) > 8 else ""
-        created = cand[9] if len(cand) > 9 else "Только что"
+        status = str(cand[7]) if len(cand) > 7 and cand[7] else "Новая"
+        admin_note = str(cand[8]) if len(cand) > 8 and cand[8] else ""
+        created = str(cand[9]) if len(cand) > 9 and cand[9] else "Только что"
         birth = html.escape(str(cand[10])) if len(cand) > 10 and cand[10] else "Не указана"
         city = html.escape(str(cand[11])) if len(cand) > 11 and cand[11] else "Не указан"
         lic = html.escape(str(cand[12])) if len(cand) > 12 and cand[12] else "Нет"
@@ -878,14 +1095,26 @@ def format_hr_card_full(cand: Union[Tuple, Dict[str, Any]]) -> str:
         is_test_cand = t_id >= 900000
 
     prefix = "🧪 ТЕСТОВАЯ АНКЕТА" if is_test_cand else "📑 АНКЕТА СОИСКАТЕЛЯ"
-    status_icon = "🆕" if status == "Новая" else ("🟡" if status == "В работе" else ("🟢" if "Приглашен" in status else "🔴"))
+    status_icon = (
+        "🆕" if status == "Новая"
+        else ("🟡" if status == "В работе"
+        else ("🟢" if "Приглашен" in status
+        else "🔴"))
+    )
     note_block = f"\n📝 <b>Заметка кадровика:</b>\n<i>{html.escape(admin_note)}</i>\n" if admin_note else ""
 
-    is_driver_no_exp = ("водитель" in vac.lower() and ("без опыта" in exp.lower() or not exp or exp == "Без опыта"))
-    recom_line = "\n💡 <b>Рекомендация:</b> кандидат без опыта, можно предложить обучение\n" if is_driver_no_exp else ""
+    is_driver_no_exp = (
+        "водитель" in vac.lower()
+        and ("без опыта" in exp.lower() or not exp or exp == "Без опыта")
+    )
+    recom_line = (
+        "\n💡 <b>Рекомендация:</b> кандидат без опыта, предложить бесплатное обучение со стипендией\n"
+        if is_driver_no_exp
+        else ""
+    )
 
     return (
-        f"<b>{prefix} #{t_id}</b> [{plat.upper()}]\n"
+        f"<b>{prefix} #{t_id}</b> [{str(plat).upper()}]\n"
         f"{status_icon} <b>Статус:</b> <code>{status}</code> | ⏱ <code>{created}</code>\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"👤 <b>СОИСКАТЕЛЬ</b>\n"
@@ -914,16 +1143,17 @@ def format_hr_card_full(cand: Union[Tuple, Dict[str, Any]]) -> str:
     )
 
 
-def format_my_application_full(cand: Union[Tuple, Dict[str, Any]]) -> str:
-    """Полная карточка анкеты для соискателя в разделе Моя анкета."""
+def format_my_application_full(cand: Union[Tuple[Any, ...], Dict[str, Any]]) -> str:
+    """Полная карточка анкеты для соискателя в личном кабинете /my."""
+    hr_phone = _get_config_str("HR_PHONE", "+7 (8422) 58-46-60")
     if isinstance(cand, dict):
         t_id = cand.get("ticket_id", 0)
         name = html.escape(str(cand.get("full_name") or "Не указано"))
         phone = html.escape(str(cand.get("phone") or "Не указан"))
         vac = html.escape(str(cand.get("vacancy") or "Не выбрана"))
         exp = html.escape(str(cand.get("experience") or "Без опыта"))
-        status = cand.get("status", "Новая")
-        created = cand.get("created_at") or "Только что"
+        status = html.escape(str(cand.get("status") or "Новая"))
+        created = html.escape(str(cand.get("created_at") or "Только что"))
         birth = html.escape(str(cand.get("birth_date") or "Не указана"))
         city = html.escape(str(cand.get("city") or "Не указан"))
         lic = html.escape(str(cand.get("driver_license") or "Нет"))
@@ -936,13 +1166,13 @@ def format_my_application_full(cand: Union[Tuple, Dict[str, Any]]) -> str:
         src = html.escape(str(cand.get("source") or "Не указан"))
         extra = html.escape(str(cand.get("extra_info") or "Нет"))
     else:
-        t_id = cand[0] if len(cand) > 0 else 0
+        t_id = cand[0] if len(cand) > 0 and cand[0] is not None else 0
         name = html.escape(str(cand[3])) if len(cand) > 3 and cand[3] else "Не указано"
         phone = html.escape(str(cand[4])) if len(cand) > 4 and cand[4] else "Не указан"
         vac = html.escape(str(cand[5])) if len(cand) > 5 and cand[5] else "Не выбрана"
         exp = html.escape(str(cand[6])) if len(cand) > 6 and cand[6] else "Без опыта"
-        status = cand[7] if len(cand) > 7 else "Новая"
-        created = cand[9] if len(cand) > 9 and cand[9] else "Только что"
+        status = html.escape(str(cand[7])) if len(cand) > 7 and cand[7] else "Новая"
+        created = html.escape(str(cand[9])) if len(cand) > 9 and cand[9] else "Только что"
         birth = html.escape(str(cand[10])) if len(cand) > 10 and cand[10] else "Не указана"
         city = html.escape(str(cand[11])) if len(cand) > 11 and cand[11] else "Не указан"
         lic = html.escape(str(cand[12])) if len(cand) > 12 and cand[12] else "Нет"
@@ -977,24 +1207,5 @@ def format_my_application_full(cand: Union[Tuple, Dict[str, Any]]) -> str:
         f"📢 <b>Источник:</b> {src}\n"
         f"📎 <b>Дополнительно:</b> {extra}\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📞 <b>Отдел кадров:</b> <code>{CONFIG['HR_PHONE']}</code>"
+        f"📞 <b>Отдел кадров:</b> <code>{hr_phone}</code>"
     )
-
-
-UNKNOWN_COMMAND_TEXT = (
-    "Извините, я не понял команду. Воспользуйтесь кнопками меню "
-    "или введите /help."
-)
-
-MAINTENANCE_ACTIVE = (
-    "⚙️ Бот временно недоступен. Ведутся технические работы. "
-    "Пожалуйста, попробуйте позже."
-)
-
-def format_antiflood_generic(seconds: int) -> str:
-    return f"Слишком много сообщений. Пожалуйста, подождите {seconds} сек."
-
-ERR_INVALID_MANUAL_INPUT = (
-    "Не удалось сохранить ответ. Пожалуйста, попробуйте ещё раз "
-    "или выберите вариант из кнопок выше."
-)

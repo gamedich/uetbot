@@ -1,32 +1,49 @@
 # -*- coding: utf-8 -*-
 """
-Модуль базы данных SQLite для МУП «Ульяновскэлектротранс»
+Модуль базы данных SQLite для МУП «Ульяновскэлектротранс».
 Поддерживает высоконагруженный режим WAL (Write-Ahead Logging),
-индексирование, кулдауны, историю заявок и изоляцию кадровых данных.
+пул транзакций без утечек соединений, индексирование, кулдауны,
+историю заявок, изоляцию кадровых данных и требования 152-ФЗ РФ.
 """
 
-import os
+from __future__ import annotations
+
 import asyncio
+import contextlib
 import json
-import sqlite3
 import logging
+import os
+import sqlite3
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Optional, Tuple
+
 try:
     import aiosqlite
 except ImportError:
     aiosqlite = None
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Optional, List, Tuple, Dict, Any
+
+logger = logging.getLogger("UET_DATABASE")
+
 
 class ResumeDB:
-    def __init__(self, db_path: str = "resumes.db"):
-        if (db_path == "resumes.db" or not db_path) and os.getenv("DB_PATH"):
-            db_path = os.getenv("DB_PATH")
+    """
+    Основной класс управления хранилищем SQLite предприятия.
+    Обеспечивает атомарность транзакций, защиту от блокировок и аудит ПДн.
+    """
+
+    def __init__(self, db_path: str = "resumes.db") -> None:
+        env_db = os.getenv("DB_PATH")
+        if (db_path == "resumes.db" or not db_path) and env_db:
+            db_path = env_db
+
         self.db_path = db_path
+        # Гарантируем создание родительской директории
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._init_and_migrate_db()
 
-    def _get_connection(self) -> sqlite3.Connection:
-        """Создание соединения с оптимизациями для многопоточного доступа и WAL"""
+    def _get_raw_connection(self) -> sqlite3.Connection:
+        """Создание соединения с оптимизациями многопоточного доступа и WAL."""
         conn = sqlite3.connect(self.db_path, timeout=30.0)
         try:
             conn.execute("PRAGMA journal_mode=WAL;")
@@ -38,8 +55,21 @@ class ResumeDB:
         conn.execute("PRAGMA temp_store=MEMORY;")
         return conn
 
+    @contextlib.contextmanager
+    def connection(self) -> Generator[sqlite3.Connection, None, None]:
+        """
+        Контекстный менеджер соединения без утечек (Resource Leak Prevention).
+        Обеспечивает автоматический commit/rollback транзакции и закрытие соединения.
+        """
+        conn = self._get_raw_connection()
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
     async def get_async_connection(self):
-        """Создание асинхронного соединения через aiosqlite."""
+        """Создание асинхронного соединения через aiosqlite (при наличии)."""
         if aiosqlite is None:
             raise RuntimeError("Пакет aiosqlite не установлен. Установите: pip install aiosqlite")
         conn = await aiosqlite.connect(self.db_path, timeout=30.0)
@@ -50,9 +80,9 @@ class ResumeDB:
         await conn.execute("PRAGMA temp_store=MEMORY;")
         return conn
 
-    def _init_and_migrate_db(self):
-        """Создание таблиц, миграция структуры и установка высокоскоростных индексов"""
-        with self._get_connection() as conn:
+    def _init_and_migrate_db(self) -> None:
+        """Создание таблиц, миграция структуры и установка высокоскоростных индексов."""
+        with self.connection() as conn:
             cursor = conn.cursor()
 
             # 1. Таблица соискателей
@@ -77,16 +107,12 @@ class ResumeDB:
             # Миграции полей кандидатов
             cursor.execute("PRAGMA table_info(candidates)")
             cand_cols = [row[1] for row in cursor.fetchall()]
-            if "admin_note" not in cand_cols:
-                cursor.execute("ALTER TABLE candidates ADD COLUMN admin_note TEXT DEFAULT ''")
-            if "updated_at" not in cand_cols:
-                cursor.execute("ALTER TABLE candidates ADD COLUMN updated_at TIMESTAMP DEFAULT NULL")
-            if "is_test" not in cand_cols:
-                cursor.execute("ALTER TABLE candidates ADD COLUMN is_test INTEGER DEFAULT 0")
-            if "consent_timestamp" not in cand_cols:
-                cursor.execute("ALTER TABLE candidates ADD COLUMN consent_timestamp TEXT DEFAULT ''")
 
-            new_columns = [
+            migrations = [
+                ("admin_note", "TEXT DEFAULT ''"),
+                ("updated_at", "TIMESTAMP DEFAULT NULL"),
+                ("is_test", "INTEGER DEFAULT 0"),
+                ("consent_timestamp", "TEXT DEFAULT ''"),
                 ("birth_date", "TEXT DEFAULT ''"),
                 ("city", "TEXT DEFAULT ''"),
                 ("driver_license", "TEXT DEFAULT ''"),
@@ -100,11 +126,9 @@ class ResumeDB:
                 ("extra_info", "TEXT DEFAULT ''"),
                 ("raw_data_json", "TEXT DEFAULT '{}'"),
             ]
-            for col_name, col_def in new_columns:
+            for col_name, col_def in migrations:
                 if col_name not in cand_cols:
                     cursor.execute(f"ALTER TABLE candidates ADD COLUMN {col_name} {col_def}")
-
-
 
             # 2. Таблица администраторов
             cursor.execute(
@@ -128,7 +152,8 @@ class ResumeDB:
                 )
                 """
             )
-            # Журнал уничтожения персональных данных (Приказ Роскомнадзора № 179)
+
+            # 4. Журнал уничтожения персональных данных (Приказ Роскомнадзора № 179)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS destruction_logs (
@@ -143,7 +168,8 @@ class ResumeDB:
                 )
                 """
             )
-            # 4. Служебные настройки
+
+            # 5. Служебные настройки
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS system_settings (
@@ -153,7 +179,7 @@ class ResumeDB:
                 """
             )
 
-            # 5. Таблица обращений соискателей (вопросы по анкете)
+            # 6. Таблица обращений соискателей (вопросы по анкете)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS inquiries (
@@ -173,7 +199,6 @@ class ResumeDB:
                 """
             )
 
-            # Миграции полей обращений
             cursor.execute("PRAGMA table_info(inquiries)")
             inq_cols = [row[1] for row in cursor.fetchall()]
             if "is_test" not in inq_cols:
@@ -181,7 +206,7 @@ class ResumeDB:
             if "consent_timestamp" not in inq_cols:
                 cursor.execute("ALTER TABLE inquiries ADD COLUMN consent_timestamp TEXT DEFAULT ''")
 
-            # 6. Таблица кулдауна обращений (антифлуд)
+            # 7. Таблица кулдауна обращений (антифлуд)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_cooldowns (
@@ -190,8 +215,8 @@ class ResumeDB:
                 )
                 """
             )
-            
-            # 7. Таблица активных прямых диалогов (живой мост Кадровик <-> Кандидат)
+
+            # 8. Таблица активных прямых диалогов (живой мост Кадровик <-> Кандидат)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS active_dialogs (
@@ -210,7 +235,7 @@ class ResumeDB:
             if "platform" not in dlg_cols:
                 cursor.execute("ALTER TABLE active_dialogs ADD COLUMN platform TEXT DEFAULT 'tg'")
 
-            # 8. Таблица согласий на обработку персональных данных (152-ФЗ)
+            # 9. Таблица согласий на обработку персональных данных (152-ФЗ)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_consents (
@@ -220,63 +245,84 @@ class ResumeDB:
                 """
             )
 
-            # Индексы для ускорения поиска на больших объемах
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_user_plat ON candidates(user_id, platform)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_status ON candidates(status)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_user ON inquiries(user_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_status ON inquiries(status)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_dialog_op ON active_dialogs(operator_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_admins_role_dm ON admins(role, notify_dm)")
-
-            # 9. Таблица персистентных FSM состояний (aiogram 3)
+            # 10. Таблица персистентных FSM состояний (aiogram 3)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS fsm_storage (
                     storage_key TEXT PRIMARY KEY,
                     state TEXT,
-                    data TEXT DEFAULT "{}",
+                    data TEXT DEFAULT '{}',
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
 
-            # 10. Таблица сессий внешних мессенджеров (VK / MAX)
+            # 11. Таблица сессий внешних мессенджеров (VK / MAX)
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS external_sessions (
                     platform TEXT NOT NULL,
                     user_id TEXT NOT NULL,
-                    data TEXT DEFAULT "{}",
+                    data TEXT DEFAULT '{}',
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (platform, user_id)
                 )
                 """
             )
 
-            conn.commit()
+            # Высокоскоростные индексы для быстрого поиска
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_user_plat ON candidates(user_id, platform)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_status ON candidates(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_cand_created ON candidates(created_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_user ON inquiries(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_status ON inquiries(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_dialog_op ON active_dialogs(operator_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_admins_role_dm ON admins(role, notify_dm)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_destruct_cand ON destruction_logs(candidate_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_destruct_user ON destruction_logs(user_id)")
 
     @staticmethod
     def _parse_ts(ts_str: Optional[str]) -> datetime:
+        """Безопасный парсинг временных меток разных форматов."""
         if not ts_str:
             return datetime.now()
         clean_str = str(ts_str).replace("T", " ").split(".")[0]
-        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d.%m.%Y %H:%M", "%d.%m.%Y"):
             try:
                 return datetime.strptime(clean_str, fmt)
             except ValueError:
                 continue
         return datetime.now()
 
-    # ==================== УПРАВЛЕНИЕ АНКЕТАМИ СОИСКАТЕЛЕЙ ====================
+    # =========================================================================
+    # 1. УПРАВЛЕНИЕ АНКЕТАМИ СОИСКАТЕЛЕЙ
+    # =========================================================================
+
     def add_candidate(
-        self, platform: str, user_id: str, full_name: str, phone: str, vacancy: str, experience: str,
-        is_test: bool = False, consent_timestamp: Optional[str] = None,
-        birth_date: str = "", city: str = "", driver_license: str = "", education: str = "",
-        relocation: str = "", dormitory: str = "", shift_work: str = "",
-        medical_restrictions: str = "", criminal_record: str = "", source: str = "", extra_info: str = "",
-        raw_data_json: str = "{}"
+        self,
+        platform: str,
+        user_id: str,
+        full_name: str,
+        phone: str,
+        vacancy: str,
+        experience: str,
+        is_test: bool = False,
+        consent_timestamp: Optional[str] = None,
+        birth_date: str = "",
+        city: str = "",
+        driver_license: str = "",
+        education: str = "",
+        relocation: str = "",
+        dormitory: str = "",
+        shift_work: str = "",
+        medical_restrictions: str = "",
+        criminal_record: str = "",
+        source: str = "",
+        extra_info: str = "",
+        raw_data_json: str = "{}",
     ) -> int:
-        with self._get_connection() as conn:
+        """Сохранение новой анкеты со всеми 16 полями в базу данных."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -288,78 +334,67 @@ class ResumeDB:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """,
                 (
-                    platform, str(user_id), full_name, phone, vacancy, experience, 1 if is_test else 0, consent_timestamp or "",
-                    birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                    medical_restrictions, criminal_record, source, extra_info, raw_data_json
+                    platform,
+                    str(user_id),
+                    full_name,
+                    phone,
+                    vacancy,
+                    experience,
+                    1 if is_test else 0,
+                    consent_timestamp or "",
+                    birth_date,
+                    city,
+                    driver_license,
+                    education,
+                    relocation,
+                    dormitory,
+                    shift_work,
+                    medical_restrictions,
+                    criminal_record,
+                    source,
+                    extra_info,
+                    raw_data_json,
                 ),
             )
-            conn.commit()
-            return cursor.lastrowid
+            return int(cursor.lastrowid)
 
     def delete_candidate_by_user(self, user_id: str, platform: str = "tg") -> Optional[int]:
-        """Удаление анкеты пользователя при отзыве согласия на обработку ПДн (ст. 21 152-ФЗ)."""
-        with self._get_connection() as conn:
+        """
+        Каскадное удаление данных пользователя при отзыве согласия на обработку ПДн (ст. 21 152-ФЗ).
+        Очищает анкету, связанные диалоги, обращения и согласие.
+        """
+        uid = str(user_id)
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT ticket_id FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1",
-                (str(user_id), platform)
+                (uid, platform),
             )
             row = cursor.fetchone()
             if row:
                 t_id = row[0]
                 cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (t_id,))
-                conn.commit()
-                return t_id
+                cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid,))
+                cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (uid, platform))
+                cursor.execute("DELETE FROM user_consents WHERE user_id = ?", (uid,))
+                return int(t_id)
             return None
 
     def get_candidate_dict_by_user(self, user_id: str, platform: str = "tg") -> Optional[Dict[str, Any]]:
-        """Получение словаря данных анкеты для команды /mydata (ст. 14 152-ФЗ)."""
-        with self._get_connection() as conn:
+        """Получение словаря данных анкеты для команды выгрузки /mydata (ст. 14 152-ФЗ)."""
+        with self.connection() as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1",
-                (str(user_id), platform)
+                (str(user_id), platform),
             )
             row = cursor.fetchone()
-            if row:
-                return dict(row)
-            return None
+            return dict(row) if row else None
 
-    async def async_add_candidate(self, *args, **kwargs) -> int:
-        """Неблокирующее асинхронное добавление анкеты."""
-        return await asyncio.to_thread(self.add_candidate, *args, **kwargs)
-
-    async def async_get_candidate(self, ticket_id: int) -> Optional[Tuple]:
-        """Неблокирующее получение анкеты по ID."""
-        return await asyncio.to_thread(self.get_candidate, ticket_id)
-
-    async def async_get_candidate_by_user_id(self, user_id: str, platform: str = "tg") -> Optional[Tuple]:
-        """Неблокирующее получение анкеты по user_id."""
-        return await asyncio.to_thread(self.get_candidate_by_user_id, user_id, platform)
-
-    async def async_check_candidate_can_apply(self, user_id: str, platform: str = "tg"):
-        """Неблокирующая проверка права подачи анкеты."""
-        return await asyncio.to_thread(self.check_candidate_can_apply, user_id, platform)
-
-    async def async_get_recent_candidates(self, *args, **kwargs) -> List[Tuple]:
-        """Неблокирующее получение списка последних анкет."""
-        return await asyncio.to_thread(self.get_recent_candidates, *args, **kwargs)
-
-    async def async_get_statistics(self) -> Dict[str, int]:
-        """Неблокирующий расчет статистики отдела кадров."""
-        return await asyncio.to_thread(self.get_statistics)
-
-    async def async_delete_candidate_152fz(self, ticket_id: int) -> Tuple[bool, Optional[Dict[str, Any]]]:
-        """Неблокирующее удаление анкеты по 152-ФЗ."""
-        return await asyncio.to_thread(self.delete_candidate_152fz, ticket_id)
-
-    async def async_update_status(self, ticket_id: int, new_status: str):
-        """Неблокирующее обновление статуса анкеты."""
-        return await asyncio.to_thread(self.update_status, ticket_id, new_status)
-
-    def get_candidate(self, ticket_id: int) -> Optional[Tuple]:
-        with self._get_connection() as conn:
+    def get_candidate(self, ticket_id: int) -> Optional[Tuple[Any, ...]]:
+        """Получение полного кортежа анкеты по номеру заявки."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -372,8 +407,9 @@ class ResumeDB:
             )
             return cursor.fetchone()
 
-    def get_candidate_by_user_id(self, user_id: str, platform: str = "tg") -> Optional[Tuple]:
-        with self._get_connection() as conn:
+    def get_candidate_by_user_id(self, user_id: str, platform: str = "tg") -> Optional[Tuple[Any, ...]]:
+        """Получение последней анкеты кандидата по ID пользователя и платформе."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -386,11 +422,18 @@ class ResumeDB:
             )
             return cursor.fetchone()
 
-    def check_candidate_can_apply(self, user_id: str, platform: str = "tg") -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    def check_candidate_can_apply(
+        self, user_id: str, platform: str = "tg"
+    ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+        """
+        Проверка возможности подачи анкеты согласно регламенту предприятия:
+        1. Активная анкета на рассмотрении (Новая, В работе, Приглашен).
+        2. Кулдаун 90 дней (3 месяца) после отказа.
+        """
         uid_str = str(user_id)
-        with self._get_connection() as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
-            # 1. Проверяем, есть ли активная анкета на рассмотрении (Новая, В работе, Приглашен)
+            # 1. Проверяем наличие активной анкеты
             cursor.execute(
                 """
                 SELECT ticket_id, status, created_at, full_name, vacancy 
@@ -411,7 +454,7 @@ class ResumeDB:
                     "vacancy": vc,
                 }
 
-            # 2. Проверяем, есть ли недавний отказ за последние 90 дней (3 месяца)
+            # 2. Проверяем период кулдауна 90 дней после отказа
             cursor.execute(
                 """
                 SELECT ticket_id, status, created_at, updated_at, full_name, vacancy 
@@ -427,11 +470,14 @@ class ResumeDB:
                 refuse_ts = up or cr
                 refuse_dt = self._parse_ts(refuse_ts)
                 now = datetime.now()
-                diff_days = (now - refuse_dt).days
                 cooldown_days = 90
+                diff_seconds = (now - refuse_dt).total_seconds()
+                diff_days = int(diff_seconds // 86400)
+
                 if diff_days < cooldown_days:
                     available_dt = refuse_dt + timedelta(days=cooldown_days)
-                    days_left = max(1, (available_dt - now).days + 1)
+                    remaining_seconds = max(0.0, (available_dt - now).total_seconds())
+                    days_left = max(1, int(remaining_seconds // 86400) + 1)
                     return False, "rejected_cooldown", {
                         "ticket_id": t_id,
                         "status": st,
@@ -444,38 +490,18 @@ class ResumeDB:
 
             return True, "ok", None
 
-
-
     def delete_candidate(self, ticket_id: int) -> bool:
-        """Физическое и полное удаление анкеты кандидата и всех связанных данных."""
-        deleted = False
-        with self._get_connection() as conn:
+        """Физическое удаление анкеты кандидата и связанных диалогов."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (ticket_id,))
-            if cursor.rowcount > 0:
-                deleted = True
+            deleted = cursor.rowcount > 0
             cursor.execute("DELETE FROM active_dialogs WHERE ticket_id = ?", (ticket_id,))
             cursor.execute("DELETE FROM inquiries WHERE ticket_id = ?", (ticket_id,))
-            conn.commit()
-
-        # Также подчищаем из старой тестовой базы если она есть на диске
-        test_db_path = self.db_path.replace("resumes.db", "resumes_test.db")
-        if os.path.exists(test_db_path):
-            try:
-                with sqlite3.connect(test_db_path) as t_conn:
-                    t_cur = t_conn.cursor()
-                    t_cur.execute("DELETE FROM candidates WHERE ticket_id = ?", (ticket_id,))
-                    if t_cur.rowcount > 0:
-                        deleted = True
-                    t_cur.execute("DELETE FROM active_dialogs WHERE ticket_id = ?", (ticket_id,))
-                    t_cur.execute("DELETE FROM inquiries WHERE ticket_id = ?", (ticket_id,))
-                    t_conn.commit()
-            except Exception:
-                pass
-
-        return deleted
+            return deleted
 
     def delete_candidate_152fz(self, ticket_id: int) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """Удаление анкеты с возвратом метаданных для оформления акта уничтожения."""
         cand = self.get_candidate(ticket_id)
         if not cand:
             return False, None
@@ -491,65 +517,44 @@ class ResumeDB:
         return True, cand_info
 
     def reset_candidate_for_test(self, user_id: str, platform: str = "tg") -> bool:
-        """Полное удаление анкет пользователя для чистого тестирования с нуля."""
-        with self._get_connection() as conn:
+        """Полная очистка тестовых записей администратора без задевания боевых анкет."""
+        uid = str(user_id)
+        with self.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM candidates WHERE user_id = ? AND platform = ?", (str(user_id), platform))
+            cursor.execute("DELETE FROM candidates WHERE user_id = ? AND platform = ?", (uid, platform))
             deleted = cursor.rowcount > 0
-            cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (str(user_id),))
-            cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (str(user_id), platform))
-            cursor.execute("DELETE FROM user_cooldowns WHERE user_id = ?", (str(user_id),))
-            conn.commit()
-
-        test_db_path = self.db_path.replace("resumes.db", "resumes_test.db")
-        if os.path.exists(test_db_path):
-            try:
-                with sqlite3.connect(test_db_path) as t_conn:
-                    t_cur = t_conn.cursor()
-                    t_cur.execute("DELETE FROM candidates WHERE user_id = ? AND platform = ?", (str(user_id), platform))
-                    t_cur.execute("DELETE FROM active_dialogs WHERE user_id = ?", (str(user_id),))
-                    t_cur.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (str(user_id), platform))
-                    t_cur.execute("DELETE FROM user_cooldowns WHERE user_id = ?", (str(user_id),))
-                    t_conn.commit()
-            except Exception:
-                pass
-
-        return deleted
+            cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid,))
+            cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (uid, platform))
+            cursor.execute("DELETE FROM user_cooldowns WHERE user_id = ?", (uid,))
+            return deleted
 
     def reset_all_test_data(self) -> Tuple[int, int]:
-        """Полная очистка тестовых анкет и обращений из базы данных."""
-        cand_cnt = 0
-        inq_cnt = 0
-        with self._get_connection() as conn:
+        """Очистка всех тестовых анкет и обращений из базы данных."""
+        with self.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM candidates WHERE is_test = 1 OR status LIKE '%Тест%' OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%' OR ticket_id >= 900000")
+            cursor.execute(
+                """
+                DELETE FROM candidates 
+                WHERE is_test = 1 OR status LIKE '%Тест%' 
+                   OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%' 
+                   OR ticket_id >= 900000
+                """
+            )
             cand_cnt = cursor.rowcount
-            cursor.execute("DELETE FROM inquiries WHERE is_test = 1 OR question_text LIKE '%Тест%' OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%'")
+            cursor.execute(
+                """
+                DELETE FROM inquiries 
+                WHERE is_test = 1 OR question_text LIKE '%Тест%' 
+                   OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%'
+                """
+            )
             inq_cnt = cursor.rowcount
             cursor.execute("DELETE FROM active_dialogs WHERE full_name LIKE '%Тест%' OR full_name LIKE '%тест%'")
-            conn.commit()
-
-        test_db_path = self.db_path.replace("resumes.db", "resumes_test.db")
-        if os.path.exists(test_db_path):
-            try:
-                with sqlite3.connect(test_db_path) as t_conn:
-                    t_cur = t_conn.cursor()
-                    t_cur.execute("DELETE FROM candidates")
-                    cand_cnt += t_cur.rowcount
-                    t_cur.execute("DELETE FROM inquiries")
-                    inq_cnt += t_cur.rowcount
-                    t_cur.execute("DELETE FROM active_dialogs")
-                    t_conn.commit()
-            except Exception:
-                pass
-
-        return cand_cnt, inq_cnt
+            return cand_cnt, inq_cnt
 
     def purge_all_candidates_for_debug(self) -> Tuple[int, int]:
-        """Полная очистка ВСЕХ анкет из базы данных (для отладки)."""
-        cand_cnt = 0
-        inq_cnt = 0
-        with self._get_connection() as conn:
+        """Полная очистка всех анкет (только для среды разработки/отладки)."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM candidates")
             cand_cnt = cursor.rowcount
@@ -558,26 +563,11 @@ class ResumeDB:
             cursor.execute("DELETE FROM active_dialogs")
             cursor.execute("DELETE FROM user_cooldowns")
             cursor.execute("UPDATE sqlite_sequence SET seq = 0 WHERE name IN ('candidates', 'inquiries')")
-            conn.commit()
+            return cand_cnt, inq_cnt
 
-        test_db_path = self.db_path.replace("resumes.db", "resumes_test.db")
-        if os.path.exists(test_db_path):
-            try:
-                with sqlite3.connect(test_db_path) as t_conn:
-                    t_cur = t_conn.cursor()
-                    t_cur.execute("DELETE FROM candidates")
-                    t_cur.execute("DELETE FROM inquiries")
-                    t_cur.execute("DELETE FROM active_dialogs")
-                    t_conn.commit()
-            except Exception:
-                pass
-
-        return cand_cnt, inq_cnt
-
-    
-    def get_all_candidates_for_export(self) -> List[Tuple]:
+    def get_all_candidates_for_export(self) -> List[Tuple[Any, ...]]:
         """Получение всех анкет для выгрузки в CSV/Excel."""
-        with self._get_connection() as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -588,43 +578,61 @@ class ResumeDB:
             )
             return cursor.fetchall()
 
-    def get_recent_candidates(self, limit: int = 10, filter_status: Optional[str] = None, only_new: bool = False, is_archive: bool = False) -> List[Tuple]:
-        with self._get_connection() as conn:
+    def get_recent_candidates(
+        self,
+        limit: int = 10,
+        filter_status: Optional[str] = None,
+        only_new: bool = False,
+        is_archive: bool = False,
+    ) -> List[Tuple[Any, ...]]:
+        """
+        Безопасное получение списка анкет со 100% параметризацией запроса (защита от SQLi).
+        """
+        params: List[Any] = []
+        if only_new:
+            where_sql = "status = ?"
+            params.append("Новая")
+        elif is_archive or filter_status == "Архив":
+            where_sql = "status = ?"
+            params.append("Архив")
+        elif filter_status:
+            where_sql = "status = ?"
+            params.append(filter_status)
+        else:
+            where_sql = "status != ?"
+            params.append("Архив")
+
+        params.append(limit)
+        query = (
+            f"SELECT ticket_id, full_name, vacancy, status, created_at, platform "
+            f"FROM candidates WHERE {where_sql} ORDER BY ticket_id DESC LIMIT ?"
+        )
+        with self.connection() as conn:
             cursor = conn.cursor()
-            if only_new:
-                filter_clause = "status = 'Новая'"
-            elif is_archive or filter_status == "Архив":
-                filter_clause = "status = 'Архив'"
-            elif filter_status:
-                filter_clause = f"status = '{filter_status}'"
-            else:
-                # Все активные резюме (исключаем архивные, чтобы не захламлять рабочую панель)
-                filter_clause = "status != 'Архив'"
-            query = f"SELECT ticket_id, full_name, vacancy, status, created_at, platform FROM candidates WHERE {filter_clause} ORDER BY ticket_id DESC LIMIT ?"
-            cursor.execute(query, (limit,))
+            cursor.execute(query, tuple(params))
             return cursor.fetchall()
 
-    def update_admin_note(self, ticket_id: int, note: str):
+    def update_admin_note(self, ticket_id: int, note: str) -> None:
         """Обновление служебной заметки кадровика по анкете."""
-        with self._get_connection() as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE candidates SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
                 (note, ticket_id),
             )
-            conn.commit()
 
-    def update_status(self, ticket_id: int, new_status: str):
-        with self._get_connection() as conn:
+    def update_status(self, ticket_id: int, new_status: str) -> None:
+        """Обновление статуса рассмотрения анкеты."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE candidates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
                 (new_status, ticket_id),
             )
-            conn.commit()
 
     def get_statistics(self) -> Dict[str, int]:
-        with self._get_connection() as conn:
+        """Агрегированный подсчёт кадровой воронки предприятия."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM candidates")
             total = cursor.fetchone()[0]
@@ -653,105 +661,212 @@ class ResumeDB:
                 "archive": archive_count,
             }
 
-    # ==================== СОГЛАСИЯ 152-ФЗ ====================
+    # =========================================================================
+    # 2. СОГЛАСИЯ И ПЕРСОНАЛЬНЫЕ ДАННЫЕ (152-ФЗ РФ)
+    # =========================================================================
+
     def get_user_consent(self, user_id: Any) -> Optional[str]:
-        """Возвращает timestamp зафиксированного согласия 152-ФЗ или None."""
-        with self._get_connection() as conn:
+        """Возвращает дату и время зафиксированного согласия 152-ФЗ."""
+        uid = str(user_id)
+        with self.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT consent_timestamp FROM user_consents WHERE user_id = ?", (str(user_id),))
+            cursor.execute("SELECT consent_timestamp FROM user_consents WHERE user_id = ?", (uid,))
             row = cursor.fetchone()
             if row and row[0]:
                 return row[0]
-            cursor.execute("SELECT consent_timestamp FROM candidates WHERE user_id = ? AND consent_timestamp != '' ORDER BY ticket_id DESC LIMIT 1", (str(user_id),))
+
+            # Резервный поиск по истории анкет
+            cursor.execute(
+                "SELECT consent_timestamp FROM candidates WHERE user_id = ? AND consent_timestamp != '' ORDER BY ticket_id DESC LIMIT 1",
+                (uid,),
+            )
             row2 = cursor.fetchone()
             if row2 and row2[0]:
-                cursor.execute("INSERT OR REPLACE INTO user_consents (user_id, consent_timestamp) VALUES (?, ?)", (str(user_id), row2[0]))
-                conn.commit()
+                cursor.execute(
+                    "INSERT OR REPLACE INTO user_consents (user_id, consent_timestamp) VALUES (?, ?)",
+                    (uid, row2[0]),
+                )
                 return row2[0]
-            cursor.execute("SELECT consent_timestamp FROM inquiries WHERE user_id = ? AND consent_timestamp != '' ORDER BY inquiry_id DESC LIMIT 1", (str(user_id),))
-            row3 = cursor.fetchone()
-            if row3 and row3[0]:
-                cursor.execute("INSERT OR REPLACE INTO user_consents (user_id, consent_timestamp) VALUES (?, ?)", (str(user_id), row3[0]))
-                conn.commit()
-                return row3[0]
             return None
 
     def set_user_consent(self, user_id: Any, timestamp: Optional[str] = None) -> str:
-        """Сохраняет согласие пользователя 152-ФЗ в базе данных."""
+        """Фиксация факта получения согласия субъекта ПДн."""
         ts = timestamp or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with self._get_connection() as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT OR REPLACE INTO user_consents (user_id, consent_timestamp) VALUES (?, ?)", (str(user_id), ts))
-            conn.commit()
+            cursor.execute(
+                "INSERT OR REPLACE INTO user_consents (user_id, consent_timestamp) VALUES (?, ?)",
+                (str(user_id), ts),
+            )
         return ts
 
     def revoke_user_consent(self, user_id: Any) -> bool:
-        """Отзывает согласие при полном удалении данных по ст. 21 152-ФЗ."""
-        with self._get_connection() as conn:
+        """Отзыв согласия и удаление отметки по ст. 21 152-ФЗ."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM user_consents WHERE user_id = ?", (str(user_id),))
-            conn.commit()
             return cursor.rowcount > 0
 
-    # ==================== УПРАВЛЕНИЕ АДМИНИСТРАТОРАМИ ====================
-    def add_admin(self, user_id: int, role: str = 'hr') -> bool:
-        with self._get_connection() as conn:
+    def log_pdn_destruction(
+        self, candidate_id: int, user_id: str, platform: str, reason: str, act_number: str = ""
+    ) -> int:
+        """Фиксация уничтожения ПДн в электронном журнале (Приказ Роскомнадзора № 179)."""
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        act_num = act_number or f"{candidate_id}-УПД"
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO destruction_logs (candidate_id, user_id, platform, reason, destroyed_at, act_number)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (candidate_id, str(user_id), platform, reason, now_str, act_num),
+            )
+            return int(cursor.lastrowid)
+
+    def get_destruction_logs(self, limit: int = 50) -> List[Tuple[Any, ...]]:
+        """Возвращает журнал уничтожения ПДн для проверок Роскомнадзора."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT id, candidate_id, user_id, platform, reason, destroyed_at, act_number, operator
+                FROM destruction_logs
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+            return cursor.fetchall()
+
+    def cleanup_expired_candidates(self, max_days: int = 180) -> List[int]:
+        """
+        Автоматическое уничтожение анкет с истёкшим сроком хранения (6 месяцев).
+        Требование ч. 7 ст. 5 и ст. 21 Федерального закона № 152-ФЗ РФ.
+        """
+        cutoff = (datetime.now() - timedelta(days=max_days)).strftime("%Y-%m-%d %H:%M:%S")
+        purged_ids: List[int] = []
+
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ticket_id, user_id, platform, full_name, phone 
+                FROM candidates 
+                WHERE created_at < ?
+                """,
+                (cutoff,),
+            )
+            expired = cursor.fetchall()
+
+        for row in expired:
+            t_id, u_id, plat, fio, ph = row
+            self.log_pdn_destruction(
+                candidate_id=t_id,
+                user_id=u_id,
+                platform=plat,
+                reason="Истечение 6-месячного срока хранения (ст. 5, 21 152-ФЗ)",
+                act_number=f"{t_id}-УПД",
+            )
+            self.delete_candidate(t_id)
+            purged_ids.append(t_id)
+
+        if purged_ids:
+            self.checkpoint_and_optimize()
+        return purged_ids
+
+    # =========================================================================
+    # 3. УПРАВЛЕНИЕ АДМИНИСТРАТОРАМИ И УВЕДОМЛЕНИЯМИ
+    # =========================================================================
+
+    def add_admin(self, user_id: int, role: str = "hr") -> bool:
+        """Добавление или обновление прав доступа сотрудника."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             try:
-                cursor.execute("INSERT INTO admins (user_id, role, notify_dm) VALUES (?, ?, 1) ON CONFLICT(user_id) DO UPDATE SET role = ?", (user_id, role, role))
-                conn.commit()
+                cursor.execute(
+                    """
+                    INSERT INTO admins (user_id, role, notify_dm) 
+                    VALUES (?, ?, 1) 
+                    ON CONFLICT(user_id) DO UPDATE SET role = ?
+                    """,
+                    (user_id, role, role),
+                )
                 return True
-            except Exception:
+            except Exception as e:
+                logger.error(f"Ошибка добавления администратора {user_id}: {e}")
                 return False
 
     def remove_admin(self, user_id: int) -> bool:
-        with self._get_connection() as conn:
+        """Отзыв прав доступа сотрудника."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM admins WHERE user_id = ?", (user_id,))
-            conn.commit()
             return cursor.rowcount > 0
 
     def get_all_admins(self) -> List[Tuple[int, str]]:
-        with self._get_connection() as conn:
+        """Получение списка всех сотрудников с назначенными ролями."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT user_id, role FROM admins ORDER BY added_at ASC")
             return cursor.fetchall()
 
+    def get_admin_role(self, user_id: int) -> Optional[str]:
+        """Получение роли конкретного пользователя."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT role FROM admins WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+            return str(row[0]) if row else None
+
     def get_admin_notify_status(self, user_id: int) -> bool:
-        with self._get_connection() as conn:
+        """Проверка статуса дублирования анкет в личные сообщения."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT notify_dm FROM admins WHERE user_id = ?", (user_id,))
             row = cursor.fetchone()
             return bool(row[0]) if row else True
 
     def toggle_admin_notify(self, user_id: int) -> bool:
+        """Переключение персонального статуса ЛС-уведомлений."""
         current = self.get_admin_notify_status(user_id)
         new_status = 0 if current else 1
-        with self._get_connection() as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("UPDATE admins SET notify_dm = ? WHERE user_id = ?", (new_status, user_id))
-            conn.commit()
         return bool(new_status)
 
-    def get_admins_with_dm_enabled(self, role: str = 'hr') -> List[int]:
-        with self._get_connection() as conn:
+    def set_all_hr_notify_dm(self, notify_status: int = 1) -> int:
+        """Пакетное переключение доставки в ЛС для всех кадровиков."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE admins SET notify_dm = ? WHERE role = 'hr'", (notify_status,))
+            return cursor.rowcount
+
+    def get_admins_with_dm_enabled(self, role: str = "hr") -> List[int]:
+        """Получение списка ID сотрудников с активными уведомлениями в ЛС."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT user_id FROM admins WHERE notify_dm = 1 AND role = ?", (role,))
             return [row[0] for row in cursor.fetchall()]
 
     def get_hr_admins_with_dm_enabled(self) -> List[int]:
-        return self.get_admins_with_dm_enabled(role='hr')
+        return self.get_admins_with_dm_enabled(role="hr")
 
-    # ==================== АНТИФЛУД И ОБРАЩЕНИЯ СОИСКАТЕЛЕЙ ====================
+    # =========================================================================
+    # 4. АНТИФЛУД И ОБРАЩЕНИЯ СОИСКАТЕЛЕЙ
+    # =========================================================================
+
     def check_inquiry_cooldown(self, user_id: str, cooldown_seconds: int = 1200) -> Tuple[bool, int]:
-        with self._get_connection() as conn:
+        """Проверка тайм-аута антифлуда между вопросами соискателя."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
                 SELECT (strftime('%s', 'now') - strftime('%s', last_inquiry_at))
                 FROM user_cooldowns WHERE user_id = ?
                 """,
-                (str(user_id),)
+                (str(user_id),),
             )
             row = cursor.fetchone()
             if not row or row[0] is None:
@@ -771,202 +886,250 @@ class ResumeDB:
         phone: str = "",
         vacancy: str = "",
         is_test: bool = False,
-        consent_timestamp: Optional[str] = None
+        consent_timestamp: Optional[str] = None,
     ) -> int:
-        with self._get_connection() as conn:
+        """Регистрация обращения соискателя с фиксацией времени антифлуда."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO inquiries (ticket_id, platform, user_id, full_name, phone, vacancy, question_text, status, is_test, consent_timestamp, created_at)
+                INSERT INTO inquiries (
+                    ticket_id, platform, user_id, full_name, phone, vacancy,
+                    question_text, status, is_test, consent_timestamp, created_at
+                )
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, CURRENT_TIMESTAMP)
                 """,
-                (ticket_id, platform, str(user_id), full_name, phone, vacancy, question_text, 1 if is_test else 0, consent_timestamp or "")
+                (
+                    ticket_id,
+                    platform,
+                    str(user_id),
+                    full_name,
+                    phone,
+                    vacancy,
+                    question_text,
+                    1 if is_test else 0,
+                    consent_timestamp or "",
+                ),
             )
-            inquiry_id = cursor.lastrowid
+            inquiry_id = int(cursor.lastrowid)
             cursor.execute(
                 """
                 INSERT INTO user_cooldowns (user_id, last_inquiry_at)
                 VALUES (?, CURRENT_TIMESTAMP)
                 ON CONFLICT(user_id) DO UPDATE SET last_inquiry_at = CURRENT_TIMESTAMP
                 """,
-                (str(user_id),)
+                (str(user_id),),
             )
-            conn.commit()
             return inquiry_id
 
-    async def async_add_inquiry(self, *args, **kwargs) -> int:
-        """Неблокирующее асинхронное добавление вопроса."""
-        return await asyncio.to_thread(self.add_inquiry, *args, **kwargs)
-
-    def get_inquiry(self, inquiry_id: int) -> Optional[Tuple]:
-        with self._get_connection() as conn:
+    def get_inquiry(self, inquiry_id: int) -> Optional[Tuple[Any, ...]]:
+        """Получение данных обращения по ID."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT inquiry_id, ticket_id, platform, user_id, full_name, phone, vacancy, question_text, status, admin_reply, created_at, closed_at
+                SELECT inquiry_id, ticket_id, platform, user_id, full_name, phone, vacancy,
+                       question_text, status, admin_reply, created_at, closed_at
                 FROM inquiries WHERE inquiry_id = ?
                 """,
-                (inquiry_id,)
+                (inquiry_id,),
             )
             return cursor.fetchone()
 
     def reply_inquiry(self, inquiry_id: int, reply_text: str) -> bool:
-        with self._get_connection() as conn:
+        """Сохранение ответа кадровика на вопрос соискателя."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE inquiries SET admin_reply = ?, status = 'replied' WHERE inquiry_id = ?",
-                (reply_text, inquiry_id)
+                (reply_text, inquiry_id),
             )
-            conn.commit()
             return cursor.rowcount > 0
 
     def close_inquiry(self, inquiry_id: int) -> bool:
-        with self._get_connection() as conn:
+        """Закрытие тикета обращения."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE inquiries SET status = 'closed', closed_at = CURRENT_TIMESTAMP WHERE inquiry_id = ?",
-                (inquiry_id,)
+                (inquiry_id,),
             )
-            conn.commit()
             return cursor.rowcount > 0
 
-    # ==================== ПРЯМОЙ ДИАЛОГ (ЖИВОЙ ЧАТ) ====================
-    def start_direct_dialog(self, user_id: str, operator_id: int, ticket_id: Optional[int] = None, full_name: str = "", platform: str = "tg") -> bool:
-        with self._get_connection() as conn:
+    # =========================================================================
+    # 5. ПРЯМОЙ ДИАЛОГ (ЖИВОЙ ЧАТ КАДРОВИК <-> СОИСКАТЕЛЬ)
+    # =========================================================================
+
+    def start_direct_dialog(
+        self,
+        user_id: str,
+        operator_id: int,
+        ticket_id: Optional[int] = None,
+        full_name: str = "",
+        platform: str = "tg",
+    ) -> bool:
+        """Открытие сессии прямого моста между соискателем и кадровой службой."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
                 INSERT OR REPLACE INTO active_dialogs (user_id, operator_id, ticket_id, full_name, platform, started_at)
                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """,
-                (str(user_id), operator_id, ticket_id, full_name, platform)
+                (str(user_id), operator_id, ticket_id, full_name, platform),
             )
-            conn.commit()
             return True
 
-    def get_dialog_by_user(self, user_id: str) -> Optional[Tuple]:
-        with self._get_connection() as conn:
+    def get_dialog_by_user(self, user_id: str) -> Optional[Tuple[Any, ...]]:
+        """Проверка, находится ли кандидат в прямом диалоге."""
+        with self.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT user_id, operator_id, ticket_id, full_name, platform FROM active_dialogs WHERE user_id = ?", (str(user_id),))
+            cursor.execute(
+                "SELECT user_id, operator_id, ticket_id, full_name, platform FROM active_dialogs WHERE user_id = ?",
+                (str(user_id),),
+            )
             return cursor.fetchone()
 
-    def get_dialog_by_operator(self, operator_id: int) -> Optional[Tuple]:
-        with self._get_connection() as conn:
+    def get_dialog_by_operator(self, operator_id: int) -> Optional[Tuple[Any, ...]]:
+        """Проверка, ведёт ли оператор/чат активный диалог."""
+        with self.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT user_id, operator_id, ticket_id, full_name, platform FROM active_dialogs WHERE operator_id = ?", (operator_id,))
+            cursor.execute(
+                "SELECT user_id, operator_id, ticket_id, full_name, platform FROM active_dialogs WHERE operator_id = ?",
+                (operator_id,),
+            )
             return cursor.fetchone()
 
     def end_direct_dialog(self, user_id: Optional[str] = None, operator_id: Optional[int] = None) -> bool:
-        with self._get_connection() as conn:
+        """Завершение прямого диалога со стороны пользователя или оператора."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             if user_id:
                 cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (str(user_id),))
             elif operator_id:
                 cursor.execute("DELETE FROM active_dialogs WHERE operator_id = ?", (operator_id,))
-            conn.commit()
             return cursor.rowcount > 0
 
-    # ==================== СИСТЕМНЫЕ МЕТОДЫ ====================
+    # =========================================================================
+    # 6. БЕЗОПАСНОСТЬ, ЧЕРНЫЙ СПИСОК И НАСТРОЙКИ
+    # =========================================================================
+
     def block_user_and_clean(self, user_id: Any, reason: str = "Спам") -> bool:
-        """Вносит пользователя в ЧС, аннулирует активные анкеты, закрывает диалоги и обращения."""
+        """Внесение в ЧС с каскадным аннулированием анкет, диалогов и обращений."""
         uid_str = str(user_id)
-        with self._get_connection() as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             try:
-                cursor.execute("INSERT OR REPLACE INTO blacklist (user_id, reason) VALUES (?, ?)", (uid_str, reason))
+                cursor.execute(
+                    "INSERT OR REPLACE INTO blacklist (user_id, reason) VALUES (?, ?)",
+                    (uid_str, reason),
+                )
                 cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid_str,))
-                cursor.execute("UPDATE candidates SET status = 'Отказ (ЧС)', updated_at = CURRENT_TIMESTAMP WHERE user_id = ?", (uid_str,))
+                cursor.execute(
+                    "UPDATE candidates SET status = 'Отказ (ЧС)', updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+                    (uid_str,),
+                )
                 cursor.execute("UPDATE inquiries SET status = 'Закрыто (ЧС)' WHERE user_id = ?", (uid_str,))
-                conn.commit()
                 return True
-            except Exception:
+            except Exception as e:
+                logger.error(f"Ошибка блокировки пользователя {uid_str}: {e}")
                 return False
 
     def block_user(self, user_id: Any, reason: str = "Спам") -> bool:
-        with self._get_connection() as conn:
+        """Точечное добавление пользователя в чёрный список."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             try:
-                cursor.execute("INSERT OR REPLACE INTO blacklist (user_id, reason) VALUES (?, ?)", (str(user_id), reason))
-                conn.commit()
+                cursor.execute(
+                    "INSERT OR REPLACE INTO blacklist (user_id, reason) VALUES (?, ?)",
+                    (str(user_id), reason),
+                )
                 return True
-            except Exception:
+            except Exception as e:
+                logger.error(f"Ошибка ЧС: {e}")
                 return False
 
     def unblock_user(self, user_id: Any) -> bool:
-        with self._get_connection() as conn:
+        """Исключение пользователя из чёрного списка."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM blacklist WHERE user_id = ?", (str(user_id),))
-            conn.commit()
             return cursor.rowcount > 0
 
     def get_blacklist(self) -> List[Tuple[str, str, str]]:
-        with self._get_connection() as conn:
+        """Список всех заблокированных пользователей."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT user_id, reason, blocked_at FROM blacklist ORDER BY blocked_at DESC")
             return cursor.fetchall()
 
     def is_blocked(self, user_id: Any, super_admin_id: Optional[int] = None) -> bool:
+        """Проверка нахождения пользователя в чёрном списке."""
+        if not user_id:
+            return False
         if super_admin_id is not None and str(user_id) == str(super_admin_id):
             return False
-        with self._get_connection() as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM blacklist WHERE user_id = ?", (str(user_id),))
             return cursor.fetchone() is not None
 
     def check_health(self) -> bool:
+        """Проверка целостности и доступности базы данных."""
         try:
-            with self._get_connection() as conn:
+            with self.connection() as conn:
                 conn.execute("SELECT 1 FROM candidates LIMIT 1")
                 conn.execute("SELECT 1 FROM inquiries LIMIT 1")
                 return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Сбой проверки базы данных: {e}")
             return False
 
     def get_setting(self, key: str, default: str = "") -> str:
-        with self._get_connection() as conn:
+        """Получение значения настройки из БД."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT value FROM system_settings WHERE key = ?", (key,))
             row = cursor.fetchone()
-            return row[0] if row else default
+            return str(row[0]) if row else default
 
-    def set_setting(self, key: str, value: str):
-        with self._get_connection() as conn:
+    def set_setting(self, key: str, value: str) -> None:
+        """Сохранение системной настройки в БД."""
+        with self.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)", (key, str(value)))
-            conn.commit()
+            cursor.execute(
+                "INSERT INTO system_settings (key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = ?",
+                (key, str(value), str(value)),
+            )
+
     def get_all_settings(self) -> Dict[str, str]:
-        with self._get_connection() as conn:
+        """Получение всех базовых настроек без динамических переопределений текстов."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT key, value FROM system_settings WHERE key NOT LIKE 'text_override:%'")
             return {row[0]: row[1] for row in cursor.fetchall()}
 
     def get_all_text_overrides(self) -> Dict[str, str]:
-        with self._get_connection() as conn:
+        """Получение всех переопределений текстов из веб-панели."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT key, value FROM system_settings WHERE key LIKE 'text_override:%'")
-            return {row[0].replace('text_override:', ''): row[1] for row in cursor.fetchall()}
+            return {row[0].replace("text_override:", ""): row[1] for row in cursor.fetchall()}
 
-    def get_dynamic_text(self, text_key: str, default_val: str = '') -> str:
-        override = self.get_setting(f'text_override:{text_key}', '')
+    def get_dynamic_text(self, text_key: str, default_val: str = "") -> str:
+        """Возвращает динамически переопределённый текст или дефолтное значение."""
+        override = self.get_setting(f"text_override:{text_key}", "")
         return override if override else default_val
 
-    def set_dynamic_text(self, text_key: str, value: str):
-        self.set_setting(f'text_override:{text_key}', value)
+    def set_dynamic_text(self, text_key: str, value: str) -> None:
+        """Запись переопределения текста."""
+        self.set_setting(f"text_override:{text_key}", value)
 
-
-
-    def get_admin_role(self, user_id: int) -> Optional[str]:
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT role FROM admins WHERE user_id = ?", (user_id,))
-            row = cursor.fetchone()
-            return row[0] if row else None
-
-    
     def checkpoint_and_optimize(self) -> bool:
-        """Оптимизация базы данных: сброс WAL-журнала и дефрагментация страниц памяти."""
+        """Сброс WAL-журнала на диск и оптимизация страниц памяти."""
         try:
-            with self._get_connection() as conn:
+            with self.connection() as conn:
                 try:
                     conn.execute("PRAGMA wal_checkpoint(PASSIVE);")
                 except sqlite3.OperationalError:
@@ -974,28 +1137,34 @@ class ResumeDB:
                 conn.execute("PRAGMA optimize;")
             return True
         except Exception as e:
-            logging.error(f"Ошибка оптимизации SQLite: {e}")
+            logger.error(f"Ошибка оптимизации SQLite: {e}")
             return False
 
+    # =========================================================================
+    # 7. РЕЗЕРВНОЕ КОПИРОВАНИЕ И ВОССТАНОВЛЕНИЕ (BACKUPS)
+    # =========================================================================
+
     def backup_database(self, backup_dir: str = "backups") -> str:
+        """Создание горячей резервной копии через SQLite Online Backup API."""
         os.makedirs(backup_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_filename = f"resumes_backup_{timestamp}.db"
         backup_path = os.path.join(backup_dir, backup_filename)
+
         counter = 1
         while os.path.exists(backup_path):
             backup_filename = f"resumes_backup_{timestamp}_{counter}.db"
             backup_path = os.path.join(backup_dir, backup_filename)
             counter += 1
 
-        with self._get_connection() as src_conn:
+        with self.connection() as src_conn:
             with sqlite3.connect(backup_path) as dst_conn:
                 src_conn.backup(dst_conn)
 
         return backup_path
 
     def list_backups(self, backup_dir: str = "backups") -> List[Dict[str, Any]]:
-        """Возвращает список всех созданных бэкапов с датой и размером."""
+        """Список всех резервных копий с метаданными размера и даты создания."""
         if not os.path.exists(backup_dir):
             return []
         files = []
@@ -1003,38 +1172,42 @@ class ResumeDB:
             if fn.endswith(".db"):
                 fp = os.path.join(backup_dir, fn)
                 st = os.stat(fp)
-                files.append({
-                    "filename": fn,
-                    "path": fp,
-                    "size_bytes": st.st_size,
-                    "size_kb": round(st.st_size / 1024, 1),
-                    "created_at": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-                })
+                files.append(
+                    {
+                        "filename": fn,
+                        "path": fp,
+                        "size_bytes": st.st_size,
+                        "size_kb": round(st.st_size / 1024, 1),
+                        "created_at": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                )
         files.sort(key=lambda x: (x["created_at"], x["filename"]), reverse=True)
         return files
 
     def restore_database(self, backup_filename: str, backup_dir: str = "backups") -> Tuple[bool, str]:
-        """Безопасное горячее восстановление базы данных из бэкапа без остановки бота."""
+        """Горячее восстановление базы данных из бэкапа со страховочной копией."""
         clean_name = os.path.basename(backup_filename)
         backup_path = os.path.join(backup_dir, clean_name)
         if not os.path.exists(backup_path):
             return False, f"Файл бэкапа {clean_name} не найден в {backup_dir}."
 
-        # 1. Сначала делаем экстренную копию текущего состояния базы перед откатом
         pre_restore_path = self.backup_database(backup_dir)
         pre_restore_name = os.path.basename(pre_restore_path)
 
-        # 2. Накатываем бэкап на боевую базу через SQLite Backup API
         try:
             with sqlite3.connect(backup_path) as src_conn:
-                with self._get_connection() as dst_conn:
+                with self.connection() as dst_conn:
                     src_conn.backup(dst_conn)
-            return True, f"База успешно восстановлена из <code>{clean_name}</code>.\nСтраховочная копия создана: <code>{pre_restore_name}</code>"
+            return True, (
+                f"База успешно восстановлена из <code>{clean_name}</code>.\n"
+                f"Страховочная копия создана: <code>{pre_restore_name}</code>"
+            )
         except Exception as e:
+            logger.error(f"Сбой восстановления БД: {e}")
             return False, f"Ошибка восстановления базы: {e}"
 
     def delete_backup(self, backup_filename: str, backup_dir: str = "backups") -> Tuple[bool, str]:
-        """Удаление указанного файла бэкапа."""
+        """Удаление файла бэкапа."""
         clean_name = os.path.basename(backup_filename)
         backup_path = os.path.join(backup_dir, clean_name)
         if not os.path.exists(backup_path):
@@ -1046,7 +1219,7 @@ class ResumeDB:
             return False, f"Ошибка при удалении: {e}"
 
     def cleanup_old_backups(self, keep_count: int = 5, backup_dir: str = "backups") -> Tuple[int, List[str]]:
-        """Оставляет последние keep_count бэкапов, остальные удаляет для экономии диска сервера."""
+        """Ротация архивов: сохраняет последние `keep_count` копий, старые удаляет."""
         backups = self.list_backups(backup_dir)
         if len(backups) <= keep_count:
             return 0, []
@@ -1060,33 +1233,41 @@ class ResumeDB:
                 pass
         return len(deleted_names), deleted_names
 
-    # ==================== FSM & ПЕРСИСТЕНТНЫЕ СЕССИИ ====================
-    def set_fsm_state(self, key: str, state: Optional[str]):
-        with self._get_connection() as conn:
+    # =========================================================================
+    # 8. FSM И ПЕРСИСТЕНТНЫЕ СЕССИИ (VK / MAX / TG)
+    # =========================================================================
+
+    def set_fsm_state(self, key: str, state: Optional[str]) -> None:
+        """Сохранение состояния FSM в постоянное хранилище."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             if state is None:
-                cursor.execute("UPDATE fsm_storage SET state = NULL, updated_at = CURRENT_TIMESTAMP WHERE storage_key = ?", (key,))
+                cursor.execute(
+                    "UPDATE fsm_storage SET state = NULL, updated_at = CURRENT_TIMESTAMP WHERE storage_key = ?",
+                    (key,),
+                )
             else:
                 cursor.execute(
                     """
                     INSERT INTO fsm_storage (storage_key, state, data, updated_at)
-                    VALUES (?, ?, "{}", CURRENT_TIMESTAMP)
+                    VALUES (?, ?, '{}', CURRENT_TIMESTAMP)
                     ON CONFLICT(storage_key) DO UPDATE SET state = ?, updated_at = CURRENT_TIMESTAMP
                     """,
-                    (key, state, state)
+                    (key, state, state),
                 )
-            conn.commit()
 
     def get_fsm_state(self, key: str) -> Optional[str]:
-        with self._get_connection() as conn:
+        """Чтение состояния FSM."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT state FROM fsm_storage WHERE storage_key = ?", (key,))
             row = cursor.fetchone()
-            return row[0] if row else None
+            return str(row[0]) if row and row[0] is not None else None
 
-    def set_fsm_data(self, key: str, data: Dict[str, Any]):
+    def set_fsm_data(self, key: str, data: Dict[str, Any]) -> None:
+        """Сохранение полезной нагрузки FSM."""
         raw_json = json.dumps(data or {}, ensure_ascii=False)
-        with self._get_connection() as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -1094,12 +1275,12 @@ class ResumeDB:
                 VALUES (?, NULL, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(storage_key) DO UPDATE SET data = ?, updated_at = CURRENT_TIMESTAMP
                 """,
-                (key, raw_json, raw_json)
+                (key, raw_json, raw_json),
             )
-            conn.commit()
 
     def get_fsm_data(self, key: str) -> Dict[str, Any]:
-        with self._get_connection() as conn:
+        """Чтение полезной нагрузки FSM."""
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT data FROM fsm_storage WHERE storage_key = ?", (key,))
             row = cursor.fetchone()
@@ -1110,9 +1291,10 @@ class ResumeDB:
                     return {}
             return {}
 
-    def set_external_session(self, platform: str, user_id: str, data: Dict[str, Any]):
+    def set_external_session(self, platform: str, user_id: str, data: Dict[str, Any]) -> None:
+        """Сохранение сессии внешнего мессенджера (VK/MAX)."""
         raw_json = json.dumps(data or {}, ensure_ascii=False)
-        with self._get_connection() as conn:
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -1120,19 +1302,22 @@ class ResumeDB:
                 VALUES (?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(platform, user_id) DO UPDATE SET data = ?, updated_at = CURRENT_TIMESTAMP
                 """,
-                (platform, str(user_id), raw_json, raw_json)
+                (platform, str(user_id), raw_json, raw_json),
             )
-            conn.commit()
 
-    def delete_external_session(self, platform: str, user_id: str):
-        with self._get_connection() as conn:
+    def delete_external_session(self, platform: str, user_id: str) -> None:
+        """Удаление завершённой внешней сессии."""
+        with self.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM external_sessions WHERE platform = ? AND user_id = ?", (platform, str(user_id)))
-            conn.commit()
+            cursor.execute(
+                "DELETE FROM external_sessions WHERE platform = ? AND user_id = ?",
+                (platform, str(user_id)),
+            )
 
     def get_all_external_sessions(self) -> List[Tuple[str, str, Dict[str, Any]]]:
-        sessions = []
-        with self._get_connection() as conn:
+        """Загрузка всех незавершённых сессий внешних мессенджеров при старте."""
+        sessions: List[Tuple[str, str, Dict[str, Any]]] = []
+        with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT platform, user_id, data FROM external_sessions")
             for plat, uid, raw_json in cursor.fetchall():
@@ -1142,61 +1327,40 @@ class ResumeDB:
                     d = {}
                 sessions.append((plat, uid, d))
         return sessions
-    def log_pdn_destruction(self, candidate_id: int, user_id: str, platform: str, reason: str, act_number: str = '') -> int:
-        """Фиксирует факт уничтожения ПДн в электронном журнале (Приказ РКН № 179)."""
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        act_num = act_number or f"{candidate_id}-УПД"
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO destruction_logs (candidate_id, user_id, platform, reason, destroyed_at, act_number)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (candidate_id, str(user_id), platform, reason, now_str, act_num))
-            conn.commit()
-            return cursor.lastrowid
 
-    def get_destruction_logs(self, limit: int = 50) -> List[Tuple]:
-        """Возвращает последние записи журнала уничтожения ПДн."""
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, candidate_id, user_id, platform, reason, destroyed_at, act_number, operator
-                FROM destruction_logs
-                ORDER BY id DESC
-                LIMIT ?
-            """, (limit,))
-            return cursor.fetchall()
+    # =========================================================================
+    # 9. АСИНХРОННЫЕ ОБЕРТКИ ДЛЯ НЕБЛОКИРУЮЩЕГО ВЫЗОВА В ХЭНДЛЕРАХ
+    # =========================================================================
 
-    def cleanup_expired_candidates(self, max_days: int = 180) -> List[int]:
-        """
-        Автоматическое уничтожение анкет соискателей с истёкшим сроком хранения (6 месяцев).
-        Требование ст. 5, ст. 21 152-ФЗ РФ и ТЗ предприятия.
-        """
-        cutoff = (datetime.now() - timedelta(days=max_days)).strftime("%Y-%m-%d %H:%M:%S")
-        purged_ids = []
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, user_id, platform, full_name, phone 
-                FROM candidates 
-                WHERE created_at < ?
-            """, (cutoff,))
-            expired = cursor.fetchall()
+    async def async_add_candidate(self, *args, **kwargs) -> int:
+        return await asyncio.to_thread(self.add_candidate, *args, **kwargs)
 
-        for row in expired:
-            c_id, u_id, plat, fio, ph = row
-            self.log_pdn_destruction(
-                candidate_id=c_id,
-                user_id=u_id,
-                platform=plat,
-                reason="Истечение срока хранения 6 месяцев (ст. 5, 21 152-ФЗ)",
-                act_number=f"{c_id}-УПД"
-            )
-            with self._get_connection() as conn:
-                conn.execute("DELETE FROM candidates WHERE id = ?", (c_id,))
-                conn.commit()
-            purged_ids.append(c_id)
+    async def async_get_candidate(self, ticket_id: int) -> Optional[Tuple[Any, ...]]:
+        return await asyncio.to_thread(self.get_candidate, ticket_id)
 
-        if purged_ids:
-            self.checkpoint_and_optimize()
-        return purged_ids
+    async def async_get_candidate_by_user_id(
+        self, user_id: str, platform: str = "tg"
+    ) -> Optional[Tuple[Any, ...]]:
+        return await asyncio.to_thread(self.get_candidate_by_user_id, user_id, platform)
+
+    async def async_check_candidate_can_apply(
+        self, user_id: str, platform: str = "tg"
+    ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+        return await asyncio.to_thread(self.check_candidate_can_apply, user_id, platform)
+
+    async def async_get_recent_candidates(self, *args, **kwargs) -> List[Tuple[Any, ...]]:
+        return await asyncio.to_thread(self.get_recent_candidates, *args, **kwargs)
+
+    async def async_get_statistics(self) -> Dict[str, int]:
+        return await asyncio.to_thread(self.get_statistics)
+
+    async def async_delete_candidate_152fz(
+        self, ticket_id: int
+    ) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        return await asyncio.to_thread(self.delete_candidate_152fz, ticket_id)
+
+    async def async_update_status(self, ticket_id: int, new_status: str) -> None:
+        await asyncio.to_thread(self.update_status, ticket_id, new_status)
+
+    async def async_add_inquiry(self, *args, **kwargs) -> int:
+        return await asyncio.to_thread(self.add_inquiry, *args, **kwargs)

@@ -1,43 +1,44 @@
-import json
-from pathlib import Path
-import collections
 # -*- coding: utf-8 -*-
 """
-Общий модуль состояния, конфигурации и служебных функций
+Общий модуль состояния, конфигурации, отказоустойчивости и служебных функций
 бота МУП «Ульяновскэлектротранс».
+Реализует безопасную отправку сообщений (Flood control, safe_send),
+персистентные хранилища FSM (SQLite WAL) и ролевые фильтры.
 """
+
+from __future__ import annotations
+
 import asyncio
+import collections
 import io
+import json
 import logging
 import os
 import re
 import sys
 import time
 from datetime import datetime
-from typing import Dict, Tuple, Any, Optional, List, Callable, Awaitable
+from pathlib import Path
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
-from aiogram import Bot, Dispatcher, types, BaseMiddleware
-from aiogram.filters import BaseFilter
+from aiogram import BaseMiddleware, Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
-from aiogram.types import BotCommand
 from aiogram.exceptions import (
-    TelegramNetworkError,
+    TelegramAPIError,
     TelegramBadRequest,
     TelegramForbiddenError,
-    TelegramAPIError
+    TelegramNetworkError,
+    TelegramRetryAfter,
 )
+from aiogram.filters import BaseFilter
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.base import BaseStorage, StorageKey, StateType
+from aiogram.types import BotCommand, BufferedInputFile
 
-try:
-    from config import CONFIG, validate_config
-except ImportError:
-    from config import CONFIG
-    def validate_config():
-        pass
-
+from config import CONFIG, update_env_variable, validate_config
 from database import ResumeDB
+from texts import clean_html
 
 # Безопасный вывод кодировок для консоли Windows
 if sys.platform.startswith("win"):
@@ -47,37 +48,53 @@ if sys.platform.startswith("win"):
     except Exception:
         pass
 
+# Настройка системного логирования
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(levelname)s - [%(name)s] - %(message)s",
 )
 logger = logging.getLogger("UET_HR_BOT")
 
+
+# ==============================================================================
+# ОПЕРАТИВНЫЙ БУФЕР ЛОГОВ (/logs)
+# ==============================================================================
+
 class MemoryLogHandler(logging.Handler):
     """Кольцевой буфер оперативных логов для удаленной диагностики через Telegram (/logs)."""
-    def __init__(self, capacity=120):
-        super().__init__()
-        self.buffer = collections.deque(maxlen=capacity)
 
-    def emit(self, record):
+    def __init__(self, capacity: int = 120) -> None:
+        super().__init__()
+        self.buffer: collections.deque[str] = collections.deque(maxlen=capacity)
+
+    def emit(self, record: logging.LogRecord) -> None:
         try:
             msg = self.format(record)
             self.buffer.append(msg)
         except Exception:
             pass
 
-    def get_logs(self, n=30) -> list:
+    def get_logs(self, n: int = 30) -> List[str]:
+        """Возвращает последние n строк логов."""
         return list(self.buffer)[-n:]
+
 
 memory_log_handler = MemoryLogHandler(capacity=120)
 memory_log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 logging.getLogger().addHandler(memory_log_handler)
 
 
-class SQLiteFSMStorage(BaseStorage):
-    """Персистентное хранилище FSM в базе SQLite (resumes.db)."""
+# ==============================================================================
+# ПЕРСИСТЕНТНОЕ ХРАНИЛИЩЕ FSM НА БАЗЕ SQLITE WAL
+# ==============================================================================
 
-    def __init__(self, database: ResumeDB):
+class SQLiteFSMStorage(BaseStorage):
+    """
+    Персистентное хранилище состояний и данных FSM aiogram 3 в SQLite WAL.
+    Гарантирует сохранение прогресса заполнения анкет при перезапуске службы.
+    """
+
+    def __init__(self, database: ResumeDB) -> None:
         self.db = database
 
     def _get_key_str(self, key: StorageKey) -> str:
@@ -107,7 +124,7 @@ class SQLiteFSMStorage(BaseStorage):
 class PersistentSessions(dict):
     """Персистентный кэш сессий соискателей VK / MAX с авто-сохранением в SQLite."""
 
-    def __init__(self, database: ResumeDB):
+    def __init__(self, database: ResumeDB) -> None:
         super().__init__()
         self.db = database
         try:
@@ -116,7 +133,7 @@ class PersistentSessions(dict):
         except Exception:
             pass
 
-    def __setitem__(self, key: Tuple[str, str], value: Dict[str, Any]):
+    def __setitem__(self, key: Tuple[str, str], value: Dict[str, Any]) -> None:
         super().__setitem__(key, value)
         try:
             plat, uid = key
@@ -124,7 +141,7 @@ class PersistentSessions(dict):
         except Exception:
             pass
 
-    def __delitem__(self, key: Tuple[str, str]):
+    def __delitem__(self, key: Tuple[str, str]) -> None:
         if key in self:
             super().__delitem__(key)
         try:
@@ -133,7 +150,7 @@ class PersistentSessions(dict):
         except Exception:
             pass
 
-    def pop(self, key: Tuple[str, str], default=None):
+    def pop(self, key: Tuple[str, str], default: Any = None) -> Any:
         try:
             plat, uid = key
             self.db.delete_external_session(plat, str(uid))
@@ -142,34 +159,26 @@ class PersistentSessions(dict):
         return super().pop(key, default)
 
 
+# ==============================================================================
+# ИНИЦИАЛИЗАЦИЯ ЯДРА, БОТА И ДИСПЕТЧЕРА
+# ==============================================================================
+
 db = ResumeDB()
 bot = Bot(
     token=CONFIG.get("TG_BOT_TOKEN", ""),
-    default=DefaultBotProperties(parse_mode="HTML")
+    default=DefaultBotProperties(parse_mode="HTML"),
 )
 dp = Dispatcher(storage=SQLiteFSMStorage(db))
 
-START_TIME = time.time()
-SYSTEM_METRICS = {
+START_TIME: float = time.time()
+SYSTEM_METRICS: Dict[str, Any] = {
     "tg_online": True,
     "vk_online": False,
     "max_online": False,
     "errors_count": 0,
 }
-def get_process_memory_mb() -> float:
-    """Возвращает объем фактически занятой процессом оперативной памяти (RSS) в МБ."""
-    try:
-        with open("/proc/self/status", "r") as f:
-            for line in f:
-                if line.startswith("VmRSS:"):
-                    return round(int(line.split()[1]) / 1024.0, 2)
-    except Exception:
-        pass
-    try:
-        import resource
-        return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 2)
-    except Exception:
-        return 0.0
+
+# Восстановление сохраненного режима из БД
 saved_env = db.get_setting("environment", "")
 if saved_env:
     CONFIG["ENVIRONMENT"] = saved_env
@@ -189,11 +198,18 @@ for saved_admin, role in db.get_all_admins():
     if role == "hr" and saved_admin not in CONFIG["TARGET_CHATS"]:
         CONFIG["TARGET_CHATS"].append(saved_admin)
 
-# ==================== FSM СОСТОЯНИЯ ====================
+EXTERNAL_SESSIONS = PersistentSessions(db)
+
+
+# ==============================================================================
+# МАШИНА СОСТОЯНИЙ (FSM STATES GROUPS)
+# ==============================================================================
+
 class AdminManageState(StatesGroup):
     waiting_hr_id = State()
     waiting_tech_id = State()
     waiting_vacancy_name = State()
+
 
 class CandidateForm(StatesGroup):
     waiting_consent = State()
@@ -229,29 +245,41 @@ class CandidateForm(StatesGroup):
     edit_field_select = State()
     edit_field_input = State()
 
+
 class RevokeConsentForm(StatesGroup):
     waiting_confirm = State()
+
 
 class InquiryForm(StatesGroup):
     waiting_consent = State()
     waiting_question = State()
 
+
 class CustomInviteForm(StatesGroup):
     waiting_datetime = State()
+
 
 class CandidateDirectMsgForm(StatesGroup):
     waiting_text = State()
 
+
 class HRReplyForm(StatesGroup):
     waiting_reply = State()
+
 
 class CandidateNoteForm(StatesGroup):
     waiting_note = State()
 
+
 class SupportForm(StatesGroup):
     waiting_message = State()
 
-VACANCIES = [
+
+# ==============================================================================
+# ДИНАМИЧЕСКИЙ СПИСОК ВАКАНСИЙ
+# ==============================================================================
+
+VACANCIES: List[str] = [
     "Водитель трамвая",
     "Водитель троллейбуса",
     "Кондуктор",
@@ -259,62 +287,71 @@ VACANCIES = [
     "Электромонтер контактной сети",
 ]
 
+BASE_DIR: Path = Path(__file__).resolve().parent
 
-
-BASE_DIR = Path(__file__).resolve().parent
 
 def get_all_vacancies() -> List[str]:
-    """Возвращает список всех актуальных вакансий."""
+    """Возвращает список всех актуальных вакансий предприятия."""
     try:
-        data_dir = BASE_DIR / 'data'
-        vac_file = data_dir / 'vacancies.json'
+        data_dir = BASE_DIR / "data"
+        vac_file = data_dir / "vacancies.json"
         if vac_file.exists():
-            with open(vac_file, 'r', encoding='utf-8') as f:
+            with open(vac_file, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
                 if isinstance(loaded, list) and loaded:
                     return loaded
     except Exception as e:
-        logging.getLogger('UET_COMMON').warning(f'Не удалось загрузить vacancies.json: {e}')
+        logger.warning("Не удалось загрузить vacancies.json: %s", e)
     return list(VACANCIES)
+
 
 def save_all_vacancies(vacancies: List[str]) -> bool:
     """Сохраняет обновленный список вакансий в data/vacancies.json."""
     try:
-        data_dir = BASE_DIR / 'data'
+        data_dir = BASE_DIR / "data"
         data_dir.mkdir(parents=True, exist_ok=True)
-        vac_file = data_dir / 'vacancies.json'
-        with open(vac_file, 'w', encoding='utf-8') as f:
+        vac_file = data_dir / "vacancies.json"
+        with open(vac_file, "w", encoding="utf-8") as f:
             json.dump(vacancies, f, ensure_ascii=False, indent=2)
         global VACANCIES
         VACANCIES = list(vacancies)
         return True
     except Exception as e:
-        logging.getLogger('UET_COMMON').error(f'Не удалось сохранить vacancies.json: {e}')
+        logger.error("Не удалось сохранить vacancies.json: %s", e)
         return False
+
 
 get_vacancies = get_all_vacancies
 save_vacancies = save_all_vacancies
 
-EXTERNAL_SESSIONS = PersistentSessions(db)
+
+# ==============================================================================
+# ПРОВЕРКА ПРАВ И РОЛЕВАЯ МОДЕЛЬ
+# ==============================================================================
 
 def is_tech_admin(user_id: int) -> bool:
+    """Проверка прав технического инженера."""
     if user_id == CONFIG.get("SUPER_ADMIN_ID") or user_id == CONFIG.get("TECH_ADMIN_ID"):
         return True
     role = db.get_admin_role(user_id)
-    return role in ["superadmin", "tech"]
+    return role in ("superadmin", "tech")
+
 
 def is_hr_admin(user_id: int) -> bool:
+    """Проверка прав сотрудника кадровой службы."""
     if user_id == CONFIG.get("SUPER_ADMIN_ID"):
         return True
     role = db.get_admin_role(user_id)
-    return role in ["superadmin", "hr"]
+    return role in ("superadmin", "hr")
 
-def check_hr_access_or_block(user_id: int, chat_id: int) -> tuple[bool, str | None]:
-    """Централизованная проверка доступа к кадровой информации:
-    1. Главный администратор (SUPER_ADMIN_ID) и технический администратор/разработчик имеют полный доступ.
-    2. Авторизованный сотрудник отдела кадров (is_hr_admin / роль hr) имеет полный доступ.
-    3. В официальной кадровой группе (HR_GROUP_ID) доступ открыт для всех участников чата.
-    4. Посторонним пользователям доступ закрыт.
+
+def check_hr_access_or_block(user_id: int, chat_id: int) -> Tuple[bool, Optional[str]]:
+    """
+    Централизованная проверка доступа к кадровой информации:
+    1. Главный администратор (SUPER_ADMIN_ID) и технический администратор.
+    2. Авторизованный сотрудник отдела кадров (is_hr_admin).
+    3. Официальная кадровая группа (HR_GROUP_ID).
+    4. Посторонним пользователям доступ блокируется.
     """
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     hr_group = CONFIG.get("HR_GROUP_ID", 0)
@@ -331,22 +368,27 @@ def check_hr_access_or_block(user_id: int, chat_id: int) -> tuple[bool, str | No
     return False, "🚫 <b>Доступ ограничен.</b> Кадровая панель доступна только сотрудникам отдела кадров МУП «Ульяновскэлектротранс»."
 
 
+# ==============================================================================
+# MIDDLEWARES И ФИЛЬТРЫ БЕЗОПАСНОСТИ
+# ==============================================================================
+
 class HRAccessMiddleware(BaseMiddleware):
-    """Централизованный Middleware авторизации HR-роутера:
-    Перехватывает сообщения и колбэки, гарантируя, что код хэндлеров
-    вызывается ТОЛЬКО авторизованными кадровиками или в кадровом чате.
     """
+    Централизованный Middleware авторизации HR-роутера:
+    Гарантирует доступ только уполномоченным кадровикам и изолирует Live-Chat.
+    """
+
     async def __call__(
         self,
         handler: Callable[[types.TelegramObject, Dict[str, Any]], Awaitable[Any]],
         event: types.TelegramObject,
-        data: Dict[str, Any]
+        data: Dict[str, Any],
     ) -> Any:
         user = data.get("event_from_user")
         if not user:
             return None
 
-       # ⚡ РАЗРЕШАЕМ СОИСКАТЕЛЮ: если он в прямом диалоге — пропускаем его сообщение!
+        # Изоляция прямого диалога: если соискатель в активном чате, пропускаем
         if db.get_dialog_by_user(str(user.id)):
             return await handler(event, data)
 
@@ -358,7 +400,7 @@ class HRAccessMiddleware(BaseMiddleware):
             if isinstance(event, types.CallbackQuery):
                 await event.answer("🚫 Действие доступно только сотрудникам отдела кадров!", show_alert=True)
             elif isinstance(event, types.Message):
-                await safe_answer(event, err_text, parse_mode="HTML")
+                await safe_answer(event, err_text or "🚫 Доступ ограничен.", parse_mode="HTML")
             return None
 
         data["is_super_admin"] = user.id == CONFIG.get("SUPER_ADMIN_ID")
@@ -367,15 +409,18 @@ class HRAccessMiddleware(BaseMiddleware):
 
         return await handler(event, data)
 
+
 class TechAccessMiddleware(BaseMiddleware):
-    """Централизованный Middleware авторизации инженерного роутера (/tech):
+    """
+    Централизованный Middleware авторизации инженерного роутера (/tech):
     Ограничивает доступ к служебной панели только системным инженерам и владельцу.
     """
+
     async def __call__(
         self,
         handler: Callable[[types.TelegramObject, Dict[str, Any]], Awaitable[Any]],
         event: types.TelegramObject,
-        data: Dict[str, Any]
+        data: Dict[str, Any],
     ) -> Any:
         user = data.get("event_from_user")
         if not user:
@@ -384,12 +429,20 @@ class TechAccessMiddleware(BaseMiddleware):
         super_id = CONFIG.get("SUPER_ADMIN_ID")
         user_id = user.id
 
-        is_tech = (super_id and user_id == super_id) or is_tech_admin(user_id) or (CONFIG.get("ENVIRONMENT") == "TEST" and is_hr_admin(user_id))
+        is_tech = (
+            (super_id and user_id == super_id)
+            or is_tech_admin(user_id)
+            or (CONFIG.get("ENVIRONMENT") == "TEST" and is_hr_admin(user_id))
+        )
         if not is_tech:
             if isinstance(event, types.CallbackQuery):
                 await event.answer("⛔ Доступ к инженерной панели ограничен!", show_alert=True)
             elif isinstance(event, types.Message):
-                await safe_answer(event, "⛔ <b>Доступ ограничен.</b> Инженерная панель доступна только техническим администраторам.", parse_mode="HTML")
+                await safe_answer(
+                    event,
+                    "⛔ <b>Доступ ограничен.</b> Инженерная панель доступна только техническим администраторам.",
+                    parse_mode="HTML",
+                )
             return None
 
         data["is_super_admin"] = user.id == super_id
@@ -398,7 +451,8 @@ class TechAccessMiddleware(BaseMiddleware):
 
 
 class IsSuperAdminFilter(BaseFilter):
-    """Фильтр для чувствительных операций, доступных исключительно SUPER_ADMIN_ID."""
+    """Фильтр для операций, доступных исключительно главному администратору."""
+
     async def __call__(self, event: types.TelegramObject) -> bool:
         user = getattr(event, "from_user", None)
         if not user:
@@ -408,56 +462,78 @@ class IsSuperAdminFilter(BaseFilter):
 
 class IsHRFilter(BaseFilter):
     """Фильтр проверки прав сотрудника отдела кадров."""
+
     async def __call__(self, event: types.TelegramObject) -> bool:
         user = getattr(event, "from_user", None)
         if not user:
             return False
-        chat = getattr(event, "chat", None) or (event.message.chat if hasattr(event, "message") and event.message else None)
+        chat = getattr(event, "chat", None) or (
+            event.message.chat if hasattr(event, "message") and event.message else None
+        )
         chat_id = chat.id if chat else user.id
         allowed, _ = check_hr_access_or_block(user.id, chat_id)
         return allowed
 
+
+# ==============================================================================
+# СИСТЕМНЫЕ МЕТРИКИ И УПРАВЛЕНИЕ РЕЖИМАМИ
+# ==============================================================================
+
 def get_uptime() -> str:
+    """Возвращает форматированный аптайм процесса."""
     elapsed = int(time.time() - START_TIME)
     hours, rem = divmod(elapsed, 3600)
     minutes, seconds = divmod(rem, 60)
     return f"{hours}ч {minutes}м {seconds}с"
 
-def update_env_mode(new_mode: str) -> bool:
-    env_file = os.path.join(os.path.dirname(__file__), ".env")
-    if not os.path.exists(env_file):
-        env_file = ".env"
-    try:
-        if os.path.exists(env_file):
-            with open(env_file, "r", encoding="utf-8") as f:
-                content = f.read()
-            if re.search(r"^ENVIRONMENT=.*$", content, flags=re.MULTILINE):
-                content = re.sub(r"^ENVIRONMENT=.*$", f"ENVIRONMENT={new_mode.upper()}", content, flags=re.MULTILINE)
-            else:
-                content += f"\nENVIRONMENT={new_mode.upper()}\n"
-            with open(env_file, "w", encoding="utf-8") as f:
-                f.write(content)
-        else:
-            with open(env_file, "w", encoding="utf-8") as f:
-                f.write(f"ENVIRONMENT={new_mode.upper()}\n")
-    except Exception as e:
-        logger.error(f"Предупреждение при записи .env: {e}")
 
-    CONFIG["ENVIRONMENT"] = new_mode.upper()
-    db.set_setting("environment", new_mode.upper())
+def get_process_memory_mb() -> float:
+    """Возвращает объем фактически занятой процессом оперативной памяти (RSS) в МБ."""
+    try:
+        with open("/proc/self/status", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return round(int(line.split()[1]) / 1024.0, 2)
+    except Exception:
+        pass
+    try:
+        import resource
+        return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 2)
+    except Exception:
+        return 0.0
+
+
+def update_env_mode(new_mode: str) -> bool:
+    """Переключение режима работы (PROD / TEST) с фиксацией в .env и SQLite."""
+    mode_str = new_mode.upper()
+    update_env_variable("ENVIRONMENT", mode_str)
+    db.set_setting("environment", mode_str)
+    CONFIG["ENVIRONMENT"] = mode_str
     return True
 
 
+# ==============================================================================
+# ОТКАЗОУСТОЙЧИВАЯ ОТПРАВКА СООБЩЕНИЙ (SAFE_SEND / SAFE_ANSWER)
+# ==============================================================================
+
 async def safe_answer(message: types.Message, text: str, **kwargs) -> bool:
+    """
+    Безопасный ответ на сообщение с перехватом Flood control (TelegramRetryAfter),
+    автоматическим усечением длины (>4000) и фоллбэком без HTML при синтаксических ошибках.
+    """
     if not text:
         return False
     if len(text) > 4000:
         text = text[:3900] + "\n... (сообщение сокращено)"
+
     for _ in range(3):
         try:
             await message.answer(text, **kwargs)
             SYSTEM_METRICS["tg_online"] = True
             return True
+        except TelegramRetryAfter as e:
+            logger.warning("Flood control в safe_answer: сон %s сек", e.retry_after)
+            await asyncio.sleep(e.retry_after)
         except TelegramBadRequest as e:
             msg_lower = (e.message or "").lower()
             if "too long" in msg_lower:
@@ -467,6 +543,7 @@ async def safe_answer(message: types.Message, text: str, **kwargs) -> bool:
                     return True
                 except Exception:
                     return False
+            # Фоллбэк: снятие HTML тегов при синтаксической ошибке разметки
             try:
                 clean_t = re.sub(r"<[^>]+>", "", text)
                 await message.answer(clean_t)
@@ -476,33 +553,47 @@ async def safe_answer(message: types.Message, text: str, **kwargs) -> bool:
         except (TelegramNetworkError, ClientError, asyncio.TimeoutError):
             await asyncio.sleep(1.2)
         except Exception as e:
-            logger.error(f"Ошибка safe_answer: {e}")
+            logger.error("Ошибка safe_answer: %s", e)
             SYSTEM_METRICS["errors_count"] += 1
             return False
     return False
 
-async def safe_send(bot_instance: Bot, chat_id: int, text: str, reply_markup=None) -> bool:
+
+async def safe_send(
+    bot_instance: Bot,
+    chat_id: int,
+    text: str,
+    reply_markup: Optional[Union[types.InlineKeyboardMarkup, types.ReplyKeyboardMarkup]] = None,
+) -> bool:
+    """
+    Безопасная отправка в произвольный чат с полной защитой от FloodWait,
+    блокировок бота пользователем и сетевых таймаутов.
+    """
     if not chat_id or not text:
         return False
     if len(text) > 4000:
         text = text[:3900] + "\n... (сообщение сокращено)"
-    for attempt in range(3):
+
+    for _ in range(3):
         try:
             await bot_instance.send_message(
                 chat_id=chat_id,
                 text=text,
                 reply_markup=reply_markup,
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
             SYSTEM_METRICS["tg_online"] = True
             return True
+        except TelegramRetryAfter as e:
+            logger.warning("Flood limit exceeded в safe_send для чата %s: сон %s сек", chat_id, e.retry_after)
+            await asyncio.sleep(e.retry_after)
         except TelegramForbiddenError as e:
-            logger.warning(f"Бот не может написать пользователю {chat_id} (диалог в ЛС не начат или бот заблокирован): {e.message}")
+            logger.info("Бот заблокирован пользователем %s: %s", chat_id, e.message)
             return False
         except TelegramBadRequest as e:
             msg_lower = (e.message or "").lower()
             if "chat not found" in msg_lower:
-                logger.warning(f"Чат {chat_id} не найден: {e.message}")
+                logger.warning("Чат %s не найден: %s", chat_id, e.message)
                 return False
             if "too long" in msg_lower:
                 short_t = text[:2000] + "\n... (сообщение сокращено)"
@@ -516,34 +607,51 @@ async def safe_send(bot_instance: Bot, chat_id: int, text: str, reply_markup=Non
                 await bot_instance.send_message(chat_id=chat_id, text=clean_t, reply_markup=reply_markup)
                 return True
             except Exception as e2:
-                logger.error(f"Fallback без HTML также не удался: {e2}")
+                logger.error("Fallback без HTML также не удался в чат %s: %s", chat_id, e2)
                 return False
         except (TelegramNetworkError, ClientError, asyncio.TimeoutError):
             await asyncio.sleep(1.2)
         except Exception as e:
-            logger.error(f"Не удалось отправить в чат {chat_id}: {e}")
+            logger.error("Не удалось отправить сообщение в чат %s: %s", chat_id, e)
             SYSTEM_METRICS["errors_count"] += 1
             return False
     return False
 
-async def route_new_candidate_ticket(bot_instance: Bot, card_text: str, reply_markup):
+
+# ==============================================================================
+# МАРШРУТИЗАЦИЯ АНКЕТ И ОБРАЩЕНИЙ В КАДРОВУЮ СЛУЖБУ
+# ==============================================================================
+
+async def route_new_candidate_ticket(
+    bot_instance: Bot,
+    card_text: str,
+    reply_markup: Optional[types.InlineKeyboardMarkup],
+) -> None:
+    """
+    Маршрутизация новой анкеты соискателя:
+    1. Гарантированная отправка в кадровый чат (HR_GROUP_ID).
+    2. Дублирование уполномоченным кадровикам с включенными уведомлениями в ЛС.
+    3. В режиме PROD разработчик изолирован от ПДн соискателей (ст. 6 152-ФЗ).
+    """
     hr_group = CONFIG.get("HR_GROUP_ID", 0)
     super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
     delivered = False
 
-    if hr_group and hr_group != 0 and hr_group != -1005203042447:
+    # 1. Отправка в кадровый суперчат
+    if hr_group and hr_group != 0:
         ok = await safe_send(bot_instance, hr_group, card_text, reply_markup=reply_markup)
         if ok:
             delivered = True
-            logger.info(f"Анкета доставлена в кадровый чат {hr_group}")
+            logger.info("Анкета успешно доставлена в кадровый чат %s", hr_group)
         else:
-            logger.warning(f"Не удалось отправить анкету в кадровый чат {hr_group}")
+            logger.warning("Сбой доставки анкеты в кадровый чат %s", hr_group)
     else:
-        logger.warning("Кадровая группа не привязана! Анкеты отправляются в ЛС администраторам.")
+        logger.warning("Кадровый чат HR_GROUP_ID не привязан! Маршрутизация в ЛС сотрудникам.")
 
-    target_users = set()
+    # 2. Определение списка сотрудников отдела кадров
+    target_users: set[int] = set()
     for adm in db.get_hr_admins_with_dm_enabled():
-        if adm > 0 and adm != 123456789:
+        if adm > 0:
             target_users.add(adm)
 
     env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
@@ -554,10 +662,11 @@ async def route_new_candidate_ticket(bot_instance: Bot, card_text: str, reply_ma
             if not hr_group or not delivered or db.get_admin_notify_status(super_id):
                 target_users.add(super_id)
     else:
-        # В режиме PROD разработчик изолирован от ПДн анкет в ЛС (ст. 6 152-ФЗ)
+        # В PROD владелец получает копию только при аварии доставки в группу
         if not delivered and super_id and super_id > 0 and not any(target_users):
             target_users.add(super_id)
 
+    # Исключаем системных инженеров из получения персональных данных соискателей
     for adm_id, role in db.get_all_admins():
         if role == "tech" and adm_id in target_users and adm_id != super_id:
             target_users.remove(adm_id)
@@ -567,26 +676,30 @@ async def route_new_candidate_ticket(bot_instance: Bot, card_text: str, reply_ma
             sent_ok = await safe_send(bot_instance, uid, card_text, reply_markup=reply_markup)
             if sent_ok:
                 delivered = True
-                logger.info(f"Анкета доставлена в ЛС администратора {uid}")
+                logger.info("Анкета доставлена в ЛС кадровику %s", uid)
 
     if not delivered:
-        logger.error("КРИТИЧЕСКОЕ: Анкета не была доставлена ни в группу, ни в ЛС! Проверьте SUPER_ADMIN_ID и HR_GROUP_ID.")
+        logger.critical("КРИТИЧЕСКИЙ СБОЙ: Анкета не доставлена! Проверьте SUPER_ADMIN_ID и HR_GROUP_ID.")
 
-async def route_new_inquiry_ticket(bot_instance: Bot, card_text: str, reply_markup):
+
+async def route_new_inquiry_ticket(
+    bot_instance: Bot,
+    card_text: str,
+    reply_markup: Optional[types.InlineKeyboardMarkup],
+) -> None:
+    """Маршрутизация вопроса соискателя (/ask) в кадровую службу."""
     hr_group = CONFIG.get("HR_GROUP_ID", 0)
     super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
     delivered = False
 
-    if hr_group and hr_group != 0 and hr_group != -1005203042447:
+    if hr_group and hr_group != 0:
         ok = await safe_send(bot_instance, hr_group, card_text, reply_markup=reply_markup)
         if ok:
             delivered = True
-    else:
-        logger.warning("Кадровая группа не привязана! Вопрос отправляется в ЛС администраторам.")
 
-    target_users = set()
+    target_users: set[int] = set()
     for adm in db.get_hr_admins_with_dm_enabled():
-        if adm > 0 and adm != 123456789:
+        if adm > 0:
             target_users.add(adm)
 
     env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
@@ -597,7 +710,6 @@ async def route_new_inquiry_ticket(bot_instance: Bot, card_text: str, reply_mark
             if not hr_group or not delivered or db.get_admin_notify_status(super_id):
                 target_users.add(super_id)
     else:
-        # В режиме PROD разработчик изолирован от ПДн анкет в ЛС (ст. 6 152-ФЗ)
         if not delivered and super_id and super_id > 0 and not any(target_users):
             target_users.add(super_id)
 
@@ -609,39 +721,52 @@ async def route_new_inquiry_ticket(bot_instance: Bot, card_text: str, reply_mark
         if uid != hr_group:
             await safe_send(bot_instance, uid, card_text, reply_markup=reply_markup)
 
-async def send_response_to_candidate(platform: str, user_id: str, message_text: str, keyboard=None) -> bool:
+
+# ==============================================================================
+# МНОГОКАНАЛЬНАЯ ДОСТАВКА СООБЩЕНИЙ СОИСКАТЕЛЯМ (TG / VK / MAX)
+# ==============================================================================
+
+async def send_response_to_candidate(
+    platform: str,
+    user_id: str,
+    message_text: str,
+    keyboard: Optional[Any] = None,
+) -> bool:
+    """
+    Универсальная отправка ответа соискателю в целевой мессенджер (TG / VK / MAX)
+    с автоматической очисткой HTML-разметки через clean_html() для внешних шлюзов.
+    """
     if platform == "tg":
         try:
             return await safe_send(bot, int(user_id), message_text, reply_markup=keyboard)
         except Exception as e:
-            logger.error(f"Ошибка отправки кандидату TG ({user_id}): {e}")
+            logger.error("Ошибка отправки кандидату TG (%s): %s", user_id, e)
             return False
 
-    clean_text = (
-        message_text.replace("<b>", "").replace("</b>", "")
-        .replace("<code>", "").replace("</code>", "")
-        .replace("<i>", "").replace("</i>", "")
-    )
-    async with ClientSession() as session:
+    # Строгое SSOT форматирование без HTML для VK и МАКС
+    plain_text = clean_html(message_text)
+
+    timeout = ClientTimeout(total=15)
+    async with ClientSession(timeout=timeout) as session:
         for _ in range(3):
             try:
                 if platform == "vk":
                     if not CONFIG.get("VK_GROUP_TOKEN"):
                         return False
                     url = "https://api.vk.com/method/messages.send"
-                    params = {
+                    params: Dict[str, Any] = {
                         "user_id": int(user_id),
-                        "message": clean_text,
+                        "message": plain_text,
                         "random_id": 0,
                         "v": "5.131",
                         "access_token": CONFIG["VK_GROUP_TOKEN"],
                     }
                     if keyboard:
                         params["keyboard"] = keyboard
-                    async with session.get(url, params=params, timeout=ClientTimeout(total=15)) as resp:
+                    async with session.get(url, params=params) as resp:
                         data = await resp.json()
                         if "error" in data:
-                            logger.error(f"VK API error sending to {user_id}: {data['error']}")
+                            logger.error("VK API error sending to %s: %s", user_id, data["error"])
                             return False
                         return resp.status == 200
 
@@ -652,20 +777,72 @@ async def send_response_to_candidate(platform: str, user_id: str, message_text: 
                     params = {
                         "token": CONFIG["MAX_BOT_TOKEN"],
                         "chatId": str(user_id),
-                        "text": clean_text,
+                        "text": plain_text,
                     }
-                    async with session.get(url, params=params, timeout=ClientTimeout(total=15)) as resp:
+                    async with session.get(url, params=params) as resp:
                         return resp.status == 200
 
             except (ClientError, asyncio.TimeoutError):
                 await asyncio.sleep(1.5)
             except Exception as e:
-                logger.error(f"Сбой отправки кандидату ({platform}): {e}")
+                logger.error("Сбой отправки кандидату (%s): %s", platform, e)
                 SYSTEM_METRICS["errors_count"] += 1
                 return False
     return False
 
-async def setup_bot_commands(bot_instance: Bot):
+
+async def send_photo_to_candidate(user_id: str, photo_bytes: bytes, caption: str = "") -> bool:
+    """
+    Потоковая отправка фото соискателю строго через оперативную память (RAM)
+    без сохранения временных файлов на жесткий диск (ст. 19 152-ФЗ).
+    """
+    dlg = db.get_dialog_by_user(user_id)
+    platform = "tg"
+    if dlg and dlg[2]:
+        cand = db.get_candidate(dlg[2])
+        if cand and cand[1]:
+            platform = cand[1]
+
+    if platform == "tg":
+        try:
+            p_file = BufferedInputFile(photo_bytes, filename="document_photo.jpg")
+            await bot.send_photo(chat_id=int(user_id), photo=p_file, caption=caption, parse_mode="HTML")
+            return True
+        except Exception as e:
+            logger.error("Сбой отправки фото в TG (%s): %s", user_id, e)
+            return False
+
+    elif platform == "vk":
+        try:
+            from gateways.vk_gateway import VKPhotoService, send_vk_message
+
+            timeout = ClientTimeout(total=20)
+            async with ClientSession(timeout=timeout) as session:
+                service = VKPhotoService(CONFIG.get("VK_GROUP_TOKEN", ""), session)
+                attachment = await service.upload_photo_to_vk_chat(
+                    peer_id=int(user_id),
+                    image_bytes=io.BytesIO(photo_bytes),
+                )
+                return await send_vk_message(
+                    session,
+                    CONFIG.get("VK_GROUP_TOKEN", ""),
+                    int(user_id),
+                    message=clean_html(caption),
+                    attachment=attachment,
+                )
+        except Exception as e:
+            logger.error("Сбой отправки фото в VK (%s): %s", user_id, e)
+            return False
+
+    return False
+
+
+# ==============================================================================
+# СИНХРОНИЗАЦИЯ КОМАНД МЕНЮ TELEGRAM
+# ==============================================================================
+
+async def setup_bot_commands(bot_instance: Bot) -> None:
+    """Установка глобального меню команд Telegram."""
     commands = [
         BotCommand(command="start", description="Главное меню / Перезапуск"),
         BotCommand(command="apply", description="Заполнить анкету на работу (16 шагов)"),
@@ -683,48 +860,21 @@ async def setup_bot_commands(bot_instance: Bot):
     try:
         await bot_instance.set_my_commands(commands)
     except Exception as e:
-        logger.warning(f"Не удалось установить команды меню Telegram: {e}")
+        logger.warning("Не удалось установить команды меню Telegram: %s", e)
 
 
-async def sync_user_commands(bot_instance: Optional[Bot] = None, user_id: Optional[int] = None, role: Optional[str] = None, **kwargs) -> bool:
-    """Синхронизирует команды бота (глобально или с учётом роли пользователя)."""
+async def sync_user_commands(
+    bot_instance: Optional[Bot] = None,
+    user_id: Optional[int] = None,
+    role: Optional[str] = None,
+    **kwargs,
+) -> bool:
+    """Синхронизирует команды бота в интерфейсе пользователя."""
     try:
         target_bot = bot_instance or bot
         if target_bot:
             await setup_bot_commands(target_bot)
             return True
     except Exception as e:
-        logger.warning(f"Ошибка sync_user_commands: {e}")
-    return False
-
-async def send_photo_to_candidate(user_id: str, photo_bytes: bytes, caption: str = "") -> bool:
-    dlg = db.get_dialog_by_user(user_id)
-    platform = "tg"
-    if dlg and dlg[2]:
-        cand = db.get_candidate(dlg[2])
-        if cand:
-            platform = cand[1]
-
-    if platform == "tg":
-        try:
-            from aiogram.types import BufferedInputFile
-            p_file = BufferedInputFile(photo_bytes, filename="photo.jpg")
-            await bot.send_photo(chat_id=int(user_id), photo=p_file, caption=caption, parse_mode="HTML")
-            return True
-        except Exception as e:
-            logger.error(f"Сбой отправки фото в TG: {e}")
-            return False
-    elif platform == "vk":
-        try:
-            from gateways.vk_gateway import VKPhotoService, send_vk_message
-            async with ClientSession() as session:
-                service = VKPhotoService(CONFIG.get("VK_GROUP_TOKEN", ""), session)
-                attachment = await service.upload_photo_to_vk_chat(peer_id=int(user_id), image_bytes=io.BytesIO(photo_bytes))
-                return await send_vk_message(
-                    session, CONFIG.get("VK_GROUP_TOKEN", ""),
-                    int(user_id), message=caption, attachment=attachment
-                )
-        except Exception as e:
-            logger.error(f"Сбой отправки фото в VK: {e}")
-            return False
+        logger.warning("Ошибка sync_user_commands: %s", e)
     return False

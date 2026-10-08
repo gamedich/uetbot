@@ -128,7 +128,21 @@ class ResumeDB:
                 )
                 """
             )
-
+            # Журнал уничтожения персональных данных (Приказ Роскомнадзора № 179)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS destruction_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    candidate_id INTEGER,
+                    user_id TEXT,
+                    platform TEXT,
+                    reason TEXT,
+                    destroyed_at TEXT,
+                    act_number TEXT,
+                    operator TEXT DEFAULT 'МУП Ульяновскэлектротранс'
+                )
+                """
+            )
             # 4. Служебные настройки
             cursor.execute(
                 """
@@ -1128,3 +1142,61 @@ class ResumeDB:
                     d = {}
                 sessions.append((plat, uid, d))
         return sessions
+    def log_pdn_destruction(self, candidate_id: int, user_id: str, platform: str, reason: str, act_number: str = '') -> int:
+        """Фиксирует факт уничтожения ПДн в электронном журнале (Приказ РКН № 179)."""
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        act_num = act_number or f"{candidate_id}-УПД"
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO destruction_logs (candidate_id, user_id, platform, reason, destroyed_at, act_number)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (candidate_id, str(user_id), platform, reason, now_str, act_num))
+            conn.commit()
+            return cursor.lastrowid
+
+    def get_destruction_logs(self, limit: int = 50) -> List[Tuple]:
+        """Возвращает последние записи журнала уничтожения ПДн."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, candidate_id, user_id, platform, reason, destroyed_at, act_number, operator
+                FROM destruction_logs
+                ORDER BY id DESC
+                LIMIT ?
+            """, (limit,))
+            return cursor.fetchall()
+
+    def cleanup_expired_candidates(self, max_days: int = 180) -> List[int]:
+        """
+        Автоматическое уничтожение анкет соискателей с истёкшим сроком хранения (6 месяцев).
+        Требование ст. 5, ст. 21 152-ФЗ РФ и ТЗ предприятия.
+        """
+        cutoff = (datetime.now() - timedelta(days=max_days)).strftime("%Y-%m-%d %H:%M:%S")
+        purged_ids = []
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, user_id, platform, full_name, phone 
+                FROM candidates 
+                WHERE created_at < ?
+            """, (cutoff,))
+            expired = cursor.fetchall()
+
+        for row in expired:
+            c_id, u_id, plat, fio, ph = row
+            self.log_pdn_destruction(
+                candidate_id=c_id,
+                user_id=u_id,
+                platform=plat,
+                reason="Истечение срока хранения 6 месяцев (ст. 5, 21 152-ФЗ)",
+                act_number=f"{c_id}-УПД"
+            )
+            with self._get_connection() as conn:
+                conn.execute("DELETE FROM candidates WHERE id = ?", (c_id,))
+                conn.commit()
+            purged_ids.append(c_id)
+
+        if purged_ids:
+            self.checkpoint_and_optimize()
+        return purged_ids

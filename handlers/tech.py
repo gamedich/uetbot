@@ -1716,25 +1716,3 @@ async def cb_git_forward_confirm(callback: types.CallbackQuery):
         os.system("systemctl restart uet_bot")
 
     asyncio.create_task(_do_restart())
-@tech_router.callback_query(F.data == "tech_webapp_info")
-async def cb_tech_webapp_info(callback: types.CallbackQuery):
-    if not is_privileged_user(callback.from_user.id):
-        return await callback.answer("🚫 Нет прав!", show_alert=True)
-    port = CONFIG.get("WEB_APP_PORT", 8080)
-    lines = [
-        "🌐 <b>ВЕБ-ПАНЕЛЬ И TELEGRAM MINI APP (TMA)</b>",
-        "━━━━━━━━━━━━━━━━━━━━━",
-        f"Сервер веб-панели запущен локально на порту <code>{port}</code>.",
-        "",
-        "<b>Возможности панели:</b>",
-        "• Быстрая смена текстов бота без перезапуска;",
-        "• Переключение среды (PROD/TEST) и режима ТО;",
-        "• Встроенный интеллектуальный помощник с шаблонами писем и HTML-валидатором.",
-        "",
-        f"🔗 <b>Прямой доступ в браузере:</b> <code>http://IP_СЕРВЕРА:{port}</code>",
-        "",
-        "<i>Для открытия внутри Telegram через Mini App укажите HTTPS в <code>.env</code>:</i>",
-        "<code>WEB_APP_URL=https://ваш-домен.ru/app</code>"
-    ]
-    await callback.message.answer("\n".join(lines), parse_mode="HTML")
-    await callback.answer()

@@ -137,24 +137,9 @@ async def main() -> None:
         vk_task.cancel()
         max_task.cancel()
         backup_task.cancel()
-        if web_task:
-            web_task.cancel()
         await asyncio.gather(vk_task, max_task, backup_task, return_exceptions=True)
         await bot.session.close()
         logger.info("Бот успешно остановлен.")
-# 5.1. Telegram Mini App и Веб-панель управления (aiohttp.web)
-    web_task = None
-    try:
-        import importlib
-        web_app_mod = importlib.import_module("web_app")
-        web_host = CONFIG.get("WEB_APP_HOST", "0.0.0.0")
-        web_port = int(CONFIG.get("WEB_APP_PORT", 8080))
-        web_task = asyncio.create_task(web_app_mod.start_web_panel_task(host=web_host, port=web_port))
-    except ImportError:
-        logger.info("Файл web_app.py не найден или aiohttp не установлен — веб-панель отключена.")
-    except Exception as e:
-        logger.warning(f"Веб-панель не запущена: {e}")
-
 if __name__ == "__main__":
     try:
         asyncio.run(main())

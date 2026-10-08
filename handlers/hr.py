@@ -70,30 +70,28 @@ hr_router.callback_query.middleware(HRAccessMiddleware())
 
 
 def check_hr_access_or_block(user_id: int, chat_id: int) -> tuple[bool, str | None]:
-    """Проверка прав доступа к кадровой информации и анкетам:
-    - Главный администратор (SUPER_ADMIN_ID) и технический администратор/разработчик (is_tech_admin) имеют полный доступ.
-    - Авторизованный сотрудник отдела кадров (is_hr_admin / роль 'hr') имеет полный доступ.
-    - В официальной кадровой группе (HR_GROUP_ID) доступ открыт для всех участников чата.
-    - Посторонним пользователям и соискателям доступ строго закрыт.
+    """Централизованная проверка доступа к кадровой информации:
+    - Главный администратор (SUPER_ADMIN_ID) — полный доступ всегда.
+    - Технический инженер / разработчик (is_tech_admin) — полный доступ всегда.
+    - В кадровой группе (HR_GROUP_ID) — доступ открыт для всех участников.
+    - Авторизованный сотрудник (is_hr_admin / роли hr, admin, tech в базе) — полный доступ.
     """
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     hr_group = CONFIG.get("HR_GROUP_ID", 0)
 
-    # 1. Администраторы системы (Superadmin, Tech Admin / разработчик)
-    if (super_id and user_id == super_id) or is_tech_admin(user_id):
+    # 1. Главный администратор или технический инженер
+    if (super_id and (user_id == super_id or str(user_id) == str(super_id))) or is_tech_admin(user_id):
         return True, None
 
-    # 2. Сотрудники отдела кадров (роль HR)
+    # 2. В официальной рабочей группе отдела кадров
+    if hr_group and (chat_id == hr_group or str(chat_id) == str(hr_group)):
+        return True, None
+
+    # 3. Авторизованный сотрудник отдела кадров (роли hr, admin, tech в БД)
     if is_hr_admin(user_id):
         return True, None
 
-    # 3. В официальной рабочей группе отдела кадров
-    if hr_group and chat_id == hr_group:
-        return True, None
-
-    # Всем остальным посторонним доступ закрыт
     return False, "🚫 <b>Доступ ограничен.</b> Кадровая панель доступна только сотрудникам отдела кадров МУП «Ульяновскэлектротранс»."
-
 
 @hr_router.message(Command("hr", "admin", "kadry"))
 async def cmd_admin(message: types.Message):
@@ -728,10 +726,11 @@ async def process_custom_invite_text(message: types.Message, state: FSMContext):
         )
 
 @hr_router.callback_query(F.data.startswith("live_dlg_cand_"))
+@hr_router.callback_query(F.data.startswith("live_dlg_cand_"))
 async def cb_live_dlg_cand(callback: types.CallbackQuery, bot: Bot):
     allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
     if not allowed:
-        return await callback.message.edit_text(err_text, parse_mode="HTML")
+        return await callback.answer("🚫 Доступ к прямому диалогу разрешён только сотрудникам отдела кадров!", show_alert=True)
     ticket_id = int(callback.data.split("_")[3])
     cand = db.get_candidate(ticket_id)
     if not cand:
@@ -889,6 +888,7 @@ async def process_live_dialog_router(message: types.Message, state: FSMContext, 
     sender_id_str = str(sender_id)
 
     user_dlg = db.get_dialog_by_user(sender_id_str)
+    iuser_dlg = db.get_dialog_by_user(sender_id_str)
     if user_dlg:
         operator_id = user_dlg[1]
         name = user_dlg[3] or message.from_user.full_name
@@ -901,8 +901,9 @@ async def process_live_dialog_router(message: types.Message, state: FSMContext, 
         builder = InlineKeyboardBuilder()
         builder.button(text="⏹ Завершить диалог", callback_data=f"end_live_dlg_{sender_id_str}")
         await safe_send(bot, operator_id, relayed_text, reply_markup=builder.as_markup())
+        # Уведомление соискателю, что его сообщение доставлено
+        await safe_answer(message, "✅ <i>Сообщение передано в отдел кадров.</i>", parse_mode="HTML")
         return
-
     op_dlg = db.get_dialog_by_operator(message.chat.id) or db.get_dialog_by_operator(sender_id)
     if op_dlg:
         cand_user_id = op_dlg[0]
@@ -1703,3 +1704,37 @@ async def cmd_generate_destruction_act(message: types.Message):
     except Exception as e:
         logger.error(f"Ошибка генерации Акта: {e}")
         await safe_answer(message, f"❌ Ошибка генерации документа: {e}")
+
+def is_operator_in_dialog_filter(message: types.Message) -> bool:
+    """Ловит сообщения ТОЛЬКО от кадровика/группы в активном диалоге."""
+    return bool(db.get_dialog_by_operator(message.chat.id) or db.get_dialog_by_operator(message.from_user.id))
+
+@hr_router.message(is_operator_in_dialog_filter, F.text & ~F.text.startswith("/"))
+async def process_live_dialog_router(message: types.Message, state: FSMContext, bot: Bot):
+    sender_id = message.from_user.id
+    op_dlg = db.get_dialog_by_operator(message.chat.id) or db.get_dialog_by_operator(sender_id)
+    if op_dlg:
+        current_state = await state.get_state()
+        if current_state is not None:
+            return
+
+        cand_user_id = op_dlg[0]
+        ticket_id = op_dlg[2]
+        platform = op_dlg[4] if len(op_dlg) > 4 and op_dlg[4] else "tg"
+        if platform == "tg" and ticket_id:
+            cand = db.get_candidate(ticket_id)
+            if cand and cand[1]:
+                platform = cand[1]
+
+        relayed_to_cand = (
+            f"💬 <b>[Специалист отдела кадров МУП «УЭТ»]:</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{html.escape(message.text)}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━"
+        )
+        ok = await send_response_to_candidate(platform, cand_user_id, relayed_to_cand)
+        if ok:
+            await safe_answer(message, f"✅ <i>Доставлено соискателю [{platform.upper()}]</i>", parse_mode="HTML")
+        else:
+            await safe_answer(message, f"⚠️ Не удалось доставить сообщение кандидату ({platform.upper()}).")
+        return

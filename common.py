@@ -346,6 +346,10 @@ class HRAccessMiddleware(BaseMiddleware):
         if not user:
             return None
 
+       # ⚡ РАЗРЕШАЕМ СОИСКАТЕЛЮ: если он в прямом диалоге — пропускаем его сообщение!
+        if db.get_dialog_by_user(str(user.id)):
+            return await handler(event, data)
+
         chat = data.get("event_chat")
         chat_id = chat.id if chat else user.id
 
@@ -362,7 +366,6 @@ class HRAccessMiddleware(BaseMiddleware):
         data["is_hr_admin"] = is_hr_admin(user.id)
 
         return await handler(event, data)
-
 
 class TechAccessMiddleware(BaseMiddleware):
     """Централизованный Middleware авторизации инженерного роутера (/tech):

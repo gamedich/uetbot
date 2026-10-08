@@ -1528,3 +1528,63 @@ async def cb_nav_back(event: types.CallbackQuery | types.Message, state: FSMCont
                 reply_markup=make_candidate_main_keyboard(user_id=event.from_user.id),
                 parse_mode="HTML"
             )
+@candidate_router.callback_query(F.data.startswith("cand_reply_hr_"))
+async def cb_cand_reply_hr(callback: types.CallbackQuery, state: FSMContext):
+    """Позволяет кандидату отправить ответ на разовое сообщение кадровика."""
+    ticket_id = callback.data.split("_")[3] if len(callback.data.split("_")) > 3 else "0"
+    await state.set_state(InquiryForm.waiting_question)
+    await state.update_data(ticket_id=ticket_id, is_reply=True)
+    await callback.message.reply(
+        "✏️ <b>Введите ваш ответ для специалиста отдела кадров:</b>\n\n"
+        "<i>Напишите ваше сообщение прямо в этот чат — бот передаст его в кадровый центр МУП «УЭТ».</i>",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+# =====================================================================
+# ПРЯМОЙ ДИАЛОГ: СООБЩЕНИЯ СОИСКАТЕЛЯ В ОТДЕЛ КАДРОВ
+# =====================================================================
+def is_candidate_in_dialog_filter(message: types.Message) -> bool:
+    """Срабатывает ТОЛЬКО если соискатель находится в открытом прямом диалоге."""
+    return bool(db.get_dialog_by_user(str(message.from_user.id)))
+
+@candidate_router.message(is_candidate_in_dialog_filter, F.text & ~F.text.startswith("/"))
+async def process_candidate_live_dialog_msg(message: types.Message, state: FSMContext, bot: Bot):
+    sender_id_str = str(message.from_user.id)
+    user_dlg = db.get_dialog_by_user(sender_id_str)
+    if not user_dlg:
+        return
+
+    await state.clear()
+    operator_id = user_dlg[1]
+    name = user_dlg[3] or message.from_user.full_name
+    import html
+    escaped_text = html.escape(message.text)
+    escaped_name = html.escape(name)
+
+    relayed_text = (
+        f"💬 <b>[Соискатель {escaped_name}]:</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{escaped_text}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━"
+    )
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    builder = InlineKeyboardBuilder()
+    builder.button(text="⏹ Завершить диалог", callback_data=f"end_live_dlg_{sender_id_str}")
+
+    try:
+        delivered = await safe_send(bot, int(operator_id), relayed_text, reply_markup=builder.as_markup())
+    except Exception:
+        delivered = False
+
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    if hr_group and str(operator_id) != str(hr_group):
+        try:
+            await safe_send(bot, int(hr_group), relayed_text)
+        except Exception:
+            pass
+
+    if delivered:
+        await safe_answer(message, "✅ <i>Ваше сообщение передано в отдел кадров.</i>", parse_mode="HTML")
+    else:
+        await safe_answer(message, "⚠️ Не удалось доставить сообщение в отдел кадров.", parse_mode="HTML")

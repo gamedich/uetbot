@@ -278,9 +278,8 @@ class CandidateService:
         """
         Отзыв согласия и уничтожение персональных данных соискателя (ст. 21 152-ФЗ):
         1. Поиск активной анкеты соискателя.
-        2. Удаление персональных данных.
-        3. Формирование даты и времени акта уничтожения.
-        Возвращает: (success, ticket_id, destruction_time_str)
+        2. Запись в электронный журнал уничтожения (Приказ РКН № 179).
+        3. Безвозвратное затирание анкеты в базе данных.
         """
         uid = str(user_id)
         cand = self.db.get_candidate_by_user_id(uid, platform=platform)
@@ -288,6 +287,15 @@ class CandidateService:
             return False, None, None
 
         ticket_id = cand[0]
+        # Регистрация факта уничтожения в журнале РКН № 179
+        if hasattr(self.db, 'log_pdn_destruction'):
+            self.db.log_pdn_destruction(
+                candidate_id=ticket_id,
+                user_id=uid,
+                platform=platform,
+                reason="Отзыв согласия субъектом персональных данных (ст. 21 152-ФЗ)",
+                act_number=f"{ticket_id}-УПД"
+            )
         self.db.delete_candidate_by_user(uid, platform=platform)
         destroyed_at = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
         logger.info(f"ПДн соискателя {uid} (#{ticket_id}) уничтожены по ст. 21 152-ФЗ в {destroyed_at}")

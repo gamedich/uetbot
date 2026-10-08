@@ -1,11 +1,11 @@
+from __future__ import annotations
+import gc
 # -*- coding: utf-8 -*-
 """
 Главная точка входа бота МУП «Ульяновскэлектротранс».
 Инициализирует Dispatcher, подключает маршрутизаторы (роутеры)
 и запускает автономные фоновые сервисы (Telegram, VK, MAX, автобэкап).
 """
-
-from __future__ import annotations
 
 import asyncio
 import logging
@@ -47,14 +47,23 @@ async def run_auto_backup_worker() -> None:
     while True:
         await asyncio.sleep(24 * 3600)  # интервал 24 часа
         try:
+            await asyncio.to_thread(db.checkpoint_and_optimize)
+            await asyncio.to_thread(gc.collect)
             backup_path = await asyncio.to_thread(db.backup_database)
             deleted_cnt, _ = await asyncio.to_thread(db.cleanup_old_backups, 7)
+            purged = await asyncio.to_thread(db.cleanup_expired_candidates, 180)
+            if purged:
+                logger.info(f"[RETENTION] Уничтожено анкет с истекшим сроком хранения (6 мес.): {len(purged)}")
             logger.info(f"[AUTOBACKUP] Резервная копия создана: {backup_path} (удалено старых копий: {deleted_cnt})")
         except Exception as e:
             logger.error(f"[AUTOBACKUP] Ошибка автоматического бэкапа: {e}")
 
 
 async def main() -> None:
+    vk_task = None
+    max_task = None
+    backup_task = None
+    
     logger.info("Запуск многоканального сервиса МУП «Ульяновскэлектротранс»...")
 
     # 1. Строгая валидация обязательных переменных перед запуском
@@ -94,20 +103,29 @@ async def main() -> None:
         logger.warning(f"Не удалось зарегистрировать команды: {e}")
 
     # 5. Фоновые шлюзы внешних мессенджеров (ВКонтакте, МАКС) и автобэкап БД
-    vk_task = asyncio.create_task(run_vk_gateway(bot, db))
-    max_task = asyncio.create_task(run_max_gateway(bot, db))
+    try:
+        vk_task = asyncio.create_task(run_vk_gateway(bot, db))
+    except Exception as e:
+        logger.error(f"Ошибка запуска шлюза VK: {e}")
+
+    try:
+        max_task = asyncio.create_task(run_max_gateway(bot, db))
+    except Exception as e:
+        logger.error(f"Ошибка запуска шлюза MAX: {e}")
+
     backup_task = asyncio.create_task(run_auto_backup_worker())
 
     # 6. Оповещение о старте ИСКЛЮЧИТЕЛЬНО Главному администратору в ЛС
     start_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
     start_msg = (
-        f"🟢 <b>Сервис МУП «Ульяновскэлектротранс» запущен</b>\n"
+        f"🟢 <b>Сервис МУП «Ульяновскэлектротранс» запущен (v1.6.0)</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"🤖 <b>Бот:</b> {bot_info_str}\n"
         f"⚙️ <b>Режим:</b> <code>{env_mode}</code>\n"
         f"⏱ <b>Время старта:</b> <code>{start_time}</code>\n"
         f"📡 <b>Шлюзы:</b> Telegram (OK) | VK (активен) | MAX (эмуляция)\n"
         f"💾 <b>Автобэкап БД:</b> раз в 24ч (хранение 7 копий)\n"
+        f"🛡 <b>152-ФЗ & Приказ РКН № 179:</b> Активен\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"<i>Уведомление отправлено только вам в ЛС (SuperAdmin).</i>"
     )
@@ -129,17 +147,23 @@ async def main() -> None:
             f"⏱ <b>Время остановки:</b> <code>{stop_time}</code>\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
             f"<i>Уведомление отправлено только вам в ЛС (SuperAdmin).</i>"
-
-
         )
         await notify_super_admin(stop_msg)
 
-        vk_task.cancel()
-        max_task.cancel()
-        backup_task.cancel()
-        await asyncio.gather(vk_task, max_task, backup_task, return_exceptions=True)
+        for t in (vk_task, max_task, backup_task):
+            if t is not None:
+                try:
+                    t.cancel()
+                except Exception:
+                    pass
+        await asyncio.gather(
+            *[t for t in (vk_task, max_task, backup_task) if t is not None],
+            return_exceptions=True
+        )
         await bot.session.close()
         logger.info("Бот успешно остановлен.")
+
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())

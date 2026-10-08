@@ -1716,3 +1716,46 @@ async def cb_git_forward_confirm(callback: types.CallbackQuery):
         os.system("systemctl restart uet_bot")
 
     asyncio.create_task(_do_restart())
+# =========================================================================
+# ВЫГРУЗКА ПАКЕТА ДОКУМЕНТАЦИИ (ГОСТ 19.505, ГОСТ 19.503, 152-ФЗ)
+# =========================================================================
+@tech_router.message(Command("docs", "manual"))
+async def cmd_generate_project_docs(message: types.Message):
+    """Генерация полного комплекта нормативной и эксплуатационной документации."""
+    if not is_privileged_user(message.from_user.id):
+        return await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+
+    await safe_answer(message, "⏳ <b>Формирую официальный комплект документации (ГОСТ/152-ФЗ)...</b>")
+    try:
+        import sys, os
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if root_dir not in sys.path:
+            sys.path.insert(0, root_dir)
+        import doc_generator
+
+        p_policy = doc_generator.generate_privacy_policy_docx()
+        p_manual = doc_generator.generate_operator_manual_docx()
+        p_passport = doc_generator.generate_system_passport_docx()
+
+        from aiogram.types import BufferedInputFile
+        with open(p_policy, "rb") as f:
+            await message.answer_document(
+                BufferedInputFile(f.read(), filename="Политика_обработки_ПДн_МУП_УЭТ.docx"),
+                caption="📑 <b>Политика обработки и защиты ПДн (ст. 18.1 152-ФЗ)</b>",
+                parse_mode="HTML"
+            )
+        with open(p_manual, "rb") as f:
+            await message.answer_document(
+                BufferedInputFile(f.read(), filename="Руководство_оператора_кадров_ГОСТ_19.505.docx"),
+                caption="📚 <b>Руководство оператора (кадровой службы) по ГОСТ 19.505-79</b>",
+                parse_mode="HTML"
+            )
+        with open(p_passport, "rb") as f:
+            await message.answer_document(
+                BufferedInputFile(f.read(), filename="Технический_паспорт_АИС_Рекрутинг_Сервис.docx"),
+                caption="🛡 <b>Технический паспорт и архитектура системы (УЗ-3 ФСТЭК)</b>",
+                parse_mode="HTML"
+            )
+    except Exception as e:
+        logger.error(f"Ошибка формирования документации: {e}")
+        await safe_answer(message, f"❌ Ошибка формирования документации: {e}")

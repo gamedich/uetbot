@@ -1651,3 +1651,55 @@ async def cmd_sync_group_two_way(event: types.Message | types.CallbackQuery, bot
 
     except Exception as e:
         await safe_answer(event, f"❌ Ошибка синхронизации: <code>{html.escape(str(e))}</code>", parse_mode="HTML")
+# =========================================================================
+# ГЕНЕРАЦИЯ АКТА ОБ УНИЧТОЖЕНИИ ПДн (Приказ Роскомнадзора № 179)
+# =========================================================================
+@hr_router.message(Command("act"))
+async def cmd_generate_destruction_act(message: types.Message):
+    """Генерация официального Акта об уничтожении ПДн соискателя по 152-ФЗ."""
+    user_id = message.from_user.id
+    if not is_hr_admin(user_id) and not is_tech_admin(user_id) and user_id != CONFIG.get("SUPER_ADMIN_ID"):
+        return await safe_answer(message, "🚫 Доступ ограничен.")
+
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip().isdigit():
+        msg = (
+            "ℹ️ <b>Использование:</b> <code>/act &lt;ID_анкеты&gt;</code>\n"
+            "Генерирует официальный Акт об уничтожении персональных данных по Приказу Роскомнадзора № 179."
+        )
+        return await safe_answer(message, msg)
+
+    cand_id = int(parts[1].strip())
+    cand = db.get_candidate(cand_id)
+    fio = cand[3] if cand else "Субъект ПДн"
+    phone = cand[4] if cand else "N/A"
+    vac = cand[5] if cand else "Соискатель"
+
+    try:
+        import sys, os
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if root_dir not in sys.path:
+            sys.path.insert(0, root_dir)
+        import doc_generator
+
+        path = doc_generator.generate_destruction_act_docx({
+            "id": cand_id,
+            "fio": fio,
+            "phone": phone,
+            "vacancy": vac,
+            "reason": "Запрос кадровой службы / уничтожение по ст. 21 152-ФЗ"
+        })
+        with open(path, "rb") as f:
+            data = f.read()
+
+        from aiogram.types import BufferedInputFile
+        doc_file = BufferedInputFile(data, filename=f"Act_Destruction_PDn_{cand_id}.docx")
+        caption = (
+            f"📄 <b>Официальный Акт об уничтожении ПДн № {cand_id}-УПД</b>\n"
+            f"Субъект: <b>{fio}</b>\n"
+            "Сформирован по форме Приказа Роскомнадзора от 28.10.2022 № 179."
+        )
+        await message.answer_document(doc_file, caption=caption, parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Ошибка генерации Акта: {e}")
+        await safe_answer(message, f"❌ Ошибка генерации документа: {e}")

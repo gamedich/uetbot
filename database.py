@@ -285,30 +285,18 @@ class ResumeDB:
     # =========================================================================
 
     def add_candidate(
-        self,
-        platform: str,
-        user_id: str,
-        full_name: str,
-        phone: str,
-        vacancy: str,
-        experience: str,
-        is_test: bool = False,
-        consent_timestamp: Optional[str] = None,
-        birth_date: str = "",
-        city: str = "",
-        driver_license: str = "",
-        education: str = "",
-        relocation: str = "",
-        dormitory: str = "",
-        shift_work: str = "",
-        medical_restrictions: str = "",
-        criminal_record: str = "",
-        source: str = "",
-        extra_info: str = "",
-        raw_data_json: str = "{}",
+        self, platform: str, user_id: str, full_name: str, phone: str, vacancy: str, experience: str,
+        is_test: bool = False, consent_timestamp: Optional[str] = None,
+        birth_date: str = "", city: str = "", driver_license: str = "", education: str = "",
+        relocation: str = "", dormitory: str = "", shift_work: str = "",
+        medical_restrictions: str = "", criminal_record: str = "", source: str = "", extra_info: str = "",
+        raw_data_json: str = "{}"
     ) -> int:
-        """Сохранение новой анкеты со всеми 16 полями в базу данных."""
-        with self.connection() as conn:
+        # Автоматически проверяем переключатель активной базы
+        target_setting = self.get_setting("active_db_target", "resumes.db")
+        use_test = is_test or (target_setting == "resumes_test.db")
+
+        with self._get_connection(is_test=use_test) as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -320,29 +308,13 @@ class ResumeDB:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """,
                 (
-                    platform,
-                    str(user_id),
-                    full_name,
-                    phone,
-                    vacancy,
-                    experience,
-                    1 if is_test else 0,
-                    consent_timestamp or "",
-                    birth_date,
-                    city,
-                    driver_license,
-                    education,
-                    relocation,
-                    dormitory,
-                    shift_work,
-                    medical_restrictions,
-                    criminal_record,
-                    source,
-                    extra_info,
-                    raw_data_json,
+                    platform, str(user_id), full_name, phone, vacancy, experience, 1 if use_test else 0, consent_timestamp or "",
+                    birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                    medical_restrictions, criminal_record, source, extra_info, raw_data_json
                 ),
             )
-            return int(cursor.lastrowid)
+            conn.commit()
+            return cursor.lastrowid
 
     def delete_candidate_by_user(self, user_id: str, platform: str = "tg") -> Optional[int]:
         """
@@ -378,9 +350,16 @@ class ResumeDB:
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def get_candidate(self, ticket_id: int) -> Optional[Tuple[Any, ...]]:
-        """Получение полного кортежа анкеты по номеру заявки."""
-        with self.connection() as conn:
+    def get_candidate(self, ticket_id: int) -> Optional[Tuple]:
+        """Поиск анкеты по ID с автоматической маршрутизацией по диапазону номеров."""
+        if not ticket_id or ticket_id <= 0:
+            return None
+
+        # Номера #900000+ по регламенту лежат в тестовой базе
+        is_test = (ticket_id >= 900000)
+        
+        # 1. Запрос в целевую базу
+        with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -389,24 +368,51 @@ class ResumeDB:
                        medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json
                 FROM candidates WHERE ticket_id = ?
                 """,
-                (ticket_id,),
+                (ticket_id,)
             )
-            return cursor.fetchone()
+            row = cursor.fetchone()
+            if row:
+                return row
 
-    def get_candidate_by_user_id(self, user_id: str, platform: str = "tg") -> Optional[Tuple[Any, ...]]:
-        """Получение последней анкеты кандидата по ID пользователя и платформе."""
-        with self.connection() as conn:
+        # 2. Резервный поиск в альтернативной базе
+        with self._get_connection(is_test=not is_test) as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
                 SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
                        birth_date, city, driver_license, education, relocation, dormitory, shift_work,
                        medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json
-                FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1
+                FROM candidates WHERE ticket_id = ?
                 """,
-                (str(user_id), platform),
+                (ticket_id,)
             )
             return cursor.fetchone()
+
+    def get_candidate_by_user_id(self, user_id: str, platform: str = "tg", is_test: Optional[bool] = None) -> Optional[Tuple]:
+        """Поиск последней анкеты пользователя с бесшовным поиском в активной и резервной базах."""
+        if is_test is True or is_test is False:
+            with self._get_connection(is_test=is_test) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                           birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                           medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json
+                    FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1
+                    """,
+                    (str(user_id), platform),
+                )
+                return cursor.fetchone()
+
+        # Если режим не указан — опрашиваем сначала активную целевую базу
+        target = self.get_setting("active_db_target", "resumes.db")
+        prefer_test = (target == "resumes_test.db")
+        
+        row = self.get_candidate_by_user_id(user_id, platform=platform, is_test=prefer_test)
+        if not row:
+            # Fallback во вторую базу (если анкета была подана в другом режиме)
+            row = self.get_candidate_by_user_id(user_id, platform=platform, is_test=not prefer_test)
+        return row
 
     def check_candidate_can_apply(
         self, user_id: str, platform: str = "tg"
@@ -598,24 +604,19 @@ class ResumeDB:
             cursor.execute(query, tuple(params))
             return cursor.fetchall()
 
-    def update_admin_note(self, ticket_id: int, note: str) -> None:
-        """Обновление служебной заметки кадровика по анкете."""
-        with self.connection() as conn:
+    def update_status(self, ticket_id: int, new_status: str):
+        is_test = (ticket_id >= 900000)
+        with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE candidates SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
-                (note, ticket_id),
-            )
+            cursor.execute("UPDATE candidates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?", (new_status, ticket_id))
+            conn.commit()
 
-    def update_status(self, ticket_id: int, new_status: str) -> None:
-        """Обновление статуса рассмотрения анкеты."""
-        with self.connection() as conn:
+    def update_admin_note(self, ticket_id: int, note: str):
+        is_test = (ticket_id >= 900000)
+        with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE candidates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
-                (new_status, ticket_id),
-            )
-
+            cursor.execute("UPDATE candidates SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?", (note, ticket_id))
+            conn.commit()
     def get_statistics(self) -> Dict[str, int]:
         """Агрегированный подсчёт кадровой воронки предприятия."""
         with self.connection() as conn:
@@ -872,41 +873,27 @@ class ResumeDB:
         phone: str = "",
         vacancy: str = "",
         is_test: bool = False,
-        consent_timestamp: Optional[str] = None,
+        consent_timestamp: Optional[str] = None
     ) -> int:
-        """Регистрация обращения соискателя с фиксацией времени антифлуда."""
-        with self.connection() as conn:
+        target_setting = self.get_setting("active_db_target", "resumes.db")
+        use_test = is_test or (target_setting == "resumes_test.db")
+
+        with self._get_connection(is_test=use_test) as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
                 INSERT INTO inquiries (
-                    ticket_id, platform, user_id, full_name, phone, vacancy,
-                    question_text, status, is_test, consent_timestamp, created_at
+                    ticket_id, platform, user_id, full_name, phone, vacancy, question_text, is_test, consent_timestamp
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    ticket_id,
-                    platform,
-                    str(user_id),
-                    full_name,
-                    phone,
-                    vacancy,
-                    question_text,
-                    1 if is_test else 0,
-                    consent_timestamp or "",
-                ),
+                    ticket_id, platform, str(user_id), full_name, phone, vacancy, question_text,
+                    1 if use_test else 0, consent_timestamp or ""
+                )
             )
-            inquiry_id = int(cursor.lastrowid)
-            cursor.execute(
-                """
-                INSERT INTO user_cooldowns (user_id, last_inquiry_at)
-                VALUES (?, CURRENT_TIMESTAMP)
-                ON CONFLICT(user_id) DO UPDATE SET last_inquiry_at = CURRENT_TIMESTAMP
-                """,
-                (str(user_id),),
-            )
-            return inquiry_id
+            conn.commit()
+            return cursor.lastrowid
 
     def get_inquiry(self, inquiry_id: int) -> Optional[Tuple[Any, ...]]:
         """Получение данных обращения по ID."""

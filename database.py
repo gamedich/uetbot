@@ -132,7 +132,13 @@ class ResumeDB:
                 cursor.execute("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('candidates', 900000)")
                 cursor.execute("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('inquiries', 900000)")
                 conn.commit()
-
+            # Сдвиг номеров для тестовой базы на 900000+
+            if is_test:
+             cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'candidates'")
+             cursor.execute("INSERT INTO sqlite_sequence (name, seq) VALUES ('candidates', 900000)")
+             cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'inquiries'")
+             cursor.execute("INSERT INTO sqlite_sequence (name, seq) VALUES ('inquiries', 900000)")
+             conn.commit()
             # 2. Таблица администраторов
             cursor.execute(
                 """

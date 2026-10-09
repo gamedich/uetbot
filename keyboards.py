@@ -96,6 +96,7 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
 
     # 5. Дата встречи и удаление
     builder.button(text="📅 Дата встречи", callback_data=f"invite_custom_{ticket_id}")
+    builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
     builder.button(text="🗑 Удалить", callback_data=f"del_ask_{ticket_id}")
 
     # 6. Переключатель ЧС

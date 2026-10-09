@@ -11,6 +11,7 @@ import asyncio
 import json
 import logging
 import re
+from config import CONFIG
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -200,28 +201,47 @@ class CandidateService:
     def register_candidate(
         self,
         data: Dict[str, Any],
-        platform: str = "tg",
+        platform: str = "tg"
     ) -> Tuple[int, Dict[str, Any]]:
         """
-        Регистрация новой анкеты со всеми 16 полями:
+        Регистрация новой анкеты со всеми 16 шагами:
         Сохраняет запись в SQLite через ResumeDB и вычисляет метаданные (триггер обучения).
         Возвращает: (ticket_id, metadata_dict)
         """
         user_id = str(data.get("user_id", ""))
-        full_name = str(data.get("full_name", ""))
-        phone = str(data.get("phone", ""))
-        vacancy = str(data.get("vacancy", ""))
-        experience = str(data.get("experience", "Без опыта"))
-        consent_ts = str(data.get("consent_timestamp") or datetime.now().strftime("%d.%m.%Y %H:%M"))
-        is_test = bool(data.get("is_test", False))
+        full_name = data.get("full_name", "")
+        phone = data.get("phone", "")
+        vacancy = data.get("vacancy", "")
+        experience = data.get("experience", "Без опыта")
+        consent_ts = data.get("consent_timestamp") or datetime.now().strftime("%d.%m.%Y %H:%M")
 
-        # Нормализация категорий прав (если передан список)
-        raw_lic = data.get("license_categories") or data.get("driver_license", "Нет")
-        if isinstance(raw_lic, list):
-            driver_license = ", ".join(str(x) for x in raw_lic) if raw_lic else "Нет"
-        else:
-            driver_license = str(raw_lic)
+        # 1. Извлечение дополнительных полей анкеты
+        birth_date = data.get("birth_date", "")
+        city = data.get("city", "Ульяновск")
+        driver_license = data.get("license_categories") or data.get("driver_license", "Нет")
+        education = data.get("education_level") or data.get("education", "Среднее")
+        relocation = data.get("relocation", "Нет")
+        dormitory = data.get("dormitory", "Нет")
+        shift_work = data.get("shift_work", "Да")
+        medical_restrictions = data.get("medical_restrictions", "Нет")
+        criminal_record = data.get("criminal_record", "Нет")
+        source = data.get("source", "Бот предприятия")
+        extra_info = data.get("additional_info") or data.get("extra_info", "")
 
+        # 2. Умное автоопределение тестовой анкеты
+        target_db = self.db.get_setting("active_db_target", "resumes.db")
+        fn_lower = full_name.lower()
+        exp_lower = experience.lower()
+        is_test = bool(
+            data.get("is_test", False)
+            or target_db == "resumes_test.db"
+            or CONFIG.get("ENVIRONMENT") == "TEST"
+            or "тест" in fn_lower
+            or "test" in fn_lower
+            or "тест" in exp_lower
+        )
+
+        # 3. Сохранение в базу данных
         ticket_id = self.db.add_candidate(
             platform=platform,
             user_id=user_id,
@@ -231,35 +251,32 @@ class CandidateService:
             experience=experience,
             is_test=is_test,
             consent_timestamp=consent_ts,
-            birth_date=str(data.get("birth_date", "")),
-            city=str(data.get("city", "Ульяновск")),
+            birth_date=birth_date,
+            city=city,
             driver_license=driver_license,
-            education=str(data.get("education") or data.get("education_level", "Среднее")),
-            relocation=str(data.get("relocation", "Нет")),
-            dormitory=str(data.get("dormitory", "Нет")),
-            shift_work=str(data.get("shift_work", "Да")),
-            medical_restrictions=str(data.get("medical_restrictions", "Нет")),
-            criminal_record=str(data.get("criminal_record", "Нет")),
-            source=str(data.get("source", "Бот предприятия")),
-            extra_info=str(data.get("extra_info") or data.get("additional_info", "")),
-            raw_data_json=json.dumps(data, ensure_ascii=False) if isinstance(data, dict) else "{}",
+            education=education,
+            relocation=relocation,
+            dormitory=dormitory,
+            shift_work=shift_work,
+            medical_restrictions=medical_restrictions,
+            criminal_record=criminal_record,
+            source=source,
+            extra_info=extra_info
         )
 
         offer_training = self.should_offer_training(vacancy, experience)
-        meta: Dict[str, Any] = {
+        meta = {
             "ticket_id": ticket_id,
             "offer_training": offer_training,
             "full_name": full_name,
             "phone": phone,
             "vacancy": vacancy,
             "consent_timestamp": consent_ts,
-            "platform": platform,
+            "platform": platform
         }
-        logger.info(
-            "Зарегистрирована анкета #%s (%s): %s, %s, обучение=%s",
-            ticket_id, platform, full_name, vacancy, offer_training
-        )
+        logger.info(f"Зарегистрирована анкета #{ticket_id} ({platform}): {full_name}, {vacancy}, обучение={offer_training}")
         return ticket_id, meta
+    
 
     async def async_register_candidate(
         self,

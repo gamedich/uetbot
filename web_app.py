@@ -587,7 +587,7 @@ class WebPanel:
 
             # Если кадровик указал примечание
             if admin_note:
-                self.db.set_candidate_note(ticket_id, admin_note, is_test=actual_use_test)
+                self.db.update_admin_note(ticket_id, admin_note)
 
             logger.info("Веб-панель: создана очная анкета #%s (база: %s): %s, %s",
                         ticket_id, "TEST" if actual_use_test else "PROD", full_name, vacancy)

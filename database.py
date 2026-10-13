@@ -804,9 +804,11 @@ class ResumeDB:
             )
             return cursor.fetchall()
 
-    def cleanup_expired_candidates(self, max_days: int = 180) -> List[int]:
+    def cleanup_expired_candidates(self, max_days: int = 1095) -> List[int]:
         """
-        Автоматическое уничтожение анкет с истёкшим сроком хранения (6 месяцев).
+        Автоматическое уничтожение анкет с истёкшим сроком хранения.
+        Срок: 3 года (1095 дней) — кандидаты в кадровый резерв
+        (Приказ Росархива №236 от 20.12.2019, ст. 441).
         Требование ч. 7 ст. 5 и ст. 21 Федерального закона № 152-ФЗ РФ.
         """
         cutoff = (datetime.now() - timedelta(days=max_days)).strftime("%Y-%m-%d %H:%M:%S")

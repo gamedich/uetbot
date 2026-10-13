@@ -31,14 +31,35 @@ from typing import Any, Dict, List, Optional, Tuple
 from aiohttp import web
 from aiogram import Bot
 
+import texts
 from config import CONFIG, update_env_variable
 from database import ResumeDB
 from services.compliance_service import ComplianceService
+from services.candidate_service import candidate_service
+from keyboards import make_ticket_keyboard
+from common import route_new_candidate_ticket, safe_send
 
 logger = logging.getLogger("UET_WEB_APP")
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 DASHBOARD_HTML_PATH = TEMPLATES_DIR / "dashboard.html"
+APPLY_HTML_PATH = TEMPLATES_DIR / "apply.html"
+
+
+@web.middleware
+async def cors_middleware(request: web.Request, handler):
+    """Глобальный CORS middleware для бесшовной работы WebApp в Telegram и обычных браузерах."""
+    if request.method == "OPTIONS":
+        response = web.Response(status=200)
+    else:
+        try:
+            response = await handler(request)
+        except web.HTTPException as ex:
+            response = ex
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+    return response
 
 
 def validate_init_data(init_data_raw: str, bot_token: str) -> Optional[Dict[str, Any]]:
@@ -84,12 +105,20 @@ class WebPanel:
         self.db = db
         self.bot = bot
         self.start_time = datetime.now()
-        self.app = web.Application()
+        self.app = web.Application(middlewares=[cors_middleware])
         self._setup_routes()
 
     def _setup_routes(self) -> None:
         self.app.router.add_get("/", self.handle_index)
         self.app.router.add_get("/app", self.handle_index)
+        self.app.router.add_get("/dashboard", self.handle_index)
+        self.app.router.add_get("/apply", self.handle_apply_page)
+        self.app.router.add_get("/candidate/form", self.handle_apply_page)
+
+        # Vacancies & Candidate Apply API
+        self.app.router.add_get("/api/vacancies", self.handle_api_vacancies)
+        self.app.router.add_post("/api/apply_candidate", self.handle_api_apply_candidate)
+        self.app.router.add_post("/api/candidate/apply", self.handle_api_apply_candidate)
 
         # Auth
         self.app.router.add_post("/api/auth/login", self.handle_api_auth_login)
@@ -98,6 +127,7 @@ class WebPanel:
         self.app.router.add_get("/api/stats", self.handle_api_stats)
         self.app.router.add_get("/api/candidates", self.handle_api_candidates)
         self.app.router.add_get("/api/candidate/{ticket_id}", self.handle_api_candidate_detail)
+        self.app.router.add_get("/api/candidate/{id:\\d+}", self.handle_api_candidate_detail)
         self.app.router.add_post("/api/candidate/{ticket_id}/status", self.handle_api_candidate_status)
         self.app.router.add_post("/api/candidate/{ticket_id}/note", self.handle_api_candidate_note)
         self.app.router.add_post("/api/candidate/{ticket_id}/delete", self.handle_api_candidate_delete)
@@ -141,10 +171,22 @@ class WebPanel:
         self.app.router.add_get("/api/health", self.handle_api_health)
 
     async def handle_index(self, request: web.Request) -> web.Response:
+        # Если передан параметр ?mode=apply или соискатель заходит на форму
+        if request.query.get("mode") == "apply" or "apply" in request.query:
+            return await self.handle_apply_page(request)
+
         if DASHBOARD_HTML_PATH.exists():
             content = DASHBOARD_HTML_PATH.read_text(encoding="utf-8")
         else:
             content = "<h1>Ошибка: Шаблон dashboard.html не найден</h1>"
+        return web.Response(text=content, content_type="text/html", charset="utf-8")
+
+    async def handle_apply_page(self, request: web.Request) -> web.Response:
+        """Отдача 16-шаговой интерактивной веб-формы соискателя (Web Wizard / Telegram Mini App)."""
+        if APPLY_HTML_PATH.exists():
+            content = APPLY_HTML_PATH.read_text(encoding="utf-8")
+        else:
+            content = "<h1>Ошибка: Шаблон apply.html не найден</h1>"
         return web.Response(text=content, content_type="text/html", charset="utf-8")
 
     async def handle_api_auth_login(self, request: web.Request) -> web.Response:
@@ -410,7 +452,10 @@ class WebPanel:
             return web.json_response({"candidates": [], "total": 0, "page": 1, "total_pages": 1}, status=500)
 
     async def handle_api_candidate_detail(self, request: web.Request) -> web.Response:
-        ticket_id = int(request.match_info["ticket_id"])
+        tid_raw = request.match_info.get("ticket_id") or request.match_info.get("id")
+        if not tid_raw:
+            return web.json_response({"error": "ID анкеты не указан"}, status=400)
+        ticket_id = int(tid_raw)
         cand = self.db.get_candidate(ticket_id)
         if not cand:
             return web.json_response({"error": "Кандидат не найден"}, status=404)
@@ -602,6 +647,165 @@ class WebPanel:
             })
         except Exception as e:
             logger.error("Ошибка создания анкеты через веб: %s", e)
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def handle_api_vacancies(self, request: web.Request) -> web.Response:
+        """Динамический список открытых должностей МУП «Ульяновскэлектротранс»."""
+        vacancies = [
+            {
+                "id": "driver_tram",
+                "title": "Водитель трамвая",
+                "salary": "55 000 — 85 000 ₽",
+                "training": True,
+                "stipend": "от 20 000 ₽ на период обучения",
+                "requirements": "От 21 года (к моменту выпуска), ст. 328.1 ТК РФ",
+                "description": "Управление современными трамвайными вагонами (Львенок, Татра) на маршрутах г. Ульяновска."
+            },
+            {
+                "id": "driver_trolley",
+                "title": "Водитель троллейбуса",
+                "salary": "55 000 — 85 000 ₽",
+                "training": True,
+                "stipend": "от 20 000 ₽ на период обучения",
+                "requirements": "От 21 года, ст. 328.1 ТК РФ",
+                "description": "Пассажирские перевозки на троллейбусных маршрутах Заволжского района."
+            },
+            {
+                "id": "conductor",
+                "title": "Кондуктор",
+                "salary": "30 000 — 45 000 ₽",
+                "training": False,
+                "stipend": None,
+                "requirements": "От 18 лет, ответственность, вежливость",
+                "description": "Сбор платы за проезд, проверка проездных документов, сменный график 2/2."
+            },
+            {
+                "id": "repairman",
+                "title": "Слесарь по ремонту подвижного состава",
+                "salary": "40 000 — 65 000 ₽",
+                "training": False,
+                "stipend": None,
+                "requirements": "От 18 лет, знание механики/электрики",
+                "description": "Техническое обслуживание и текущий ремонт подвижного состава в депо."
+            },
+            {
+                "id": "electrician",
+                "title": "Электромонтер контактной сети",
+                "salary": "45 000 — 70 000 ₽",
+                "training": False,
+                "stipend": None,
+                "requirements": "От 18 лет, профильное образование",
+                "description": "Обслуживание и оперативный ремонт контактных сетей и тяговых подстанций."
+            }
+        ]
+        return web.json_response({"ok": True, "vacancies": vacancies})
+
+    async def handle_api_apply_candidate(self, request: web.Request) -> web.Response:
+        """
+        Приём анкеты соискателя с сайта / Telegram Mini App (16 шагов),
+        сохранение в ResumeDB WAL предприятия и моментальная отправка
+        карточки тикета [WEB-Заявка] в Telegram-чат отдела кадров.
+        """
+        try:
+            data = await request.json()
+            full_name = (data.get("full_name") or "").strip()
+            phone = (data.get("phone") or "").strip()
+            vacancy = (data.get("vacancy") or "Водитель трамвая").strip()
+            birth_date = (data.get("birth_date") or "").strip()
+            city = (data.get("city") or "г. Ульяновск").strip()
+            driver_license = (data.get("driver_license") or "Нет").strip()
+            experience = (data.get("experience") or "Без опыта").strip()
+            education = (data.get("education") or "Среднее").strip()
+            relocation = (data.get("relocation") or "Уже проживаю в Ульяновске").strip()
+            dormitory = (data.get("dormitory") or "Нет").strip()
+            shift_work = (data.get("shift_work") or "Да, готов к сменному графику").strip()
+            medical = (data.get("medical_restrictions") or data.get("medical") or "Нет ограничений").strip()
+            criminal = (data.get("criminal_record") or data.get("criminal") or "Нет судимости").strip()
+            source = (data.get("source") or "Сайт предприятия").strip()
+            referrer_tab = (data.get("referrer_tab") or "").strip()
+            platform = (data.get("platform") or "web").strip()
+            user_id = str(data.get("user_id") or "").strip()
+            consent_ts = data.get("consent_timestamp") or datetime.now().strftime("%d.%m.%Y %H:%M")
+
+            # 1. Валидация полей через CandidateService
+            ok_fio, clean_fio, err_fio = candidate_service.validate_fio(full_name)
+            if not ok_fio:
+                return web.json_response({"error": err_fio or "Некорректное ФИО (минимум 2 слова на русском)"}, status=400)
+
+            ok_ph, clean_ph, err_ph = candidate_service.validate_phone(phone)
+            if not ok_ph:
+                return web.json_response({"error": err_ph or "Некорректный номер телефона"}, status=400)
+
+            if birth_date:
+                ok_bdate, clean_bdate, err_bdate = candidate_service.validate_birth_date(birth_date)
+                if not ok_bdate:
+                    return web.json_response({"error": err_bdate or "Некорректная дата рождения (18+)"}, status=400)
+                birth_date = clean_bdate
+
+            if not user_id:
+                user_id = f"web_{int(time.time())}"
+
+            reg_data = {
+                "user_id": user_id,
+                "full_name": clean_fio,
+                "phone": clean_ph,
+                "vacancy": vacancy,
+                "birth_date": birth_date,
+                "city": city,
+                "driver_license": driver_license,
+                "experience": experience,
+                "education": education,
+                "relocation": relocation,
+                "dormitory": dormitory,
+                "shift_work": shift_work,
+                "medical_restrictions": medical,
+                "criminal_record": criminal,
+                "source": source,
+                "referrer_tab": referrer_tab,
+                "consent_timestamp": consent_ts,
+                "extra_info": f"Табельный номер рекомендателя: {referrer_tab}" if referrer_tab else "",
+            }
+
+            # 2. Регистрация через сервисный слой
+            ticket_id, meta = candidate_service.register_candidate(reg_data, platform=platform)
+
+            # 3. Формирование карточки для отдела кадров
+            cand = self.db.get_candidate(ticket_id)
+            if cand:
+                base_card = texts.format_hr_card_full(cand)
+            else:
+                base_card = texts.format_hr_card_full(reg_data)
+
+            hr_card = f"🌐 <b>[WEB-Заявка с сайта / Mini App]</b>\n\n{base_card}"
+            ticket_kb = make_ticket_keyboard(ticket_id)
+
+            # 4. Моментальная маршрутизация в кадровый чат (HR_GROUP_ID)
+            if self.bot:
+                try:
+                    await route_new_candidate_ticket(self.bot, hr_card, ticket_kb)
+                except Exception as e:
+                    logger.error("Ошибка маршрутизации WEB-тикета #%s в HR-чат: %s", ticket_id, e)
+
+                # Дублирование подтверждения соискателю в бот (если передан Telegram ID)
+                if platform == "tg" and user_id.lstrip("-").isdigit():
+                    try:
+                        is_driver_no_exp = bool(meta.get("offer_training", False))
+                        user_msg = texts.format_survey_success(ticket_id, vacancy, is_driver_no_exp)
+                        await safe_send(self.bot, int(user_id), user_msg)
+                    except Exception as e:
+                        logger.error("Ошибка отправки подтверждения в бот соискателю %s: %s", user_id, e)
+
+            logger.info("Успешно принята WEB-анкета #%s: %s (%s, %s)", ticket_id, clean_fio, clean_ph, vacancy)
+            return web.json_response({
+                "ok": True,
+                "ticket_id": ticket_id,
+                "full_name": clean_fio,
+                "vacancy": vacancy,
+                "offer_training": meta.get("offer_training", False),
+                "message": f"Анкета #{ticket_id} успешно зарегистрирована!"
+            })
+        except Exception as e:
+            logger.error("Исключение в handle_api_apply_candidate: %s", e)
             return web.json_response({"error": str(e)}, status=500)
 
     async def handle_api_inquiries(self, request: web.Request) -> web.Response:

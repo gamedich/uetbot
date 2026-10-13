@@ -90,6 +90,29 @@ async def cb_cand_call(callback: types.CallbackQuery) -> None:
     await callback.answer(f"📞 Телефон {name}: {phone}", show_alert=True)
 
 
+@tickets_router.callback_query(F.data.startswith("cand_risk_"))
+async def cb_cand_risk_check(callback: types.CallbackQuery) -> None:
+    """Мгновенная проверка комплаенс-рисков соискателя (ст. 328.1 ТК РФ, права, судимость, медкомиссия)."""
+    allowed, _ = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
+    if not allowed:
+        await callback.answer("🚫 Доступ ограничен сотрудниками отдела кадров.", show_alert=True)
+        return
+
+    ticket_id = int(callback.data.split("_")[-1])
+    cand = db.get_candidate(ticket_id)
+    if not cand:
+        await callback.answer("Анкета не найдена!", show_alert=True)
+        return
+
+    scoring = ComplianceService.score_candidate(cand)
+    has_risk = scoring.get("has_high_risk", False)
+    status_emoji = "⚠️ ВЫСОКИЙ РИСК" if has_risk else "✅ РИСКИ НЕ ВЫЯВЛЕНЫ"
+    reasons = scoring.get("risk_reasons") or ["Проверки по 152-ФЗ и ст. 328.1 ТК РФ пройдены."]
+    reasons_text = "\n• ".join(reasons)
+    alert_text = f"🔍 Проверка рисков (#{ticket_id}):\n{status_emoji}\n• {reasons_text}"
+    await callback.answer(alert_text[:200], show_alert=True)
+
+
 # ==============================================================================
 # 2. ИЗМЕНЕНИЕ СТАТУСОВ АНКЕТ
 # ==============================================================================

@@ -490,6 +490,64 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
         self.assertEqual(cand[3], "Очный Кандидат Иванович")
         self.assertEqual(cand[1], "office")
 
+    def test_web_vacancies_and_apply_api(self):
+        import asyncio
+        import json
+        from web_app import WebPanel
+        from aiohttp.test_utils import make_mocked_request
+
+        panel = WebPanel(self.db, bot=None)
+
+        # 1. Проверка API вакансий
+        async def run_vacancies():
+            req = make_mocked_request('GET', '/api/vacancies')
+            resp = await panel.handle_api_vacancies(req)
+            data = json.loads(resp.text)
+            self.assertTrue(data['ok'])
+            self.assertGreaterEqual(len(data['vacancies']), 3)
+
+        asyncio.run(run_vacancies())
+
+        # 2. Проверка подачи анкеты с сайта
+        async def run_apply():
+            payload = {
+                "full_name": "Веб Кандидат Сергеевич",
+                "phone": "+79279998877",
+                "vacancy": "Водитель трамвая",
+                "birth_date": "10.10.1990",
+                "city": "Ульяновск",
+                "driver_license": "B, C",
+                "experience": "Без опыта",
+                "education": "Среднее специальное",
+                "relocation": "Уже проживаю в Ульяновске",
+                "dormitory": "Нет",
+                "shift_work": "Да",
+                "medical_restrictions": "Нет",
+                "criminal_record": "Нет",
+                "source": "Сайт предприятия",
+                "referrer_tab": "1042",
+                "platform": "web"
+            }
+            req = make_mocked_request(
+                'POST', '/api/apply_candidate',
+                headers={'Content-Type': 'application/json'}
+            )
+            req._read_bytes = json.dumps(payload).encode('utf-8')
+            resp = await panel.handle_api_apply_candidate(req)
+            data = json.loads(resp.text)
+            self.assertTrue(data['ok'])
+            self.assertIn('ticket_id', data)
+            t_id = data['ticket_id']
+
+            # Проверка детализации
+            req_detail = make_mocked_request('GET', f'/api/candidate/{t_id}', match_info={'id': str(t_id)})
+            resp_detail = await panel.handle_api_candidate_detail(req_detail)
+            cand_json = json.loads(resp_detail.text)
+            self.assertEqual(cand_json['full_name'], "Веб Кандидат Сергеевич")
+            self.assertEqual(cand_json['phone'], "+79279998877")
+
+        asyncio.run(run_apply())
+
 
 class TestComplianceAndInterviewServices(unittest.TestCase):
     """Тесты комплаенс-скоринга (ст. 328.1 ТК РФ) и сервиса организации собеседований."""

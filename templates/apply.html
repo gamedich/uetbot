@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Анкета соискателя — МУП «Ульяновскэлектротранс»</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-base: #0a0f1d;
+            --bg-card: rgba(19, 27, 46, 0.88);
+            --bg-card-hover: rgba(28, 41, 70, 0.95);
+            --border-color: rgba(59, 130, 246, 0.25);
+            --border-active: #3b82f6;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-glow: rgba(37, 99, 235, 0.35);
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.12) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            font-family: var(--font-family);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 16px;
+            line-height: 1.5;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 620px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding-bottom: 30px;
+        }
+
+        /* HEADER */
+        .brand-header {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .brand-logo-wrap {
+            width: 50px;
+            height: 50px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, #1d4ed8, #0284c7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .brand-logo-wrap svg {
+            width: 30px;
+            height: 30px;
+            fill: #ffffff;
+        }
+
+        .brand-titles {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-name {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            color: #ffffff;
+            text-transform: uppercase;
+        }
+
+        .brand-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* PROGRESS BAR */
+        .progress-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .progress-step-name {
+            color: var(--accent-cyan);
+            font-size: 13px;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 6%;
+            background: linear-gradient(90deg, #2563eb, #06b6d4);
+            border-radius: 999px;
+            transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.5);
+        }
+
+        /* WIZARD CARD */
+        .wizard-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px 20px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 380px;
+            position: relative;
+        }
+
+        .step-heading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .step-icon-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-md);
+            background: rgba(37, 99, 235, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #60a5fa;
+        }
+
+        .step-icon-badge svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .step-title-wrap {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .step-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1.25;
+        }
+
+        .step-desc {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        /* STEP CONTENTS */
+        .step-pane {
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+            animation: fadeIn 0.25s ease forwards;
+        }
+
+        .step-pane.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* SELECTION CARDS & BUTTONS */
+        .options-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .option-card:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+
+        .option-card.selected {
+            background: rgba(37, 99, 235, 0.22);
+            border-color: #3b82f6;
+            box-shadow: 0 0 14px rgba(37, 99, 235, 0.35);
+        }
+
+        .option-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .option-icon {
+            color: #60a5fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .option-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .option-texts {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .option-label {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .option-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .option-badge {
+            display: inline-block;
+            font-size: 10.5px;
+            font-weight: 700;
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            border-radius: 999px;
+            padding: 2px 8px;
+            margin-top: 4px;
+            width: fit-content;
+        }
+
+        .option-check {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+
+        .option-card.selected .option-check {
+            background: #2563eb;
+            border-color: #60a5fa;
+        }
+
+        .option-check svg {
+            display: none;
+            width: 12px;
+            height: 12px;
+            fill: #ffffff;
+        }
+
+        .option-card.selected .option-check svg {
+            display: block;
+        }
+
+        /* MULTI-SELECT CHIPS */
+        .chips-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            padding: 9px 16px;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chip-card:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .chip-card.selected {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #60a5fa;
+            box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
+        }
+
+        /* INPUT FIELDS */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(10, 15, 29, 0.85);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-radius: var(--radius-md);
+            padding: 13px 16px;
+            font-size: 15px;
+            color: #ffffff;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 12px rgba(37, 99, 235, 0.35);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-dim);
+        }
+
+        .form-input.error {
+            border-color: var(--accent-red);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .error-hint {
+            font-size: 12px;
+            color: #f87171;
+            display: none;
+        }
+
+        .error-hint.visible {
+            display: block;
+        }
+
+        /* LEGAL CONSENT BOX */
+        .legal-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+            max-height: 180px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .legal-box strong {
+            color: #ffffff;
+        }
+
+        .consent-checkbox-wrap {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            user-select: none;
+            padding: 10px;
+            background: rgba(37, 99, 235, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: var(--radius-md);
+        }
+
+        .consent-checkbox-wrap input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            margin-top: 2px;
+            accent-color: #2563eb;
+        }
+
+        .consent-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        /* REVIEW SUMMARY TABLE */
+        .review-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 380px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .review-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+        }
+
+        .review-key {
+            color: var(--text-muted);
+            font-weight: 600;
+            width: 45%;
+        }
+
+        .review-val {
+            color: #ffffff;
+            font-weight: 700;
+            width: 55%;
+            text-align: right;
+            word-break: break-word;
+        }
+
+        /* BOTTOM NAV BUTTONS */
+        .wizard-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 13px 20px;
+            font-size: 14.5px;
+            font-weight: 700;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            border: none;
+            outline: none;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            user-select: none;
+        }
+
+        .btn-prev {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+            flex: 1;
+        }
+
+        .btn-prev:hover {
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .btn-next {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #ffffff;
+            flex: 2;
+            box-shadow: 0 4px 14px var(--primary-glow);
+        }
+
+        .btn-next:hover {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+        }
+
+        .btn-next:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+        }
+
+        /* SUCCESS SCREEN */
+        .success-box {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 24px 12px;
+            gap: 16px;
+        }
+
+        .success-icon-wrap {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.18);
+            border: 2px solid #10b981;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #10b981;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .ticket-number-pill {
+            font-size: 22px;
+            font-weight: 800;
+            color: #60a5fa;
+            background: rgba(37, 99, 235, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-radius: 999px;
+            padding: 6px 20px;
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #ffffff;
+            border: 1px solid #3b82f6;
+            border-radius: 999px;
+            padding: 10px 22px;
+            font-size: 13.5px;
+            font-weight: 600;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+            display: none;
+            z-index: 9999;
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            .wizard-card { padding: 18px 14px; min-height: 420px; }
+            .brand-header { padding: 14px; gap: 12px; }
+            .brand-name { font-size: 13.5px; }
+            .step-title { font-size: 16.5px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- ENTERPRISE BRAND HEADER -->
+    <header class="brand-header">
+        <div class="brand-logo-wrap">
+            <svg viewBox="0 0 24 24">
+                <path d="M19 16c0 1.1-.9 2-2 2h-1l1.5 1.5c.3.3.3.8 0 1.1-.3.3-.8.3-1.1 0L14.9 19H9.1l-1.5 1.6c-.3.3-.8.3-1.1 0-.3-.3-.3-.8 0-1.1L8 18H7c-1.1 0-2-.9-2-2V6c0-3.5 3.58-4 7-4s7 .5 7 4v10zm-7-12c-3.1 0-5 .3-5 2v1h10V6c0-1.7-1.9-2-5-2zm-5 5v5h10V9H7zm1.5 7c.8 0 1.5-.7 1.5-1.5S9.3 13 8.5 13 7 13.7 7 14.5s.7 1.5 1.5 1.5zm7 0c.8 0 1.5-.7 1.5-1.5s-.7-1.5-1.5-1.5-1.5.7-1.5 1.5.7 1.5 1.5 1.5z"/>
+            </svg>
+        </div>
+        <div class="brand-titles">
+            <div class="brand-name">МУП «Ульяновскэлектротранс»</div>
+            <div class="brand-sub">Официальная онлайн-анкета соискателя работы</div>
+        </div>
+    </header>
+
+    <!-- PROGRESS BAR -->
+    <div class="progress-box" id="progressBox">
+        <div class="progress-info">
+            <span id="progressStepNum">Шаг 1 из 16</span>
+            <span class="progress-step-name" id="progressStepName">Согласие 152-ФЗ</span>
+        </div>
+        <div class="progress-track">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+    </div>
+
+    <!-- MAIN WIZARD CARD -->
+    <main class="wizard-card" id="wizardCard">
+        
+        <!-- STEP 1: СОГЛАСИЕ 152-ФЗ -->
+        <div class="step-pane active" id="step1">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- SHIELD SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Согласие на обработку данных</h2>
+                    <span class="step-desc">Требование Федерального закона № 152-ФЗ РФ</span>
+                </div>
+            </div>
+
+            <div class="legal-box">
+                <strong>Оператор:</strong> МУП «Ульяновскэлектротранс» (г. Ульяновск, ул. Гончарова, д. 2, ИНН 7325000960, ОГРН 1027301160350).<br><br>
+                <strong>Цель обработки:</strong> рассмотрение вашей кандидатуры для трудоустройства на предприятие, формирование кадрового резерва и организация связи с вами.<br><br>
+                <strong>Перечень данных:</strong> ФИО, контактный телефон, дата рождения, образование, стаж и опыт работы, город проживания, сведения о водительском удостоверении.<br><br>
+                <strong>Срок хранения:</strong> до 6 месяцев с момента подачи. По истечении срока данные гарантированно уничтожаются по ст. 21 152-ФЗ РФ.
+            </div>
+
+            <label class="consent-checkbox-wrap" id="consentWrap">
+                <input type="checkbox" id="checkConsent" onchange="validateCurrentStep()">
+                <span class="consent-text">Я ознакомлен(а) с политикой и даю согласие на обработку персональных данных</span>
+            </label>
+        </div>
+
+        <!-- STEP 2: ВАКАНСИЯ -->
+        <div class="step-pane" id="step2">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- TRAM / TROLLEYBUS SVG -->
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2c4 0 7 .6 7 4v10c0 1.1-.9 2-2 2h-1l1.5 1.5c.3.3.3.8 0 1.1-.3.3-.8.3-1.1 0L14.9 19H9.1l-1.5 1.6c-.3.3-.8.3-1.1 0-.3-.3-.3-.8 0-1.1L8 18H7c-1.1 0-2-.9-2-2V6c0-3.4 3-4 7-4zm0 2c-3.1 0-5 .3-5 2v1h10V6c0-1.7-1.9-2-5-2zm-5 5v5h10V9H7z"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Желаемая должность</h2>
+                    <span class="step-desc">Выберите специальность для трудоустройства</span>
+                </div>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" onclick="selectSingleOption('vacancy', 'Водитель трамвая', this)">
+                    <div class="option-left">
+                        <div class="option-icon">🚋</div>
+                        <div class="option-texts">
+                            <span class="option-label">Водитель трамвая</span>
+                            <span class="option-sub">Зарплата от 55 000 до 85 000 ₽</span>
+                            <span class="option-badge">🎓 Бесплатное обучение со стипендией от 20 000 ₽</span>
+                        </div>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('vacancy', 'Водитель троллейбуса', this)">
+                    <div class="option-left">
+                        <div class="option-icon">🚎</div>
+                        <div class="option-texts">
+                            <span class="option-label">Водитель троллейбуса</span>
+                            <span class="option-sub">Зарплата от 55 000 до 85 000 ₽</span>
+                            <span class="option-badge">🎓 Бесплатное обучение со стипендией от 20 000 ₽</span>
+                        </div>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('vacancy', 'Кондуктор', this)">
+                    <div class="option-left">
+                        <div class="option-icon">🎫</div>
+                        <div class="option-texts">
+                            <span class="option-label">Кондуктор</span>
+                            <span class="option-sub">Сменный график, официальное трудоустройство</span>
+                        </div>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('vacancy', 'Слесарь по ремонту подвижного состава', this)">
+                    <div class="option-left">
+                        <div class="option-icon">🔧</div>
+                        <div class="option-texts">
+                            <span class="option-label">Слесарь по ремонту ПС</span>
+                            <span class="option-sub">Северное / Засвияжское / Заволжское депо</span>
+                        </div>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('vacancy', 'Электромонтер контактной сети', this)">
+                    <div class="option-left">
+                        <div class="option-icon">⚡</div>
+                        <div class="option-texts">
+                            <span class="option-label">Электромонтер</span>
+                            <span class="option-sub">Обслуживание контактных сетей и подстанций</span>
+                        </div>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('vacancy', 'Другое', this)">
+                    <div class="option-left">
+                        <div class="option-icon">📝</div>
+                        <div class="option-texts">
+                            <span class="option-label">Другая специальность</span>
+                            <span class="option-sub">Укажите в примечании</span>
+                        </div>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: ФИО -->
+        <div class="step-pane" id="step3">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- USER SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Фамилия, Имя и Отчество</h2>
+                    <span class="step-desc">Укажите ваше полное ФИО на русском языке</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="inpFio">ФИО полностью</label>
+                <input type="text" id="inpFio" class="form-input" placeholder="Иванов Иван Иванович" oninput="validateCurrentStep()">
+                <span class="error-hint" id="errFio">Пожалуйста, введите корректные Фамилию и Имя (минимум 2 слова)</span>
+            </div>
+        </div>
+
+        <!-- STEP 4: ТЕЛЕФОН -->
+        <div class="step-pane" id="step4">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- PHONE SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Контактный телефон</h2>
+                    <span class="step-desc">Для звонка специалиста отдела кадров</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="inpPhone">Номер мобильного телефона</label>
+                <input type="tel" id="inpPhone" class="form-input" placeholder="+7 (900) 000-00-00" oninput="formatPhoneInput(this); validateCurrentStep()">
+                <span class="error-hint" id="errPhone">Введите номер в формате +7 (9XX) XXX-XX-XX</span>
+            </div>
+        </div>
+
+        <!-- STEP 5: ДАТА РОЖДЕНИЯ -->
+        <div class="step-pane" id="step5">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- CALENDAR SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Дата рождения</h2>
+                    <span class="step-desc">Трудоустройство возможно строго с 18 лет</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="inpBirth">Дата рождения (ДД.ММ.ГГГГ)</label>
+                <input type="text" id="inpBirth" class="form-input" placeholder="15.05.1995" maxlength="10" oninput="formatDateInput(this); validateCurrentStep()">
+                <span class="error-hint" id="errBirth">Возраст должен быть не менее 18 лет</span>
+            </div>
+        </div>
+
+        <!-- STEP 6: ГОРОД -->
+        <div class="step-pane" id="step6">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- MAP PIN SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Город проживания</h2>
+                    <span class="step-desc">Где вы сейчас находитесь</span>
+                </div>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" onclick="selectCityOption('г. Ульяновск', this)">
+                    <div class="option-left">
+                        <span class="option-label">г. Ульяновск</span>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectCityOption('г. Новоульяновск', this)">
+                    <div class="option-left">
+                        <span class="option-label">г. Новоульяновск</span>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectCityOption('Другой', this)">
+                    <div class="option-left">
+                        <span class="option-label">Другой населенный пункт</span>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+            </div>
+
+            <div class="form-group" id="groupCityManual" style="display: none; margin-top: 10px;">
+                <label class="form-label">Укажите ваш город/поселок</label>
+                <input type="text" id="inpCityManual" class="form-input" placeholder="Например: Димитровград" oninput="validateCurrentStep()">
+            </div>
+        </div>
+
+        <!-- STEP 7: ВОДИТЕЛЬСКИЕ ПРАВА -->
+        <div class="step-pane" id="step7">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- STEERING WHEEL SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                        <path d="M2 12h20"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Водительские права</h2>
+                    <span class="step-desc">Выберите открытые категории (можно несколько)</span>
+                </div>
+            </div>
+
+            <div class="chips-grid" id="licensesGrid">
+                <div class="chip-card" onclick="toggleLicenseChip('Tm (Трамвай)', this)">🚋 Tm (Трамвай)</div>
+                <div class="chip-card" onclick="toggleLicenseChip('Tb (Троллейбус)', this)">🚎 Tb (Троллейбус)</div>
+                <div class="chip-card" onclick="toggleLicenseChip('B (Легковые)', this)">🚗 B (Легковые)</div>
+                <div class="chip-card" onclick="toggleLicenseChip('C (Грузовые)', this)">🚚 C (Грузовые)</div>
+                <div class="chip-card" onclick="toggleLicenseChip('D (Автобусы)', this)">🚌 D (Автобусы)</div>
+                <div class="chip-card" onclick="toggleLicenseChip('A (Мотоциклы)', this)">🏍 A (Мото)</div>
+                <div class="chip-card selected" onclick="toggleNoLicense(this)">❌ Нет прав (Обучим!)</div>
+            </div>
+        </div>
+
+        <!-- STEP 8: ОПЫТ РАБОТЫ -->
+        <div class="step-pane" id="step8">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- BRIEFCASE SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Опыт работы</h2>
+                    <span class="step-desc">Стаж по выбранной или смежной специальности</span>
+                </div>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" onclick="selectSingleOption('experience', 'Без опыта (хочу обучиться)', this)">
+                    <div class="option-left">
+                        <span class="option-label">Без опыта</span>
+                        <span class="option-badge">🎓 Направим на обучение</span>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('experience', 'Менее 1 года', this)">
+                    <div class="option-left">
+                        <span class="option-label">Менее 1 года</span>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('experience', 'От 1 до 3 лет', this)">
+                    <div class="option-left">
+                        <span class="option-label">От 1 до 3 лет</span>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('experience', 'Более 3 лет', this)">
+                    <div class="option-left">
+                        <span class="option-label">Более 3 лет (Опытный)</span>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 9: ОБРАЗОВАНИЕ -->
+        <div class="step-pane" id="step9">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- GRADUATION CAP SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                        <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Уровень образования</h2>
+                    <span class="step-desc">Сведения об оконченном образовании</span>
+                </div>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" onclick="selectSingleOption('education', 'Среднее', this)">
+                    <div class="option-left"><span class="option-label">Среднее общее (школа)</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('education', 'Среднее специальное', this)">
+                    <div class="option-left"><span class="option-label">Среднее профессиональное (колледж/техникум)</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('education', 'Высшее', this)">
+                    <div class="option-left"><span class="option-label">Высшее образование (ВУЗ)</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 10: ПЕРЕЕЗД -->
+        <div class="step-pane" id="step10">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- TRUCK / RELOCATION SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="3" width="15" height="13"/>
+                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                        <circle cx="5.5" cy="18.5" r="2.5"/>
+                        <circle cx="18.5" cy="18.5" r="2.5"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Готовность к переезду</h2>
+                    <span class="step-desc">В г. Ульяновск для работы на предприятии</span>
+                </div>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" onclick="selectSingleOption('relocation', 'Уже проживаю в Ульяновске', this)">
+                    <div class="option-left"><span class="option-label">Уже проживаю в г. Ульяновск</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('relocation', 'Готов к переезду', this)">
+                    <div class="option-left"><span class="option-label">Готов(а) к переезду</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('relocation', 'Не готов к переезду', this)">
+                    <div class="option-left"><span class="option-label">Не готов(а) к переезду</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 11: ОБЩЕЖИТИЕ -->
+        <div class="step-pane" id="step11">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- HOUSE SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Предоставление жилья</h2>
+                    <span class="step-desc">Нуждаетесь ли вы в общежитии предприятия?</span>
+                </div>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" onclick="selectSingleOption('dormitory', 'Нет', this)">
+                    <div class="option-left"><span class="option-label">Нет, жильем обеспечен(а)</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('dormitory', 'Да, требуется общежитие', this)">
+                    <div class="option-left"><span class="option-label">Да, требуется койко-место / общежитие</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 12: СМЕННЫЙ ГРАФИК -->
+        <div class="step-pane" id="step12">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- CLOCK SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">График работы</h2>
+                    <span class="step-desc">Готовность к сменному графику 2/2</span>
+                </div>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" onclick="selectSingleOption('shift_work', 'Да, готов к сменному графику', this)">
+                    <div class="option-left"><span class="option-label">Да, готов(а) к сменному графику 2/2</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('shift_work', 'Только пятидневка 5/2', this)">
+                    <div class="option-left"><span class="option-label">Предпочитаю стандартную пятидневку (5/2)</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 13: МЕДКОМИССИЯ -->
+        <div class="step-pane" id="step13">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- STETHOSCOPE SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4.5 3h3v5.5a4.5 4.5 0 0 0 9 0V3h3"/>
+                        <path d="M12 13v5a3 3 0 0 0 3 3h1a2 2 0 0 0 2-2v-1"/>
+                        <circle cx="18" cy="18" r="3"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Ограничения по здоровью</h2>
+                    <span class="step-desc">Прохождение предварительной медкомиссии</span>
+                </div>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" onclick="selectSingleOption('medical', 'Нет ограничений', this)">
+                    <div class="option-left"><span class="option-label">Нет медицинских ограничений</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('medical', 'Есть ограничения', this)">
+                    <div class="option-left"><span class="option-label">Имеются ограничения / противопоказания</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 14: СУДИМОСТЬ (СТ. 328.1 ТК РФ) -->
+        <div class="step-pane" id="step14">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- SHIELD CHECK SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Справка о судимости</h2>
+                    <span class="step-desc">Обязательное требование ст. 328.1 ТК РФ для водителей</span>
+                </div>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" onclick="selectSingleOption('criminal', 'Нет судимости', this)">
+                    <div class="option-left"><span class="option-label">Судимости нет (справку предоставлю)</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('criminal', 'Имеется судимость', this)">
+                    <div class="option-left"><span class="option-label">Имеется судимость / погашена</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 15: ИСТОЧНИК И РЕФЕРАЛ -->
+        <div class="step-pane" id="step15">
+            <div class="step-heading">
+                <div class="step-icon-badge">
+                    <!-- MEGAPHONE SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Откуда узнали о нас</h2>
+                    <span class="step-desc">Помогите нам улучшить информирование</span>
+                </div>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" onclick="selectSingleOption('source', 'Реклама в трамвае / троллейбусе', this)">
+                    <div class="option-left"><span class="option-label">Реклама в электротранспорте</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('source', 'Социальные сети / Интернет', this)">
+                    <div class="option-left"><span class="option-label">Социальные сети / Telegram / VK</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+
+                <div class="option-card" onclick="selectSingleOption('source', 'Сотрудник депо (Реферальная программа)', this)">
+                    <div class="option-left"><span class="option-label">Посоветовал сотрудник предприятия</span></div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 10px;">
+                <label class="form-label" for="inpRef">Табельный номер сотрудника (если есть)</label>
+                <input type="text" id="inpRef" class="form-input" placeholder="Например: 1042">
+            </div>
+        </div>
+
+        <!-- STEP 16: СВОДНЫЙ ЭКРАН И ПРОВЕРКА -->
+        <div class="step-pane" id="step16">
+            <div class="step-heading">
+                <div class="step-icon-badge" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #34d399;">
+                    <!-- CLIPBOARD CHECK SVG -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                        <path d="M9 14l2 2 4-4"/>
+                    </svg>
+                </div>
+                <div class="step-title-wrap">
+                    <h2 class="step-title">Проверка анкеты</h2>
+                    <span class="step-desc">Убедитесь в правильности всех 16 параметров</span>
+                </div>
+            </div>
+
+            <div class="review-list" id="reviewSummaryList">
+                <!-- Заполняется динамически -->
+            </div>
+        </div>
+
+        <!-- SUCCESS RESULT VIEW -->
+        <div class="success-box" id="successBox">
+            <div class="success-icon-wrap">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M20 6L9 17l-5-5"/>
+                </svg>
+            </div>
+            <h2 style="font-size: 20px; font-weight: 800; color: #ffffff;">Анкета успешно принята!</h2>
+            <div class="ticket-number-pill" id="ticketNumberDisplay">Заявка #...</div>
+            <p style="font-size: 13.5px; color: var(--text-muted); line-height: 1.6;">
+                Ваша анкета моментально зарегистрирована в единой информационной системе <b>МУП «Ульяновскэлектротранс»</b> и передана в кадровую службу. Специалист свяжется с вами по указанному телефону.
+            </p>
+            <div style="width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                <a href="tel:+78422584660" class="btn btn-next" style="width: 100%;">📞 Позвонить в отдел кадров</a>
+                <button type="button" class="btn btn-prev" onclick="closeWebApp()" style="width: 100%;">Готово (Закрыть)</button>
+            </div>
+        </div>
+
+        <!-- NAVIGATION ACTION BAR -->
+        <div class="wizard-actions" id="wizardActions">
+            <button type="button" class="btn btn-prev" id="btnPrev" onclick="navStep(-1)" style="display: none;">⬅️ Назад</button>
+            <button type="button" class="btn btn-next" id="btnNext" onclick="navStep(1)" disabled>Далее ➡️</button>
+        </div>
+    </main>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+    // FORM STATE
+    let currentStep = 1;
+    const totalSteps = 16;
+    const formData = {
+        consent: false,
+        vacancy: 'Водитель трамвая',
+        full_name: '',
+        phone: '',
+        birth_date: '',
+        city: 'г. Ульяновск',
+        licenses: ['Нет прав (Обучим!)'],
+        experience: 'Без опыта (хочу обучиться)',
+        education: 'Среднее',
+        relocation: 'Уже проживаю в Ульяновске',
+        dormitory: 'Нет',
+        shift_work: 'Да, готов к сменному графику',
+        medical: 'Нет ограничений',
+        criminal: 'Нет судимости',
+        source: 'Реклама в трамвае / троллейбусе',
+        referrer_tab: '',
+        platform: 'web',
+        user_id: ''
+    };
+
+    const stepNames = [
+        "", "Согласие 152-ФЗ", "Выбор вакансии", "ФИО", "Телефон", "Дата рождения",
+        "Город", "Водительские права", "Опыт работы", "Образование", "Переезд",
+        "Общежитие", "График работы", "Здоровье", "Судимость", "Источник", "Проверка данных"
+    ];
+
+    // INIT TELEGRAM WEBAPP
+    window.addEventListener('DOMContentLoaded', () => {
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                formData.platform = 'tg';
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    const u = tg.initDataUnsafe.user;
+                    formData.user_id = String(u.id);
+                    if (u.first_name || u.last_name) {
+                        const prefillName = [u.last_name, u.first_name].filter(Boolean).join(' ');
+                        const inp = document.getElementById('inpFio');
+                        if (inp && !inp.value) {
+                            inp.value = prefillName;
+                            formData.full_name = prefillName;
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("Telegram WebApp not initialized:", e);
+        }
+        updateStepUI();
+    });
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 3200);
+    }
+
+    function haptic(type = 'light') {
+        try {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+                if (type === 'success') {
+                    window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                } else {
+                    window.Telegram.WebApp.HapticFeedback.impactOccurred(type);
+                }
+            }
+        } catch (e) {}
+    }
+
+    function closeWebApp() {
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.close();
+            } else {
+                window.location.href = "/";
+            }
+        } catch (e) {
+            window.location.href = "/";
+        }
+    }
+
+    // STEP NAVIGATION
+    function navStep(dir) {
+        if (dir === 1) {
+            if (!validateCurrentStep(true)) return;
+            if (currentStep === totalSteps) {
+                submitApplication();
+                return;
+            }
+            currentStep++;
+        } else if (dir === -1) {
+            if (currentStep > 1) currentStep--;
+        }
+        haptic('light');
+        updateStepUI();
+    }
+
+    function updateStepUI() {
+        // Toggle Panes
+        for (let i = 1; i <= totalSteps; i++) {
+            const p = document.getElementById('step' + i);
+            if (p) p.classList.toggle('active', i === currentStep);
+        }
+
+        // Progress Bar
+        const percent = Math.round((currentStep / totalSteps) * 100);
+        document.getElementById('progressBar').style.width = percent + '%';
+        document.getElementById('progressStepNum').innerText = `Шаг ${currentStep} из ${totalSteps} (${percent}%)`;
+        document.getElementById('progressStepName').innerText = stepNames[currentStep] || '';
+
+        // Buttons
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+        btnPrev.style.display = (currentStep === 1) ? 'none' : 'inline-flex';
+
+        if (currentStep === totalSteps) {
+            btnNext.innerText = '🚀 Отправить анкету';
+            btnNext.classList.add('btn-submit');
+            renderSummary();
+        } else {
+            btnNext.innerText = 'Далее ➡️';
+            btnNext.classList.remove('btn-submit');
+        }
+
+        validateCurrentStep(false);
+    }
+
+    // VALIDATION LOGIC
+    function validateCurrentStep(showAlert = false) {
+        let valid = false;
+        const btnNext = document.getElementById('btnNext');
+
+        if (currentStep === 1) {
+            valid = document.getElementById('checkConsent').checked;
+            formData.consent = valid;
+        } else if (currentStep === 2) {
+            valid = !!formData.vacancy;
+        } else if (currentStep === 3) {
+            const val = document.getElementById('inpFio').value.trim();
+            formData.full_name = val;
+            const words = val.split(/\s+/).filter(Boolean);
+            valid = (words.length >= 2 && val.length >= 4);
+            document.getElementById('errFio').classList.toggle('visible', !valid && val.length > 0);
+        } else if (currentStep === 4) {
+            const val = document.getElementById('inpPhone').value.trim();
+            formData.phone = val;
+            const digits = val.replace(/\D/g, '');
+            valid = (digits.length === 11);
+            document.getElementById('errPhone').classList.toggle('visible', !valid && val.length > 0);
+        } else if (currentStep === 5) {
+            const val = document.getElementById('inpBirth').value.trim();
+            formData.birth_date = val;
+            valid = checkBirthAge(val);
+            document.getElementById('errBirth').classList.toggle('visible', !valid && val.length === 10);
+        } else if (currentStep === 6) {
+            if (formData.city === 'Другой') {
+                const manual = document.getElementById('inpCityManual').value.trim();
+                valid = manual.length >= 2;
+                formData.city = manual;
+            } else {
+                valid = !!formData.city;
+            }
+        } else if (currentStep === 7) {
+            valid = formData.licenses.length > 0;
+        } else if (currentStep >= 8 && currentStep <= 14) {
+            valid = true;
+        } else if (currentStep === 15) {
+            const refVal = document.getElementById('inpRef').value.trim();
+            formData.referrer_tab = refVal;
+            valid = true;
+        } else if (currentStep === 16) {
+            valid = true;
+        }
+
+        btnNext.disabled = !valid;
+        return valid;
+    }
+
+    function checkBirthAge(str) {
+        const parts = str.split('.');
+        if (parts.length !== 3) return false;
+        const d = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const y = parseInt(parts[2], 10);
+        const birthDate = new Date(y, m, d);
+        if (isNaN(birthDate.getTime()) || y < 1920) return false;
+
+        const now = new Date();
+        let age = now.getFullYear() - birthDate.getFullYear();
+        const mDiff = now.getMonth() - birthDate.getMonth();
+        if (mDiff < 0 || (mDiff === 0 && now.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age >= 18;
+    }
+
+    // FORMATTERS
+    function formatPhoneInput(input) {
+        let x = input.value.replace(/\D/g, '').match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
+        if (!x[2]) {
+            input.value = x[1] ? '+7 (' : '';
+            return;
+        }
+        input.value = '+7 (' + x[2] + (x[3] ? ') ' + x[3] : '') + (x[4] ? '-' + x[4] : '') + (x[5] ? '-' + x[5] : '');
+    }
+
+    function formatDateInput(input) {
+        let v = input.value.replace(/\D/g, '');
+        if (v.length > 8) v = v.slice(0, 8);
+        if (v.length >= 5) {
+            input.value = v.slice(0, 2) + '.' + v.slice(2, 4) + '.' + v.slice(4);
+        } else if (v.length >= 3) {
+            input.value = v.slice(0, 2) + '.' + v.slice(2);
+        } else {
+            input.value = v;
+        }
+    }
+
+    // OPTION HANDLERS
+    function selectSingleOption(field, value, el) {
+        formData[field] = value;
+        const parent = el.closest('.options-grid');
+        parent.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        validateCurrentStep();
+    }
+
+    function selectCityOption(val, el) {
+        const group = document.getElementById('groupCityManual');
+        if (val === 'Другой') {
+            formData.city = 'Другой';
+            group.style.display = 'flex';
+        } else {
+            formData.city = val;
+            group.style.display = 'none';
+        }
+        const parent = el.closest('.options-grid');
+        parent.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        validateCurrentStep();
+    }
+
+    function toggleLicenseChip(cat, el) {
+        const noLic = document.querySelector('.chip-card:last-child');
+        noLic.classList.remove('selected');
+        formData.licenses = formData.licenses.filter(l => !l.includes('Нет прав'));
+
+        if (formData.licenses.includes(cat)) {
+            formData.licenses = formData.licenses.filter(l => l !== cat);
+            el.classList.remove('selected');
+        } else {
+            formData.licenses.push(cat);
+            el.classList.add('selected');
+        }
+
+        if (formData.licenses.length === 0) {
+            noLic.classList.add('selected');
+            formData.licenses = ['Нет прав (Обучим!)'];
+        }
+        validateCurrentStep();
+    }
+
+    function toggleNoLicense(el) {
+        document.querySelectorAll('#licensesGrid .chip-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        formData.licenses = ['Нет прав (Обучим!)'];
+        validateCurrentStep();
+    }
+
+    // SUMMARY RENDER
+    function renderSummary() {
+        const list = document.getElementById('reviewSummaryList');
+        const rows = [
+            ["ФИО соискателя", formData.full_name],
+            ["Контактный телефон", formData.phone],
+            ["Желаемая должность", formData.vacancy],
+            ["Дата рождения", formData.birth_date],
+            ["Город проживания", formData.city],
+            ["Категории прав", formData.licenses.join(', ')],
+            ["Опыт работы", formData.experience],
+            ["Образование", formData.education],
+            ["Переезд в Ульяновск", formData.relocation],
+            ["Общежитие", formData.dormitory],
+            ["График 2/2", formData.shift_work],
+            ["Медкомиссия", formData.medical],
+            ["Судимость (328.1 ТК)", formData.criminal],
+            ["Источник информации", formData.source],
+            ["Табельный реферала", formData.referrer_tab || 'Не указан']
+        ];
+
+        list.innerHTML = rows.map(([k, v]) => `
+            <div class="review-row">
+                <span class="review-key">${k}</span>
+                <span class="review-val">${v}</span>
+            </div>
+        `).join('');
+    }
+
+    // SUBMIT APPLICATION VIA API
+    async function submitApplication() {
+        const btnNext = document.getElementById('btnNext');
+        btnNext.disabled = true;
+        btnNext.innerText = 'Отправка анкеты...';
+
+        const payload = {
+            full_name: formData.full_name,
+            phone: formData.phone,
+            vacancy: formData.vacancy,
+            birth_date: formData.birth_date,
+            city: formData.city,
+            driver_license: formData.licenses.join(', '),
+            experience: formData.experience,
+            education: formData.education,
+            relocation: formData.relocation,
+            dormitory: formData.dormitory,
+            shift_work: formData.shift_work,
+            medical_restrictions: formData.medical,
+            criminal_record: formData.criminal,
+            source: formData.source,
+            referrer_tab: formData.referrer_tab,
+            platform: formData.platform,
+            user_id: formData.user_id,
+            consent_timestamp: new Date().toLocaleString('ru-RU')
+        };
+
+        try {
+            const resp = await fetch('/api/apply_candidate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+
+            if (resp.ok && data.ok) {
+                haptic('success');
+                showSuccessScreen(data.ticket_id);
+            } else {
+                alert(data.error || "Ошибка регистрации анкеты. Пожалуйста, повторите попытку.");
+                btnNext.disabled = false;
+                btnNext.innerText = '🚀 Отправить анкету';
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Сетевая ошибка при отправке анкеты. Пожалуйста, проверьте подключение к интернету.");
+            btnNext.disabled = false;
+            btnNext.innerText = '🚀 Отправить анкету';
+        }
+    }
+
+    function showSuccessScreen(ticketId) {
+        document.getElementById('progressBox').style.display = 'none';
+        for (let i = 1; i <= totalSteps; i++) {
+            const p = document.getElementById('step' + i);
+            if (p) p.style.display = 'none';
+        }
+        document.getElementById('wizardActions').style.display = 'none';
+        document.getElementById('ticketNumberDisplay').innerText = 'Заявка #' + ticketId;
+        document.getElementById('successBox').style.display = 'flex';
+    }
+</script>
+
+</body>
+</html>

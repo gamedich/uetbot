@@ -44,6 +44,7 @@ from common import (
 )
 from keyboards import (
     make_candidate_main_keyboard,
+    make_candidate_persistent_reply_keyboard,
     make_consent_survey_kb,
     make_faq_keyboard,
     make_inquiry_admin_keyboard,
@@ -205,6 +206,15 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         reply_markup=make_candidate_main_keyboard(user_id=user_id),
         parse_mode="HTML",
     )
+    if isinstance(message, types.Message):
+        try:
+            await message.answer(
+                "💡 <i>Для быстрого открытия формы анкеты или личного кабинета воспользуйтесь кнопкой внизу экрана ⬇️</i>",
+                reply_markup=make_candidate_persistent_reply_keyboard(),
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
 
 
 @candidate_router.message(Command("panel", "web", "webapp"))

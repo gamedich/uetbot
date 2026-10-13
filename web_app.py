@@ -208,7 +208,12 @@ class WebPanel:
             content = DASHBOARD_HTML_PATH.read_text(encoding="utf-8")
         else:
             content = "<h1>Ошибка: Шаблон dashboard.html не найден</h1>"
-        return web.Response(text=content, content_type="text/html", charset="utf-8")
+        return web.Response(
+            text=content,
+            content_type="text/html",
+            charset="utf-8",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+        )
 
     async def handle_apply_page(self, request: web.Request) -> web.Response:
         """Единый карьерный портал МУП «УЭТ»: презентация предприятия, 16 шагов анкеты, проверка статуса."""
@@ -216,7 +221,12 @@ class WebPanel:
             content = APPLY_HTML_PATH.read_text(encoding="utf-8")
         else:
             content = "<h1>Ошибка: Шаблон apply.html не найден</h1>"
-        return web.Response(text=content, content_type="text/html", charset="utf-8")
+        return web.Response(
+            text=content,
+            content_type="text/html",
+            charset="utf-8",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+        )
 
     async def handle_kadry_page(self, request: web.Request) -> web.Response:
         """Модульная дизайн-система и адаптивная навигация HR-платформы «КАДРЫ»."""
@@ -224,7 +234,12 @@ class WebPanel:
             content = KADRY_HTML_PATH.read_text(encoding="utf-8")
         else:
             content = "<h1>Ошибка: Шаблон kadry.html не найден</h1>"
-        return web.Response(text=content, content_type="text/html", charset="utf-8")
+        return web.Response(
+            text=content,
+            content_type="text/html",
+            charset="utf-8",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+        )
 
     async def handle_api_candidate_lookup(self, request: web.Request) -> web.Response:
         """Поиск статуса анкеты соискателем по номеру заявки или номеру телефона."""

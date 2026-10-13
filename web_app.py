@@ -120,7 +120,7 @@ class WebPanel:
     def _setup_routes(self) -> None:
         self.app.router.add_get("/", self.handle_index)
         self.app.router.add_get("/app", self.handle_index)
-        self.app.router.add_get("/dashboard", self.handle_index)
+        self.app.router.add_get("/dashboard", self.handle_dashboard_page)
         self.app.router.add_get("/apply", self.handle_apply_page)
         self.app.router.add_get("/candidate/form", self.handle_apply_page)
 
@@ -131,9 +131,11 @@ class WebPanel:
         self.app.router.add_post("/api/vacancies/delete", self.handle_api_vacancies_delete)
         self.app.router.add_post("/api/apply_candidate", self.handle_api_apply_candidate)
         self.app.router.add_post("/api/candidate/apply", self.handle_api_apply_candidate)
+        self.app.router.add_get("/api/candidate/lookup", self.handle_api_candidate_lookup)
 
         # Auth
         self.app.router.add_post("/api/auth/login", self.handle_api_auth_login)
+        self.app.router.add_post("/api/auth/verify_session", self.handle_api_auth_verify_session)
 
         # Candidates API
         self.app.router.add_get("/api/stats", self.handle_api_stats)
@@ -183,10 +185,18 @@ class WebPanel:
         self.app.router.add_get("/api/health", self.handle_api_health)
 
     async def handle_index(self, request: web.Request) -> web.Response:
-        # Если передан параметр ?mode=apply или соискатель заходит на форму
-        if request.query.get("mode") == "apply" or "apply" in request.query:
-            return await self.handle_apply_page(request)
+        """
+        Единая входная точка веб-сервиса:
+        - По умолчанию: красивый портал предприятия с информацией, вакансиями и анкетой (apply.html).
+        - ?mode=dashboard или переход сотрудника: полноценный служебный дашборд (dashboard.html).
+        """
+        mode = request.query.get("mode", "")
+        if mode == "dashboard":
+            return await self.handle_dashboard_page(request)
+        return await self.handle_apply_page(request)
 
+    async def handle_dashboard_page(self, request: web.Request) -> web.Response:
+        """Служебный дашборд управления предприятием (HR, Tech, SuperAdmin)."""
         if DASHBOARD_HTML_PATH.exists():
             content = DASHBOARD_HTML_PATH.read_text(encoding="utf-8")
         else:
@@ -194,12 +204,97 @@ class WebPanel:
         return web.Response(text=content, content_type="text/html", charset="utf-8")
 
     async def handle_apply_page(self, request: web.Request) -> web.Response:
-        """Отдача 16-шаговой интерактивной веб-формы соискателя (Web Wizard / Telegram Mini App)."""
+        """Единый карьерный портал МУП «УЭТ»: презентация предприятия, 16 шагов анкеты, проверка статуса."""
         if APPLY_HTML_PATH.exists():
             content = APPLY_HTML_PATH.read_text(encoding="utf-8")
         else:
             content = "<h1>Ошибка: Шаблон apply.html не найден</h1>"
         return web.Response(text=content, content_type="text/html", charset="utf-8")
+
+    async def handle_api_candidate_lookup(self, request: web.Request) -> web.Response:
+        """Поиск статуса анкеты соискателем по номеру заявки или номеру телефона."""
+        q = request.query.get("query", "").strip()
+        if not q:
+            return web.json_response({"ok": False, "error": "Укажите номер анкеты или номер телефона"}, status=400)
+
+        cand = None
+        clean_q = re.sub(r"\D", "", q)
+        if q.isdigit() and len(q) <= 7:
+            cand = self.db.get_candidate(int(q))
+
+        if not cand and len(clean_q) >= 10:
+            with self.db.connection() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT * FROM resumes WHERE phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
+                    (f"%{clean_q[-10:]}%",),
+                )
+                cand = cur.fetchone()
+
+        if not cand:
+            return web.json_response({
+                "ok": False,
+                "error": "Анкета не найдена. Проверьте правильность номера или подайте новую заявку."
+            }, status=404)
+
+        t_id, plat, uid, fn, ph, vac, exp, st, note, cr = cand[:10]
+        depot = cand[23] if len(cand) > 23 else ""
+        itime = cand[24] if len(cand) > 24 else ""
+
+        masked_phone = ph[:4] + "***" + ph[-4:] if len(ph) >= 8 else ph
+
+        return web.json_response({
+            "ok": True,
+            "ticket_id": t_id,
+            "full_name": fn,
+            "phone_masked": masked_phone,
+            "vacancy": vac,
+            "status": st or "Новая",
+            "created_at": cr,
+            "interview_depot": depot or "",
+            "interview_time": itime or "",
+        })
+
+    async def handle_api_auth_verify_session(self, request: web.Request) -> web.Response:
+        """Проверка валидности сессии сотрудника (не отозваны ли права в БД)."""
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        uid = int(data.get("user_id", 0))
+        super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
+
+        if uid <= 0:
+            return web.json_response({"ok": False, "revoked": True, "error": "Недействительный ID пользователя"}, status=401)
+
+        if uid == super_id:
+            return web.json_response({
+                "ok": True,
+                "role": "super",
+                "user_id": uid,
+                "label": "👑 Главный администратор (SuperAdmin)"
+            })
+
+        current_role = self.db.get_admin_role(uid)
+        if not current_role or current_role in ("none", "candidate", "revoked"):
+            return web.json_response({
+                "ok": False,
+                "revoked": True,
+                "error": "Ваши служебные полномочия были отозваны."
+            }, status=403)
+
+        role_labels = {
+            "hr": "👔 Отдел кадров (HR)",
+            "tech": "🛠 Инженер (Tech)",
+            "depot": "🚋 Сотрудник депо (Рефералы)",
+            "super": "👑 SuperAdmin",
+        }
+        return web.json_response({
+            "ok": True,
+            "role": current_role,
+            "user_id": uid,
+            "label": role_labels.get(current_role, f"Сотрудник ({current_role})")
+        })
 
     async def handle_api_auth_login(self, request: web.Request) -> web.Response:
         """Гибкая авторизация: по паролю сотрудника/мастер-фразе или по Telegram ID/телефону."""

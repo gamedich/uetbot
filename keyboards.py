@@ -22,17 +22,19 @@ from common import (
 
 def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
     """
-    Закрепленная внизу экрана панель Telegram WebApp (постоянная Reply-клавиатура).
-    Позволяет соискателю в 1 клик открыть интерактивную форму анкеты или личный кабинет.
+    Закрепленная внизу экрана эргономичная панель быстрых действий (Reply-клавиатура).
+    Позволяет соискателю в 1 клик открыть интерактивную форму анкеты или проверить статус.
     """
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
-    apply_url = f"{web_url.rstrip('/')}/apply"
     return types.ReplyKeyboardMarkup(
         keyboard=[
             [
                 types.KeyboardButton(
-                    text="🌐 Заполнить анкету на сайте / Личный кабинет",
-                    web_app=types.WebAppInfo(url=apply_url)
+                    text="🌐 Заполнить анкету на сайте",
+                    web_app=types.WebAppInfo(url=web_url)
+                ),
+                types.KeyboardButton(
+                    text="📊 Мой статус"
                 )
             ]
         ],
@@ -42,58 +44,38 @@ def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
 
 def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     """
-    Инлайн-меню соискателя согласно разделу 1 Единой текстовой карты бота МУП «УЭТ»:
-    - 📝 Заполнить анкету на работу (cand_start_apply)
-    - 💬 Связаться с кадровиком / Задать вопрос (cand_ask_question)
-    - ❓ Частые вопросы и ответы (FAQ) (cand_faq_menu)
-    - 📞 Контакты отдела кадров (cand_hr_contacts)
-    + 📑 Моя анкета (cand_my_application, если есть активная заявка)
+    Эргономичное и минималистичное главное меню бота МУП «УЭТ»:
+    - 🌐 Заполнить на сайте (открытие в 1 клик через WebApp)
+    - 📝 Заполнить в Telegram (пошаговый чат-опросник)
+    - 📊 Мой статус / Заявка
+    - 💬 Вопрос кадровику
+    - 🎓 Обучение со стипендией
+    - 📞 Контакты депо
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text="📝 Заполнить анкету на работу", callback_data="cand_start_apply")
-    builder.button(text="💬 Связаться с кадровиком / Задать вопрос", callback_data="cand_ask_question")
-    builder.button(text="❓ Частые вопросы и ответы (FAQ)", callback_data="cand_faq_menu")
-    builder.button(text="📞 Контакты отдела кадров", callback_data="cand_hr_contacts")
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
-    has_app = False
-    if user_id:
-        try:
-            cand = db.get_candidate_by_user_id(str(user_id), platform="tg")
-            if cand:
-                has_app = True
-        except Exception:
-            pass
-    if has_app:
-        builder.button(text="📑 Моя анкета", callback_data="cand_my_application")
+    # 1. Подача заявки: на сайте или в Telegram
+    builder.button(text="🌐 Заполнить на сайте", web_app=types.WebAppInfo(url=web_url))
+    builder.button(text="📝 Заполнить в Telegram", callback_data="cand_start_apply")
+
+    # 2. Мой статус и прямой диалог
+    builder.button(text="📊 Мой статус / Заявка", callback_data="cand_my_application")
+    builder.button(text="💬 Вопрос кадровику", callback_data="cand_ask_question")
+
+    # 3. Обучение со стипендией и контакты
+    builder.button(text="🎓 Обучение со стипендией", callback_data="cand_training_info")
+    builder.button(text="📞 Контакты депо", callback_data="cand_hr_contacts")
 
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     is_tech = bool(user_id and (user_id == super_id or is_tech_admin(user_id)))
     is_hr = bool(user_id and (user_id == super_id or is_hr_admin(user_id)))
 
     if is_tech or is_hr:
-        web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
-        builder.button(text="🌐 Веб-панель (Mini App)", web_app=types.WebAppInfo(url=web_url))
-
-        if is_tech:
-            builder.button(text="🛠 /tech (Инженер)", callback_data="tech_refresh")
-        if is_hr:
-            builder.button(text="📋 /hr (Кадры)", callback_data="admin_stats")
-
-        if has_app:
-            if is_tech and is_hr:
-                builder.adjust(1, 1, 2, 1, 1, 2)
-            else:
-                builder.adjust(1, 1, 2, 1, 1, 1)
-        else:
-            if is_tech and is_hr:
-                builder.adjust(1, 1, 2, 1, 2)
-            else:
-                builder.adjust(1, 1, 2, 1, 1)
+        builder.button(text="👔 Служебный кабинет", web_app=types.WebAppInfo(url=f"{web_url.rstrip('/')}/dashboard"))
+        builder.adjust(2, 2, 2, 1)
     else:
-        if has_app:
-            builder.adjust(1, 1, 2, 1)
-        else:
-            builder.adjust(1, 1, 2)
+        builder.adjust(2, 2, 2)
 
     return builder.as_markup()
 

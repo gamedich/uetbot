@@ -431,6 +431,7 @@ async def process_support_message(message: types.Message, state: FSMContext, bot
 
 @candidate_router.callback_query(F.data == "cand_my_application")
 @candidate_router.message(Command("my", "status", "stat"))
+@candidate_router.message(F.text.lower().in_(["📊 мой статус", "мой статус", "статус", "моя анкета"]))
 async def cb_cand_my_application(event: Union[types.CallbackQuery, types.Message]) -> None:
     user_id = event.from_user.id
     if db.is_blocked(user_id, super_admin_id=CONFIG.get("SUPER_ADMIN_ID")):
@@ -528,14 +529,21 @@ async def cb_revoke_confirm(callback: types.CallbackQuery, state: FSMContext) ->
 # РАЗДЕЛЫ «ОБУЧЕНИЕ», FAQ И КОНТАКТЫ (/training, /faq, /contacts, /privacy)
 # ==============================================================================
 
+@candidate_router.callback_query(F.data == "cand_training_info")
 @candidate_router.message(Command("training", "obuchenie"))
-async def cmd_training(message: types.Message) -> None:
+async def cmd_training(event: Union[types.Message, types.CallbackQuery]) -> None:
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     builder = InlineKeyboardBuilder()
-    builder.button(text=texts.BTN_APPLY, callback_data="cand_start_apply")
+    builder.button(text="🌐 Заполнить на сайте", web_app=types.WebAppInfo(url=web_url))
+    builder.button(text="📝 Заполнить в Telegram", callback_data="cand_start_apply")
     builder.button(text="💬 Задать вопрос", callback_data="cand_ask_question")
     builder.button(text=texts.BTN_BACK_TO_MENU, callback_data="cand_back_to_menu")
-    builder.adjust(1)
-    await safe_answer(message, texts.TRAINING_INFO_TEXT, reply_markup=builder.as_markup(), parse_mode="HTML")
+    builder.adjust(2, 1, 1)
+    if isinstance(event, types.CallbackQuery):
+        await event.message.edit_text(texts.TRAINING_INFO_TEXT, reply_markup=builder.as_markup(), parse_mode="HTML")
+        await event.answer()
+    else:
+        await safe_answer(event, texts.TRAINING_INFO_TEXT, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
 @candidate_router.callback_query(F.data == "cand_hr_contacts")
@@ -725,6 +733,23 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
 @candidate_router.message(Command("apply", "job", "rabota", "anketa"))
 async def cmd_apply(event: Union[types.Message, types.CallbackQuery], state: FSMContext) -> None:
     user_id = event.from_user.id
+    if isinstance(event, types.Message):
+        web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🌐 Заполнить анкету на сайте", web_app=types.WebAppInfo(url=web_url))
+        builder.button(text="📝 Заполнить в Telegram", callback_data="cand_start_apply")
+        builder.adjust(1, 1)
+        await safe_answer(
+            event,
+            "📋 <b>Подача анкеты на работу в МУП «УЭТ»</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "Выберите удобный способ заполнения:\n"
+            "• <b>На сайте:</b> интерактивная веб-форма в 1 клик через WebApp\n"
+            "• <b>В Telegram:</b> 16 вопросов прямо в чате с ботом",
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML",
+        )
+        return
     await run_candidate_survey(event, state, user_id)
 
 

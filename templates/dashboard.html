@@ -765,6 +765,7 @@
                     <span id="badgeDb" class="badge-btn badge-db-prod" onclick="toggleActiveDatabase()" title="Кликните для переключения базы">БД: resumes.db ⇄</span>
                     <span id="badgeEnv" class="badge-btn badge-env-test" onclick="toggleEnvironment()" title="Кликните для переключения среды">Среда: TEST ⇄</span>
                     <div id="userBadge" class="user-tag">👤 Не авторизован</div>
+                    <a href="/" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; text-decoration: none; color: inherit; display: inline-flex; align-items: center; gap: 4px;" title="Перейти на сайт для соискателей">🌐 Сайт соискателей</a>
                     <button id="btnAuthOpen" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="openAuthModal()">🔑 Вход</button>
                     <button id="btnLogout" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; display: none;" onclick="logout()">Выйти</button>
                 </div>
@@ -2361,9 +2362,12 @@
 
         // Init session or auto-login from Telegram WebApp
         const savedRole = localStorage.getItem('uet_role');
+        const savedUserId = localStorage.getItem('uet_user_id');
         const tmaInitData = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp.initData : null;
 
-        if (savedRole) {
+        if (savedUserId) {
+            verifySessionAndInit(savedUserId, savedRole);
+        } else if (savedRole) {
             currentUserRole = savedRole;
             applyRolePermissions();
             loadStats();
@@ -2377,6 +2381,37 @@
             // Mandatory login screen
             currentUserRole = null;
             openAuthModal(false);
+        }
+
+        async function verifySessionAndInit(uid, role) {
+            try {
+                const res = await fetch('/api/auth/verify_session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: uid, role: role })
+                });
+                const d = await res.json();
+                if (d.ok) {
+                    currentUserRole = d.role;
+                    localStorage.setItem('uet_role', d.role);
+                    applyRolePermissions();
+                    loadStats();
+                    loadCandidates(1);
+                } else if (d.revoked) {
+                    localStorage.removeItem('uet_role');
+                    localStorage.removeItem('uet_user_id');
+                    alert('⚠️ Ваши служебные полномочия были отозваны администратором.');
+                    window.location.href = '/';
+                } else {
+                    currentUserRole = null;
+                    openAuthModal(false);
+                }
+            } catch (e) {
+                currentUserRole = role;
+                applyRolePermissions();
+                loadStats();
+                loadCandidates(1);
+            }
         }
 
         async function submitAuthWithTelegram(initDataOrId) {

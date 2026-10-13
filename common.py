@@ -19,7 +19,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple, Union
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
 from aiogram import BaseMiddleware, Bot, Dispatcher, types
@@ -40,6 +40,7 @@ from aiogram.types import (
     BotCommandScopeChat,
     BotCommandScopeDefault,
     BufferedInputFile,
+    MenuButtonDefault,
     MenuButtonWebApp,
     WebAppInfo,
 )

@@ -12,6 +12,8 @@ import logging
 import sys
 from datetime import datetime
 
+from aiogram import types
+
 from common import (
     bot,
     dp,

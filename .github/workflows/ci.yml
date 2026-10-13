@@ -2,9 +2,17 @@ name: CI & Security Checks
 
 on:
   push:
-    branches: ["*"]
+    branches:
+      - 'main'
+      - 'beta'
+      - 'master'
+      - 'dev*'
+      - 'feature*'
   pull_request:
-    branches: ["*"]
+    branches:
+      - 'main'
+      - 'beta'
+      - 'master'
 
 jobs:
   validate:
@@ -21,6 +29,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
       - name: Check for forbidden files (.db, .env)
         run: |
@@ -49,13 +58,14 @@ jobs:
       - name: Syntax Check (py_compile / compileall)
         run: |
           echo "=== Проверка синтаксиса Python 3.12 (compileall) ==="
-          python -m compileall -q -f .
+          python -m compileall -q -f -x '(venv|\.venv)/' .
           echo "OK: Все файлы успешно скомпилированы, синтаксических ошибок нет."
 
-      - name: Install Linting Tools
+      - name: Install Dependencies & Linters
         run: |
           python -m pip install --upgrade pip
           pip install ruff flake8
+          pip install -r requirements.txt
 
       - name: Lint with Ruff
         run: |
@@ -70,5 +80,5 @@ jobs:
 
       - name: Run Unit Tests
         run: |
-          echo "=== Запуск набора тестов (38 проверок) ==="
+          echo "=== Запуск набора тестов (41 проверка) ==="
           python run_tests.py

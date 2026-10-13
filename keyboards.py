@@ -1,10 +1,11 @@
-from datetime import datetime
 # -*- coding: utf-8 -*-
 """
 Модуль разметки клавиатур и экранных меню для бота
 МУП «Ульяновскэлектротранс».
 """
-from typing import Tuple, List
+import re
+from datetime import datetime
+from typing import Tuple, List, Optional, Dict, Any
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -94,26 +95,58 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     else:
         builder.button(text="📦 В архив", callback_data=f"status_{ticket_id}_Архив")
 
-    # 5. Заметка к анкете
+    # 5. Дата встречи и назначение собеседования в депо
+    builder.button(text="🏢 Назначить встречу (Депо)", callback_data=f"schedule_interview_{ticket_id}")
+    builder.button(text="📅 Своя дата встречи", callback_data=f"invite_custom_{ticket_id}")
     builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
 
-    # 6. Дата встречи и удаление (без дублирования!)
-    builder.button(text="📅 Дата встречи", callback_data=f"invite_custom_{ticket_id}")
-    builder.button(text="🗑 Удалить", callback_data=f"del_ask_{ticket_id}")
+    # Быстрый контакт / телефон соискателя
+    phone = str(cand[4]) if cand and len(cand) > 4 and cand[4] else ""
+    btn_phone = f"📞 {phone}" if phone else "📞 Контакт соискателя"
+    builder.button(text=btn_phone, callback_data=f"cand_call_{ticket_id}")
 
-    # 7. Переключатель ЧС
+    # 6. Удаление и переключатель ЧС
+    builder.button(text="🗑 Удалить", callback_data=f"del_ask_{ticket_id}")
     if is_cand_blocked:
         builder.button(text="✅ Снять ЧС", callback_data=f"unblock_cand_{ticket_id}")
     else:
         builder.button(text="⛔ В ЧС", callback_data=f"block_cand_{ticket_id}")
 
-    # 8. Навигация к списку анкет (без дублирования и лишней кнопки Панель HR)
+    # 7. Навигация к списку анкет
     builder.button(text="⬅️ К списку анкет", callback_data="admin_list_all")
 
     if status == "Архив":
-        builder.adjust(1, 2, 2, 1, 2, 1, 2, 1, 1)
+        builder.adjust(1, 2, 2, 1, 2, 2, 1, 2, 1)
     else:
-        builder.adjust(1, 2, 2, 1, 2, 2, 1, 1)
+        builder.adjust(1, 2, 2, 1, 2, 2, 1, 2, 1)
+    return builder.as_markup()
+
+def make_depot_selection_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
+    """Выбор филиала депо для проведения собеседования."""
+    builder = InlineKeyboardBuilder()
+    from texts import DEPOT_BRANCHES
+    for code, info in DEPOT_BRANCHES.items():
+        builder.button(text=f"🏢 {info['short_name']}", callback_data=f"int_depot_{ticket_id}_{code}")
+    builder.button(text="⬅️ Назад к анкете", callback_data=f"view_{ticket_id}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+def make_interview_slots_keyboard(ticket_id: int, depot_code: str, slots: List[str]) -> types.InlineKeyboardMarkup:
+    """Выбор слота времени для собеседования в выбранном филиале."""
+    builder = InlineKeyboardBuilder()
+    for slot in slots:
+        builder.button(text=f"🕒 {slot}", callback_data=f"int_slot_{ticket_id}_{depot_code}_{slot}")
+    builder.button(text="✍️ Указать другое время", callback_data=f"invite_custom_{ticket_id}")
+    builder.button(text="⬅️ Назад к филиалам", callback_data=f"schedule_interview_{ticket_id}")
+    builder.adjust(2, 2, 1, 1)
+    return builder.as_markup()
+
+def make_interview_candidate_response_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
+    """Инлайн-кнопки подтверждения явки на собеседование для соискателя."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Буду точно", callback_data=f"cand_int_confirm_{ticket_id}")
+    builder.button(text="🔄 Прошу перенести", callback_data=f"cand_int_resched_{ticket_id}")
+    builder.adjust(1)
     return builder.as_markup()
 
 def make_cand_reply_keyboard(ticket_id: int = 0) -> types.InlineKeyboardMarkup:
@@ -121,7 +154,6 @@ def make_cand_reply_keyboard(ticket_id: int = 0) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="💬 Ответить кадровику", callback_data=f"cand_reply_hr_{ticket_id}")
     return builder.as_markup()
-
 
 def make_inquiry_admin_keyboard(inquiry_id: int) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -152,22 +184,46 @@ def make_inquiry_admin_keyboard(inquiry_id: int) -> types.InlineKeyboardMarkup:
 
 def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    is_super = bool(user_id and user_id == super_id)
+    
+    # 1 ряд — фильтры заявок
     builder.button(text="📑 Все резюме", callback_data="admin_list_all")
     builder.button(text="📥 Новые", callback_data="admin_list_new")
+    
+    # 2 ряд — статусы
     builder.button(text="🟡 В работе", callback_data="admin_list_in_progress")
     builder.button(text="📦 Архив", callback_data="admin_list_archive")
+    
+    # 3 ряд — экспорт и обновление
     builder.button(text="📊 Скачать Excel (/export)", callback_data="hr_export_excel")
     builder.button(text="🔄 Обновить", callback_data="admin_stats")
-    builder.button(text="🎯 Вакансии и набор (Вкл/Выкл)", callback_data="tech_vacancies_menu")
-
+    
+    # 4 ряд — вакансии и таймаут
+    builder.button(text="🎯 Вакансии и набор  пока не работают как надо пытюсь починить", callback_data="tech_vacancies_menu")
     cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
     cd_label = f"{cur_cd // 60} мин" if cur_cd > 0 else "0 (выкл)"
-    builder.button(text=f"⏱ Таймаут вопросов: [{cd_label}]", callback_data="hr_toggle_cooldown")
+    builder.button(text=f"⏱ Таймаут: [{cd_label}]", callback_data="hr_toggle_cooldown")
 
+    # 5 ряд — Веб-панель управления и Mini App
+    web_url = CONFIG.get("WEB_APP_URL", "")
+    if web_url and web_url.startswith("https://"):
+        builder.button(text="🌐 Веб-панель (Mini App)", web_app=types.WebAppInfo(url=web_url))
+    else:
+        builder.button(text="🌐 Веб-панель управления", callback_data="hr_web_panel_info")
+
+    # 6 ряд — персональные уведомления в ЛС (видят все)
     is_enabled = db.get_admin_notify_status(user_id)
     toggle_text = "🔔 Уведы в ЛС: [ВКЛ]" if is_enabled else "🔕 Уведы в ЛС: [ВЫКЛ]"
     builder.button(text=toggle_text, callback_data="toggle_dm_notify")
-    builder.adjust(3, 2, 2, 1)
+
+    # Кнопку массового отключения видит ТОЛЬКО Главный администратор:
+    if is_super:
+        builder.button(text="🔕 Выкл всем HR", callback_data="hr_mute_all_dm")
+        builder.adjust(2, 2, 2, 2, 1, 2)
+    else:
+        builder.adjust(2, 2, 2, 2, 1, 1)
+
     return builder.as_markup()
 
 def make_admins_menu_keyboard(all_admins: list) -> types.InlineKeyboardMarkup:
@@ -184,19 +240,21 @@ def make_admins_menu_keyboard(all_admins: list) -> types.InlineKeyboardMarkup:
     builder.adjust(1, 1, 1, 1)
     return builder.as_markup()
 
-def make_remove_admin_keyboard(all_admins: list) -> types.InlineKeyboardMarkup:
+def make_remove_admin_keyboard(admins_with_names: list) -> types.InlineKeyboardMarkup:
+    """Генерирует кнопки отзыва прав с отображением ника и имени."""
     builder = InlineKeyboardBuilder()
     super_id = CONFIG.get("SUPER_ADMIN_ID")
-    for adm_id, role in all_admins:
+    for adm_id, role, name_label in admins_with_names:
         if adm_id == super_id:
             continue
-        role_label = "Кадры" if role == "hr" else "Инженер"
-        builder.button(text=f"❌ {adm_id} ({role_label})", callback_data=f"adm_del_id_{adm_id}")
+        role_label = "HR" if role == "hr" else "Tech"
+        btn_text = f"❌ {name_label} ({role_label})"
+        if len(btn_text) > 35:
+            btn_text = btn_text[:32] + "..."
+        builder.button(text=btn_text, callback_data=f"adm_del_id_{adm_id}")
     builder.button(text="⬅️ Назад в меню", callback_data="adm_ui_refresh")
     builder.adjust(1)
     return builder.as_markup()
-
-
 
 def make_faq_keyboard() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -211,9 +269,20 @@ def make_faq_keyboard() -> types.InlineKeyboardMarkup:
 
 def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    
+    # 1. Режим проверок и ограничений (152-ФЗ, лимиты)
     env = CONFIG.get("ENVIRONMENT", "TEST")
     toggle_env_text = "🛡 Включить PROD (152-ФЗ, лимиты)" if env == "TEST" else "🧪 Включить TEST (без ограничений)"
     builder.button(text=toggle_env_text, callback_data="tech_toggle_env")
+
+    # 2. Отдельный переключатель физической базы данных
+    cur_db = db.get_setting("active_db_target", "resumes.db")
+    if cur_db == "resumes_test.db":
+        db_btn_text = "🧪 База: [ТЕСТОВАЯ resumes_test.db] ⇄"
+    else:
+        db_btn_text = "📁 База: [БОЕВАЯ resumes.db] ⇄"
+    builder.button(text=db_btn_text, callback_data="tech_toggle_db")
+
     builder.button(text="💾 Управление бэкапами (/backups)", callback_data="tech_manage_backups")
     maint_text = "🟡 Выключить ТО" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Включить ТО (пауза)"
     builder.button(text=maint_text, callback_data="tech_toggle_maint")
@@ -222,8 +291,6 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder.button(text="🚀 Панель GitHub и деплой (/git)", callback_data="tech_git_menu")
     builder.adjust(1)
     return builder.as_markup()
-
-make_tech_git_keyboard = None
 
 def make_git_menu_keyboard(current_branch: str = "main") -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -237,6 +304,8 @@ def make_git_menu_keyboard(current_branch: str = "main") -> types.InlineKeyboard
     builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
     builder.adjust(1, 1, 2, 2, 1)
     return builder.as_markup()
+
+make_tech_git_keyboard = make_git_menu_keyboard
 
 def make_tests_menu_keyboard() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -257,17 +326,15 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
     maint_status = "🟡 Включен (прием на паузе)" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Работа в штатном режиме"
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
     check_time = datetime.now().strftime("%H:%M:%S")
-    try:
-        from common import get_process_memory_mb
-        ram_mb = get_process_memory_mb()
-    except Exception:
-        ram_mb = 0.0
-    ram_note = "🟢 Норма" if ram_mb < 250 else ("🟡 Повышено" if ram_mb < 500 else "🔴 Высокое")
+
+    cur_db_name = db.get_setting("active_db_target", "resumes.db")
+    active_db_label = "🧪 Тестовая (resumes_test.db)" if cur_db_name == "resumes_test.db" else "📁 Боевая (resumes.db)"
 
     text = (
         "🛠 <b>ТЕХНИЧЕСКИЙ МОНИТОРИНГ И ОБСЛУЖИВАНИЕ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"🛡 <b>Режим работы:</b> <b>{env_mode}</b> " + ("(Законный режим: проверка анкет, 3 мес. отказ, антифлуд)\n" if env_mode == "PROD" else "(Режим отладки: все ограничения сняты)\n") +
+        f"💾 <b>Целевая БД:</b> <b>{active_db_label}</b>\n"
         f"⏱ <b>Аптайм:</b> <code>{get_uptime()}</code>\n"
         f"🔄 <b>Проверено в:</b> <code>{check_time}</code>\n"
         f"⚙️ <b>Режим обслуживания:</b> <b>{maint_status}</b>\n"
@@ -281,9 +348,6 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
         "━━━━━━━━━━━━━━━━━━━━━"
     )
     return text, make_tech_menu_keyboard(user_id)
-
-make_tech_git_keyboard = make_git_menu_keyboard
-
 
 # ==============================================================================
 # КЛАВИАТУРЫ 16 ШАГОВ АНКЕТЫ СОИСКАТЕЛЯ И 152-ФЗ

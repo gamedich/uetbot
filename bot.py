@@ -125,6 +125,7 @@ async def main() -> None:
 
     # 6. Оповещение о старте ИСКЛЮЧИТЕЛЬНО Главному администратору в ЛС
     start_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+    web_panel_link = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     start_msg = (
         f"🟢 <b>Сервис МУП «Ульяновскэлектротранс» запущен (v{CONFIG.get('BOT_VERSION', '1.7.0')})</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
@@ -132,7 +133,7 @@ async def main() -> None:
         f"⚙️ <b>Режим:</b> <code>{env_mode}</code>\n"
         f"⏱ <b>Время старта:</b> <code>{start_time}</code>\n"
         f"📡 <b>Шлюзы:</b> Telegram (OK) | VK (активен) | MAX (эмуляция)\n"
-        f"🌐 <b>Веб-панель:</b> http://{CONFIG.get('WEB_APP_HOST', '0.0.0.0')}:{CONFIG.get('WEB_APP_PORT', 8080)}\n"
+        f"🌐 <b>Веб-панель (HTTPS):</b> <a href='{web_panel_link}'>{web_panel_link}</a>\n"
         f"💾 <b>Автобэкап БД:</b> раз в 24ч (хранение 7 копий)\n"
         f"🛡 <b>152-ФЗ & Приказ РКН № 179:</b> Активен\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"

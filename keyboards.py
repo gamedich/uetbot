@@ -208,7 +208,7 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     builder.button(text=f"⏱ Таймаут: [{cd_label}]", callback_data="hr_toggle_cooldown")
 
     # 5 ряд — Веб-панель управления и Mini App
-    web_url = CONFIG.get("WEB_APP_URL", "")
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     if web_url and web_url.startswith("https://"):
         builder.button(text="🌐 Веб-панель (Mini App)", web_app=types.WebAppInfo(url=web_url))
     else:

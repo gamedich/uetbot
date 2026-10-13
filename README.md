@@ -5,8 +5,8 @@
   <img src="https://img.shields.io/badge/aiogram-3.x-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" />
   <img src="https://img.shields.io/badge/SQLite-WAL-003B57?style=for-the-badge&logo=sqlite&logoColor=white" />
   <img src="https://img.shields.io/badge/152--ФЗ-РКН_№179-2ea44f?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Web_Panel-Port_8080-8A2BE2?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Tests-37%2F37_Passed-brightgreen?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Web_Panel-HTTPS-8A2BE2?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Tests-39%2F39_Passed-brightgreen?style=for-the-badge" />
 </p>
 
 Автоматизированная отказоустойчивая система найма соискателей, скоринга безопасности и кадрового мониторинга для **МУП «Ульяновскэлектротранс»** (городской наземный электрический транспорт: трамваи, троллейбусы, депо).
@@ -130,13 +130,13 @@
 
 Бот включает встроенный легковесный веб-сервер на `aiohttp.web`, не требующий сторонних тяжёлых фреймворков:
 
-* **Адрес веб-панели:** `http://<SERVER_IP>:8080/`
+* **Адрес веб-панели:** `https://213.226.124.135.sslip.io/` (защищённый HTTPS / Nginx reverse proxy на `127.0.0.1:8080`)
 * **API Endpoints:**
   - `GET /api/stats` — метрики воронки (всего, новые, в работе, наняты, отклонены, обращения).
   - `GET /api/candidates` — реестр последних кандидатов с фильтрацией.
   - `GET /api/health` — мониторинг работоспособности сервиса.
 * **Telegram Mini App (TMA):** 
-  При наличии SSL-домена (настраивается параметром `WEB_APP_URL` в `.env`) панель открывается как полноценный WebApp прямо внутри Telegram.
+  Открывается как полноценный WebApp прямо внутри Telegram (параметр `WEB_APP_URL` в `.env`).
 
 ---
 

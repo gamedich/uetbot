@@ -472,6 +472,24 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
         self.assertGreaterEqual(len(logs), 1)
         self.assertEqual(logs[0][1], 999)
 
+    def test_manual_candidate_creation(self):
+        ticket_id = self.db.add_candidate(
+            platform="office",
+            user_id="office_test_123",
+            full_name="Очный Кандидат Иванович",
+            phone="+79270001122",
+            vacancy="Водитель трамвая",
+            experience="Без опыта",
+            is_test=True,
+            target_db="test",
+            source="Очный приём (Депо)"
+        )
+        self.assertGreaterEqual(ticket_id, 900000)
+        cand = self.db.get_candidate(ticket_id)
+        self.assertIsNotNone(cand)
+        self.assertEqual(cand[3], "Очный Кандидат Иванович")
+        self.assertEqual(cand[1], "office")
+
 
 class TestComplianceAndInterviewServices(unittest.TestCase):
     """Тесты комплаенс-скоринга (ст. 328.1 ТК РФ) и сервиса организации собеседований."""

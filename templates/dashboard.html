@@ -199,19 +199,38 @@
         /* TOOLBAR */
         .toolbar {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
+            flex-direction: column;
+            gap: 10px;
         }
 
-        .filter-group {
+        .toolbar-search-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .toolbar-search-row .search-input {
+            flex: 1;
+        }
+
+        .toolbar-filter-grid {
             display: flex;
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
             width: 100%;
-            max-width: 950px;
+        }
+
+        .toolbar-filter-grid select {
+            flex: 1 1 160px;
+            min-width: 140px;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
         }
 
         .input-box, .select-box {
@@ -480,19 +499,25 @@
             }
             .header-top {
                 flex-direction: column;
-                align-items: flex-start;
+                align-items: stretch;
                 gap: 8px;
             }
             .brand {
                 gap: 8px;
             }
             .brand-logo { font-size: 24px; }
-            .brand-title { font-size: 16px; }
+            .brand-title { font-size: 15px; }
             .brand-subtitle { font-size: 11px; }
             .header-controls {
                 width: 100%;
                 gap: 6px;
+                display: flex;
                 flex-wrap: wrap;
+                align-items: center;
+            }
+            .header-controls #btnLogout,
+            .header-controls #btnAuthOpen {
+                margin-left: auto;
             }
             .badge-btn, .user-tag {
                 font-size: 11px;
@@ -513,29 +538,77 @@
                 white-space: nowrap;
             }
             .main-card {
-                padding: 14px;
+                padding: 12px;
                 border-radius: var(--radius-lg);
             }
             .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
+                display: flex !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                scrollbar-width: none !important;
+                gap: 8px !important;
+                padding-bottom: 6px !important;
+                margin-bottom: 2px !important;
+            }
+            .stats-grid::-webkit-scrollbar {
+                display: none;
             }
             .stat-card {
-                padding: 10px;
+                flex: 0 0 auto !important;
+                min-width: 105px !important;
+                padding: 8px 10px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+                border-radius: var(--radius-md) !important;
+            }
+            .stat-label {
+                font-size: 10px !important;
+                white-space: nowrap !important;
+                margin-bottom: 2px;
             }
             .stat-value {
-                font-size: 18px;
+                font-size: 18px !important;
+                font-weight: 700;
             }
             .toolbar {
+                display: flex;
                 flex-direction: column;
                 align-items: stretch;
                 gap: 8px;
             }
-            .filter-group {
-                flex-direction: column;
-                align-items: stretch;
+            .toolbar-search-row {
+                display: flex;
+                gap: 8px;
                 width: 100%;
+            }
+            .toolbar-search-row .search-input {
+                flex: 1;
+            }
+            .toolbar-filter-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
                 gap: 6px;
+                width: 100%;
+            }
+            .toolbar-filter-grid select {
+                width: 100% !important;
+                min-width: 0 !important;
+                flex: none;
+            }
+            .toolbar-actions {
+                grid-column: 2 / 3;
+                display: flex;
+                gap: 6px;
+                margin-left: 0;
+            }
+            .toolbar-actions .btn {
+                flex: 1;
+                padding: 6px 4px;
+                font-size: 12px;
+                justify-content: center;
             }
             .search-input, .select-box, .input-box {
                 width: 100% !important;
@@ -724,8 +797,13 @@
 
             <!-- TOOLBAR -->
             <div class="toolbar">
-                <div class="filter-group">
+                <div class="toolbar-search-row">
                     <input type="text" id="searchInput" class="input-box search-input" placeholder="🔍 Поиск по ФИО, телефону, вакансии или #ID...">
+                    <button class="btn btn-primary" onclick="openNewCandidateModal()" title="Очный приём в депо / новая анкета" style="white-space: nowrap; font-weight: 700; background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">
+                        ➕ Анкета
+                    </button>
+                </div>
+                <div class="toolbar-filter-grid">
                     <select id="dbScopeSelect" class="select-box" onchange="loadCandidates(1)">
                         <option value="both">🌐 Все базы (Боевая + Тест)</option>
                         <option value="prod">📁 Боевая (resumes.db)</option>
@@ -744,10 +822,10 @@
                         <option value="desc">Сначала новые (#)</option>
                         <option value="asc">Сначала старые (#)</option>
                     </select>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <a href="/api/system/export_csv" class="btn btn-secondary" title="Экспорт в Excel">📥 Экспорт Excel</a>
-                    <button class="btn" onclick="loadCandidates(1)">🔄 Обновить</button>
+                    <div class="toolbar-actions">
+                        <a href="/api/system/export_csv" class="btn btn-secondary" title="Экспорт в Excel">📥 CSV</a>
+                        <button class="btn" onclick="loadCandidates(1)" title="Обновить список">🔄</button>
+                    </div>
                 </div>
             </div>
 
@@ -1053,6 +1131,125 @@
                 <button id="btnModalBlacklist" class="btn btn-warning" onclick="toggleBlacklistCandidate()">⛔ В черный список (ЧС)</button>
                 <button class="btn btn-danger" onclick="deleteCurrentCandidate()">🗑 Удалить анкету</button>
             </div>
+        </div>
+    </div>
+
+    <!-- NEW CANDIDATE MODAL (ОЧНЫЙ ПРИЁМ В ДЕПО / ТЕСТОВАЯ АНКЕТА) -->
+    <div id="modalNewCandidate" class="modal-overlay" onclick="onNewCandidateOverlayClick(event)">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" style="font-size: 18px; display: flex; align-items: center; gap: 8px;">
+                        📝 Очный приём соискателя в депо
+                    </h3>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                        Заполнение анкеты при личном обращении кандидата в отдел кадров / депо
+                    </div>
+                </div>
+                <button class="close-btn" onclick="closeNewCandidateModal()">×</button>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 6px;">
+                <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="fillTestCandidateData()">
+                    ✨ Заполнить тестовыми данными
+                </button>
+            </div>
+
+            <form id="newCandidateForm" onsubmit="submitNewCandidate(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">ФИО соискателя <span style="color: #f87171;">*</span></label>
+                    <input type="text" id="newCandFio" class="input-box" placeholder="Иванов Иван Иванович" required style="width: 100%;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Телефон <span style="color: #f87171;">*</span></label>
+                        <input type="tel" id="newCandPhone" class="input-box" placeholder="+7 900 123-45-67" required style="width: 100%;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Дата рождения</label>
+                        <input type="text" id="newCandBirth" class="input-box" placeholder="15.05.1992" style="width: 100%;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Вакансия <span style="color: #f87171;">*</span></label>
+                        <select id="newCandVacancy" class="select-box" style="width: 100%;">
+                            <option value="Водитель трамвая">🚋 Водитель трамвая</option>
+                            <option value="Водитель троллейбуса">🚎 Водитель троллейбуса</option>
+                            <option value="Кондуктор">🎫 Кондуктор</option>
+                            <option value="Слесарь-ремонтник">🔧 Слесарь по ремонту ПС</option>
+                            <option value="Электромонтёр">⚡ Электромонтёр</option>
+                            <option value="Монтёр пути">🛤 Монтёр пути</option>
+                            <option value="Маляр / Кузовщик">🎨 Маляр / Кузовщик</option>
+                            <option value="Рабочий депо">🧹 Рабочий депо</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Подразделение / Депо</label>
+                        <select id="newCandDepot" class="select-box" style="width: 100%;">
+                            <option value="Северное трамвайное депо">Северное депо (Радищева)</option>
+                            <option value="Засвияжское трамвайное депо">Засвияжское депо (Московское ш.)</option>
+                            <option value="Заволжский троллейбусный парк">Заволжский парк (Брестская)</option>
+                            <option value="Центральное управление">Центральное управление</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Опыт работы</label>
+                        <select id="newCandExp" class="select-box" style="width: 100%;">
+                            <option value="Без опыта (требуется обучение)">Без опыта (требуется обучение)</option>
+                            <option value="Есть опыт по специальности">Есть опыт по специальности</option>
+                            <option value="Водительский стаж от 1 года">Водительский стаж от 1 года</option>
+                            <option value="Водительский стаж от 3 лет">Водительский стаж от 3 лет</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Водительские права</label>
+                        <select id="newCandLicense" class="select-box" style="width: 100%;">
+                            <option value="Нет прав">Нет прав</option>
+                            <option value="Категория B">Категория B</option>
+                            <option value="Категории B, C">Категории B, C</option>
+                            <option value="Категория D (автобус)">Категория D (автобус)</option>
+                            <option value="Категория Tm (трамвай)">Категория Tm (трамвай)</option>
+                            <option value="Категория Tb (троллейбус)">Категория Tb (троллейбус)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Образование</label>
+                        <select id="newCandEdu" class="select-box" style="width: 100%;">
+                            <option value="Среднее общее">Среднее общее (11 кл.)</option>
+                            <option value="Среднее профессиональное">Среднее проф. (колледж)</option>
+                            <option value="Высшее образование">Высшее образование</option>
+                            <option value="Основное общее">Основное общее (9 кл.)</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Целевая база</label>
+                        <select id="newCandTargetDb" class="select-box" style="width: 100%;">
+                            <option value="auto">Авто (текущая активная)</option>
+                            <option value="test">🧪 Тестовая (resumes_test.db)</option>
+                            <option value="prod">📁 Боевая (resumes.db)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Заметка кадровика / комментарий</label>
+                    <textarea id="newCandNote" class="note-textarea" rows="2" placeholder="Например: обратился лично в отдел кадров, медосмотр..."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeNewCandidateModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="btnSubmitNewCand" style="font-weight: 700;">💾 Сохранить анкету</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1429,6 +1626,104 @@
 
         function onModalOverlayClick(e) {
             if (e.target.id === 'candidateModal') closeModal();
+        }
+
+        // NEW CANDIDATE MODAL (ОЧНЫЙ ПРИЁМ / ТЕСТОВАЯ АНКЕТА)
+        function openNewCandidateModal() {
+            document.getElementById('modalNewCandidate').classList.add('active');
+            const scope = document.getElementById('dbScopeSelect').value;
+            if (scope === 'test') {
+                document.getElementById('newCandTargetDb').value = 'test';
+            } else if (scope === 'prod') {
+                document.getElementById('newCandTargetDb').value = 'prod';
+            } else {
+                document.getElementById('newCandTargetDb').value = 'auto';
+            }
+        }
+
+        function closeNewCandidateModal() {
+            document.getElementById('modalNewCandidate').classList.remove('active');
+        }
+
+        function onNewCandidateOverlayClick(e) {
+            if (e.target.id === 'modalNewCandidate') closeNewCandidateModal();
+        }
+
+        function fillTestCandidateData() {
+            const testNames = [
+                "Петров Дмитрий Александрович",
+                "Иванов Сергей Михайлович",
+                "Кузнецова Анна Павловна",
+                "Смирнов Алексей Викторович",
+                "Васильев Игорь Олегович",
+                "Морозов Роман Денисович"
+            ];
+            const testPhones = [
+                "+7 902 123-45-67",
+                "+7 927 800-11-22",
+                "+7 937 456-78-90",
+                "+7 908 475-33-44",
+                "+7 917 654-32-10"
+            ];
+            const rand = Math.floor(Math.random() * testNames.length);
+            document.getElementById('newCandFio').value = testNames[rand];
+            document.getElementById('newCandPhone').value = testPhones[rand % testPhones.length];
+            document.getElementById('newCandBirth').value = "12.08.1994";
+            document.getElementById('newCandVacancy').value = "Водитель трамвая";
+            document.getElementById('newCandDepot').value = "Северное трамвайное депо";
+            document.getElementById('newCandExp').value = "Без опыта (требуется обучение)";
+            document.getElementById('newCandLicense').value = "Категория B";
+            document.getElementById('newCandEdu').value = "Среднее профессиональное";
+            document.getElementById('newCandTargetDb').value = "test";
+            document.getElementById('newCandNote').value = "Тестовая анкета: очный приём в депо. Назначен медосмотр.";
+            showToast("✨ Заполнено тестовыми данными!");
+        }
+
+        async function submitNewCandidate(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitNewCand');
+            btn.disabled = true;
+            btn.innerText = "Сохранение...";
+
+            const payload = {
+                full_name: document.getElementById('newCandFio').value.trim(),
+                phone: document.getElementById('newCandPhone').value.trim(),
+                birth_date: document.getElementById('newCandBirth').value.trim(),
+                vacancy: document.getElementById('newCandVacancy').value,
+                depot: document.getElementById('newCandDepot').value,
+                experience: document.getElementById('newCandExp').value,
+                driver_license: document.getElementById('newCandLicense').value,
+                education: document.getElementById('newCandEdu').value,
+                target_db: document.getElementById('newCandTargetDb').value,
+                admin_note: document.getElementById('newCandNote').value.trim(),
+                shift_work: "Да",
+                dormitory: "Нет",
+                is_test: (document.getElementById('newCandTargetDb').value === 'test')
+            };
+
+            try {
+                const res = await fetch('/api/candidate/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok && data.ok) {
+                    showToast(`✅ Анкета #${data.ticket_id} (${data.full_name}) сохранена!`);
+                    closeNewCandidateModal();
+                    document.getElementById('newCandidateForm').reset();
+                    loadCandidates(1);
+                    loadStats();
+                } else {
+                    showToast(`Ошибка: ${data.error || 'Не удалось сохранить анкету'}`);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Сетевая ошибка при создании анкеты");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "💾 Сохранить анкету";
+            }
         }
 
         async function saveCandidateNote() {

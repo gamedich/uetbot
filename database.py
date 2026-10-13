@@ -441,11 +441,16 @@ class ResumeDB:
         birth_date: str = "", city: str = "", driver_license: str = "", education: str = "",
         relocation: str = "", dormitory: str = "", shift_work: str = "",
         medical_restrictions: str = "", criminal_record: str = "", source: str = "", extra_info: str = "",
-        raw_data_json: str = "{}", referrer_tab: str = ""
+        raw_data_json: str = "{}", referrer_tab: str = "", target_db: str = ""
     ) -> int:
         # Автоматически проверяем переключатель активной базы
         target_setting = self.get_setting("active_db_target", "resumes.db")
-        use_test = is_test or (target_setting == "resumes_test.db")
+        if target_db == "prod":
+            use_test = False
+        elif target_db == "test":
+            use_test = True
+        else:
+            use_test = is_test or (target_setting == "resumes_test.db")
 
         with self._get_connection(is_test=use_test) as conn:
             cursor = conn.cursor()

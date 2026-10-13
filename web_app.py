@@ -103,6 +103,7 @@ class WebPanel:
         self.app.router.add_post("/api/candidate/{ticket_id}/delete", self.handle_api_candidate_delete)
         self.app.router.add_post("/api/candidate/{ticket_id}/block", self.handle_api_candidate_block)
         self.app.router.add_post("/api/candidate/{ticket_id}/unblock", self.handle_api_candidate_unblock)
+        self.app.router.add_post("/api/candidate/create", self.handle_api_candidate_create)
 
         # Inquiries API
         self.app.router.add_get("/api/inquiries", self.handle_api_inquiries)
@@ -519,6 +520,89 @@ class WebPanel:
         self.db.update_status(ticket_id, "Новая")
         logger.info("Веб-панель: пользователь %s разблокирован", user_id)
         return web.json_response({"ok": True, "ticket_id": ticket_id, "user_id": user_id, "blocked": False})
+
+    async def handle_api_candidate_create(self, request: web.Request) -> web.Response:
+        """Ручное добавление анкеты соискателя (очный приём в отделе кадров / депо или тест)."""
+        try:
+            data = await request.json()
+            full_name = (data.get("full_name") or "").strip()
+            phone = (data.get("phone") or "").strip()
+            vacancy = (data.get("vacancy") or "Водитель трамвая").strip()
+            depot = (data.get("depot") or "").strip()
+            experience = (data.get("experience") or "Без опыта").strip()
+            driver_license = (data.get("driver_license") or "Нет прав").strip()
+            birth_date = (data.get("birth_date") or "").strip()
+            city = (data.get("city") or "Ульяновск").strip()
+            education = (data.get("education") or "Среднее").strip()
+            shift_work = (data.get("shift_work") or "Да").strip()
+            dormitory = (data.get("dormitory") or "Нет").strip()
+            admin_note = (data.get("admin_note") or "").strip()
+            target_db = (data.get("target_db") or "").strip().lower()  # "prod" | "test" | "auto"
+            is_test_flag = bool(data.get("is_test", False)) or (target_db == "test")
+
+            if not full_name:
+                return web.json_response({"error": "ФИО соискателя обязательно для заполнения"}, status=400)
+            if not phone:
+                return web.json_response({"error": "Телефон соискателя обязателен для заполнения"}, status=400)
+
+            now_ts = int(time.time())
+            user_id = f"office_{now_ts}"
+            consent_ts = datetime.now().strftime("%d.%m.%Y %H:%M")
+
+            actual_use_test = is_test_flag
+            if target_db == "prod":
+                actual_use_test = False
+            elif target_db == "test":
+                actual_use_test = True
+
+            ticket_id = self.db.add_candidate(
+                platform="office",
+                user_id=user_id,
+                full_name=full_name,
+                phone=phone,
+                vacancy=vacancy,
+                experience=experience,
+                is_test=actual_use_test,
+                consent_timestamp=consent_ts,
+                birth_date=birth_date,
+                city=city,
+                driver_license=driver_license,
+                education=education,
+                dormitory=dormitory,
+                shift_work=shift_work,
+                source="Очный приём (Депо)",
+                extra_info=f"Депо: {depot}" if depot else "",
+                target_db="test" if actual_use_test else "prod",
+            )
+
+            # Если указано депо, фиксируем его и переводим статус в 'В работе'
+            if depot:
+                with self.db.connection(is_test=actual_use_test) as conn:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "UPDATE candidates SET interview_depot = ?, status = 'В работе' WHERE ticket_id = ?",
+                        (depot, ticket_id),
+                    )
+                    conn.commit()
+
+            # Если кадровик указал примечание
+            if admin_note:
+                self.db.set_candidate_note(ticket_id, admin_note, is_test=actual_use_test)
+
+            logger.info("Веб-панель: создана очная анкета #%s (база: %s): %s, %s",
+                        ticket_id, "TEST" if actual_use_test else "PROD", full_name, vacancy)
+
+            return web.json_response({
+                "ok": True,
+                "ticket_id": ticket_id,
+                "is_test": actual_use_test,
+                "full_name": full_name,
+                "vacancy": vacancy,
+                "message": f"Анкета #{ticket_id} успешно зарегистрирована в системе!"
+            })
+        except Exception as e:
+            logger.error("Ошибка создания анкеты через веб: %s", e)
+            return web.json_response({"error": str(e)}, status=500)
 
     async def handle_api_inquiries(self, request: web.Request) -> web.Response:
         inquiries = []

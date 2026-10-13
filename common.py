@@ -163,7 +163,8 @@ class PersistentSessions(dict):
 # ИНИЦИАЛИЗАЦИЯ ЯДРА, БОТА И ДИСПЕТЧЕРА
 # ==============================================================================
 
-db = ResumeDB()
+_db_path = CONFIG.get("DB_PATH", "data/resumes.db")
+db = ResumeDB(db_path=_db_path)
 bot = Bot(
     token=CONFIG.get("TG_BOT_TOKEN", ""),
     default=DefaultBotProperties(parse_mode="HTML"),
@@ -622,6 +623,73 @@ async def safe_send(
 # МАРШРУТИЗАЦИЯ АНКЕТ И ОБРАЩЕНИЙ В КАДРОВУЮ СЛУЖБУ
 # ==============================================================================
 
+# ==============================================================================
+# ОБЩАЯ ЛОГИКА МАРШРУТИЗАЦИИ ТИКЕТОВ В КАДРОВУЮ СЛУЖБУ
+# ==============================================================================
+
+async def _route_ticket_to_hr(
+    bot_instance: Bot,
+    card_text: str,
+    reply_markup: Optional[types.InlineKeyboardMarkup],
+    *,
+    include_pdn: bool = True,
+) -> None:
+    """
+    Общая приватная функция доставки тикета/обращения в кадровую службу.
+    include_pdn=True  — для анкет (персональные данные, защита 152-ФЗ).
+    include_pdn=False — для обращений (/ask), полный доступ для всех кадровиков.
+    """
+    hr_group = CONFIG.get("HR_GROUP_ID", 0)
+    super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
+    delivered = False
+
+    # 1. Отправка в кадровый чат
+    if hr_group:
+        ok = await safe_send(bot_instance, hr_group, card_text, reply_markup=reply_markup)
+        if ok:
+            delivered = True
+            logger.info("Тикет успешно доставлен в кадровый чат %s", hr_group)
+        else:
+            logger.warning("Сбой доставки тикета в кадровый чат %s", hr_group)
+    else:
+        logger.warning("Кадровый чат HR_GROUP_ID не привязан! Маршрутизация в ЛС сотрудникам.")
+
+    # 2. Составляем список получателей (кадровики с DM-уведомлениями)
+    target_users: set[int] = {
+        adm for adm in db.get_hr_admins_with_dm_enabled() if adm > 0
+    }
+
+    env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
+    is_prod = env_mode in ("PROD", "PRODUCTION")
+
+    if not is_prod:
+        if super_id and super_id > 0:
+            if not hr_group or not delivered or db.get_admin_notify_status(super_id):
+                target_users.add(super_id)
+    else:
+        # В PROD владелец получает копию только при аварии доставки
+        if not delivered and super_id and super_id > 0 and not any(target_users):
+            target_users.add(super_id)
+
+    # 3. Для анкет с ПДн: изолируем технических админов (ст. 6 152-ФЗ)
+    if include_pdn:
+        for adm_id, role in db.get_all_admins():
+            if role == "tech" and adm_id in target_users and adm_id != super_id:
+                target_users.discard(adm_id)
+
+    # 4. Разослаем в ЛС
+    for uid in target_users:
+        if uid != hr_group:
+            sent_ok = await safe_send(bot_instance, uid, card_text, reply_markup=reply_markup)
+            if sent_ok:
+                delivered = True
+                if include_pdn:
+                    logger.info("Анкета доставлена в ЛС кадровику %s", uid)
+
+    if not delivered:
+        logger.critical("КРИТИЧЕСКИЙ СБОЙ: Тикет не доставлен! Проверьте SUPER_ADMIN_ID и HR_GROUP_ID.")
+
+
 async def route_new_candidate_ticket(
     bot_instance: Bot,
     card_text: str,
@@ -633,53 +701,7 @@ async def route_new_candidate_ticket(
     2. Дублирование уполномоченным кадровикам с включенными уведомлениями в ЛС.
     3. В режиме PROD разработчик изолирован от ПДн соискателей (ст. 6 152-ФЗ).
     """
-    hr_group = CONFIG.get("HR_GROUP_ID", 0)
-    super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
-    delivered = False
-
-    # 1. Отправка в кадровый суперчат
-    if hr_group and hr_group != 0:
-        ok = await safe_send(bot_instance, hr_group, card_text, reply_markup=reply_markup)
-        if ok:
-            delivered = True
-            logger.info("Анкета успешно доставлена в кадровый чат %s", hr_group)
-        else:
-            logger.warning("Сбой доставки анкеты в кадровый чат %s", hr_group)
-    else:
-        logger.warning("Кадровый чат HR_GROUP_ID не привязан! Маршрутизация в ЛС сотрудникам.")
-
-    # 2. Определение списка сотрудников отдела кадров
-    target_users: set[int] = set()
-    for adm in db.get_hr_admins_with_dm_enabled():
-        if adm > 0:
-            target_users.add(adm)
-
-    env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
-    is_prod = env_mode in ("PROD", "PRODUCTION")
-
-    if not is_prod:
-        if super_id and super_id > 0:
-            if not hr_group or not delivered or db.get_admin_notify_status(super_id):
-                target_users.add(super_id)
-    else:
-        # В PROD владелец получает копию только при аварии доставки в группу
-        if not delivered and super_id and super_id > 0 and not any(target_users):
-            target_users.add(super_id)
-
-    # Исключаем системных инженеров из получения персональных данных соискателей
-    for adm_id, role in db.get_all_admins():
-        if role == "tech" and adm_id in target_users and adm_id != super_id:
-            target_users.remove(adm_id)
-
-    for uid in target_users:
-        if uid != hr_group:
-            sent_ok = await safe_send(bot_instance, uid, card_text, reply_markup=reply_markup)
-            if sent_ok:
-                delivered = True
-                logger.info("Анкета доставлена в ЛС кадровику %s", uid)
-
-    if not delivered:
-        logger.critical("КРИТИЧЕСКИЙ СБОЙ: Анкета не доставлена! Проверьте SUPER_ADMIN_ID и HR_GROUP_ID.")
+    await _route_ticket_to_hr(bot_instance, card_text, reply_markup, include_pdn=True)
 
 
 async def route_new_inquiry_ticket(
@@ -688,38 +710,7 @@ async def route_new_inquiry_ticket(
     reply_markup: Optional[types.InlineKeyboardMarkup],
 ) -> None:
     """Маршрутизация вопроса соискателя (/ask) в кадровую службу."""
-    hr_group = CONFIG.get("HR_GROUP_ID", 0)
-    super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
-    delivered = False
-
-    if hr_group and hr_group != 0:
-        ok = await safe_send(bot_instance, hr_group, card_text, reply_markup=reply_markup)
-        if ok:
-            delivered = True
-
-    target_users: set[int] = set()
-    for adm in db.get_hr_admins_with_dm_enabled():
-        if adm > 0:
-            target_users.add(adm)
-
-    env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
-    is_prod = env_mode in ("PROD", "PRODUCTION")
-
-    if not is_prod:
-        if super_id and super_id > 0:
-            if not hr_group or not delivered or db.get_admin_notify_status(super_id):
-                target_users.add(super_id)
-    else:
-        if not delivered and super_id and super_id > 0 and not any(target_users):
-            target_users.add(super_id)
-
-    for adm_id, role in db.get_all_admins():
-        if role == "tech" and adm_id in target_users and adm_id != super_id:
-            target_users.remove(adm_id)
-
-    for uid in target_users:
-        if uid != hr_group:
-            await safe_send(bot_instance, uid, card_text, reply_markup=reply_markup)
+    await _route_ticket_to_hr(bot_instance, card_text, reply_markup, include_pdn=False)
 
 
 # ==============================================================================

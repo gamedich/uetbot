@@ -39,6 +39,7 @@ class ResumeDB:
 
         self._init_and_migrate_db(is_test=False)
         self._init_and_migrate_db(is_test=True)
+
     def connection(self, is_test: bool = False) -> sqlite3.Connection:
         """Алиас для вызовов self.connection()"""
         return self._get_connection(is_test=is_test)
@@ -53,6 +54,7 @@ class ResumeDB:
         conn.execute("PRAGMA cache_size=-64000;")
         conn.execute("PRAGMA temp_store=MEMORY;")
         return conn
+
     def disable_all_hr_notifications(self) -> int:
         
         with self._get_connection() as conn:
@@ -129,18 +131,15 @@ class ResumeDB:
                 if col_name not in cand_cols:
                     cursor.execute(f"ALTER TABLE candidates ADD COLUMN {col_name} {col_def}")
 
-            # Если инициализируем тестовую базу — стартуем нумерацию с 900000
+            # Для тестовой базы стартуем нумерацию тикетов с 900000 (идемпотентно)
             if is_test:
-                cursor.execute("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('candidates', 900000)")
-                cursor.execute("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('inquiries', 900000)")
+                cursor.execute(
+                    "INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('candidates', 900000)"
+                )
+                cursor.execute(
+                    "INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('inquiries', 900000)"
+                )
                 conn.commit()
-            # Сдвиг номеров для тестовой базы на 900000+
-            if is_test:
-             cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'candidates'")
-             cursor.execute("INSERT INTO sqlite_sequence (name, seq) VALUES ('candidates', 900000)")
-             cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'inquiries'")
-             cursor.execute("INSERT INTO sqlite_sequence (name, seq) VALUES ('inquiries', 900000)")
-             conn.commit()
             # 2. Таблица администраторов
             cursor.execute(
                 """

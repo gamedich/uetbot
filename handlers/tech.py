@@ -1220,11 +1220,16 @@ async def cmd_add_hr(message: types.Message, bot: Bot) -> None:
     db.unblock_user(new_id)
     db.add_admin(new_id, role="hr")
 
+    port = CONFIG.get("WEB_APP_PORT", 8080)
+    direct_link = f"http://213.226.124.135:{port}/"
     notify_text = (
         "🎉 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
         "📋 <b>Роль:</b> <b>Специалист отдела кадров (HR)</b>\n"
         "• Вам доступна кадровая панель: <code>/hr</code>\n"
-        "• Вы будете получать новые анкеты соискателей в личные сообщения.\n"
+        "• Вы будете получать новые анкеты соискателей в личные сообщения.\n\n"
+        f"🌐 <b>Служебная веб-панель:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        "🔑 Для входа на сайт установите любой пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
+        "<i>(Или просто откройте панель прямо в Telegram командой /panel)</i>\n"
     )
     sent = await safe_send(bot, new_id, notify_text)
     note = "✅ Уведомление отправлено в ЛС." if sent else "⚠️ <i>Сотруднику нужно нажать /start в боте для получения анкет в ЛС.</i>"
@@ -1262,6 +1267,8 @@ async def cmd_add_tech(message: types.Message, bot: Bot) -> None:
 
     full_label, _ = await resolve_user_display(bot, new_id)
 
+    port = CONFIG.get("WEB_APP_PORT", 8080)
+    direct_link = f"http://213.226.124.135:{port}/"
     notify_text = (
         "🛠 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
         "🔧 <b>Роль:</b> <b>Технический инженер (Tech)</b>\n"
@@ -1269,7 +1276,9 @@ async def cmd_add_tech(message: types.Message, bot: Bot) -> None:
         "• Панель тестирования и диагностики: <code>/tests</code>\n"
         "• Системные логи: <code>/logs</code>\n"
         "• Резервное копирование базы данных: <code>/backup</code>\n\n"
-        "<i>Отправьте /help для просмотра полного списка команд.</i>"
+        f"🌐 <b>Служебная веб-панель:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        "🔑 Для входа на сайт установите любой пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n\n"
+        "<i>Отправьте /help для просмотра полного списка команд или /panel для открытия панели.</i>"
     )
     sent = await safe_send(bot, new_id, notify_text)
     note = "✅ Оповещение отправлено инженеру в ЛС." if sent else "⚠️ <i>Инженер назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
@@ -1318,6 +1327,45 @@ async def cmd_del_admin(message: types.Message, bot: Bot) -> None:
         f"✅ <b>Права администратора для {adm_id} успешно отозваны!</b>\n{note}",
         reply_markup=make_admins_menu_keyboard(db.get_all_admins()),
         parse_mode="HTML",
+    )
+
+
+@tech_router.message(Command("notify_panel", "panel_notify"))
+async def cmd_notify_panel_broadcast(message: types.Message, bot: Bot) -> None:
+    """Массовая отправка инструкций по доступу к веб-панели всем действующим сотрудникам."""
+    if message.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await safe_answer(message, "🚫 Доступно только Главному администратору.")
+        return
+
+    all_admins = db.get_all_admins()
+    super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
+    port = CONFIG.get("WEB_APP_PORT", 8080)
+    direct_link = f"http://213.226.124.135:{port}/"
+
+    sent_count = 0
+    for adm_id, role in all_admins:
+        if adm_id == super_id:
+            continue
+        role_label = "Отдел кадров (HR)" if role == "hr" else "Инженер (Tech)"
+        text = (
+            "🌐 <b>СЛУЖЕБНАЯ ВЕБ-ПАНЕЛЬ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Уважаемый сотрудник! Вам открыт доступ к рабочей веб-панели управления ({role_label}).\n\n"
+            f"👉 <b>Адрес:</b> <a href='{direct_link}'>{direct_link}</a>\n\n"
+            "🔑 <b>Как войти:</b>\n"
+            "1. Задайте любой удобный пароль для входа, отправив команду боту:\n"
+            "   👉 <code>/password ВАШ_ПАРОЛЬ</code> <i>(например: /password tram2026)</i>\n"
+            "2. Перейдите по ссылке на сайт и введите ваш пароль.\n"
+            "3. Или просто откройте панель командой <code>/panel</code> прямо в Telegram!\n"
+            "━━━━━━━━━━━━━━━━━━━━━"
+        )
+        if await safe_send(bot, adm_id, text):
+            sent_count += 1
+
+    await safe_answer(
+        message,
+        f"✅ <b>Рассылка завершена!</b>\nИнструкции по входу в веб-панель отправлены {sent_count} сотрудникам.",
+        parse_mode="HTML"
     )
 
 

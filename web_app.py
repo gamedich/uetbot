@@ -88,6 +88,9 @@ class WebPanel:
         self.app.router.add_post("/api/admins/add", self.handle_api_admins_add)
         self.app.router.add_post("/api/admins/remove", self.handle_api_admins_remove)
         self.app.router.add_post("/api/admins/mute_all", self.handle_api_admins_mute_all)
+        self.app.router.add_post("/api/admins/set_password", self.handle_api_admins_set_password)
+        self.app.router.add_post("/api/admins/notify_panel", self.handle_api_admins_notify_panel)
+        self.app.router.add_post("/api/admins/sync", self.handle_api_admins_sync)
 
         self.app.router.add_get("/api/health", self.handle_api_health)
 
@@ -99,7 +102,7 @@ class WebPanel:
         return web.Response(text=content, content_type="text/html", charset="utf-8")
 
     async def handle_api_auth_login(self, request: web.Request) -> web.Response:
-        """Гибкая авторизация: по паролю/фразе, по Telegram ID или телефону."""
+        """Гибкая авторизация: по паролю сотрудника/мастер-фразе или по Telegram ID/телефону."""
         data = await request.json()
         method = data.get("method")
         val = str(data.get("value", "")).strip()
@@ -110,7 +113,7 @@ class WebPanel:
         master_pin = CONFIG.get("SUPER_ADMIN_PASSWORD", "7657")
 
         if method == "phrase":
-            # Вход по паролю или секретной фразе — сразу права SuperAdmin
+            # 1. Проверка мастер-паролей Главного администратора
             if val in (secret_phrase, master_pin, "uet2026", "7657"):
                 return web.json_response({
                     "ok": True,
@@ -118,7 +121,31 @@ class WebPanel:
                     "user_id": super_id,
                     "label": "👑 Главный администратор (SuperAdmin)"
                 })
-            return web.json_response({"ok": False, "error": "Неверный пароль или секретная фраза"}, status=401)
+
+            # 2. Проверка персонального пароля любого зарегистрированного сотрудника (HR или Tech)
+            with self.db.connection() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT user_id, role, full_name FROM admins WHERE web_password = ? AND web_password IS NOT NULL AND web_password != '' LIMIT 1",
+                    (val,)
+                )
+                row = cur.fetchone()
+                if row:
+                    adm_id, role, name = row
+                    role_clean = "super" if role == "superadmin" or adm_id == super_id else role
+                    role_label = "👑 SuperAdmin" if role_clean == "super" else ("🛠 Инженер (Tech)" if role_clean == "tech" else "👔 Отдел кадров (HR)")
+                    disp_name = name or f"ID {adm_id}"
+                    return web.json_response({
+                        "ok": True,
+                        "role": role_clean,
+                        "user_id": adm_id,
+                        "label": f"{role_label} ({disp_name})"
+                    })
+
+            return web.json_response({
+                "ok": False,
+                "error": "Неверный пароль. Если вы действующий сотрудник, установите или смените пароль в Telegram-боте командой /password"
+            }, status=401)
 
         elif method in ("tguid", "id", "phone"):
             # Проверка по Telegram ID
@@ -137,27 +164,31 @@ class WebPanel:
                     "label": "🛠 Инженер (Tech)"
                 })
 
-            # Поиск в таблице администраторов
+            # Поиск в таблице администраторов по ID
             if val.isdigit():
                 role = self.db.get_admin_role(int(val))
-                if role == "hr":
+                if role in ("superadmin", "super"):
+                    return web.json_response({"ok": True, "role": "super", "user_id": int(val), "label": "👑 SuperAdmin"})
+                elif role == "hr":
                     return web.json_response({"ok": True, "role": "hr", "user_id": int(val), "label": "👔 Отдел кадров (HR)"})
                 elif role == "tech":
                     return web.json_response({"ok": True, "role": "tech", "user_id": int(val), "label": "🛠 Инженер (Tech)"})
 
-            # Проверка по номеру телефона
+            # Поиск по номеру телефона в таблице admins
             clean_phone = val.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
             with self.db.connection() as conn:
                 cur = conn.cursor()
-                cur.execute("SELECT user_id FROM candidates WHERE phone LIKE ? LIMIT 1", (f"%{clean_phone[-10:]}%",))
+                cur.execute("SELECT user_id, role FROM admins WHERE phone LIKE ? LIMIT 1", (f"%{clean_phone[-10:]}%",))
                 row = cur.fetchone()
                 if row:
-                    cand_uid = row[0]
-                    role = self.db.get_admin_role(int(cand_uid)) if cand_uid.isdigit() else None
-                    if role in ("hr", "tech"):
-                        return web.json_response({"ok": True, "role": role, "user_id": cand_uid, "label": f"{role.upper()}"})
+                    adm_id, role = row
+                    role_clean = "super" if role == "superadmin" or adm_id == super_id else role
+                    return web.json_response({"ok": True, "role": role_clean, "user_id": adm_id, "label": f"{role_clean.upper()}"})
 
-            return web.json_response({"ok": False, "error": "Пользователь с таким ID / телефоном не имеет прав доступа"}, status=403)
+            return web.json_response({
+                "ok": False,
+                "error": "Пользователь с таким ID или телефоном не зарегистрирован в системе. Обратитесь к Главному администратору."
+            }, status=403)
 
         return web.json_response({"ok": False, "error": "Неизвестный метод авторизации"}, status=400)
 
@@ -642,15 +673,27 @@ class WebPanel:
     # ADMINS MANAGEMENT API
     async def handle_api_admins(self, request: web.Request) -> web.Response:
         admins = []
+        super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
+        tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
+        self.db.sync_system_admins(super_id, tech_id)
         with self.db.connection() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT user_id, role, notify_dm, added_at FROM admins ORDER BY added_at DESC")
+            cur.execute(
+                """
+                SELECT user_id, role, notify_dm, web_password, phone, full_name, added_at
+                FROM admins
+                ORDER BY added_at DESC
+                """
+            )
             for r in cur.fetchall():
                 admins.append({
                     "user_id": r[0],
                     "role": r[1] or "hr",
                     "notify_dm": bool(r[2]),
-                    "added_at": r[3] or "",
+                    "has_password": bool(r[3]),
+                    "phone": r[4] or "",
+                    "full_name": r[5] or "",
+                    "added_at": r[6] or "",
                 })
         return web.json_response(admins)
 
@@ -658,8 +701,33 @@ class WebPanel:
         data = await request.json()
         uid = int(data.get("user_id", 0))
         role = data.get("role", "hr")
+        pwd = str(data.get("password", "")).strip()
         if uid > 0:
             self.db.add_admin(uid, role=role)
+            if pwd:
+                self.db.set_admin_password(uid, pwd)
+
+            # Оповещение нового сотрудника в Telegram
+            if self.bot:
+                try:
+                    from common import safe_send
+                    port = CONFIG.get("WEB_APP_PORT", 8080)
+                    direct_link = f"http://213.226.124.135:{port}/"
+                    role_label = "Отдел кадров (HR)" if role == "hr" else "Инженер (Tech)"
+                    pwd_info = f"🔑 <b>Пароль для входа:</b> <code>{pwd}</code>\n" if pwd else "🔑 Для входа задайте пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
+                    text = (
+                        f"🎉 <b>Вам назначены права доступа в МУП «УЭТ»!</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"📋 <b>Роль:</b> {role_label}\n"
+                        f"🌐 <b>Веб-панель:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+                        f"{pwd_info}"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"<i>Также вы можете открыть веб-панель прямо в боте командой /panel</i>"
+                    )
+                    await safe_send(self.bot, uid, text)
+                except Exception as e:
+                    logger.warning("Не удалось отправить уведомление новому админу %s: %s", uid, e)
+
             return web.json_response({"ok": True, "user_id": uid, "role": role})
         return web.json_response({"error": "Invalid user_id"}, status=400)
 
@@ -671,6 +739,76 @@ class WebPanel:
             self.db.remove_admin(uid)
             return web.json_response({"ok": True, "user_id": uid})
         return web.json_response({"error": "Cannot remove superadmin or invalid ID"}, status=400)
+
+    async def handle_api_admins_set_password(self, request: web.Request) -> web.Response:
+        data = await request.json()
+        uid = int(data.get("user_id", 0))
+        pwd = str(data.get("password", "")).strip()
+        if uid <= 0 or not pwd:
+            return web.json_response({"error": "user_id и password обязательны"}, status=400)
+
+        ok = self.db.set_admin_password(uid, pwd)
+        if ok and self.bot:
+            try:
+                from common import safe_send
+                port = CONFIG.get("WEB_APP_PORT", 8080)
+                await safe_send(
+                    self.bot,
+                    uid,
+                    f"🔑 <b>Для вас установлен пароль в веб-панели МУП «УЭТ»!</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Пароль: <code>{pwd}</code>\n"
+                    f"Ссылка: <a href='http://213.226.124.135:{port}/'>http://213.226.124.135:{port}/</a>\n\n"
+                    f"<i>Вы можете сменить его в любой момент командой:</i> <code>/password НОВЫЙ_ПАРОЛЬ</code>"
+                )
+            except Exception as e:
+                logger.warning("Не удалось уведомить сотрудника %s о пароле: %s", uid, e)
+
+        return web.json_response({"ok": ok, "user_id": uid})
+
+    async def handle_api_admins_notify_panel(self, request: web.Request) -> web.Response:
+        data = await request.json()
+        target_uid = int(data.get("user_id", 0))
+        all_admins = self.db.get_all_admins()
+        super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
+        port = CONFIG.get("WEB_APP_PORT", 8080)
+        direct_link = f"http://213.226.124.135:{port}/"
+
+        targets = [target_uid] if target_uid > 0 else [aid for aid, _ in all_admins if aid != super_id]
+        sent = 0
+        if self.bot:
+            from common import safe_send
+            for aid in targets:
+                role = self.db.get_admin_role(aid)
+                role_label = "Отдел кадров (HR)" if role == "hr" else "Инженер (Tech)"
+                text = (
+                    "🌐 <b>СЛУЖЕБНАЯ ВЕБ-ПАНЕЛЬ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Вам открыт доступ к рабочей веб-панели предприятия ({role_label}).\n\n"
+                    f"👉 <b>Адрес:</b> <a href='{direct_link}'>{direct_link}</a>\n\n"
+                    "🔑 <b>Как войти:</b>\n"
+                    "1. Задайте любой пароль для входа, отправив команду боту:\n"
+                    "   👉 <code>/password ВАШ_ПАРОЛЬ</code> <i>(например: /password tram2026)</i>\n"
+                    "2. Перейдите по ссылке на сайт и введите ваш пароль.\n"
+                    "3. Или откройте панель командой <code>/panel</code> прямо в Telegram!\n"
+                    "━━━━━━━━━━━━━━━━━━━━━"
+                )
+                if await safe_send(self.bot, aid, text):
+                    sent += 1
+
+        return web.json_response({"ok": True, "sent_count": sent})
+
+    async def handle_api_admins_sync(self, request: web.Request) -> web.Response:
+        super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
+        tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
+        self.db.sync_system_admins(super_id, tech_id)
+        if self.bot:
+            try:
+                from common import setup_bot_commands
+                await setup_bot_commands(self.bot)
+            except Exception:
+                pass
+        return web.json_response({"ok": True})
 
     async def handle_api_admins_mute_all(self, request: web.Request) -> web.Response:
         cnt = self.db.disable_all_hr_notifications()

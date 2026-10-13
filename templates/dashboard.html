@@ -707,34 +707,44 @@
         </section>
 
         <!-- TAB: ADMINS (SUPERADMIN ONLY) -->
+        <!-- TAB ADMINS -->
         <section id="tabAdmins" class="main-card" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3>👥 Назначение администраторов (Только SuperAdmin)</h3>
-                <button class="btn" onclick="loadAdmins()">🔄 Обновить</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div>
+                    <h3 style="margin: 0;">👥 Команда и управление доступом</h3>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Назначение ролей и синхронизация паролей веб-панели (Только SuperAdmin)</div>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="syncAdminsFromEnv()">🔄 Синхронизировать (.env)</button>
+                    <button class="btn btn-secondary" onclick="notifyAllAdminsPanel()">📲 Разослать доступ всем</button>
+                    <button class="btn" onclick="loadAdmins()">🔄 Обновить</button>
+                </div>
             </div>
 
-            <div style="background-color: var(--surface-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--surface-border); display: flex; gap: 10px; flex-wrap: wrap;">
-                <input type="text" id="newAdminId" class="input-box" placeholder="Telegram ID пользователя...">
-                <select id="newAdminRole" class="select-box">
-                    <option value="hr">HR-специалист (Кадры)</option>
-                    <option value="tech">Инженер (Панель инженера)</option>
+            <div style="background-color: var(--surface-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--surface-border); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <input type="text" id="newAdminId" class="input-box" placeholder="Telegram ID сотрудника (цифры)..." style="flex: 2; min-width: 180px;">
+                <select id="newAdminRole" class="select-box" style="flex: 2; min-width: 180px;">
+                    <option value="hr">👔 Отдел кадров (HR)</option>
+                    <option value="tech">🛠 Инженер систем (Tech)</option>
                 </select>
-                <button class="btn" onclick="addNewAdmin()">➕ Назначить права</button>
+                <input type="text" id="newAdminPassword" class="input-box" placeholder="Пароль для сайта (необязательно)..." style="flex: 2; min-width: 180px;">
+                <button class="btn btn-primary" onclick="addNewAdmin()" style="flex: 1; min-width: 150px;">➕ Выдать доступ</button>
             </div>
 
             <div class="table-wrap">
                 <table>
                     <thead>
                         <tr>
-                            <th>Telegram ID</th>
+                            <th>Сотрудник / ID</th>
                             <th>Роль</th>
-                            <th>Уведомления в ЛС</th>
+                            <th>Пароль на сайте</th>
+                            <th>ЛС-уведомления</th>
                             <th>Дата назначения</th>
-                            <th>Действие</th>
+                            <th>Действия</th>
                         </tr>
                     </thead>
                     <tbody id="adminsTbody">
-                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">Загрузка...</td></tr>
+                        <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Загрузка списка сотрудников...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -794,41 +804,44 @@
     </div>
 
     <!-- AUTH MODAL -->
-    <div id="authModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 440px;">
+    <div id="authModal" class="modal-overlay" style="background: rgba(5, 8, 16, 0.94); backdrop-filter: blur(10px); z-index: 9999;">
+        <div class="modal-content" style="max-width: 440px; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 20px 45px rgba(0,0,0,0.6);">
             <div class="modal-header">
-                <h3 class="modal-title">🔐 Авторизация в системе</h3>
-                <button class="close-btn" onclick="closeAuthModal()">×</button>
+                <div>
+                    <h3 class="modal-title" style="font-size: 18px;">🔐 Вход в панель управления</h3>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">МУП «Ульяновскэлектротранс»</div>
+                </div>
+                <button class="close-btn" id="btnAuthClose" onclick="closeAuthModal()" style="display: none;">×</button>
             </div>
             
+            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.45;">
+                Для вхождения в служебную панель введите ваш пароль сотрудника или Telegram ID / номер телефона.
+            </div>
+
             <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--surface-border); padding-bottom: 8px;">
-                <button class="btn btn-secondary" id="btnAuthTabPhrase" style="flex: 1;" onclick="switchAuthTab('phrase')">🔑 По паролю / фразе</button>
+                <button class="btn btn-secondary" id="btnAuthTabPhrase" style="flex: 1;" onclick="switchAuthTab('phrase')">🔑 По паролю</button>
                 <button class="btn btn-secondary" id="btnAuthTabId" style="flex: 1;" onclick="switchAuthTab('id')">📱 По ID / Телефону</button>
             </div>
 
             <!-- PHRASE AUTH -->
-            <div id="authFormPhrase" class="auth-card">
-                <span class="detail-label">Секретная фраза или пароль:</span>
-                <input type="password" id="authPasswordInput" class="input-box" placeholder="Введите пароль (по умолч. uet2026 или 7657)...">
-                <button class="btn" onclick="submitAuth('phrase')">Войти как SuperAdmin</button>
-                <div style="font-size: 11px; color: var(--text-muted);">Вход без раскрытия номера телефона.</div>
+            <div id="authFormPhrase" class="auth-card" style="margin-top: 12px;">
+                <span class="detail-label">Пароль сотрудника:</span>
+                <input type="password" id="authPasswordInput" class="input-box" placeholder="Введите ваш служебный пароль..." autocomplete="current-password">
+                <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="submitAuth('phrase')">Войти в панель</button>
             </div>
 
             <!-- ID / PHONE AUTH -->
-            <div id="authFormId" class="auth-card" style="display: none;">
+            <div id="authFormId" class="auth-card" style="display: none; margin-top: 12px;">
                 <span class="detail-label">Telegram ID или номер телефона:</span>
-                <input type="text" id="authIdInput" class="input-box" placeholder="Например: 7657422832 или +7927...">
-                <button class="btn" onclick="submitAuth('id')">Войти</button>
+                <input type="text" id="authIdInput" class="input-box" placeholder="Например: 7657422832 или +7927..." autocomplete="username">
+                <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="submitAuth('id')">Войти в панель</button>
             </div>
 
-            <!-- QUICK DEV DEMO BUTTONS -->
-            <div style="display: flex; gap: 6px; flex-direction: column; padding-top: 8px; border-top: 1px solid var(--surface-border);">
-                <span class="detail-label" style="text-align: center;">Быстрый выбор роли (демо):</span>
-                <div style="display: flex; gap: 6px;">
-                    <button class="btn btn-secondary" style="flex: 1; font-size: 11px;" onclick="quickLogin('super')">👑 SuperAdmin</button>
-                    <button class="btn btn-secondary" style="flex: 1; font-size: 11px;" onclick="quickLogin('hr')">👔 HR</button>
-                    <button class="btn btn-secondary" style="flex: 1; font-size: 11px;" onclick="quickLogin('tech')">🛠 Инженер</button>
-                </div>
+            <!-- FOOTER INFO -->
+            <div style="margin-top: 16px; padding: 12px; border-radius: 8px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                💡 <b>Действующим сотрудникам:</b><br>
+                Если у вас ещё нет пароля или вы хотите его сменить, отправьте в Telegram-боте команду:<br>
+                <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #60a5fa; font-weight: 600;">/password ВАШ_ПАРОЛЬ</code>
             </div>
         </div>
     </div>
@@ -933,8 +946,10 @@
         }
 
         // AUTH FUNCTIONS
-        function openAuthModal() {
+        function openAuthModal(allowClose = true) {
             document.getElementById('authModal').classList.add('active');
+            const closeBtn = document.getElementById('btnAuthClose');
+            if (closeBtn) closeBtn.style.display = allowClose ? 'block' : 'none';
         }
 
         function closeAuthModal() {
@@ -960,7 +975,10 @@
                 ? document.getElementById('authPasswordInput').value.trim()
                 : document.getElementById('authIdInput').value.trim();
 
-            if (!val) return;
+            if (!val) {
+                alert("Пожалуйста, введите пароль или ID");
+                return;
+            }
 
             try {
                 const res = await fetch('/api/auth/login', {
@@ -975,6 +993,8 @@
                     localStorage.setItem('uet_user_id', d.user_id);
                     applyRolePermissions();
                     closeAuthModal();
+                    loadStats();
+                    loadCandidates(1);
                     showToast("Успешный вход: " + d.label);
                 } else {
                     alert(d.error || "Ошибка авторизации");
@@ -984,20 +1004,12 @@
             }
         }
 
-        function quickLogin(role) {
-            currentUserRole = role;
-            localStorage.setItem('uet_role', role);
-            applyRolePermissions();
-            closeAuthModal();
-            showToast("Режим: " + role.toUpperCase());
-        }
-
         function logout() {
             localStorage.removeItem('uet_role');
             localStorage.removeItem('uet_user_id');
             document.getElementById('userBadge').innerText = '👤 Не авторизован';
             document.getElementById('btnLogout').style.display = 'none';
-            openAuthModal();
+            openAuthModal(false);
         }
 
         // CANDIDATES DATA
@@ -1400,13 +1412,23 @@
                 }
                 let html = '';
                 admins.forEach(a => {
-                    const notifyBadge = a.notify_dm ? '<span style="color: #34d399;">🔔 Включено</span>' : '<span style="color: #f87171;">🔕 Выключено</span>';
+                    const notifyBadge = a.notify_dm ? '<span style="color: #34d399;">🔔 Вкл</span>' : '<span style="color: #f87171;">🔕 Выкл</span>';
+                    const pwdBadge = a.has_password
+                        ? '<span style="color: #34d399; font-size: 11px;">✅ Задан</span>'
+                        : '<span style="color: #f59e0b; font-size: 11px;">⚠️ Не задан</span>';
+                    const nameLabel = a.full_name ? `${escapeHtml(a.full_name)} <span style="color:var(--text-muted); font-size:11px;">(${a.user_id})</span>` : `<code>${a.user_id}</code>`;
+
                     html += `<tr>
-                        <td><b><code>${a.user_id}</code></b></td>
+                        <td><b>${nameLabel}</b></td>
                         <td><b>${a.role.toUpperCase()}</b></td>
+                        <td>${pwdBadge}</td>
                         <td>${notifyBadge}</td>
-                        <td style="color: var(--text-muted);">${a.added_at || '—'}</td>
-                        <td><button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="removeAdmin(${a.user_id})">Отозвать</button></td>
+                        <td style="color: var(--text-muted); font-size: 11px;">${a.added_at || '—'}</td>
+                        <td style="display: flex; gap: 4px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" style="padding: 4px 6px; font-size: 11px;" onclick="setAdminPasswordPrompt(${a.user_id})">🔑 Пароль</button>
+                            <button class="btn btn-secondary" style="padding: 4px 6px; font-size: 11px;" onclick="notifyAdminPanel(${a.user_id})">📲 Доступ</button>
+                            <button class="btn btn-danger" style="padding: 4px 6px; font-size: 11px;" onclick="removeAdmin(${a.user_id})">Отозвать</button>
+                        </td>
                     </tr>`;
                 });
                 tbody.innerHTML = html;
@@ -1416,15 +1438,63 @@
         async function addNewAdmin() {
             const uid = document.getElementById('newAdminId').value.trim();
             const role = document.getElementById('newAdminRole').value;
+            const pwd = document.getElementById('newAdminPassword').value.trim();
             if (!uid) return;
             const res = await fetch('/api/admins/add', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: uid, role })
+                body: JSON.stringify({ user_id: uid, role, password: pwd })
             });
             if (res.ok) {
-                showToast("Администратор назначен!");
+                showToast("Сотрудник назначен и оповещен!");
                 document.getElementById('newAdminId').value = '';
+                document.getElementById('newAdminPassword').value = '';
+                loadAdmins();
+            }
+        }
+
+        async function setAdminPasswordPrompt(uid) {
+            const pwd = prompt(`Введите новый пароль для сотрудника с ID ${uid}:`);
+            if (!pwd || !pwd.trim()) return;
+            const res = await fetch('/api/admins/set_password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid, password: pwd.trim() })
+            });
+            if (res.ok) {
+                showToast("Пароль установлен и отправлен в Telegram!");
+                loadAdmins();
+            } else {
+                alert("Ошибка установки пароля");
+            }
+        }
+
+        async function notifyAdminPanel(uid) {
+            const res = await fetch('/api/admins/notify_panel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid })
+            });
+            if (res.ok) {
+                showToast("Инструкция отправлена сотруднику в Telegram!");
+            }
+        }
+
+        async function notifyAllAdminsPanel() {
+            if (!confirm("Разослать инструкции по доступу к панели всем сотрудникам?")) return;
+            const res = await fetch('/api/admins/notify_panel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: 0 })
+            });
+            const d = await res.json();
+            showToast(`Уведомления отправлены (${d.sent_count || 0})`);
+        }
+
+        async function syncAdminsFromEnv() {
+            const res = await fetch('/api/admins/sync', { method: 'POST' });
+            if (res.ok) {
+                showToast("Синхронизация с .env завершена!");
                 loadAdmins();
             }
         }
@@ -1455,17 +1525,27 @@
             if (e.key === 'Enter') loadCandidates(1);
         });
 
+        document.getElementById('authPasswordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') submitAuth('phrase');
+        });
+        document.getElementById('authIdInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') submitAuth('id');
+        });
+
         // Init session or auto-login from Telegram WebApp
         const savedRole = localStorage.getItem('uet_role');
         if (savedRole) {
             currentUserRole = savedRole;
             applyRolePermissions();
+            loadStats();
+            loadCandidates(1);
         } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
             const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
             submitAuthWithTelegram(tgUser.id);
         } else {
-            currentUserRole = 'super'; // Default to full access
-            applyRolePermissions();
+            // Mandatory login screen
+            currentUserRole = null;
+            openAuthModal(false);
         }
 
         async function submitAuthWithTelegram(tgId) {
@@ -1479,9 +1559,20 @@
                 if (d.ok) {
                     currentUserRole = d.role;
                     localStorage.setItem('uet_role', d.role);
+                    localStorage.setItem('uet_user_id', d.user_id);
                     applyRolePermissions();
+                    closeAuthModal();
+                    loadStats();
+                    loadCandidates(1);
+                    showToast("Вход выполнен: " + (d.label || d.role));
+                } else {
+                    openAuthModal(false);
+                    showToast(d.error || "Необходима авторизация");
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+                openAuthModal(false);
+            }
         }
 
         loadStats();

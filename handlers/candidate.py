@@ -205,6 +205,100 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     )
 
 
+@candidate_router.message(Command("panel", "web", "webapp"))
+async def cmd_web_panel_entry(message: types.Message) -> None:
+    """Точка входа в веб-панель управления и Telegram Mini App."""
+    user_id = message.from_user.id
+    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    is_admin = user_id == super_id or is_hr_admin(user_id) or is_tech_admin(user_id)
+    if not is_admin:
+        await safe_answer(
+            message,
+            "🚫 <b>Доступ ограничен.</b> Веб-панель предназначена для авторизованных сотрудников предприятия.",
+            parse_mode="HTML"
+        )
+        return
+
+    cur_pwd = db.get_admin_password(user_id)
+    pwd_note = "🔑 <i>У вас установлен пароль для сайта.</i>" if cur_pwd else "⚠️ <i>У вас ещё не задан пароль. Задайте его командой:</i> <code>/password ВАШ_ПАРОЛЬ</code>"
+
+    builder = InlineKeyboardBuilder()
+    web_url = CONFIG.get("WEB_APP_URL", "")
+    port = CONFIG.get("WEB_APP_PORT", 8080)
+    direct_link = f"http://213.226.124.135:{port}/"
+
+    if web_url and web_url.startswith("https://"):
+        builder.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
+        builder.button(text="🖥 Открыть в браузере", url=direct_link)
+        builder.adjust(1, 1)
+    else:
+        builder.button(text="🌐 Открыть веб-панель", url=direct_link)
+        builder.adjust(1)
+
+    text = (
+        "🌐 <b>СЛУЖЕБНАЯ ВЕБ-ПАНЕЛЬ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>Ваш Telegram ID:</b> <code>{user_id}</code>\n"
+        f"{pwd_note}\n\n"
+        f"🔗 <b>Прямая ссылка:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "💡 <i>Нажмите кнопку ниже для моментального перехода в панель управления.</i>"
+    )
+    await safe_answer(message, text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@candidate_router.message(Command("password", "set_password"))
+async def cmd_set_password_entry(message: types.Message) -> None:
+    """Установка или смена личного пароля сотрудника для входа в веб-панель."""
+    user_id = message.from_user.id
+    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    is_admin = user_id == super_id or is_hr_admin(user_id) or is_tech_admin(user_id)
+    if not is_admin:
+        await safe_answer(
+            message,
+            "🚫 <b>Доступ ограничен.</b> Установка пароля доступна только сотрудникам МУП «УЭТ».",
+            parse_mode="HTML"
+        )
+        return
+
+    parts = (message.text or "").strip().split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        cur_pwd = db.get_admin_password(user_id)
+        cur_status = f"🔑 <b>Ваш текущий пароль:</b> <code>{cur_pwd}</code>\n\n" if cur_pwd else "⚠️ <b>Пароль ещё не задан!</b>\n\n"
+        text = (
+            "🔐 <b>УПРАВЛЕНИЕ ПАРОЛЕМ ВЕБ-ПАНЕЛИ</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{cur_status}"
+            "Чтобы задать или изменить пароль для входа на сайте, отправьте:\n"
+            "👉 <code>/password НОВЫЙ_ПАРОЛЬ</code>\n\n"
+            "<i>(Например: <code>/password uet2026</code> или <code>/password tram73</code>)</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "После этого вы сможете мгновенно входить на сайте по этому паролю."
+        )
+        await safe_answer(message, text, parse_mode="HTML")
+        return
+
+    new_pwd = parts[1].strip()
+    if len(new_pwd) < 3:
+        await safe_answer(message, "⚠️ Пароль должен содержать не менее 3 символов.")
+        return
+
+    db.set_admin_password(user_id, new_pwd)
+    port = CONFIG.get("WEB_APP_PORT", 8080)
+    direct_link = f"http://213.226.124.135:{port}/"
+
+    text = (
+        "✅ <b>Пароль для веб-панели успешно установлен!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔑 <b>Ваш пароль:</b> <code>{new_pwd}</code>\n"
+        f"👤 <b>Ваш логин:</b> <code>{user_id}</code>\n"
+        f"🌐 <b>Адрес панели:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "<i>На сайте выберите вкладку «По паролю» и введите этот пароль для входа.</i>"
+    )
+    await safe_answer(message, text, parse_mode="HTML")
+
+
 # ==============================================================================
 # ЭКСТРЕННАЯ СВЯЗЬ С ТЕХПОДДЕРЖКОЙ (/support, /sos)
 # ==============================================================================

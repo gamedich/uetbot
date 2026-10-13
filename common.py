@@ -964,6 +964,8 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
 
     # 3. Полное меню для SuperAdmin
     super_commands = [
+        BotCommand(command="panel", description="🌐 Веб-панель управления"),
+        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
         BotCommand(command="hr", description="📋 Кадровая панель (соискатели, воронка)"),
         BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД, аптайм)"),
         BotCommand(command="git", description="🚀 Управление Git и быстрый рестарт"),
@@ -981,6 +983,8 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
 
     # 4. Меню строго для инженера (Tech) — только панель инженера, без кадровых анкет и без выдачи прав
     tech_commands = [
+        BotCommand(command="panel", description="🌐 Веб-панель инженера"),
+        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
         BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД, аптайм)"),
         BotCommand(command="start", description="🏠 Главное меню"),
         BotCommand(command="help", description="ℹ️ Справочник инженера"),
@@ -1001,6 +1005,8 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
 
     # 5. Меню для кадровиков (HR) в личном диалоге
     hr_commands = [
+        BotCommand(command="panel", description="🌐 Веб-панель соискателей"),
+        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
         BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
         BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
         BotCommand(command="start", description="🏠 Главное меню"),

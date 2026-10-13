@@ -221,6 +221,16 @@ class ResumeDB:
             if "consent_timestamp" not in inq_cols:
                 cursor.execute("ALTER TABLE inquiries ADD COLUMN consent_timestamp TEXT DEFAULT ''")
 
+            # Миграции полей администраторов (веб-пароль, телефон, имя)
+            cursor.execute("PRAGMA table_info(admins)")
+            admin_cols = [row[1] for row in cursor.fetchall()]
+            if "web_password" not in admin_cols:
+                cursor.execute("ALTER TABLE admins ADD COLUMN web_password TEXT")
+            if "phone" not in admin_cols:
+                cursor.execute("ALTER TABLE admins ADD COLUMN phone TEXT")
+            if "full_name" not in admin_cols:
+                cursor.execute("ALTER TABLE admins ADD COLUMN full_name TEXT")
+
             # 6. Таблица кулдауна обращений (антифлуд)
             cursor.execute(
                 """
@@ -984,6 +994,64 @@ class ResumeDB:
             cursor.execute("SELECT role FROM admins WHERE user_id = ?", (user_id,))
             row = cursor.fetchone()
             return str(row[0]) if row else None
+
+    def set_admin_password(self, user_id: int, password: str) -> bool:
+        """Установка или сброс персонального пароля сотрудника для веб-панели."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE admins SET web_password = ? WHERE user_id = ?", (password.strip(), user_id))
+            return cursor.rowcount > 0
+
+    def get_admin_password(self, user_id: int) -> Optional[str]:
+        """Получение пароля веб-панели сотрудника."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT web_password FROM admins WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+            return str(row[0]) if row and row[0] else None
+
+    def set_admin_phone(self, user_id: int, phone: str) -> bool:
+        """Привязка номера телефона сотрудника."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE admins SET phone = ? WHERE user_id = ?", (phone.strip(), user_id))
+            return cursor.rowcount > 0
+
+    def set_admin_full_name(self, user_id: int, full_name: str) -> bool:
+        """Сохранение ФИО или никнейма сотрудника."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE admins SET full_name = ? WHERE user_id = ?", (full_name.strip(), user_id))
+            return cursor.rowcount > 0
+
+    def get_admin_details(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Полная карточка сотрудника из базы."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT user_id, role, notify_dm, web_password, phone, full_name, added_at FROM admins WHERE user_id = ?",
+                (user_id,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "user_id": row[0],
+                "role": row[1],
+                "notify_dm": bool(row[2]),
+                "has_password": bool(row[3]),
+                "web_password": row[3] or "",
+                "phone": row[4] or "",
+                "full_name": row[5] or "",
+                "added_at": row[6] or "",
+            }
+
+    def sync_system_admins(self, super_id: int, tech_id: int) -> None:
+        """Синхронизирует системных администраторов из .env в таблицу admins."""
+        if super_id and super_id > 0:
+            self.add_admin(super_id, role="superadmin")
+        if tech_id and tech_id > 0 and tech_id != super_id:
+            self.add_admin(tech_id, role="tech")
 
     def get_admin_notify_status(self, user_id: int) -> bool:
         """Проверка статуса дублирования анкет в личные сообщения."""

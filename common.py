@@ -517,13 +517,37 @@ def update_env_mode(new_mode: str) -> bool:
 # ОТКАЗОУСТОЙЧИВАЯ ОТПРАВКА СООБЩЕНИЙ (SAFE_SEND / SAFE_ANSWER)
 # ==============================================================================
 
-async def safe_answer(message: types.Message, text: str, **kwargs) -> bool:
+async def safe_answer(
+    event: Union[types.Message, types.CallbackQuery],
+    text: str,
+    alert: bool = False,
+    **kwargs,
+) -> bool:
     """
-    Безопасный ответ на сообщение с перехватом Flood control (TelegramRetryAfter),
-    автоматическим усечением длины (>4000) и фоллбэком без HTML при синтаксических ошибках.
+    Универсальный безопасный ответ для types.Message и types.CallbackQuery.
+    - Message: отправляет reply-сообщение с flood-control и HTML-фоллбэком.
+    - CallbackQuery + alert=True: показывает popup-уведомление (show_alert).
+    - CallbackQuery + alert=False: отвечает текстовым сообщением в чат.
     """
     if not text:
         return False
+
+    # === CallbackQuery ===
+    if isinstance(event, types.CallbackQuery):
+        if alert:
+            try:
+                await event.answer(text[:200], show_alert=True)
+                return True
+            except Exception as e:
+                logger.warning("safe_answer(alert): %s", e)
+                return False
+        # Ответ сообщением в чат через callback.message
+        if event.message:
+            return await safe_answer(event.message, text, **kwargs)
+        return False
+
+    # === Message ===
+    message = event
     if len(text) > 4000:
         text = text[:3900] + "\n... (сообщение сокращено)"
 
@@ -544,7 +568,7 @@ async def safe_answer(message: types.Message, text: str, **kwargs) -> bool:
                     return True
                 except Exception:
                     return False
-            # Фоллбэк: снятие HTML тегов при синтаксической ошибке разметки
+            # Фоллбэк: снятие HTML-тегов при синтаксической ошибке разметки
             try:
                 clean_t = re.sub(r"<[^>]+>", "", text)
                 await message.answer(clean_t)

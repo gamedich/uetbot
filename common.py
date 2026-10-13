@@ -159,14 +159,74 @@ class PersistentSessions(dict):
         return super().pop(key, default)
 
 
+from aiogram.client.session.aiohttp import AiohttpSession
+
+
+class NativeProxiedSession(AiohttpSession):
+    """Кастомная сессия aiohttp с нативной поддержкой HTTP-туннеля для Telegram API."""
+
+    def __init__(self, proxy_url: Optional[str] = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.proxy_url = proxy_url
+
+    async def create_session(self) -> ClientSession:
+        if self._session is None or self._session.closed:
+            self._session = ClientSession()
+        return self._session
+
+    async def make_request(
+        self,
+        bot: Bot,
+        method: Any,
+        timeout: Optional[int] = None,
+    ) -> Any:
+        session = await self.create_session()
+        url = self.api.api_url(token=bot.token, method=method.__api_method__)
+        form = self.build_form_data(bot=bot, method=method)
+        try:
+            async with session.post(
+                url,
+                data=form,
+                proxy=self.proxy_url,
+                timeout=self.timeout if timeout is None else timeout,
+            ) as resp:
+                raw_result = await resp.text()
+        except asyncio.TimeoutError as e:
+            raise TelegramNetworkError(method=method, message="Request timeout error") from e
+        except ClientError as e:
+            raise TelegramNetworkError(method=method, message=f"{type(e).__name__}: {e}") from e
+        response = self.check_response(
+            bot=bot,
+            method=method,
+            status_code=resp.status,
+            content=raw_result,
+        )
+        return response.result
+
+
 # ==============================================================================
 # ИНИЦИАЛИЗАЦИЯ ЯДРА, БОТА И ДИСПЕТЧЕРА
 # ==============================================================================
 
 _db_path = CONFIG.get("DB_PATH", "data/resumes.db")
 db = ResumeDB(db_path=_db_path)
+
+_proxy_url = (
+    CONFIG.get("PROXY_URL")
+    or os.getenv("HTTPS_PROXY")
+    or os.getenv("https_proxy")
+    or os.getenv("HTTP_PROXY")
+    or None
+)
+if _proxy_url:
+    logger.info("Для Telegram Bot API активирован HTTP-прокси: %s", _proxy_url)
+    _bot_session: Optional[AiohttpSession] = NativeProxiedSession(proxy_url=_proxy_url)
+else:
+    _bot_session = None
+
 bot = Bot(
     token=CONFIG.get("TG_BOT_TOKEN", ""),
+    session=_bot_session,
     default=DefaultBotProperties(parse_mode="HTML"),
 )
 dp = Dispatcher(storage=SQLiteFSMStorage(db))

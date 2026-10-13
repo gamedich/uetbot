@@ -140,8 +140,9 @@ CONFIG: AppConfig = AppConfig({
     "DB_PATH": resolved_db_path,
     "LOG_FILE": _get_str("LOG_FILE", str(LOGS_DIR / "bot.log")),
 
-    # --- Токены внешних шлюзов ---
+    # --- Токены внешних шлюзов и сеть ---
     "TG_BOT_TOKEN": _get_str("TG_BOT_TOKEN", ""),
+    "PROXY_URL": _get_str("PROXY_URL", os.getenv("HTTPS_PROXY", os.getenv("https_proxy", os.getenv("HTTP_PROXY", "")))),
     "VK_GROUP_TOKEN": _get_str("VK_GROUP_TOKEN", ""),
     "VK_GROUP_ID": _get_str("VK_GROUP_ID", ""),
     "MAX_BOT_TOKEN": _get_str("MAX_BOT_TOKEN", ""),

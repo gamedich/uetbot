@@ -1047,8 +1047,8 @@ async def cb_test_do_reset(
 @tech_router.message(Command("admins", "team"))
 async def cmd_admins_menu(message: types.Message, bot: Bot) -> None:
     user_id = message.from_user.id
-    if user_id != CONFIG.get("SUPER_ADMIN_ID") and not is_tech_admin(user_id):
-        await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+    if user_id != CONFIG.get("SUPER_ADMIN_ID"):
+        await safe_answer(message, "🚫 Управление сотрудниками и ролями доступно исключительно Главному администратору.")
         return
 
     all_admins = db.get_all_admins()
@@ -1082,6 +1082,9 @@ async def cmd_admins_menu(message: types.Message, bot: Bot) -> None:
 
 @tech_router.callback_query(F.data == "adm_ui_refresh")
 async def cb_adm_ui_refresh(callback: types.CallbackQuery, bot: Bot) -> None:
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Доступ только у Главного администратора!", show_alert=True)
+        return
     all_admins = db.get_all_admins()
     super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
 
@@ -1115,6 +1118,9 @@ async def cb_adm_ui_refresh(callback: types.CallbackQuery, bot: Bot) -> None:
 
 @tech_router.callback_query(F.data == "adm_ui_remove_list")
 async def cb_adm_ui_remove_list(callback: types.CallbackQuery, bot: Bot) -> None:
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Отзывать права может только Главный администратор!", show_alert=True)
+        return
     all_admins = db.get_all_admins()
     admins_with_names: List[Tuple[int, str, str]] = []
     for adm_id, role in all_admins:
@@ -1132,6 +1138,9 @@ async def cb_adm_ui_remove_list(callback: types.CallbackQuery, bot: Bot) -> None
 
 @tech_router.callback_query(F.data.startswith("adm_del_id_"))
 async def cb_adm_del_id(callback: types.CallbackQuery, bot: Bot) -> None:
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Отзывать права может только Главный администратор!", show_alert=True)
+        return
     adm_id = int(callback.data.replace("adm_del_id_", ""))
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     if adm_id == super_id:
@@ -1177,8 +1186,8 @@ async def cb_adm_del_id(callback: types.CallbackQuery, bot: Bot) -> None:
 
 @tech_router.message(Command("add_hr"))
 async def cmd_add_hr(message: types.Message, bot: Bot) -> None:
-    if not is_privileged_user(message.from_user.id):
-        await safe_answer(message, "🚫 Доступ ограничен администрацией.")
+    if message.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await safe_answer(message, "🚫 Назначать сотрудников может только Главный администратор.")
         return
 
     new_id = None
@@ -1234,8 +1243,8 @@ async def cmd_add_hr(message: types.Message, bot: Bot) -> None:
 
 @tech_router.message(Command("add_tech"))
 async def cmd_add_tech(message: types.Message, bot: Bot) -> None:
-    if not is_privileged_user(message.from_user.id):
-        await safe_answer(message, "🚫 Доступ ограничен администрацией.")
+    if message.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await safe_answer(message, "🚫 Назначать инженеров может только Главный администратор.")
         return
 
     parts = message.text.strip().split()
@@ -1279,8 +1288,8 @@ async def cmd_add_tech(message: types.Message, bot: Bot) -> None:
 
 @tech_router.message(Command("del_admin", "rm_admin", "rm_hr"))
 async def cmd_del_admin(message: types.Message, bot: Bot) -> None:
-    if not is_privileged_user(message.from_user.id):
-        await safe_answer(message, "🚫 Доступ ограничен администрацией.")
+    if message.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await safe_answer(message, "🚫 Удалять сотрудников может только Главный администратор.")
         return
 
     parts = message.text.strip().split()
@@ -1316,8 +1325,8 @@ async def cmd_del_admin(message: types.Message, bot: Bot) -> None:
 
 @tech_router.callback_query(F.data == "adm_ui_add_hr")
 async def cb_adm_ui_add_hr(callback: types.CallbackQuery, state: FSMContext) -> None:
-    if not is_privileged_user(callback.from_user.id):
-        await callback.answer("🚫 Назначать сотрудников может только администратор!", show_alert=True)
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Назначать сотрудников может только Главный администратор!", show_alert=True)
         return
     await state.set_state(AdminManageState.waiting_hr_id)
     text = (
@@ -1369,8 +1378,8 @@ async def process_add_hr_id(message: types.Message, state: FSMContext, bot: Bot)
 
 @tech_router.callback_query(F.data == "adm_ui_add_tech")
 async def cb_adm_ui_add_tech(callback: types.CallbackQuery, state: FSMContext) -> None:
-    if not is_privileged_user(callback.from_user.id):
-        await callback.answer("🚫 Доступ запрещен!", show_alert=True)
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Назначать инженеров может только Главный администратор!", show_alert=True)
         return
     await state.set_state(AdminManageState.waiting_tech_id)
     text = (

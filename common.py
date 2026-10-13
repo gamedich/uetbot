@@ -423,7 +423,7 @@ def check_hr_access_or_block(user_id: int, chat_id: int) -> Tuple[bool, Optional
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     hr_group = CONFIG.get("HR_GROUP_ID", 0)
 
-    if (super_id and user_id == super_id) or is_tech_admin(user_id):
+    if super_id and user_id == super_id:
         return True, None
 
     if is_hr_admin(user_id):
@@ -962,25 +962,44 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
     except Exception as e:
         logger.warning("Не удалось установить команды для групп: %s", e)
 
-    # 3. Полное меню для SuperAdmin и TechAdmin в личном диалоге
-    admin_commands = [
+    # 3. Полное меню для SuperAdmin
+    super_commands = [
         BotCommand(command="hr", description="📋 Кадровая панель (соискатели, воронка)"),
         BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД, аптайм)"),
         BotCommand(command="git", description="🚀 Управление Git и быстрый рестарт"),
+        BotCommand(command="admins", description="👥 Управление доступом и ролями"),
         BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
         BotCommand(command="start", description="🏠 Главное меню"),
         BotCommand(command="help", description="ℹ️ Справочник администратора"),
     ]
     super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
-    tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
-    for adm_id in {super_id, tech_id}:
-        if adm_id and adm_id > 0:
-            try:
-                await bot_instance.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=adm_id))
-            except Exception as e:
-                logger.debug("Не удалось установить команды для админа %s: %s", adm_id, e)
+    if super_id and super_id > 0:
+        try:
+            await bot_instance.set_my_commands(super_commands, scope=BotCommandScopeChat(chat_id=super_id))
+        except Exception as e:
+            logger.debug("Не удалось установить команды для SuperAdmin %s: %s", super_id, e)
 
-    # 4. Меню для кадровиков (HR) в личном диалоге
+    # 4. Меню строго для инженера (Tech) — только панель инженера, без кадровых анкет и без выдачи прав
+    tech_commands = [
+        BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД, аптайм)"),
+        BotCommand(command="start", description="🏠 Главное меню"),
+        BotCommand(command="help", description="ℹ️ Справочник инженера"),
+    ]
+    tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
+    all_tech_ids = {tech_id} if tech_id and tech_id != super_id else set()
+    try:
+        for adm_id, role in db.get_all_admins():
+            if role == "tech" and adm_id > 0 and adm_id != super_id:
+                all_tech_ids.add(adm_id)
+        for t_id in all_tech_ids:
+            try:
+                await bot_instance.set_my_commands(tech_commands, scope=BotCommandScopeChat(chat_id=t_id))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning("Ошибка установки команд Tech-пользователей: %s", e)
+
+    # 5. Меню для кадровиков (HR) в личном диалоге
     hr_commands = [
         BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
         BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
@@ -989,7 +1008,7 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
     ]
     try:
         for adm_id, role in db.get_all_admins():
-            if role == "hr" and adm_id > 0 and adm_id not in (super_id, tech_id):
+            if role == "hr" and adm_id > 0 and adm_id != super_id and adm_id not in all_tech_ids:
                 try:
                     await bot_instance.set_my_commands(hr_commands, scope=BotCommandScopeChat(chat_id=adm_id))
                 except Exception:

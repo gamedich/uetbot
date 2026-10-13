@@ -169,7 +169,17 @@ async def cmd_id(message: types.Message) -> None:
 @candidate_router.message(Command("start", "menu"))
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
     """Точка входа и перезапуск интерактивного меню."""
+    # Ловим реферальную ссылку водителя: /start ref_1042
+    ref_tab = None
+    if message.text:
+        parts = message.text.split(maxsplit=1)
+        if len(parts) > 1 and parts[1].startswith("ref_"):
+            ref_tab = parts[1].replace("ref_", "").strip()
+
     await state.clear()
+
+    if ref_tab:
+        await state.update_data(referrer_tab=ref_tab)
     user_id = message.from_user.id
     is_admin = (
         user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)

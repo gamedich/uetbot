@@ -77,27 +77,28 @@ class ResumeDB:
         """Создание таблиц, миграция структуры и установка высокоскоростных индексов"""
         with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
-
+    
             # 1. Таблица соискателей
             cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS candidates (
-                    ticket_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    platform TEXT NOT NULL,
-                    user_id TEXT NOT NULL,
-                    full_name TEXT NOT NULL,
-                    phone TEXT NOT NULL,
-                    vacancy TEXT NOT NULL,
-                    experience TEXT NOT NULL,
-                    status TEXT DEFAULT 'Новая',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    admin_note TEXT DEFAULT '',
-                    updated_at TIMESTAMP DEFAULT NULL
-                )
-                """
+            """
+            CREATE TABLE IF NOT EXISTS candidates (
+                ticket_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                platform TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                vacancy TEXT NOT NULL,
+                experience TEXT NOT NULL,
+                status TEXT DEFAULT 'Новая',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                admin_note TEXT DEFAULT '',
+                updated_at TIMESTAMP DEFAULT NULL,
+                consent_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                referrer_tab TEXT DEFAULT NULL
             )
-
-            # Миграции полей кандидатов
+            """
+        )
+            #полей кандидатов
             cursor.execute("PRAGMA table_info(candidates)")
             cand_cols = [row[1] for row in cursor.fetchall()]
             if "admin_note" not in cand_cols:
@@ -122,6 +123,7 @@ class ResumeDB:
                 ("source", "TEXT DEFAULT ''"),
                 ("extra_info", "TEXT DEFAULT ''"),
                 ("raw_data_json", "TEXT DEFAULT '{}'"),
+                ("referrer_tab", "TEXT DEFAULT NULL"),
             ]
             for col_name, col_def in new_columns:
                 if col_name not in cand_cols:

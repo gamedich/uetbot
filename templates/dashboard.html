@@ -10,14 +10,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --surface-color: #131b2e;
-            --surface-card: #18223a;
-            --surface-hover: #1f2c4a;
-            --surface-border: #243252;
-            --primary: #2563eb;
-            --primary-hover: #3b82f6;
-            --primary-glow: rgba(37, 99, 235, 0.25);
+            --bg-color: #07090e;
+            --surface-color: #0d121f;
+            --surface-card: #131b2e;
+            --surface-hover: #1c2740;
+            --surface-border: rgba(239, 68, 68, 0.22);
+            --primary: #dc2626;
+            --primary-hover: #ea580c;
+            --primary-glow: rgba(220, 38, 38, 0.35);
+            --accent-orange: #f97316;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --success: #10b981;
@@ -63,7 +64,7 @@
 
         /* HEADER */
         .header {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(19, 27, 46, 0.95));
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(249, 115, 22, 0.08) 50%, rgba(13, 18, 31, 0.95));
             border: 1px solid var(--surface-border);
             border-radius: var(--radius-xl);
             padding: 18px 22px;
@@ -116,7 +117,7 @@
         .badge-btn:hover { transform: scale(1.03); }
         .badge-db-prod { background: var(--success-bg); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
         .badge-db-test { background: var(--warning-bg); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
-        .badge-env-prod { background: rgba(37, 99, 235, 0.2); color: #60a5fa; border-color: rgba(37, 99, 235, 0.4); }
+        .badge-env-prod { background: rgba(220, 38, 38, 0.2); color: #f87171; border-color: rgba(220, 38, 38, 0.4); }
         .badge-env-test { background: var(--warning-bg); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
 
         .user-tag {
@@ -312,7 +313,7 @@
             white-space: nowrap;
         }
 
-        .st-new { background: rgba(37, 99, 235, 0.2); color: #60a5fa; }
+        .st-new { background: rgba(220, 38, 38, 0.2); color: #f87171; }
         .st-work { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
         .st-invite { background: rgba(139, 92, 246, 0.2); color: #c084fc; }
         .st-hired { background: rgba(16, 185, 129, 0.2); color: #34d399; }

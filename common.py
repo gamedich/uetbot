@@ -200,10 +200,28 @@ class NativeProxiedSession(AiohttpSession):
                 timeout=self.timeout if timeout is None else timeout,
             ) as resp:
                 raw_result = await resp.text()
-        except asyncio.TimeoutError as e:
-            raise TelegramNetworkError(method=method, message="Request timeout error") from e
-        except ClientError as e:
-            raise TelegramNetworkError(method=method, message=f"{type(e).__name__}: {e}") from e
+        except (ClientError, asyncio.TimeoutError) as proxy_err:
+            if self.proxy_url:
+                logger.warning(
+                    "Сбой прокси %s (%s). Попытка прямого соединения с Telegram API...",
+                    self.proxy_url,
+                    proxy_err,
+                )
+                try:
+                    async with session.post(
+                        url,
+                        data=form,
+                        proxy=None,
+                        timeout=self.timeout if timeout is None else timeout,
+                    ) as resp:
+                        raw_result = await resp.text()
+                except Exception as direct_err:
+                    raise TelegramNetworkError(
+                        method=method,
+                        message=f"Proxy error: {proxy_err} | Direct error: {direct_err}",
+                    ) from direct_err
+            else:
+                raise TelegramNetworkError(method=method, message=f"{type(proxy_err).__name__}: {proxy_err}") from proxy_err
         response = self.check_response(
             bot=bot,
             method=method,

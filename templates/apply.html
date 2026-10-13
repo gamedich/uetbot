@@ -7,15 +7,15 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-base: #0a0f1d;
-            --bg-card: rgba(19, 27, 46, 0.88);
-            --bg-card-hover: rgba(28, 41, 70, 0.95);
-            --border-color: rgba(59, 130, 246, 0.25);
-            --border-active: #3b82f6;
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --primary-glow: rgba(37, 99, 235, 0.35);
-            --accent-cyan: #06b6d4;
+            --bg-base: #07090e;
+            --bg-card: rgba(15, 20, 34, 0.9);
+            --bg-card-hover: rgba(28, 35, 54, 0.95);
+            --border-color: rgba(239, 68, 68, 0.22);
+            --border-active: #f97316;
+            --primary: #dc2626;
+            --primary-hover: #ea580c;
+            --primary-glow: rgba(220, 38, 38, 0.35);
+            --accent-cyan: #f97316;
             --accent-green: #10b981;
             --accent-amber: #f59e0b;
             --accent-red: #ef4444;
@@ -39,8 +39,8 @@
         body {
             background-color: var(--bg-base);
             background-image: 
-                radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.12) 0px, transparent 50%);
+                radial-gradient(at 0% 0%, rgba(220, 38, 38, 0.16) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(249, 115, 22, 0.14) 0px, transparent 50%);
             background-attachment: fixed;
             color: var(--text-main);
             font-family: var(--font-family);
@@ -80,12 +80,12 @@
             width: 50px;
             height: 50px;
             border-radius: var(--radius-md);
-            background: linear-gradient(135deg, #1d4ed8, #0284c7);
+            background: linear-gradient(135deg, #dc2626, #ea580c);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 4px 12px var(--primary-glow);
+            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);
         }
 
         .brand-logo-wrap svg {
@@ -150,10 +150,10 @@
         .progress-bar {
             height: 100%;
             width: 6%;
-            background: linear-gradient(90deg, #2563eb, #06b6d4);
+            background: linear-gradient(90deg, #dc2626, #f97316);
             border-radius: 999px;
             transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 12px rgba(6, 182, 212, 0.5);
+            box-shadow: 0 0 14px rgba(249, 115, 22, 0.55);
         }
 
         /* WIZARD CARD */
@@ -182,13 +182,13 @@
             width: 44px;
             height: 44px;
             border-radius: var(--radius-md);
-            background: rgba(37, 99, 235, 0.15);
-            border: 1px solid rgba(59, 130, 246, 0.3);
+            background: rgba(220, 38, 38, 0.15);
+            border: 1px solid rgba(249, 115, 22, 0.35);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            color: #60a5fa;
+            color: #f97316;
         }
 
         .step-icon-badge svg {
@@ -254,13 +254,13 @@
 
         .option-card:hover {
             background: var(--bg-card-hover);
-            border-color: rgba(59, 130, 246, 0.4);
+            border-color: rgba(249, 115, 22, 0.45);
         }
 
         .option-card.selected {
-            background: rgba(37, 99, 235, 0.22);
-            border-color: #3b82f6;
-            box-shadow: 0 0 14px rgba(37, 99, 235, 0.35);
+            background: rgba(220, 38, 38, 0.2);
+            border-color: #f97316;
+            box-shadow: 0 0 14px rgba(249, 115, 22, 0.35);
         }
 
         .option-left {
@@ -324,8 +324,8 @@
         }
 
         .option-card.selected .option-check {
-            background: #2563eb;
-            border-color: #60a5fa;
+            background: #dc2626;
+            border-color: #f97316;
         }
 
         .option-check svg {
@@ -538,14 +538,14 @@
         }
 
         .btn-next {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            background: linear-gradient(135deg, #dc2626, #ea580c);
             color: #ffffff;
             flex: 2;
-            box-shadow: 0 4px 14px var(--primary-glow);
+            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);
         }
 
         .btn-next:hover {
-            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+            background: linear-gradient(135deg, #b91c1c, #c2410c);
         }
 
         .btn-next:disabled {
@@ -729,10 +729,10 @@
 
         /* HERO PRESENTATION CARD */
         .portal-hero-card {
-            background: linear-gradient(135deg, rgba(30, 58, 138, 0.35), rgba(15, 23, 42, 0.9));
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.25), rgba(249, 115, 22, 0.08) 50%, rgba(15, 20, 34, 0.95));
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
-            border: 1px solid rgba(59, 130, 246, 0.25);
+            border: 1px solid rgba(239, 68, 68, 0.28);
             border-radius: var(--radius-lg);
             padding: 24px 22px;
             display: flex;
@@ -746,7 +746,7 @@
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            color: #38bdf8;
+            color: #f97316;
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -847,8 +847,8 @@
         }
         .portal-tab.active {
             color: #ffffff;
-            background: #2563eb;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+            background: linear-gradient(135deg, #dc2626, #ea580c);
+            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);
         }
 
         /* MODAL */

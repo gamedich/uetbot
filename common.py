@@ -692,8 +692,14 @@ async def safe_send(
                 await bot_instance.send_message(chat_id=chat_id, text=clean_t, reply_markup=reply_markup)
                 return True
             except Exception as e2:
-                logger.error("Fallback без HTML также не удался в чат %s: %s", chat_id, e2)
-                return False
+                logger.warning("Fallback с кнопками не удался в чат %s: %s. Отправка без кнопок...", chat_id, e2)
+                try:
+                    clean_t = re.sub(r"<[^>]+>", "", text)
+                    await bot_instance.send_message(chat_id=chat_id, text=clean_t, reply_markup=None)
+                    return True
+                except Exception as e3:
+                    logger.error("Полный сбой отправки в чат %s: %s", chat_id, e3)
+                    return False
         except (TelegramNetworkError, ClientError, asyncio.TimeoutError):
             await asyncio.sleep(1.2)
         except Exception as e:

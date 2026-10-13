@@ -116,13 +116,14 @@ class AppConfig(dict):
 # Список целевых чатов для уведомлений
 initial_target_chats: List[int] = []
 
-# Определение пути по умолчанию к базе SQLite (унификация resumes.db)
-_default_db = (
-    str(BASE_DIR / "resumes.db")
-    if (BASE_DIR / "resumes.db").exists()
-    else str(DATA_DIR / "resumes.db")
-)
-resolved_db_path = _get_str("DB_PATH", _default_db)
+# Определение пути по умолчанию к базе SQLite (строго в каталоге data/)
+_raw_db = _get_str("DB_PATH", "resumes.db")
+if not os.path.isabs(_raw_db) and not _raw_db.startswith("data/"):
+    resolved_db_path = str(DATA_DIR / os.path.basename(_raw_db))
+elif _raw_db.startswith("data/"):
+    resolved_db_path = str(BASE_DIR / _raw_db)
+else:
+    resolved_db_path = _raw_db
 os.environ["DB_PATH"] = resolved_db_path
 
 

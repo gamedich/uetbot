@@ -131,3 +131,38 @@ async def cb_admin_list(callback: types.CallbackQuery) -> None:
     builder.adjust(2)
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
+
+
+@panel_router.callback_query(F.data == "hr_web_panel_info")
+async def cb_hr_web_panel_info(callback: types.CallbackQuery) -> None:
+    """Информация о доступе к веб-панели управления."""
+    from config import CONFIG
+    port = CONFIG.get("WEB_APP_PORT", 8080)
+    web_url = CONFIG.get("WEB_APP_URL", "")
+    server_ip = "213.226.124.135"
+    direct_link = f"http://{server_ip}:{port}/"
+
+    text = (
+        "🌐 <b>ВЕБ-ПАНЕЛЬ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🖥 <b>Прямой доступ в браузере:</b>\n"
+        f"👉 <a href='{direct_link}'>{direct_link}</a>\n\n"
+        "📱 <b>Telegram Mini App (TMA):</b>\n"
+        "Telegram требует наличие защищённого протокола <code>https://</code>.\n"
+    )
+    if web_url:
+        text += f"Текущий URL Mini App: <code>{web_url}</code>\n"
+    else:
+        text += "Для открытия панели прямо внутри Telegram без выхода из приложения укажите домен с SSL в <code>.env</code> (параметр <code>WEB_APP_URL=https://...</code>).\n"
+    text += (
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "<i>Панель содержит интерактивную воронку, поиск по базе, фильтры и статус сервисов в реальном времени.</i>"
+    )
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="⬅️ Назад в меню", callback_data="admin_stats")
+    await callback.message.edit_text(
+        text, reply_markup=builder.as_markup(), parse_mode="HTML", disable_web_page_preview=True
+    )
+    await callback.answer()
+

@@ -542,7 +542,7 @@ async def process_live_dialog_router(message: types.Message, state: FSMContext, 
         await safe_answer(message, f"⚠️ Не удалось доставить сообщение кандидату ({platform.upper()}).")
 
 
-@tickets_router.message(StateFilter(None), F.photo)
+@tickets_router.message(is_operator_in_dialog_filter, StateFilter(None), F.photo)
 async def process_live_dialog_photo(message: types.Message, state: FSMContext, bot: Bot) -> None:
     """Потоковая передача фото от кадровика соискателю строго через RAM (152-ФЗ)."""
     current_state = await state.get_state()

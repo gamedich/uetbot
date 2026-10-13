@@ -27,7 +27,21 @@ logger = logging.getLogger("UET_DATABASE")
 
 
 class ResumeDB:
-    def __init__(self, db_path: str = "data/resumes.db", test_db_path: str = "data/resumes_test.db"):
+    def __init__(self, db_path: Optional[str] = None, test_db_path: Optional[str] = None):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(base_dir, "data")
+        os.makedirs(data_dir, exist_ok=True)
+
+        if not db_path:
+            db_path = os.path.join(data_dir, "resumes.db")
+        elif not os.path.isabs(db_path):
+            db_path = os.path.join(base_dir, db_path) if db_path.startswith("data/") else os.path.join(data_dir, os.path.basename(db_path))
+
+        if not test_db_path:
+            test_db_path = os.path.join(data_dir, "resumes_test.db")
+        elif not os.path.isabs(test_db_path):
+            test_db_path = os.path.join(base_dir, test_db_path) if test_db_path.startswith("data/") else os.path.join(data_dir, os.path.basename(test_db_path))
+
         self.db_path = db_path
         self.test_db_path = test_db_path
 

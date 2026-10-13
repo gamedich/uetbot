@@ -20,10 +20,9 @@ from common import (
     SYSTEM_METRICS,
     CONFIG,
     safe_send,
-    validate_config
+    validate_config,
 )
 from handlers import candidate_router, hr_router, tech_router
-from handlers.employee import employee_router
 from gateways.vk_gateway import run_vk_gateway
 from gateways.max_gateway import run_max_gateway
 
@@ -80,7 +79,6 @@ async def main() -> None:
     dp.include_router(tech_router)
     dp.include_router(hr_router)
     dp.include_router(candidate_router)
-    dp.include_router(employee_router)
 
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
 
@@ -115,7 +113,15 @@ async def main() -> None:
     except Exception as e:
         logger.error(f"Ошибка запуска шлюза MAX: {e}")
 
-    backup_task = asyncio.create_task(run_auto_backup_worker())
+    # 5.1. Веб-панель управления и Telegram Mini App (aiohttp.web)
+    web_task = None
+    try:
+        from web_app import start_web_panel_task
+        web_host = CONFIG.get("WEB_APP_HOST", "0.0.0.0")
+        web_port = int(CONFIG.get("WEB_APP_PORT", 8080))
+        web_task = asyncio.create_task(start_web_panel_task(db, host=web_host, port=web_port))
+    except Exception as e:
+        logger.warning(f"Веб-панель не запущена: {e}")
 
     # 6. Оповещение о старте ИСКЛЮЧИТЕЛЬНО Главному администратору в ЛС
     start_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
@@ -126,6 +132,7 @@ async def main() -> None:
         f"⚙️ <b>Режим:</b> <code>{env_mode}</code>\n"
         f"⏱ <b>Время старта:</b> <code>{start_time}</code>\n"
         f"📡 <b>Шлюзы:</b> Telegram (OK) | VK (активен) | MAX (эмуляция)\n"
+        f"🌐 <b>Веб-панель:</b> http://{CONFIG.get('WEB_APP_HOST', '0.0.0.0')}:{CONFIG.get('WEB_APP_PORT', 8080)}\n"
         f"💾 <b>Автобэкап БД:</b> раз в 24ч (хранение 7 копий)\n"
         f"🛡 <b>152-ФЗ & Приказ РКН № 179:</b> Активен\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
@@ -152,14 +159,14 @@ async def main() -> None:
         )
         await notify_super_admin(stop_msg)
 
-        for t in (vk_task, max_task, backup_task):
+        for t in (vk_task, max_task, backup_task, web_task):
             if t is not None:
                 try:
                     t.cancel()
                 except Exception:
                     pass
         await asyncio.gather(
-            *[t for t in (vk_task, max_task, backup_task) if t is not None],
+            *[t for t in (vk_task, max_task, backup_task, web_task) if t is not None],
             return_exceptions=True
         )
         await bot.session.close()

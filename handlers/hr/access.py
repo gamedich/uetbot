@@ -90,7 +90,7 @@ async def on_hr_user_joined(event: types.ChatMemberUpdated, bot: Bot) -> None:
         await grant_hr_role_and_welcome(event.new_chat_member.user, hr_group, bot)
 
 
-@access_router.message(F.chat.type.in_({"group", "supergroup"}))
+@access_router.message(F.chat.type.in_({"group", "supergroup"}), F.text, ~F.text.startswith("/"))
 async def on_existing_hr_member_message(message: types.Message, bot: Bot) -> None:
     hr_group = CONFIG.get("HR_GROUP_ID")
     if not hr_group or message.chat.id != hr_group or message.from_user.is_bot:

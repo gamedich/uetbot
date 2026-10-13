@@ -636,7 +636,7 @@ class WebPanel:
             "db_test_kb": db_test_kb,
             "db_prod_rows": db_prod_rows,
             "db_test_rows": db_test_rows,
-            "bot_version": CONFIG.get("BOT_VERSION", "1.6.0"),
+            "bot_version": CONFIG.get("BOT_VERSION", "1.7.0"),
         })
 
     async def handle_api_toggle_db(self, request: web.Request) -> web.Response:
@@ -973,7 +973,7 @@ class WebPanel:
         return web.json_response({
             "status": "ok",
             "time": datetime.now().isoformat(),
-            "version": CONFIG.get("BOT_VERSION", "1.6.0"),
+            "version": CONFIG.get("BOT_VERSION", "1.7.0"),
         })
 
 

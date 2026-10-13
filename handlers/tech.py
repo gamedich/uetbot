@@ -593,7 +593,7 @@ async def cmd_tests_menu(event: Union[types.Message, types.CallbackQuery]) -> No
 @tech_router.callback_query(F.data == "tech_changelog")
 async def cmd_view_changelog(event: Union[types.Message, types.CallbackQuery]) -> None:
     changelog_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "CHANGELOG.md")
-    version = CONFIG.get("BOT_VERSION", "1.3.0")
+    version = CONFIG.get("BOT_VERSION", "1.7.0")
     header = f"🚀 <b>Бот v{version}</b>\n━━━━━━━━━━━━━━━━━━━━━\n"
     if os.path.exists(changelog_path):
         try:

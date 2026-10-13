@@ -342,7 +342,7 @@ def generate_system_passport_docx(output_path: str = None) -> str:
     r_title = p_title.add_run(
         "ТЕХНИЧЕСКИЙ ПАСПОРТ И АРХИТЕКТУРНОЕ ОПИСАНИЕ\n"
         "АИС «РЕКРУТИНГ-СЕРВИС» МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»\n"
-        "Версия комплекса: 1.6.0 Production (2026 г.)"
+        "Версия комплекса: 1.7.0 Production (2026 г.)"
     )
     r_title.font.size = Pt(14)
     r_title.font.bold = True

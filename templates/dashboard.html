@@ -564,6 +564,83 @@
                 min-height: 36px;
                 justify-content: center;
             }
+
+            /* Вертикальный список в столбик (карточки) для телефонов */
+            .mobile-cards {
+                background: transparent !important;
+                border: none !important;
+                overflow-x: visible !important;
+            }
+            .mobile-cards table {
+                min-width: 100% !important;
+                display: block !important;
+                width: 100% !important;
+                border: none !important;
+            }
+            .mobile-cards thead {
+                display: none !important;
+            }
+            .mobile-cards tbody {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 12px !important;
+                width: 100% !important;
+            }
+            .mobile-cards tr {
+                display: flex !important;
+                flex-direction: column !important;
+                background-color: var(--surface-card) !important;
+                border: 1px solid var(--surface-border) !important;
+                border-radius: var(--radius-lg) !important;
+                padding: 14px 16px !important;
+                gap: 8px !important;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+            }
+            .mobile-cards tr:hover {
+                background-color: var(--surface-hover) !important;
+            }
+            .mobile-cards td {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                padding: 5px 0 !important;
+                border-bottom: 1px dashed rgba(255, 255, 255, 0.08) !important;
+                font-size: 13px !important;
+                width: 100% !important;
+                text-align: right !important;
+            }
+            .mobile-cards td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: var(--text-muted);
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                flex-shrink: 0;
+                margin-right: 12px;
+                text-align: left;
+            }
+            .mobile-cards td[data-label="Действия"] {
+                border-bottom: none !important;
+                margin-top: 4px;
+                padding-top: 10px !important;
+                border-top: 1px solid var(--surface-border) !important;
+                display: flex !important;
+                justify-content: stretch !important;
+            }
+            .mobile-cards td[data-label="Действия"]::before {
+                display: none !important;
+            }
+            .mobile-cards td[data-label="Действия"] > div {
+                width: 100% !important;
+                display: flex !important;
+                gap: 8px !important;
+            }
+            .mobile-cards td[data-label="Действия"] > div .btn {
+                flex: 1 !important;
+                justify-content: center !important;
+                padding: 8px 10px !important;
+            }
         }
     </style>
 </head>
@@ -675,7 +752,7 @@
             </div>
 
             <!-- TABLE -->
-            <div class="table-wrap">
+            <div class="table-wrap mobile-cards">
                 <table>
                     <thead>
                         <tr>
@@ -795,7 +872,7 @@
             </div>
 
             <h4 style="margin-top: 14px;">📜 Реестр уничтожения ПДн (152-ФЗ)</h4>
-            <div class="table-wrap">
+            <div class="table-wrap mobile-cards">
                 <table>
                     <thead>
                         <tr>
@@ -839,7 +916,7 @@
                 <button class="btn btn-primary" onclick="addNewAdmin()" style="flex: 1; min-width: 150px;">➕ Выдать доступ</button>
             </div>
 
-            <div class="table-wrap">
+            <div class="table-wrap mobile-cards">
                 <table>
                     <thead>
                         <tr>
@@ -907,7 +984,7 @@
 
             <!-- REFERRALS TABLE -->
             <h4 style="margin-top: 10px;">📋 Список кандидатов по вашей ссылке</h4>
-            <div class="table-wrap">
+            <div class="table-wrap mobile-cards">
                 <table>
                     <thead>
                         <tr>
@@ -1283,16 +1360,16 @@
                 const depotStr = (c.interview_depot || '') + (c.interview_time ? ' (' + c.interview_time + ')' : '');
 
                 html += `<tr>
-                    <td><b>#${c.ticket_id}</b></td>
-                    <td>${dbBadge}</td>
-                    <td style="color: var(--text-muted);">${c.created_at || '—'}</td>
-                    <td><b>${escapeHtml(c.full_name || 'Не указано')}</b></td>
-                    <td>${escapeHtml(c.vacancy || '—')}</td>
-                    <td><code>${escapeHtml(c.phone || '—')}</code></td>
-                    <td><span style="font-size: 11px;">${escapeHtml(c.driver_license || '—')}</span></td>
-                    <td><span class="badge-status ${stBadge}">${escapeHtml(c.status || 'Новая')}</span></td>
-                    <td style="color: var(--text-muted); font-size: 12px;">${escapeHtml(depotStr || '—')}</td>
-                    <td>
+                    <td data-label="№ ID"><b>#${c.ticket_id}</b></td>
+                    <td data-label="База">${dbBadge}</td>
+                    <td data-label="Дата подачи" style="color: var(--text-muted);">${c.created_at || '—'}</td>
+                    <td data-label="ФИО соискателя"><b>${escapeHtml(c.full_name || 'Не указано')}</b></td>
+                    <td data-label="Вакансия">${escapeHtml(c.vacancy || '—')}</td>
+                    <td data-label="Телефон"><code>${escapeHtml(c.phone || '—')}</code></td>
+                    <td data-label="Категория прав"><span style="font-size: 11px;">${escapeHtml(c.driver_license || '—')}</span></td>
+                    <td data-label="Статус"><span class="badge-status ${stBadge}">${escapeHtml(c.status || 'Новая')}</span></td>
+                    <td data-label="Депо / Время" style="color: var(--text-muted); font-size: 12px;">${escapeHtml(depotStr || '—')}</td>
+                    <td data-label="Действия">
                         <div style="display: flex; gap: 4px;">
                             <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openCandidateModal(${c.ticket_id})">Карточка</button>
                             <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" title="Удалить" onclick="quickDeleteCandidate(${c.ticket_id})">🗑</button>
@@ -1501,11 +1578,11 @@
                         let html = '';
                         logs.forEach(l => {
                             html += `<tr>
-                                <td><b>${escapeHtml(l.act_number || '—')}</b></td>
-                                <td>#${l.candidate_id}</td>
-                                <td>${escapeHtml(l.platform || 'tg')}</td>
-                                <td>${escapeHtml(l.reason || '—')}</td>
-                                <td style="color: var(--text-muted);">${escapeHtml(l.destroyed_at || '—')}</td>
+                                <td data-label="№ Акта"><b>${escapeHtml(l.act_number || '—')}</b></td>
+                                <td data-label="ID кандидата">#${l.candidate_id}</td>
+                                <td data-label="Платформа">${escapeHtml(l.platform || 'tg')}</td>
+                                <td data-label="Причина">${escapeHtml(l.reason || '—')}</td>
+                                <td data-label="Дата уничтожения" style="color: var(--text-muted);">${escapeHtml(l.destroyed_at || '—')}</td>
                             </tr>`;
                         });
                         tbody.innerHTML = html;
@@ -1626,15 +1703,17 @@
                     </select>`;
 
                     html += `<tr>
-                        <td><b>${nameLabel}</b></td>
-                        <td>${roleSelect}</td>
-                        <td>${pwdBadge}</td>
-                        <td>${notifyBtn}</td>
-                        <td style="color: var(--text-muted); font-size: 11px;">${a.added_at || '—'}</td>
-                        <td style="display: flex; gap: 4px; flex-wrap: wrap;">
-                            <button class="btn btn-secondary" style="padding: 4px 6px; font-size: 11px;" onclick="setAdminPasswordPrompt(${a.user_id})">🔑 Пароль</button>
-                            <button class="btn btn-secondary" style="padding: 4px 6px; font-size: 11px;" onclick="notifyAdminPanel(${a.user_id})">📲 Доступ</button>
-                            ${!isSuper ? `<button class="btn btn-danger" style="padding: 4px 6px; font-size: 11px;" onclick="removeAdmin(${a.user_id})">Отозвать</button>` : ''}
+                        <td data-label="Сотрудник"><b>${nameLabel}</b></td>
+                        <td data-label="Роль">${roleSelect}</td>
+                        <td data-label="Пароль">${pwdBadge}</td>
+                        <td data-label="Уведомления">${notifyBtn}</td>
+                        <td data-label="Назначен" style="color: var(--text-muted); font-size: 11px;">${a.added_at || '—'}</td>
+                        <td data-label="Действия">
+                            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                                <button class="btn btn-secondary" style="padding: 4px 6px; font-size: 11px;" onclick="setAdminPasswordPrompt(${a.user_id})">🔑 Пароль</button>
+                                <button class="btn btn-secondary" style="padding: 4px 6px; font-size: 11px;" onclick="notifyAdminPanel(${a.user_id})">📲 Доступ</button>
+                                ${!isSuper ? `<button class="btn btn-danger" style="padding: 4px 6px; font-size: 11px;" onclick="removeAdmin(${a.user_id})">Отозвать</button>` : ''}
+                            </div>
                         </td>
                     </tr>`;
                 });
@@ -1739,12 +1818,12 @@
                     if (isHired) stBadge = 'st-hired';
 
                     html += `<tr>
-                        <td><b>#${c.ticket_id}</b></td>
-                        <td><b>${escapeHtml(c.full_name || 'Соискатель')}</b></td>
-                        <td>${escapeHtml(c.vacancy || '—')}</td>
-                        <td><span class="badge-status ${stBadge}">${escapeHtml(c.status || 'Новая')}</span></td>
-                        <td style="color: var(--text-muted); font-size: 12px;">${c.created_at || '—'}</td>
-                        <td>${bonusLabel}</td>
+                        <td data-label="№ Заявки"><b>#${c.ticket_id}</b></td>
+                        <td data-label="ФИО соискателя"><b>${escapeHtml(c.full_name || 'Соискатель')}</b></td>
+                        <td data-label="Вакансия">${escapeHtml(c.vacancy || '—')}</td>
+                        <td data-label="Статус"><span class="badge-status ${stBadge}">${escapeHtml(c.status || 'Новая')}</span></td>
+                        <td data-label="Дата подачи" style="color: var(--text-muted); font-size: 12px;">${c.created_at || '—'}</td>
+                        <td data-label="Вознаграждение">${bonusLabel}</td>
                     </tr>`;
                 });
                 tbody.innerHTML = html;

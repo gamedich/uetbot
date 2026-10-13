@@ -315,10 +315,15 @@ class ResumeDB:
                     platform TEXT,
                     reason TEXT,
                     destroyed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    act_number TEXT
+                    act_number TEXT,
+                    operator TEXT DEFAULT 'Система'
                 )
                 """
             )
+            cursor.execute("PRAGMA table_info(destruction_logs)")
+            dl_cols = [row[1] for row in cursor.fetchall()]
+            if "operator" not in dl_cols:
+                cursor.execute("ALTER TABLE destruction_logs ADD COLUMN operator TEXT DEFAULT 'Система'")
 
             conn.commit()
 
@@ -815,7 +820,7 @@ class ResumeDB:
             return cursor.rowcount > 0
 
     def log_pdn_destruction(
-        self, candidate_id: int, user_id: str, platform: str, reason: str, act_number: str = ""
+        self, candidate_id: int, user_id: str, platform: str, reason: str, act_number: str = "", operator: str = "Система"
     ) -> int:
         """Фиксация уничтожения ПДн в электронном журнале (Приказ Роскомнадзора № 179)."""
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -824,10 +829,10 @@ class ResumeDB:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO destruction_logs (candidate_id, user_id, platform, reason, destroyed_at, act_number)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO destruction_logs (candidate_id, user_id, platform, reason, destroyed_at, act_number, operator)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (candidate_id, str(user_id), platform, reason, now_str, act_num),
+                (candidate_id, str(user_id), platform, reason, now_str, act_num, operator),
             )
             return int(cursor.lastrowid)
 

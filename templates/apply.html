@@ -696,7 +696,7 @@
                 </div>
             </div>
 
-            <div class="options-grid">
+            <div class="options-grid" id="vacancyOptionsGrid">
                 <div class="option-card selected" onclick="selectSingleOption('vacancy', 'Водитель трамвая', this)">
                     <div class="option-left">
                         <div class="option-icon">🚋</div>
@@ -1290,7 +1290,75 @@
             console.warn("Telegram WebApp not initialized:", e);
         }
         updateStepUI();
+        loadDynamicVacancies();
     });
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    async function loadDynamicVacancies() {
+        try {
+            const res = await fetch('/api/vacancies');
+            const data = await res.json();
+            if (data.ok && Array.isArray(data.vacancies) && data.vacancies.length > 0) {
+                const grid = document.getElementById('vacancyOptionsGrid');
+                if (!grid) return;
+
+                let currentSelected = formData.vacancy || data.vacancies[0].title;
+                let foundSelected = false;
+                let html = '';
+
+                data.vacancies.forEach(v => {
+                    const isSel = (v.title === currentSelected);
+                    if (isSel) foundSelected = true;
+
+                    let badgeHtml = '';
+                    if (v.training) {
+                        badgeHtml = `<span class="option-badge">🎓 Бесплатное обучение ${v.stipend ? 'со стипендией ' + escapeHtml(v.stipend) : ''}</span>`;
+                    }
+
+                    const safeTitle = escapeHtml(v.title).replace(/'/g, "&#39;");
+                    html += `
+                    <div class="option-card ${isSel ? 'selected' : ''}" onclick="selectSingleOption('vacancy', '${safeTitle}', this)">
+                        <div class="option-left">
+                            <div class="option-icon">${escapeHtml(v.icon || '💼')}</div>
+                            <div class="option-texts">
+                                <span class="option-label">${escapeHtml(v.title)}</span>
+                                <span class="option-sub">${escapeHtml(v.sub || v.salary || '')}</span>
+                                ${badgeHtml}
+                            </div>
+                        </div>
+                        <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                    </div>`;
+                });
+
+                const isOther = (currentSelected === 'Другое');
+                if (isOther) foundSelected = true;
+                html += `
+                <div class="option-card ${isOther ? 'selected' : ''}" onclick="selectSingleOption('vacancy', 'Другое', this)">
+                    <div class="option-left">
+                        <div class="option-icon">📝</div>
+                        <div class="option-texts">
+                            <span class="option-label">Другая специальность</span>
+                            <span class="option-sub">Укажите в примечании</span>
+                        </div>
+                    </div>
+                    <div class="option-check"><svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg></div>
+                </div>`;
+
+                grid.innerHTML = html;
+                if (!foundSelected && data.vacancies[0]) {
+                    formData.vacancy = data.vacancies[0].title;
+                    const firstCard = grid.querySelector('.option-card');
+                    if (firstCard) firstCard.classList.add('selected');
+                }
+            }
+        } catch (err) {
+            console.warn('Не удалось загрузить динамические вакансии:', err);
+        }
+    }
 
     function showToast(msg) {
         const t = document.getElementById('toast');

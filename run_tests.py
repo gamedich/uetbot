@@ -548,6 +548,79 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
 
         asyncio.run(run_apply())
 
+    def test_vacancies_synchronization(self):
+        """Тест синхронизации закрытия/открытия вакансий между ботом и веб-формой."""
+        import asyncio
+        import json
+        from common import get_all_vacancies, get_closed_vacancies, get_open_vacancies, set_closed_vacancies
+        from keyboards import make_step5_vacancies_kb
+        from web_app import WebPanel
+        from aiohttp.test_utils import make_mocked_request
+
+        original_closed = get_closed_vacancies()
+        try:
+            # 1. Исходное состояние: все открыты
+            set_closed_vacancies(set())
+            all_vacs = get_all_vacancies()
+            self.assertTrue(len(all_vacs) > 0)
+            target_vac = all_vacs[0]
+
+            # Проверяем, что target_vac открыта
+            open_vacs = get_open_vacancies()
+            self.assertIn(target_vac, open_vacs)
+
+            # Проверяем наличие в клавиатуре бота
+            kb = make_step5_vacancies_kb()
+            btn_texts = [b.text for row in kb.inline_keyboard for b in row]
+            self.assertTrue(any(target_vac in text for text in btn_texts))
+
+            # 2. Закрываем вакансию через кнопку/метод
+            set_closed_vacancies({target_vac})
+            open_vacs_after = get_open_vacancies()
+            self.assertNotIn(target_vac, open_vacs_after)
+
+            # Проверяем, что в клавиатуре бота вакансия исчезла
+            kb_after = make_step5_vacancies_kb()
+            btn_texts_after = [b.text for row in kb_after.inline_keyboard for b in row]
+            self.assertFalse(any(target_vac in text for text in btn_texts_after))
+
+            # 3. Проверяем синхронизацию с Web API
+            panel = WebPanel(self.db, bot=None)
+
+            async def run_web_check():
+                req = make_mocked_request('GET', '/api/vacancies')
+                resp = await panel.handle_api_vacancies(req)
+                data = json.loads(resp.text)
+                self.assertTrue(data['ok'])
+                titles = [v['title'] for v in data['vacancies']]
+                self.assertNotIn(target_vac, titles)
+
+                # Запрос со всеми вакансиями (для админки) показывает её как закрытую
+                req_all = make_mocked_request('GET', '/api/vacancies?all=1')
+                resp_all = await panel.handle_api_vacancies(req_all)
+                data_all = json.loads(resp_all.text)
+                target_item = next(v for v in data_all['vacancies'] if v['title'] == target_vac)
+                self.assertFalse(target_item['is_open'])
+
+                # 4. Переключаем обратно через API
+                req_toggle = make_mocked_request('POST', '/api/vacancies/toggle')
+                req_toggle._read_bytes = json.dumps({"title": target_vac}).encode('utf-8')
+                resp_toggle = await panel.handle_api_vacancies_toggle(req_toggle)
+                toggle_data = json.loads(resp_toggle.text)
+                self.assertTrue(toggle_data['ok'])
+                self.assertTrue(toggle_data['is_open'])
+
+            asyncio.run(run_web_check())
+
+            # 5. Проверяем, что после открытия она снова появилась в боте
+            self.assertIn(target_vac, get_open_vacancies())
+            kb_reopened = make_step5_vacancies_kb()
+            btn_texts_reopened = [b.text for row in kb_reopened.inline_keyboard for b in row]
+            self.assertTrue(any(target_vac in text for text in btn_texts_reopened))
+
+        finally:
+            set_closed_vacancies(original_closed)
+
 
 class TestComplianceAndInterviewServices(unittest.TestCase):
     """Тесты комплаенс-скоринга (ст. 328.1 ТК РФ) и сервиса организации собеседований."""

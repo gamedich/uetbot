@@ -44,6 +44,9 @@ from common import (
     TechAccessMiddleware,
     db,
     get_all_vacancies,
+    get_closed_vacancies,
+    get_open_vacancies,
+    get_vacancy_icon,
     is_hr_admin,
     is_tech_admin,
     memory_log_handler,
@@ -52,6 +55,7 @@ from common import (
     safe_answer,
     safe_send,
     save_all_vacancies,
+    set_closed_vacancies,
     sync_user_commands,
     update_env_mode,
 )
@@ -1553,14 +1557,6 @@ async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bo
 # 4. УПРАВЛЕНИЕ НАБОРОМ ВАКАНСИЙ
 # ==============================================================================
 
-def get_closed_vacancies() -> Set[str]:
-    val = db.get_setting("closed_vacancies", "[]")
-    try:
-        return set(json.loads(val))
-    except Exception:
-        return set()
-
-
 @tech_router.callback_query(F.data == "tech_vacancies_menu")
 async def cb_tech_vacancies_menu(
     callback: types.CallbackQuery,
@@ -1621,7 +1617,7 @@ async def cb_tech_vac_toggle_idx(callback: types.CallbackQuery) -> None:
         closed.add(target_vac)
         msg = f"🔴 Приём на «{target_vac}» закрыт!"
 
-    db.set_setting("closed_vacancies", json.dumps(list(closed), ensure_ascii=False))
+    set_closed_vacancies(closed)
     await callback.answer(msg, show_alert=True)
     await cb_tech_vacancies_menu(callback)
 
@@ -1693,6 +1689,10 @@ async def cb_vac_del_execute(callback: types.CallbackQuery) -> None:
     if 0 <= idx < len(vacancies):
         removed = vacancies.pop(idx)
         save_all_vacancies(vacancies)
+        closed = get_closed_vacancies()
+        if removed in closed:
+            closed.remove(removed)
+            set_closed_vacancies(closed)
         await callback.answer(f"🗑 Вакансия «{removed}» удалена!", show_alert=True)
         await cb_tech_vacancies_menu(callback)
 

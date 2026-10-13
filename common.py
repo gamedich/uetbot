@@ -394,6 +394,60 @@ get_vacancies = get_all_vacancies
 save_vacancies = save_all_vacancies
 
 
+def get_closed_vacancies() -> Set[str]:
+    """Возвращает набор временно закрытых должностей (по которым набор приостановлен)."""
+    try:
+        val = db.get_setting("closed_vacancies", "[]")
+        return set(json.loads(val))
+    except Exception:
+        return set()
+
+
+def set_closed_vacancies(closed: Set[str]) -> bool:
+    """Сохраняет список закрытых должностей в настройках БД."""
+    try:
+        db.set_setting("closed_vacancies", json.dumps(list(closed), ensure_ascii=False))
+        return True
+    except Exception as e:
+        logger.error("Ошибка сохранения closed_vacancies: %s", e)
+        return False
+
+
+def get_open_vacancies() -> List[str]:
+    """Возвращает список только тех вакансий, приём по которым в данный момент открыт."""
+    all_vac = get_all_vacancies()
+    closed = get_closed_vacancies()
+    return [v for v in all_vac if v not in closed]
+
+
+def get_vacancy_icon(name: str) -> str:
+    """Возвращает подходящую иконку (эмодзи) для вакансии по её наименованию."""
+    if not name:
+        return "💼"
+    n = name.lower()
+    if "трамва" in n:
+        return "🚋"
+    if "троллей" in n:
+        return "🚎"
+    if "кондуктор" in n:
+        return "🎫"
+    if "слесар" in n or "ремонт" in n:
+        return "🔧"
+    if "электр" in n:
+        return "⚡"
+    if "пути" in n or "рельс" in n:
+        return "🛤"
+    if "маляр" in n or "кузов" in n:
+        return "🎨"
+    if "водитель" in n:
+        return "🚌"
+    if "диспетчер" in n:
+        return "📞"
+    if "инженер" in n:
+        return "📐"
+    return "💼"
+
+
 # ==============================================================================
 # ПРОВЕРКА ПРАВ И РОЛЕВАЯ МОДЕЛЬ
 # ==============================================================================

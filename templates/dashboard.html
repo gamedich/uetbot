@@ -1725,6 +1725,7 @@
         // NEW CANDIDATE MODAL (ОЧНЫЙ ПРИЁМ / ТЕСТОВАЯ АНКЕТА)
         function openNewCandidateModal() {
             document.getElementById('modalNewCandidate').classList.add('active');
+            loadDashboardVacancies();
             const scope = document.getElementById('dbScopeSelect').value;
             if (scope === 'test') {
                 document.getElementById('newCandTargetDb').value = 'test';
@@ -2396,8 +2397,31 @@
             }
         }
 
+        async function loadDashboardVacancies() {
+            try {
+                const res = await fetch('/api/vacancies?all=1');
+                const data = await res.json();
+                if (data.ok && Array.isArray(data.vacancies)) {
+                    const sel = document.getElementById('newCandVacancy');
+                    if (!sel) return;
+                    const curVal = sel.value;
+                    let html = '';
+                    data.vacancies.forEach(v => {
+                        const icon = v.icon || '💼';
+                        const statusBadge = v.is_open ? '' : ' (набор приостановлен)';
+                        html += `<option value="${escapeHtml(v.title)}">${icon} ${escapeHtml(v.title)}${statusBadge}</option>`;
+                    });
+                    sel.innerHTML = html;
+                    if (curVal) sel.value = curVal;
+                }
+            } catch (e) {
+                console.warn('loadDashboardVacancies error:', e);
+            }
+        }
+
         loadStats();
         loadCandidates(1);
+        loadDashboardVacancies();
     </script>
 </body>
 </html>

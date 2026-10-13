@@ -37,7 +37,16 @@ from database import ResumeDB
 from services.compliance_service import ComplianceService
 from services.candidate_service import candidate_service
 from keyboards import make_ticket_keyboard
-from common import route_new_candidate_ticket, safe_send
+from common import (
+    get_all_vacancies,
+    get_closed_vacancies,
+    get_open_vacancies,
+    get_vacancy_icon,
+    route_new_candidate_ticket,
+    safe_send,
+    save_all_vacancies,
+    set_closed_vacancies,
+)
 
 logger = logging.getLogger("UET_WEB_APP")
 
@@ -117,6 +126,9 @@ class WebPanel:
 
         # Vacancies & Candidate Apply API
         self.app.router.add_get("/api/vacancies", self.handle_api_vacancies)
+        self.app.router.add_post("/api/vacancies/toggle", self.handle_api_vacancies_toggle)
+        self.app.router.add_post("/api/vacancies/add", self.handle_api_vacancies_add)
+        self.app.router.add_post("/api/vacancies/delete", self.handle_api_vacancies_delete)
         self.app.router.add_post("/api/apply_candidate", self.handle_api_apply_candidate)
         self.app.router.add_post("/api/candidate/apply", self.handle_api_apply_candidate)
 
@@ -650,55 +662,137 @@ class WebPanel:
             return web.json_response({"error": str(e)}, status=500)
 
     async def handle_api_vacancies(self, request: web.Request) -> web.Response:
-        """Динамический список открытых должностей МУП «Ульяновскэлектротранс»."""
-        vacancies = [
-            {
-                "id": "driver_tram",
-                "title": "Водитель трамвая",
+        """Динамический список должностей МУП «Ульяновскэлектротранс» из единого источника правды."""
+        all_vac = get_all_vacancies()
+        closed_set = get_closed_vacancies()
+        open_vac = [v for v in all_vac if v not in closed_set]
+
+        meta_presets = {
+            "Водитель трамвая": {
                 "salary": "55 000 — 85 000 ₽",
                 "training": True,
                 "stipend": "от 20 000 ₽ на период обучения",
                 "requirements": "От 21 года (к моменту выпуска), ст. 328.1 ТК РФ",
-                "description": "Управление современными трамвайными вагонами (Львенок, Татра) на маршрутах г. Ульяновска."
+                "description": "Управление современными трамвайными вагонами (Львенок, Татра) на маршрутах г. Ульяновска.",
+                "sub": "Зарплата от 55 000 до 85 000 ₽"
             },
-            {
-                "id": "driver_trolley",
-                "title": "Водитель троллейбуса",
+            "Водитель троллейбуса": {
                 "salary": "55 000 — 85 000 ₽",
                 "training": True,
                 "stipend": "от 20 000 ₽ на период обучения",
                 "requirements": "От 21 года, ст. 328.1 ТК РФ",
-                "description": "Пассажирские перевозки на троллейбусных маршрутах Заволжского района."
+                "description": "Пассажирские перевозки на троллейбусных маршрутах Заволжского района.",
+                "sub": "Зарплата от 55 000 до 85 000 ₽"
             },
-            {
-                "id": "conductor",
-                "title": "Кондуктор",
+            "Кондуктор": {
                 "salary": "30 000 — 45 000 ₽",
                 "training": False,
                 "stipend": None,
                 "requirements": "От 18 лет, ответственность, вежливость",
-                "description": "Сбор платы за проезд, проверка проездных документов, сменный график 2/2."
+                "description": "Сбор платы за проезд, проверка проездных документов, сменный график 2/2.",
+                "sub": "Сменный график, официальное трудоустройство"
             },
-            {
-                "id": "repairman",
-                "title": "Слесарь по ремонту подвижного состава",
+            "Слесарь по ремонту подвижного состава": {
                 "salary": "40 000 — 65 000 ₽",
                 "training": False,
                 "stipend": None,
                 "requirements": "От 18 лет, знание механики/электрики",
-                "description": "Техническое обслуживание и текущий ремонт подвижного состава в депо."
+                "description": "Техническое обслуживание и текущий ремонт подвижного состава в депо.",
+                "sub": "Северное / Засвияжское / Заволжское депо"
             },
-            {
-                "id": "electrician",
-                "title": "Электромонтер контактной сети",
+            "Электромонтер контактной сети": {
                 "salary": "45 000 — 70 000 ₽",
                 "training": False,
                 "stipend": None,
                 "requirements": "От 18 лет, профильное образование",
-                "description": "Обслуживание и оперативный ремонт контактных сетей и тяговых подстанций."
+                "description": "Обслуживание и оперативный ремонт контактных сетей и тяговых подстанций.",
+                "sub": "Обслуживание контактных сетей и подстанций"
             }
-        ]
-        return web.json_response({"ok": True, "vacancies": vacancies})
+        }
+
+        show_all = request.query.get("all") in ("1", "true")
+        target_list = all_vac if show_all else open_vac
+
+        vacancies = []
+        for idx, title in enumerate(target_list):
+            preset = meta_presets.get(title, {})
+            is_open = title not in closed_set
+            vacancies.append({
+                "id": f"vac_{idx}",
+                "title": title,
+                "icon": get_vacancy_icon(title),
+                "salary": preset.get("salary", "По результатам собеседования"),
+                "training": preset.get("training", False),
+                "stipend": preset.get("stipend"),
+                "requirements": preset.get("requirements", "Официальное трудоустройство, соцпакет"),
+                "description": preset.get("description", "Работа в МУП «Ульяновскэлектротранс»."),
+                "sub": preset.get("sub", preset.get("salary", "Официальное трудоустройство")),
+                "is_open": is_open
+            })
+
+        return web.json_response({
+            "ok": True,
+            "open_vacancies": open_vac,
+            "closed_vacancies": list(closed_set),
+            "all_vacancies": all_vac,
+            "vacancies": vacancies
+        })
+
+    async def handle_api_vacancies_toggle(self, request: web.Request) -> web.Response:
+        """Переключение набора (открыть / закрыть) для должности."""
+        try:
+            data = await request.json()
+            title = (data.get("title") or "").strip()
+            if not title:
+                return web.json_response({"error": "Не указано наименование должности"}, status=400)
+
+            closed = get_closed_vacancies()
+            if title in closed:
+                closed.remove(title)
+                is_open = True
+            else:
+                closed.add(title)
+                is_open = False
+            set_closed_vacancies(closed)
+            return web.json_response({"ok": True, "title": title, "is_open": is_open})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def handle_api_vacancies_add(self, request: web.Request) -> web.Response:
+        """Добавление новой вакансии в систему предприятия."""
+        try:
+            data = await request.json()
+            title = (data.get("title") or "").strip()
+            if not title:
+                return web.json_response({"error": "Введите наименование вакансии"}, status=400)
+
+            all_vac = get_all_vacancies()
+            if title not in all_vac:
+                all_vac.append(title)
+                save_all_vacancies(all_vac)
+            return web.json_response({"ok": True, "title": title, "vacancies": all_vac})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def handle_api_vacancies_delete(self, request: web.Request) -> web.Response:
+        """Удаление вакансии из системы."""
+        try:
+            data = await request.json()
+            title = (data.get("title") or "").strip()
+            if not title:
+                return web.json_response({"error": "Не указано наименование"}, status=400)
+
+            all_vac = get_all_vacancies()
+            if title in all_vac:
+                all_vac.remove(title)
+                save_all_vacancies(all_vac)
+                closed = get_closed_vacancies()
+                if title in closed:
+                    closed.remove(title)
+                    set_closed_vacancies(closed)
+            return web.json_response({"ok": True, "title": title, "vacancies": all_vac})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
 
     async def handle_api_apply_candidate(self, request: web.Request) -> web.Response:
         """

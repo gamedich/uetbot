@@ -9,7 +9,16 @@ from typing import Tuple, List, Optional, Dict, Any
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from common import db, CONFIG, SYSTEM_METRICS, get_uptime, is_tech_admin, is_hr_admin
+from common import (
+    CONFIG,
+    SYSTEM_METRICS,
+    db,
+    get_open_vacancies,
+    get_uptime,
+    get_vacancy_icon,
+    is_hr_admin,
+    is_tech_admin,
+)
 
 def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
     """
@@ -412,16 +421,30 @@ def make_step4_city_kb() -> types.InlineKeyboardMarkup:
     return builder.as_markup()
 
 def make_step5_vacancies_kb() -> types.InlineKeyboardMarkup:
+    """
+    Клавиатура выбора вакансии для соискателя (Шаг 5).
+    Динамически синхронизирована с базой данных и настройками набора (get_open_vacancies()).
+    """
     builder = InlineKeyboardBuilder()
-    builder.button(text="🚋 Водитель трамвая", callback_data="vac_tram")
-    builder.button(text="🚎 Водитель троллейбуса", callback_data="vac_troll")
-    builder.button(text="🎫 Кондуктор", callback_data="vac_conductor")
-    builder.button(text="🔧 Слесарь по ремонту ПС", callback_data="vac_slesar")
-    builder.button(text="⚡ Электромонтёр контактной сети", callback_data="vac_electro")
+    open_vacancies = get_open_vacancies()
+    if not open_vacancies:
+        open_vacancies = [
+            "Водитель трамвая",
+            "Водитель троллейбуса",
+            "Кондуктор",
+            "Слесарь по ремонту подвижного состава",
+            "Электромонтер контактной сети",
+        ]
+
+    for idx, vac in enumerate(open_vacancies):
+        icon = get_vacancy_icon(vac)
+        builder.button(text=f"{icon} {vac}", callback_data=f"vac_pick_{idx}")
+
     builder.button(text="📋 Другая должность", callback_data="vac_other")
     builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
-    builder.adjust(1, 1, 1, 1, 1, 1, 2)
+    layout = [1] * len(open_vacancies) + [1, 2]
+    builder.adjust(*layout)
     return builder.as_markup()
 
 def make_step6_license_kb() -> types.InlineKeyboardMarkup:

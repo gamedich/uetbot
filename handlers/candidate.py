@@ -33,6 +33,8 @@ from common import (
     RevokeConsentForm,
     SupportForm,
     db,
+    get_all_vacancies,
+    get_open_vacancies,
     is_any_staff,
     is_depot_admin,
     is_hr_admin,
@@ -980,8 +982,7 @@ VACANCY_MAP: Dict[str, str] = {
 @candidate_router.callback_query(CandidateForm.vacancy, F.data.startswith("vac_"))
 async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext) -> None:
     vac_raw = callback.data.replace("vac_", "")
-    vac_name = VACANCY_MAP.get(vac_raw, vac_raw)
-    if vac_raw == "other" or vac_name == "other":
+    if vac_raw == "other" or callback.data == "vac_other":
         await state.set_state(CandidateForm.custom_vacancy)
         await callback.message.edit_text(
             texts.SURVEY_STEP5_1_CUSTOM,
@@ -989,6 +990,28 @@ async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext) ->
             parse_mode="HTML",
         )
         await callback.answer()
+        return
+
+    vac_name = None
+    if callback.data.startswith("vac_pick_"):
+        try:
+            idx = int(callback.data.replace("vac_pick_", ""))
+            open_vacs = get_open_vacancies()
+            if 0 <= idx < len(open_vacs):
+                vac_name = open_vacs[idx]
+            else:
+                all_vacs = get_all_vacancies()
+                if 0 <= idx < len(all_vacs):
+                    vac_name = all_vacs[idx]
+        except (ValueError, TypeError):
+            vac_name = None
+
+    if not vac_name:
+        vac_name = VACANCY_MAP.get(vac_raw, vac_raw)
+
+    if not vac_name or vac_name == "other":
+        await callback.answer("⚠️ Вакансия обновлена. Пожалуйста, выберите из списка.", show_alert=True)
+        await callback.message.edit_reply_markup(reply_markup=make_step5_vacancies_kb())
         return
 
     await state.update_data(vacancy=vac_name)

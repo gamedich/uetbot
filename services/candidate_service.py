@@ -261,7 +261,8 @@ class CandidateService:
             medical_restrictions=medical_restrictions,
             criminal_record=criminal_record,
             source=source,
-            extra_info=extra_info
+            extra_info=extra_info,
+            referrer_tab=data.get("referrer_tab", "")
         )
 
         offer_training = self.should_offer_training(vacancy, experience)

@@ -441,7 +441,7 @@ class ResumeDB:
         birth_date: str = "", city: str = "", driver_license: str = "", education: str = "",
         relocation: str = "", dormitory: str = "", shift_work: str = "",
         medical_restrictions: str = "", criminal_record: str = "", source: str = "", extra_info: str = "",
-        raw_data_json: str = "{}"
+        raw_data_json: str = "{}", referrer_tab: str = ""
     ) -> int:
         # Автоматически проверяем переключатель активной базы
         target_setting = self.get_setting("active_db_target", "resumes.db")
@@ -454,14 +454,15 @@ class ResumeDB:
                 INSERT INTO candidates (
                     platform, user_id, full_name, phone, vacancy, experience, is_test, consent_timestamp,
                     birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                    medical_restrictions, criminal_record, source, extra_info, raw_data_json, updated_at
+                    medical_restrictions, criminal_record, source, extra_info, raw_data_json, referrer_tab, updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """,
                 (
                     platform, str(user_id), full_name, phone, vacancy, experience, 1 if use_test else 0, consent_timestamp or "",
                     birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                    medical_restrictions, criminal_record, source, extra_info, raw_data_json
+                    medical_restrictions, criminal_record, source, extra_info, raw_data_json,
+                    str(referrer_tab).strip() if referrer_tab else None
                 ),
             )
             conn.commit()
@@ -987,6 +988,13 @@ class ResumeDB:
                 logger.error(f"Ошибка добавления администратора {user_id}: {e}")
                 return False
 
+    def set_admin_role(self, user_id: int, role: str) -> bool:
+        """Обновление роли сотрудника (hr, tech, depot)."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE admins SET role = ? WHERE user_id = ?", (role, user_id))
+            return cursor.rowcount > 0
+
     def remove_admin(self, user_id: int) -> bool:
         """Отзыв прав доступа сотрудника."""
         with self.connection() as conn:
@@ -1100,6 +1108,76 @@ class ResumeDB:
 
     def get_hr_admins_with_dm_enabled(self) -> List[int]:
         return self.get_admins_with_dm_enabled(role="hr")
+
+    def get_depot_referrals(self, referrer_tab: Union[int, str]) -> Dict[str, Any]:
+        """Возвращает кандидатов и статистику начислений по реферальной программе депо."""
+        ref_clean = str(referrer_tab).replace("ref_", "").strip()
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ticket_id, full_name, vacancy, status, created_at, interview_status
+                FROM candidates
+                WHERE referrer_tab = ? OR referrer_tab = ? OR referrer_tab = ?
+                ORDER BY ticket_id DESC
+                """,
+                (ref_clean, f"ref_{ref_clean}", str(referrer_tab)),
+            )
+            rows = cursor.fetchall()
+
+        candidates = []
+        hired_count = 0
+        in_progress_count = 0
+        for r in rows:
+            c = {
+                "ticket_id": r[0],
+                "full_name": r[1],
+                "vacancy": r[2] or "Не указано",
+                "status": r[3] or "Новая",
+                "created_at": r[4] or "",
+                "interview_status": r[5] or "pending",
+            }
+            if r[3] == "Трудоустроен":
+                hired_count += 1
+            elif r[3] in ("Новая", "В работе", "Приглашен"):
+                in_progress_count += 1
+            candidates.append(c)
+
+        bonus_total = hired_count * 10000
+        return {
+            "referrer_code": ref_clean,
+            "total_referred": len(candidates),
+            "in_progress": in_progress_count,
+            "hired": hired_count,
+            "bonus_total": bonus_total,
+            "candidates": candidates,
+        }
+
+    def get_all_depot_referrals(self) -> List[Dict[str, Any]]:
+        """Возвращает сводный реестр всех кандидатов с реферальными отметками депо."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ticket_id, full_name, vacancy, status, created_at, referrer_tab, interview_status
+                FROM candidates
+                WHERE referrer_tab IS NOT NULL AND referrer_tab != ''
+                ORDER BY ticket_id DESC
+                """
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "ticket_id": r[0],
+                    "full_name": r[1],
+                    "vacancy": r[2] or "Не указано",
+                    "status": r[3] or "Новая",
+                    "created_at": r[4] or "",
+                    "referrer_tab": r[5],
+                    "interview_status": r[6] or "pending",
+                }
+                for r in rows
+            ]
 
     # =========================================================================
     # 4. АНТИФЛУД И ОБРАЩЕНИЯ СОИСКАТЕЛЕЙ

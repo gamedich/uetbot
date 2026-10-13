@@ -33,6 +33,8 @@ from common import (
     RevokeConsentForm,
     SupportForm,
     db,
+    is_any_staff,
+    is_depot_admin,
     is_hr_admin,
     is_tech_admin,
     route_new_candidate_ticket,
@@ -210,7 +212,7 @@ async def cmd_web_panel_entry(message: types.Message) -> None:
     """Точка входа в веб-панель управления и Telegram Mini App."""
     user_id = message.from_user.id
     super_id = CONFIG.get("SUPER_ADMIN_ID")
-    is_admin = user_id == super_id or is_hr_admin(user_id) or is_tech_admin(user_id)
+    is_admin = is_any_staff(user_id)
     if not is_admin:
         await safe_answer(
             message,
@@ -245,8 +247,7 @@ async def cmd_web_panel_entry(message: types.Message) -> None:
 async def cmd_set_password_entry(message: types.Message) -> None:
     """Установка или смена личного пароля сотрудника для входа в веб-панель."""
     user_id = message.from_user.id
-    super_id = CONFIG.get("SUPER_ADMIN_ID")
-    is_admin = user_id == super_id or is_hr_admin(user_id) or is_tech_admin(user_id)
+    is_admin = is_any_staff(user_id)
     if not is_admin:
         await safe_answer(
             message,
@@ -294,6 +295,44 @@ async def cmd_set_password_entry(message: types.Message) -> None:
         "<i>На сайте выберите вкладку «По паролю» и введите этот пароль для входа. Либо откройте Mini App по кнопке ниже:</i>"
     )
     await safe_answer(message, text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@candidate_router.message(Command("ref", "depot"))
+async def cmd_depot_referral_entry(message: types.Message) -> None:
+    """Просмотр персональной реферальной ссылки сотрудника депо и статистики начислений."""
+    user_id = message.from_user.id
+    ref_info = db.get_depot_referrals(user_id)
+    bot_info = await message.bot.get_me()
+    bot_user = bot_info.username or "UetFeedback_bot"
+    ref_link = f"https://t.me/{bot_user}?start=ref_{user_id}"
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+
+    total = ref_info.get("total_referred", 0)
+    in_progress = ref_info.get("in_progress", 0)
+    hired = ref_info.get("hired", 0)
+    bonus = ref_info.get("bonus_total", 0)
+
+    text = (
+        "🚋 <b>ПРОГРАММА «ПРИВЕДИ ДРУГА В ДЕПО»</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔗 <b>Ваша личная ссылка для кандидатов:</b>\n"
+        f"<code>{ref_link}</code>\n\n"
+        f"📊 <b>Ваша статистика:</b>\n"
+        f"• Всего переходов по ссылке: <b>{total}</b>\n"
+        f"• На рассмотрении кадров: <b>{in_progress}</b>\n"
+        f"• Принято на работу в депо: <b>{hired}</b>\n"
+        f"💰 <b>Начислено премий:</b> <b>{bonus:,} ₽</b> <i>(10 000 ₽ за каждого принятого)</i>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "💡 <i>Отправляйте ссылку друзьям или запустите Mini App для просмотра списка ваших кандидатов!</i>"
+    )
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🌐 Открыть кабинет депо (Mini App)", web_app=types.WebAppInfo(url=web_url))
+    share_url = f"https://t.me/share/url?url={ref_link}&text=Работа+в+МУП+«Ульяновскэлектротранс»"
+    kb.button(text="📲 Поделиться ссылкой", url=share_url)
+    kb.adjust(1, 1)
+
+    await safe_answer(message, text, reply_markup=kb.as_markup(), parse_mode="HTML")
 
 
 # ==============================================================================

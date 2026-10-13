@@ -252,12 +252,15 @@
         /* TABLE */
         .table-wrap {
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
             border-radius: var(--radius-lg);
             border: 1px solid var(--surface-border);
         }
 
         table {
             width: 100%;
+            min-width: 620px;
             border-collapse: collapse;
             font-size: 13px;
             text-align: left;
@@ -455,12 +458,112 @@
             gap: 12px;
         }
 
+        html, body {
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+
         @media (max-width: 768px) {
-            body { padding: 10px; }
-            .header { padding: 14px; }
-            .brand-title { font-size: 17px; }
-            .search-input { width: 100%; }
-            .filter-group { width: 100%; }
+            body {
+                padding: 8px 8px calc(24px + env(safe-area-inset-bottom, 0px)) 8px;
+            }
+            .container {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
+                gap: 12px;
+            }
+            .header {
+                padding: 12px;
+                gap: 10px;
+                border-radius: var(--radius-lg);
+            }
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .brand {
+                gap: 8px;
+            }
+            .brand-logo { font-size: 24px; }
+            .brand-title { font-size: 16px; }
+            .brand-subtitle { font-size: 11px; }
+            .header-controls {
+                width: 100%;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .badge-btn, .user-tag {
+                font-size: 11px;
+                padding: 4px 8px;
+            }
+            .nav-tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding-bottom: 4px;
+                gap: 6px;
+            }
+            .nav-tab {
+                flex-shrink: 0;
+                padding: 7px 12px;
+                font-size: 12px;
+                white-space: nowrap;
+            }
+            .main-card {
+                padding: 14px;
+                border-radius: var(--radius-lg);
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .stat-card {
+                padding: 10px;
+            }
+            .stat-value {
+                font-size: 18px;
+            }
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .filter-group {
+                flex-direction: column;
+                align-items: stretch;
+                width: 100%;
+                gap: 6px;
+            }
+            .search-input, .select-box, .input-box {
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+            .modal-content {
+                width: 95% !important;
+                max-height: 90vh !important;
+                padding: 14px !important;
+            }
+            .details-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .modal-actions {
+                justify-content: stretch;
+                gap: 6px;
+            }
+            .modal-actions .btn {
+                flex: 1 1 calc(50% - 6px);
+                font-size: 12px;
+                padding: 8px 4px;
+                text-align: center;
+                justify-content: center;
+            }
+            .btn {
+                min-height: 36px;
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -492,6 +595,9 @@
                 </button>
                 <button class="nav-tab" id="tabInquiriesBtn" onclick="switchTab('inquiries')">
                     💬 Вопросы (/ask) <span id="countInquiries" class="tab-count">0</span>
+                </button>
+                <button class="nav-tab" id="tabDepotBtn" onclick="switchTab('depot')">
+                    🚋 Депо & Рефералы
                 </button>
                 <button class="nav-tab" id="tabTechBtn" onclick="switchTab('tech')">
                     🛠 Панель инженера
@@ -684,7 +790,8 @@
                 <button class="btn" onclick="gitPull()">📥 Git Pull (Стянуть обновления)</button>
                 <button class="btn btn-warning" onclick="restartBotService()">⚡ Быстрый рестарт бота</button>
                 <button class="btn btn-danger" onclick="clearAllTestData()">🧪 Удалить все тестовые заявки (#900000+)</button>
-                <button class="btn btn-secondary" onclick="muteAllHr()">🔕 Выключить уведомления в ЛС всем HR</button>
+                <button class="btn btn-secondary" onclick="toggleGlobalNotifications(false)">🔕 Отключить уведомления всем</button>
+                <button class="btn btn-secondary" onclick="toggleGlobalNotifications(true)">🔔 Включить уведомления всем</button>
             </div>
 
             <h4 style="margin-top: 14px;">📜 Реестр уничтожения ПДн (152-ФЗ)</h4>
@@ -726,6 +833,7 @@
                 <select id="newAdminRole" class="select-box" style="flex: 2; min-width: 180px;">
                     <option value="hr">👔 Отдел кадров (HR)</option>
                     <option value="tech">🛠 Инженер систем (Tech)</option>
+                    <option value="depot">🚋 Сотрудник депо (Рефералы)</option>
                 </select>
                 <input type="text" id="newAdminPassword" class="input-box" placeholder="Пароль для сайта (необязательно)..." style="flex: 2; min-width: 180px;">
                 <button class="btn btn-primary" onclick="addNewAdmin()" style="flex: 1; min-width: 150px;">➕ Выдать доступ</button>
@@ -745,6 +853,74 @@
                     </thead>
                     <tbody id="adminsTbody">
                         <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Загрузка списка сотрудников...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB: DEPOT REFERRALS -->
+        <section id="tabDepot" class="main-card" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div>
+                    <h3 style="margin: 0;">🚋 Кабинет сотрудника депо & Реферальная программа</h3>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                        Приглашайте соискателей в МУП «УЭТ» и получайте 10 000 ₽ за каждого трудоустроенного
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn" onclick="loadDepotReferrals()">🔄 Обновить</button>
+                </div>
+            </div>
+
+            <!-- REFERRAL LINK BANNER -->
+            <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(19, 27, 46, 0.95)); border: 1px solid var(--primary); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                <span class="detail-label" style="color: #60a5fa; font-weight: 700; font-size: 13px;">🔗 Ваша персональная реферальная ссылка:</span>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <input type="text" id="depotRefLinkInput" class="input-box" readonly style="flex: 1; min-width: 220px; font-weight: 600; color: #93c5fd; background: rgba(0,0,0,0.4);" value="...">
+                    <button class="btn btn-secondary" onclick="copyDepotRefLink()">📋 Скопировать</button>
+                    <button class="btn" onclick="shareDepotRefLink()">📲 Отправить в TG</button>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+                    Отправляйте ссылку друзьям и знакомым. После успешного трудоустройства кандидата по вашей ссылке начисляется премия <b>10 000 ₽</b>!
+                </div>
+            </div>
+
+            <!-- DEPOT STATS COUNTERS -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Всего переходов</span>
+                    <span id="statDepotTotal" class="stat-value">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">В обработке HR</span>
+                    <span id="statDepotInProgress" class="stat-value" style="color: #fbbf24;">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Трудоустроено</span>
+                    <span id="statDepotHired" class="stat-value" style="color: #34d399;">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Премия к выплате</span>
+                    <span id="statDepotBonus" class="stat-value" style="color: #60a5fa;">0 ₽</span>
+                </div>
+            </div>
+
+            <!-- REFERRALS TABLE -->
+            <h4 style="margin-top: 10px;">📋 Список кандидатов по вашей ссылке</h4>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>№ Заявки</th>
+                            <th>ФИО соискателя</th>
+                            <th>Вакансия</th>
+                            <th>Статус рассмотрения</th>
+                            <th>Дата подачи</th>
+                            <th>Выплата</th>
+                        </tr>
+                    </thead>
+                    <tbody id="depotReferralsTbody">
+                        <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">Загрузка кандидатов...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -878,6 +1054,7 @@
         function applyRolePermissions() {
             const tabCand = document.getElementById('tabCandidatesBtn');
             const tabInq = document.getElementById('tabInquiriesBtn');
+            const tabDepot = document.getElementById('tabDepotBtn');
             const tabTech = document.getElementById('tabTechBtn');
             const tabSuper = document.getElementById('tabSuperBtn');
             const tabAdm = document.getElementById('tabAdminsBtn');
@@ -888,19 +1065,31 @@
             const btnAuthOpen = document.getElementById('btnAuthOpen');
             if (btnAuthOpen) btnAuthOpen.style.display = 'none';
 
-            if (currentUserRole === 'tech') {
+            if (currentUserRole === 'depot') {
+                // Depot employee: ONLY Depot & Referrals tab
+                tabCand.style.display = 'none';
+                tabInq.style.display = 'none';
+                tabTech.style.display = 'none';
+                tabSuper.style.display = 'none';
+                tabAdm.style.display = 'none';
+                tabDepot.style.display = 'flex';
+                userBadge.innerText = '🚋 Сотрудник депо (Рефералы)';
+                switchTab('depot');
+            } else if (currentUserRole === 'tech') {
                 // Engineer: ONLY engineer panel, NO candidate editing, NO admin permissions
                 tabCand.style.display = 'none';
                 tabInq.style.display = 'none';
+                tabDepot.style.display = 'none';
                 tabSuper.style.display = 'none';
                 tabAdm.style.display = 'none';
                 tabTech.style.display = 'flex';
                 userBadge.innerText = '🛠 Инженер (Tech)';
                 switchTab('tech');
             } else if (currentUserRole === 'hr') {
-                // HR: Candidates and Inquiries, NO tech and NO admin permissions
+                // HR: Candidates and Inquiries, Depot referrals
                 tabCand.style.display = 'flex';
                 tabInq.style.display = 'flex';
+                tabDepot.style.display = 'flex';
                 tabTech.style.display = 'none';
                 tabSuper.style.display = 'none';
                 tabAdm.style.display = 'none';
@@ -910,6 +1099,7 @@
                 // SuperAdmin: Everything
                 tabCand.style.display = 'flex';
                 tabInq.style.display = 'flex';
+                tabDepot.style.display = 'flex';
                 tabTech.style.display = 'flex';
                 tabSuper.style.display = 'flex';
                 tabAdm.style.display = 'flex';
@@ -919,7 +1109,7 @@
 
         function switchTab(tab) {
             document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-            ['tabCandidates', 'tabInquiries', 'tabTech', 'tabSuper', 'tabAdmins'].forEach(id => {
+            ['tabCandidates', 'tabInquiries', 'tabDepot', 'tabTech', 'tabSuper', 'tabAdmins'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
@@ -932,6 +1122,10 @@
                 document.getElementById('tabInquiries').style.display = 'flex';
                 document.getElementById('tabInquiriesBtn').classList.add('active');
                 loadInquiries();
+            } else if (tab === 'depot') {
+                document.getElementById('tabDepot').style.display = 'flex';
+                document.getElementById('tabDepotBtn').classList.add('active');
+                loadDepotReferrals();
             } else if (tab === 'tech') {
                 document.getElementById('tabTech').style.display = 'flex';
                 document.getElementById('tabTechBtn').classList.add('active');
@@ -1411,32 +1605,168 @@
                 const admins = await res.json();
                 const tbody = document.getElementById('adminsTbody');
                 if (!admins || admins.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">Список пуст</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Список пуст</td></tr>';
                     return;
                 }
                 let html = '';
                 admins.forEach(a => {
-                    const notifyBadge = a.notify_dm ? '<span style="color: #34d399;">🔔 Вкл</span>' : '<span style="color: #f87171;">🔕 Выкл</span>';
+                    const notifyBtn = `<button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; cursor: pointer;" onclick="toggleAdminNotify(${a.user_id})" title="Включить / отключить уведомления в ЛС">
+                        ${a.notify_dm ? '<span style="color: #34d399; font-weight: 700;">🔔 Вкл</span>' : '<span style="color: #f87171; font-weight: 700;">🔕 Выкл</span>'}
+                    </button>`;
                     const pwdBadge = a.has_password
                         ? '<span style="color: #34d399; font-size: 11px;">✅ Задан</span>'
                         : '<span style="color: #f59e0b; font-size: 11px;">⚠️ Не задан</span>';
                     const nameLabel = a.full_name ? `${escapeHtml(a.full_name)} <span style="color:var(--text-muted); font-size:11px;">(${a.user_id})</span>` : `<code>${a.user_id}</code>`;
+                    const isSuper = a.role === 'super' || a.role === 'superadmin';
+                    const roleSelect = `<select class="select-box" style="padding: 2px 6px; font-size: 11px; font-weight: 600; background: var(--surface-card);" onchange="changeAdminRole(${a.user_id}, this.value)" ${isSuper ? 'disabled' : ''}>
+                        <option value="hr" ${a.role === 'hr' ? 'selected' : ''}>👔 HR (Кадры)</option>
+                        <option value="tech" ${a.role === 'tech' ? 'selected' : ''}>🛠 Tech (Инженер)</option>
+                        <option value="depot" ${a.role === 'depot' ? 'selected' : ''}>🚋 Депо (Рефералы)</option>
+                        ${isSuper ? '<option value="super" selected>👑 SuperAdmin</option>' : ''}
+                    </select>`;
 
                     html += `<tr>
                         <td><b>${nameLabel}</b></td>
-                        <td><b>${a.role.toUpperCase()}</b></td>
+                        <td>${roleSelect}</td>
                         <td>${pwdBadge}</td>
-                        <td>${notifyBadge}</td>
+                        <td>${notifyBtn}</td>
                         <td style="color: var(--text-muted); font-size: 11px;">${a.added_at || '—'}</td>
                         <td style="display: flex; gap: 4px; flex-wrap: wrap;">
                             <button class="btn btn-secondary" style="padding: 4px 6px; font-size: 11px;" onclick="setAdminPasswordPrompt(${a.user_id})">🔑 Пароль</button>
                             <button class="btn btn-secondary" style="padding: 4px 6px; font-size: 11px;" onclick="notifyAdminPanel(${a.user_id})">📲 Доступ</button>
-                            <button class="btn btn-danger" style="padding: 4px 6px; font-size: 11px;" onclick="removeAdmin(${a.user_id})">Отозвать</button>
+                            ${!isSuper ? `<button class="btn btn-danger" style="padding: 4px 6px; font-size: 11px;" onclick="removeAdmin(${a.user_id})">Отозвать</button>` : ''}
                         </td>
                     </tr>`;
                 });
                 tbody.innerHTML = html;
             } catch (e) { console.error(e); }
+        }
+
+        async function toggleAdminNotify(userId) {
+            try {
+                const res = await fetch('/api/admins/toggle_notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                if (res.ok) {
+                    const d = await res.json();
+                    showToast(`Уведомления для ${userId}: ${d.notify_dm ? 'ВКЛЮЧЕНЫ 🔔' : 'ОТКЛЮЧЕНЫ 🔕'}`);
+                    loadAdmins();
+                } else {
+                    showToast("Ошибка переключения уведомлений");
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function changeAdminRole(userId, newRole) {
+            try {
+                const res = await fetch('/api/admins/set_role', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, role: newRole })
+                });
+                if (res.ok) {
+                    showToast(`Роль сотрудника ${userId} изменена на: ${newRole.toUpperCase()}`);
+                    loadAdmins();
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || "Ошибка смены роли");
+                    loadAdmins();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function toggleGlobalNotifications(enable) {
+            try {
+                const res = await fetch('/api/settings/toggle_notifications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enable })
+                });
+                if (res.ok) {
+                    showToast(enable ? "🔔 Все уведомления сотрудникам ВКЛЮЧЕНЫ" : "🔕 Все уведомления сотрудникам ОТКЛЮЧЕНЫ");
+                    loadAdmins();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // DEPOT REFERRALS
+        async function loadDepotReferrals() {
+            const userId = localStorage.getItem('uet_user_id') || '';
+            const tbody = document.getElementById('depotReferralsTbody');
+            const linkInput = document.getElementById('depotRefLinkInput');
+            const botUsername = 'UetFeedback_bot';
+            const refLink = userId ? `https://t.me/${botUsername}?start=ref_${userId}` : `https://t.me/${botUsername}?start=ref_depot`;
+            if (linkInput) linkInput.value = refLink;
+
+            try {
+                const url = (currentUserRole === 'depot' && userId)
+                    ? `/api/depot/referrals?user_id=${userId}`
+                    : `/api/depot/referrals`;
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const list = data.candidates || data.referrals || [];
+                const elTot = document.getElementById('statDepotTotal');
+                const elProg = document.getElementById('statDepotInProgress');
+                const elHired = document.getElementById('statDepotHired');
+                const elBonus = document.getElementById('statDepotBonus');
+                if (elTot) elTot.innerText = data.total_referred ?? list.length;
+                if (elProg) elProg.innerText = data.in_progress ?? 0;
+                if (elHired) elHired.innerText = data.hired ?? 0;
+                if (elBonus) elBonus.innerText = (data.bonus_total ?? ((data.hired || 0) * 10000)).toLocaleString('ru-RU') + ' ₽';
+
+                if (!tbody) return;
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">Пока нет кандидатов по вашей ссылке. Поделитесь ссылкой с кандидатами!</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                list.forEach(c => {
+                    const isHired = (c.status || '').toLowerCase().includes('принят') || (c.status || '').toLowerCase().includes('трудоустроен');
+                    const bonusLabel = isHired ? '<span style="color: #34d399; font-weight: 700;">+10 000 ₽</span>' : '<span style="color: var(--text-muted);">В обработке</span>';
+                    let stBadge = 'st-new';
+                    if ((c.status || '').toLowerCase().includes('работ')) stBadge = 'st-work';
+                    if (isHired) stBadge = 'st-hired';
+
+                    html += `<tr>
+                        <td><b>#${c.ticket_id}</b></td>
+                        <td><b>${escapeHtml(c.full_name || 'Соискатель')}</b></td>
+                        <td>${escapeHtml(c.vacancy || '—')}</td>
+                        <td><span class="badge-status ${stBadge}">${escapeHtml(c.status || 'Новая')}</span></td>
+                        <td style="color: var(--text-muted); font-size: 12px;">${c.created_at || '—'}</td>
+                        <td>${bonusLabel}</td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function copyDepotRefLink() {
+            const input = document.getElementById('depotRefLinkInput');
+            if (!input) return;
+            input.select();
+            input.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(input.value);
+            showToast("Реферальная ссылка скопирована в буфер обмена!");
+        }
+
+        function shareDepotRefLink() {
+            const input = document.getElementById('depotRefLinkInput');
+            const link = input ? input.value : 'https://t.me/UetFeedback_bot';
+            const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Работа в МУП «Ульяновскэлектротранс»! Заполни анкету по ссылке: ")}`;
+            window.open(tgShareUrl, '_blank');
         }
 
         async function addNewAdmin() {

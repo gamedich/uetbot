@@ -414,6 +414,22 @@ def is_hr_admin(user_id: int) -> bool:
     return role in ("superadmin", "hr")
 
 
+def is_depot_admin(user_id: int) -> bool:
+    """Проверка прав сотрудника депо (реферальная программа)."""
+    if user_id == CONFIG.get("SUPER_ADMIN_ID"):
+        return True
+    role = db.get_admin_role(user_id)
+    return role in ("superadmin", "depot")
+
+
+def is_any_staff(user_id: int) -> bool:
+    """Проверка прав любого авторизованного сотрудника предприятия."""
+    if user_id == CONFIG.get("SUPER_ADMIN_ID") or user_id == CONFIG.get("TECH_ADMIN_ID"):
+        return True
+    role = db.get_admin_role(user_id)
+    return role in ("superadmin", "super", "hr", "tech", "depot")
+
+
 def check_hr_access_or_block(user_id: int, chat_id: int) -> Tuple[bool, Optional[str]]:
     """
     Централизованная проверка доступа к кадровой информации:
@@ -1068,7 +1084,12 @@ async def sync_user_commands(
             if user_id:
                 web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
                 if web_url and web_url.startswith("https://"):
-                    btn_text = "🛠 Панель" if role == "tech" else ("📋 Панель" if role == "hr" else "🌐 Панель")
+                    btn_text = (
+                        "🛠 Панель" if role == "tech"
+                        else ("📋 Панель" if role == "hr"
+                        else ("🚋 Рефералы" if role == "depot"
+                        else "🌐 Панель"))
+                    )
                     try:
                         await target_bot.set_chat_menu_button(
                             chat_id=user_id,

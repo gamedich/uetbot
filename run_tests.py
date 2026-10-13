@@ -182,6 +182,41 @@ class TestResumeDatabase(unittest.TestCase):
         self.assertTrue(self.db.remove_admin(admin_id))
         self.assertIsNone(self.db.get_admin_role(admin_id))
 
+    def test_depot_referrals_and_role_switching(self):
+        emp_id = 77712345
+        self.db.add_admin(emp_id, role="hr")
+        self.assertEqual(self.db.get_admin_role(emp_id), "hr")
+
+        # Switch role to depot
+        self.assertTrue(self.db.set_admin_role(emp_id, "depot"))
+        self.assertEqual(self.db.get_admin_role(emp_id), "depot")
+
+        # Toggle notifications
+        status = self.db.toggle_admin_notify(emp_id)
+        self.assertFalse(status)
+        status = self.db.toggle_admin_notify(emp_id)
+        self.assertTrue(status)
+
+        # Add candidate referred by this employee
+        t_id = self.db.add_candidate(
+            "tg", "999888111", "Реферальный Кандидат", "+79991112233",
+            "Водитель", "Без опыта", referrer_tab=str(emp_id)
+        )
+        self.assertGreater(t_id, 0)
+
+        # Check depot referrals
+        ref_stats = self.db.get_depot_referrals(emp_id)
+        self.assertEqual(ref_stats["total_referred"], 1)
+        self.assertEqual(ref_stats["in_progress"], 1)
+        self.assertEqual(ref_stats["hired"], 0)
+        self.assertEqual(ref_stats["bonus_total"], 0)
+
+        # Mark as hired
+        self.db.update_status(t_id, "Трудоустроен")
+        ref_stats_hired = self.db.get_depot_referrals(emp_id)
+        self.assertEqual(ref_stats_hired["hired"], 1)
+        self.assertEqual(ref_stats_hired["bonus_total"], 10000)
+
     def test_candidate_notes(self):
         t_id = self.db.add_candidate("tg", "333", "Смирнов А", "+79271112233", "Слесарь", "Опыт")
         self.db.update_admin_note(t_id, "Заметка кадровика")

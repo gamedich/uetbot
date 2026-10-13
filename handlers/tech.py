@@ -1297,6 +1297,60 @@ async def cmd_add_tech(message: types.Message, bot: Bot) -> None:
     )
 
 
+@tech_router.message(Command("add_depot"))
+async def cmd_add_depot(message: types.Message, bot: Bot) -> None:
+    if message.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await safe_answer(message, "🚫 Назначать сотрудников может только Главный администратор.")
+        return
+
+    parts = message.text.strip().split()
+    new_id = None
+    if len(parts) >= 2 and parts[1].isdigit():
+        new_id = int(parts[1])
+    elif message.reply_to_message and message.reply_to_message.from_user:
+        new_id = message.reply_to_message.from_user.id
+
+    if not new_id:
+        await safe_answer(
+            message,
+            "ℹ️ <b>Формат команды:</b> <code>/add_depot TELEGRAM_ID</code>\n"
+            "Например: <code>/add_depot 123456789</code> или ответом на сообщение сотрудника.",
+            parse_mode="HTML",
+        )
+        return
+
+    db.unblock_user(new_id)
+    db.add_admin(new_id, role="depot")
+
+    full_label, _ = await resolve_user_display(bot, new_id)
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+
+    notify_text = (
+        "🚋 <b>Вам выданы права сотрудника депо в МУП «Ульяновскэлектротранс»!</b>\n\n"
+        "⭐ <b>Роль:</b> <b>Сотрудник депо & Реферальная программа</b>\n"
+        "• Ваша реферальная статистика и ссылки: <code>/ref</code>\n"
+        "• Бонусная премия: <b>10 000 ₽</b> за каждого принятого кандидата!\n\n"
+        f"🌐 <b>Личный кабинет депо (Mini App):</b> <a href='{web_url}'>{web_url}</a>\n"
+        "🔑 Для входа на сайт установите любой пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
+        "<i>(Или просто откройте кабинет прямо в Telegram командой /panel)</i>\n"
+    )
+    btn_kb = InlineKeyboardBuilder()
+    btn_kb.button(text="🌐 Открыть кабинет депо", web_app=types.WebAppInfo(url=web_url))
+    sent = await safe_send(bot, new_id, notify_text, reply_markup=btn_kb.as_markup())
+    note = "✅ Оповещение отправлено сотруднику в ЛС." if sent else "⚠️ <i>Сотрудник депо назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
+    await sync_user_commands(bot, new_id, role="depot")
+
+    await safe_answer(
+        message,
+        f"✅ <b>Сотрудник депо успешно назначен!</b>\n\n"
+        f"👤 <b>Сотрудник:</b> {full_label}\n"
+        "🚋 <b>Роль:</b> Депо (Реферальная программа)\n"
+        f"{note}",
+        reply_markup=make_admins_menu_keyboard(db.get_all_admins()),
+        parse_mode="HTML",
+    )
+
+
 @tech_router.message(Command("del_admin", "rm_admin", "rm_hr"))
 async def cmd_del_admin(message: types.Message, bot: Bot) -> None:
     if message.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):

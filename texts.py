@@ -1009,6 +1009,7 @@ def format_help_text(user_id: Optional[int] = None, is_hr: bool = False, is_tech
             "<b>Для сотрудников и администраторов:</b>",
             "• <code>/panel</code> (или <code>/web</code>) — открыть веб-панель управления (Mini App)",
             "• <code>/password &lt;пароль&gt;</code> — установить или сменить личный пароль для сайта",
+            "• <code>/ref</code> (или <code>/depot</code>) — ваша реферальная ссылка и статистика премий депо",
         ])
     if is_hr or is_super:
         lines.extend([
@@ -1041,6 +1042,7 @@ def format_help_text(user_id: Optional[int] = None, is_hr: bool = False, is_tech
             "• <code>/admins</code> — список всех назначенных сотрудников с ролями",
             "• <code>/add_hr &lt;id&gt;</code> — назначить кадровика",
             "• <code>/add_tech &lt;id&gt;</code> — назначить инженера",
+            "• <code>/add_depot &lt;id&gt;</code> — назначить сотрудника депо (рефералы)",
             "• <code>/del_admin &lt;id&gt;</code> — отозвать права администратора",
             "• <code>/notify_panel</code> — разослать сотрудникам ссылку на сайт и инструкцию по входу",
             "• <b>Панель Git и GitHub</b> — перенесена на сайт во вкладку «👑 SuperAdmin & Git»",

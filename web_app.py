@@ -132,6 +132,10 @@ class WebPanel:
         self.app.router.add_post("/api/admins/set_password", self.handle_api_admins_set_password)
         self.app.router.add_post("/api/admins/notify_panel", self.handle_api_admins_notify_panel)
         self.app.router.add_post("/api/admins/sync", self.handle_api_admins_sync)
+        self.app.router.add_post("/api/admins/set_role", self.handle_api_admins_set_role)
+        self.app.router.add_post("/api/admins/toggle_notify", self.handle_api_admins_toggle_notify)
+        self.app.router.add_get("/api/depot/referrals", self.handle_api_depot_referrals)
+        self.app.router.add_post("/api/settings/toggle_notifications", self.handle_api_settings_toggle_notifications)
 
         self.app.router.add_get("/api/health", self.handle_api_health)
 
@@ -194,6 +198,8 @@ class WebPanel:
                 return web.json_response({"ok": True, "role": "hr", "user_id": tma_uid, "label": "👔 Отдел кадров (HR)"})
             elif role == "tech":
                 return web.json_response({"ok": True, "role": "tech", "user_id": tma_uid, "label": "🛠 Инженер (Tech)"})
+            elif role == "depot":
+                return web.json_response({"ok": True, "role": "depot", "user_id": tma_uid, "label": "🚋 Сотрудник депо (Рефералы)"})
 
             return web.json_response({
                 "ok": False,
@@ -221,7 +227,14 @@ class WebPanel:
                 if row:
                     adm_id, role, name = row
                     role_clean = "super" if role == "superadmin" or adm_id == super_id else role
-                    role_label = "👑 SuperAdmin" if role_clean == "super" else ("🛠 Инженер (Tech)" if role_clean == "tech" else "👔 Отдел кадров (HR)")
+                    if role_clean == "super":
+                        role_label = "👑 SuperAdmin"
+                    elif role_clean == "tech":
+                        role_label = "🛠 Инженер (Tech)"
+                    elif role_clean == "depot":
+                        role_label = "🚋 Сотрудник депо (Рефералы)"
+                    else:
+                        role_label = "👔 Отдел кадров (HR)"
                     disp_name = name or f"ID {adm_id}"
                     return web.json_response({
                         "ok": True,
@@ -261,6 +274,8 @@ class WebPanel:
                     return web.json_response({"ok": True, "role": "hr", "user_id": int(val), "label": "👔 Отдел кадров (HR)"})
                 elif role == "tech":
                     return web.json_response({"ok": True, "role": "tech", "user_id": int(val), "label": "🛠 Инженер (Tech)"})
+                elif role == "depot":
+                    return web.json_response({"ok": True, "role": "depot", "user_id": int(val), "label": "🚋 Сотрудник депо (Рефералы)"})
 
             # Поиск по номеру телефона в таблице admins
             clean_phone = val.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
@@ -899,6 +914,60 @@ class WebPanel:
     async def handle_api_admins_mute_all(self, request: web.Request) -> web.Response:
         cnt = self.db.disable_all_hr_notifications()
         return web.json_response({"ok": True, "muted_count": cnt})
+
+    async def handle_api_admins_set_role(self, request: web.Request) -> web.Response:
+        data = await request.json()
+        uid = int(data.get("user_id", 0))
+        role = str(data.get("role", "hr")).strip().lower()
+        if role not in ("hr", "tech", "depot"):
+            return web.json_response({"error": "Недопустимая роль"}, status=400)
+        super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
+        if uid == super_id:
+            return web.json_response({"error": "Роль Главного администратора изменить нельзя"}, status=400)
+        if uid <= 0:
+            return web.json_response({"error": "Неверный ID пользователя"}, status=400)
+        self.db.set_admin_role(uid, role)
+        if self.bot:
+            try:
+                from common import safe_send
+                role_names = {
+                    "hr": "Отдел кадров (HR)",
+                    "tech": "Технический администратор (Tech)",
+                    "depot": "Сотрудник депо (Depot & Рефералы)",
+                }
+                await safe_send(
+                    self.bot,
+                    uid,
+                    f"🔄 <b>Ваша роль в системе МУП «УЭТ» обновлена:</b> {role_names.get(role, role)}\n"
+                    f"Доступные разделы веб-панели и бота синхронизированы."
+                )
+            except Exception as e:
+                logger.warning("Не удалось уведомить о смене роли: %s", e)
+        return web.json_response({"ok": True, "user_id": uid, "role": role})
+
+    async def handle_api_admins_toggle_notify(self, request: web.Request) -> web.Response:
+        data = await request.json()
+        uid = int(data.get("user_id", 0))
+        if uid <= 0:
+            return web.json_response({"error": "Неверный ID пользователя"}, status=400)
+        new_status = self.db.toggle_admin_notify(uid)
+        return web.json_response({"ok": True, "user_id": uid, "notify_dm": new_status})
+
+    async def handle_api_settings_toggle_notifications(self, request: web.Request) -> web.Response:
+        data = await request.json()
+        enabled = bool(data.get("enabled", True))
+        status_int = 1 if enabled else 0
+        cnt = self.db.set_all_hr_notify_dm(status_int)
+        self.db.set_setting("notifications_global_enabled", "1" if enabled else "0")
+        return web.json_response({"ok": True, "enabled": enabled, "affected_admins": cnt})
+
+    async def handle_api_depot_referrals(self, request: web.Request) -> web.Response:
+        user_id = request.query.get("user_id")
+        if user_id and str(user_id).isdigit():
+            stats = self.db.get_depot_referrals(int(user_id))
+            return web.json_response(stats)
+        all_refs = self.db.get_all_depot_referrals()
+        return web.json_response({"referrals": all_refs, "total": len(all_refs)})
 
     async def handle_api_health(self, request: web.Request) -> web.Response:
         return web.json_response({

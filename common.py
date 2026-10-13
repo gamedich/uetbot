@@ -1002,19 +1002,22 @@ async def send_photo_to_candidate(user_id: str, photo_bytes: bytes, caption: str
 
 async def setup_bot_commands(bot_instance: Bot) -> None:
     """Установка контекстных выпадающих меню команд Telegram (по ролям и чатам)."""
-    # 1. Меню по умолчанию для соискателей в личном диалоге
+    # 1. Меню по умолчанию для соискателей в личном диалоге (по ТЗ МУП «УЭТ»)
     candidate_commands = [
         BotCommand(command="start", description="Главное меню / Перезапуск"),
+        BotCommand(command="menu", description="Главное меню"),
         BotCommand(command="apply", description="Заполнить анкету на работу (16 шагов)"),
         BotCommand(command="my", description="Моя анкета / Статус рассмотрения"),
+        BotCommand(command="training", description="Информация об обучении со стипендией"),
+        BotCommand(command="privacy", description="Политика обработки данных (152-ФЗ)"),
         BotCommand(command="mydata", description="Выгрузка персональных данных (152-ФЗ)"),
         BotCommand(command="revoke", description="Отозвать согласие и удалить анкету"),
-        BotCommand(command="training", description="Бесплатное обучение на водителя"),
+        BotCommand(command="stop", description="Завершить диалог с кадровиком"),
+        BotCommand(command="cancel", description="Отменить текущее действие"),
         BotCommand(command="ask", description="Задать вопрос специалисту кадров"),
         BotCommand(command="faq", description="Частые вопросы (зарплата, жилье)"),
         BotCommand(command="contacts", description="Контакты и телефоны депо"),
-        BotCommand(command="cancel", description="Отменить текущее действие"),
-        BotCommand(command="help", description="Справочник команд"),
+        BotCommand(command="help", description="Справка по всем командам"),
     ]
     try:
         await bot_instance.set_my_commands(candidate_commands, scope=BotCommandScopeDefault())

@@ -42,15 +42,29 @@ def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
 
 def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     """
-    Компактное инлайн-меню соискателя (сетка 2×2 быстрых действий в 1 клик):
-    [ 📝 Заполнить в чате ]    [ 📑 Моя анкета ]
-    [ 💬 Связаться с кадровиком ] [ 📞 Контакты депо ]
+    Инлайн-меню соискателя согласно разделу 1 Единой текстовой карты бота МУП «УЭТ»:
+    - 📝 Заполнить анкету на работу (cand_start_apply)
+    - 💬 Связаться с кадровиком / Задать вопрос (cand_ask_question)
+    - ❓ Частые вопросы и ответы (FAQ) (cand_faq_menu)
+    - 📞 Контакты отдела кадров (cand_hr_contacts)
+    + 📑 Моя анкета (cand_my_application, если есть активная заявка)
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text="📝 Заполнить в чате", callback_data="cand_start_apply")
-    builder.button(text="📑 Моя анкета", callback_data="cand_my_application")
-    builder.button(text="💬 Связаться с кадровиком", callback_data="cand_ask_question")
-    builder.button(text="📞 Контакты депо", callback_data="cand_hr_contacts")
+    builder.button(text="📝 Заполнить анкету на работу", callback_data="cand_start_apply")
+    builder.button(text="💬 Связаться с кадровиком / Задать вопрос", callback_data="cand_ask_question")
+    builder.button(text="❓ Частые вопросы и ответы (FAQ)", callback_data="cand_faq_menu")
+    builder.button(text="📞 Контакты отдела кадров", callback_data="cand_hr_contacts")
+
+    has_app = False
+    if user_id:
+        try:
+            cand = db.get_candidate_by_user_id(str(user_id), platform="tg")
+            if cand:
+                has_app = True
+        except Exception:
+            pass
+    if has_app:
+        builder.button(text="📑 Моя анкета", callback_data="cand_my_application")
 
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     is_tech = bool(user_id and (user_id == super_id or is_tech_admin(user_id)))
@@ -63,14 +77,23 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
         if is_tech:
             builder.button(text="🛠 /tech (Инженер)", callback_data="tech_refresh")
         if is_hr:
-            builder.button(text="📋 /admin (Кадры)", callback_data="admin_stats")
+            builder.button(text="📋 /hr (Кадры)", callback_data="admin_stats")
 
-        if is_tech and is_hr:
-            builder.adjust(2, 2, 1, 2)
+        if has_app:
+            if is_tech and is_hr:
+                builder.adjust(1, 1, 2, 1, 1, 2)
+            else:
+                builder.adjust(1, 1, 2, 1, 1, 1)
         else:
-            builder.adjust(2, 2, 1, 1)
+            if is_tech and is_hr:
+                builder.adjust(1, 1, 2, 1, 2)
+            else:
+                builder.adjust(1, 1, 2, 1, 1)
     else:
-        builder.adjust(2, 2)
+        if has_app:
+            builder.adjust(1, 1, 2, 1)
+        else:
+            builder.adjust(1, 1, 2)
 
     return builder.as_markup()
 

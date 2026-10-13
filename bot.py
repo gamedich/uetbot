@@ -80,6 +80,32 @@ async def main() -> None:
     dp.include_router(hr_router)
     dp.include_router(candidate_router)
 
+    @dp.error()
+    async def global_error_handler(event: types.ErrorEvent) -> None:
+        """Глобальный перехватчик непредвиденных исключений aiogram."""
+        logger.exception(f"Непредвиденное исключение в обработчике Telegram: {event.exception}")
+        try:
+            update = event.update
+            if update.message:
+                from keyboards import make_candidate_main_keyboard
+                uid = update.message.from_user.id if update.message.from_user else 0
+                await safe_send(
+                    bot,
+                    update.message.chat.id,
+                    "⚙️ <b>Извините, что-то пошло не так при обработке команды.</b>\n\n"
+                    "Пожалуйста, попробуйте снова, воспользовавшись меню /start, "
+                    "или обратитесь в отдел кадров: 8 (8422) 58-46-60",
+                    reply_markup=make_candidate_main_keyboard(user_id=uid),
+                    parse_mode="HTML"
+                )
+            elif update.callback_query:
+                try:
+                    await update.callback_query.answer("⚠️ Что-то пошло не так. Попробуйте нажать /start", show_alert=True)
+                except Exception:
+                    pass
+        except Exception as err:
+            logger.warning(f"Ошибка в global_error_handler: {err}")
+
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
 
     # 3. Проверка связи с Telegram Bot API

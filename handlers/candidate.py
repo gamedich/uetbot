@@ -430,7 +430,7 @@ async def process_support_message(message: types.Message, state: FSMContext, bot
 # ==============================================================================
 
 @candidate_router.callback_query(F.data == "cand_my_application")
-@candidate_router.message(Command("my"))
+@candidate_router.message(Command("my", "status", "stat"))
 async def cb_cand_my_application(event: Union[types.CallbackQuery, types.Message]) -> None:
     user_id = event.from_user.id
     if db.is_blocked(user_id, super_admin_id=CONFIG.get("SUPER_ADMIN_ID")):
@@ -528,7 +528,7 @@ async def cb_revoke_confirm(callback: types.CallbackQuery, state: FSMContext) ->
 # РАЗДЕЛЫ «ОБУЧЕНИЕ», FAQ И КОНТАКТЫ (/training, /faq, /contacts, /privacy)
 # ==============================================================================
 
-@candidate_router.message(Command("training"))
+@candidate_router.message(Command("training", "obuchenie"))
 async def cmd_training(message: types.Message) -> None:
     builder = InlineKeyboardBuilder()
     builder.button(text=texts.BTN_APPLY, callback_data="cand_start_apply")
@@ -539,7 +539,7 @@ async def cmd_training(message: types.Message) -> None:
 
 
 @candidate_router.callback_query(F.data == "cand_hr_contacts")
-@candidate_router.message(Command("contacts"))
+@candidate_router.message(Command("contacts", "contact"))
 async def cb_cand_hr_contacts(event: Union[types.CallbackQuery, types.Message]) -> None:
     builder = InlineKeyboardBuilder()
     builder.button(text="💬 Связаться с кадровиком", callback_data="cand_ask_question")
@@ -553,7 +553,7 @@ async def cb_cand_hr_contacts(event: Union[types.CallbackQuery, types.Message]) 
 
 
 @candidate_router.callback_query(F.data == "cand_privacy_policy")
-@candidate_router.message(Command("privacy"))
+@candidate_router.message(Command("privacy", "policy"))
 async def cb_cand_privacy_policy(event: Union[types.CallbackQuery, types.Message]) -> None:
     builder = InlineKeyboardBuilder()
     builder.button(text=texts.BTN_BACK_TO_MENU, callback_data="cand_back_to_menu")
@@ -722,7 +722,7 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
 # ==============================================================================
 
 @candidate_router.callback_query(F.data == "cand_start_apply")
-@candidate_router.message(Command("apply"))
+@candidate_router.message(Command("apply", "job", "rabota", "anketa"))
 async def cmd_apply(event: Union[types.Message, types.CallbackQuery], state: FSMContext) -> None:
     user_id = event.from_user.id
     await run_candidate_survey(event, state, user_id)
@@ -1618,6 +1618,12 @@ async def cb_nav_skip(event: Union[types.CallbackQuery, types.Message], state: F
         text = texts.format_survey_step16_review(data)
         kb = make_step16_confirm_kb()
     else:
+        if not cur_state:
+            if isinstance(event, types.CallbackQuery):
+                await event.answer("В данный момент нет активного шага анкеты.", show_alert=True)
+                return
+            await safe_answer(event, "В данный момент нет активного шага анкеты. Воспользуйтесь /start для перехода в главное меню.")
+            return
         if isinstance(event, types.CallbackQuery):
             await event.answer("Этот шаг обязателен.", show_alert=True)
             return
@@ -1756,3 +1762,37 @@ async def process_candidate_live_dialog_msg(message: types.Message, state: FSMCo
         await safe_answer(message, "✅ <i>Ваше сообщение передано в отдел кадров.</i>", parse_mode="HTML")
     else:
         await safe_answer(message, "⚠️ Не удалось доставить сообщение в отдел кадров.", parse_mode="HTML")
+
+
+# ==============================================================================
+# ОБРАБОТКА НЕИЗВЕСТНЫХ КОМАНД И НЕШТАТНОГО ВВОДА (РАЗДЕЛ 10.6 ТЗ)
+# ==============================================================================
+
+@candidate_router.message(F.text.startswith("/"))
+async def handle_unknown_command(message: types.Message) -> None:
+    """
+    Перехват неизвестных или опечатанных команд соискателя (раздел 10.6 ТЗ).
+    Отвечает: «Извините, я не понял команду. Воспользуйтесь кнопками меню или введите /help.»
+    """
+    await safe_answer(
+        message,
+        texts.UNKNOWN_COMMAND_TEXT,
+        reply_markup=make_candidate_main_keyboard(user_id=message.from_user.id),
+        parse_mode="HTML",
+    )
+
+
+@candidate_router.message(F.chat.type == "private", StateFilter(None))
+async def handle_unhandled_candidate_message(message: types.Message) -> None:
+    """
+    Перехват произвольного текстового ввода соискателя вне активного опроса FSM и живого чата (раздел 10.6 ТЗ).
+    """
+    if db.get_dialog_by_user(str(message.from_user.id)):
+        return
+
+    await safe_answer(
+        message,
+        texts.ERR_INVALID_MANUAL_INPUT,
+        reply_markup=make_candidate_main_keyboard(user_id=message.from_user.id),
+        parse_mode="HTML",
+    )

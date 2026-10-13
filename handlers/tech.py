@@ -142,6 +142,12 @@ async def cmd_tech(message: types.Message) -> None:
 async def cb_tech_refresh(event: Union[types.Message, types.CallbackQuery]) -> None:
     user_id = event.from_user.id
     if not is_privileged_user(user_id):
+        # Если соискатель вводит /status — показываем статус его заявки
+        cand = db.get_candidate_by_user_id(str(user_id), platform="tg")
+        if cand:
+            from handlers.candidate import cb_cand_my_application
+            await cb_cand_my_application(event)
+            return
         if isinstance(event, types.CallbackQuery):
             await event.answer("🚫 Доступ ограничен!", show_alert=True)
             return

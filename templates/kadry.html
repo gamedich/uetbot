@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>КАДРЫ — Цифровая HR-платформа</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        /* ==========================================================================
+           1. DESIGN SYSTEM TOKENS (CSS VARIABLES)
+           ========================================================================== */
+        :root {
+            /* Базовые радиусы и переходы */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 20px;
+            --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        /* 🌙 DARK MODE (По умолчанию) */
+        [data-theme="dark"] {
+            --bg-main: #1c2329;              /* Глубокий сланцевый / речной серо-синий */
+            --sidebar-bg: #2b1417;          /* Темный благородный каштан / бордо */
+            --navbar-bg: rgba(33, 44, 52, 0.75); /* Navbar с backdrop-blur-md */
+            --sidebar-active: #8b3a35;      /* Терракотово-кирпичный (активный сайдбар) */
+            --sidebar-active-glow: rgba(139, 58, 53, 0.45);
+            --navbar-active: #c66f48;       /* Приглушенная теплая охра (активный навбар) */
+            --text-main: #f5ede2;           /* Песочно-молочный */
+            --text-secondary: #9aa5ad;      /* Вторичный приглушенный */
+            --card-bg: #242d34;             /* Карточки контента: темно-серый с речным отливом */
+            --card-border: rgba(245, 237, 226, 0.08);
+            --card-hover: #2a353d;
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+            --input-bg: rgba(18, 23, 28, 0.7);
+            --input-border: rgba(245, 237, 226, 0.12);
+            --input-focus: #c66f48;
+            --badge-bg: rgba(198, 111, 72, 0.2);
+            --badge-text: #f5ede2;
+            --divider: rgba(245, 237, 226, 0.08);
+            --theme-toggle-bg: rgba(245, 237, 226, 0.1);
+        }
+
+        /* ☀️ LIGHT MODE */
+        [data-theme="light"] {
+            --bg-main: #f4ede4;              /* Мягкий песочно-бежевый */
+            --sidebar-bg: #d8b4a2;          /* Пастельная терракота / теплая глина */
+            --navbar-bg: rgba(235, 240, 243, 0.82); /* Navbar светлый с blur */
+            --sidebar-active: #a84b42;      /* Приглушенный кирпичный */
+            --sidebar-active-glow: rgba(168, 75, 66, 0.25);
+            --navbar-active: #d97d52;       /* Пастельный оранжево-терракотовый */
+            --text-main: #22262a;           /* Графитовый */
+            --text-secondary: #6c737a;      /* Вторичный серый */
+            --card-bg: #ffffff;             /* Карточки: чистый белый */
+            --card-border: rgba(34, 38, 42, 0.08);
+            --card-hover: #faf7f2;
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            --input-bg: rgba(255, 255, 255, 0.9);
+            --input-border: rgba(34, 38, 42, 0.15);
+            --input-focus: #d97d52;
+            --badge-bg: rgba(168, 75, 66, 0.18);
+            --badge-text: #22262a;
+            --divider: rgba(34, 38, 42, 0.08);
+            --theme-toggle-bg: rgba(34, 38, 42, 0.08);
+        }
+
+        /* ==========================================================================
+           2. RESET & BASE STYLES
+           ========================================================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        button {
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        /* ==========================================================================
+           3. NAVBAR COMPONENT (GLASSMORPHISM + ADAPTIVE)
+           ========================================================================== */
+        .navbar-wrap {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            width: 100%;
+            background: var(--navbar-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--divider);
+            transition: var(--transition-smooth);
+        }
+
+        .navbar-container {
+            max-width: 1560px;
+            margin: 0 auto;
+            padding: 0 20px;
+            height: 68px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        /* Логотип */
+        .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        .brand-icon-box {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--sidebar-active), var(--navbar-active));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .brand-link:hover .brand-icon-box {
+            transform: scale(1.04);
+        }
+
+        .brand-glyph {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-text-block {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-name {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            color: var(--text-main);
+            text-transform: uppercase;
+        }
+
+        .brand-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+
+        /* Центральные ссылки навбара */
+        .nav-links-center {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link {
+            padding: 8px 14px;
+            border-radius: var(--radius-md);
+            font-size: 13.5px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: var(--transition-smooth);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="light"] .nav-link:hover {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        /* Активная ссылка навбара: приглушенная охра / пастельный оранжево-терракотовый */
+        .nav-link.active {
+            color: #ffffff;
+            background: var(--navbar-active);
+            font-weight: 600;
+            box-shadow: 0 2px 10px rgba(198, 111, 72, 0.35);
+        }
+
+        [data-theme="light"] .nav-link.active {
+            color: #ffffff;
+        }
+
+        /* Правый блок контролов */
+        .nav-controls-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        /* Переключатель тем */
+        .theme-toggle-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--theme-toggle-bg);
+            border: 1px solid var(--divider);
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-smooth);
+        }
+
+        .theme-toggle-btn:hover {
+            transform: scale(1.08) rotate(15deg);
+        }
+
+        .theme-icon-svg {
+            width: 19px;
+            height: 19px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Колокольчик уведомлений */
+        .notify-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--theme-toggle-bg);
+            border: 1px solid var(--divider);
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: var(--transition-smooth);
+        }
+
+        .notify-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .notify-dot {
+            position: absolute;
+            top: 7px;
+            right: 7px;
+            width: 8px;
+            height: 8px;
+            background: var(--navbar-active);
+            border-radius: 50%;
+            border: 2px solid var(--bg-main);
+        }
+
+        /* Блок профиля */
+        .profile-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 12px 5px 6px;
+            border-radius: var(--radius-xl);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            transition: var(--transition-smooth);
+            cursor: pointer;
+        }
+
+        .profile-badge:hover {
+            border-color: var(--navbar-active);
+        }
+
+        .profile-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--sidebar-active), var(--navbar-active));
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .profile-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .profile-role {
+            font-size: 10.5px;
+            color: var(--text-secondary);
+        }
+
+        /* Мобильный бургер */
+        .mobile-menu-btn {
+            display: none;
+            width: 38px;
+            height: 38px;
+            border-radius: var(--radius-md);
+            background: var(--theme-toggle-bg);
+            border: 1px solid var(--divider);
+            color: var(--text-main);
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ==========================================================================
+           4. LAYOUT: SIDEBAR + MAIN CONTENT
+           ========================================================================== */
+        .app-layout {
+            display: flex;
+            flex: 1;
+            max-width: 1560px;
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* ==========================================================================
+           5. SIDEBAR COMPONENT (FLAT DESIGN + COLOR ROLES)
+           ========================================================================== */
+        .sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--divider);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 24px 18px;
+            transition: var(--transition-smooth);
+            position: sticky;
+            top: 68px;
+            height: calc(100vh - 68px);
+            overflow-y: auto;
+        }
+
+        /* Поле поиска в сайдбаре */
+        .sidebar-search-box {
+            position: relative;
+            width: 100%;
+        }
+
+        .sidebar-search-input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: var(--radius-md);
+            padding: 10px 36px 10px 38px;
+            font-size: 13.5px;
+            color: var(--text-main);
+            outline: none;
+            transition: var(--transition-smooth);
+            font-family: inherit;
+        }
+
+        .sidebar-search-input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+
+        .sidebar-search-input:focus {
+            border-color: var(--input-focus);
+            box-shadow: 0 0 0 3px rgba(198, 111, 72, 0.2);
+        }
+
+        .search-icon-left {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        .search-shortcut-badge {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-family: var(--font-mono);
+            padding: 2px 5px;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+
+        /* Заголовок группы меню */
+        .sidebar-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-secondary);
+            padding: 0 10px;
+            margin-bottom: 6px;
+            opacity: 0.85;
+        }
+
+        /* Навигационный список */
+        .sidebar-nav-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .sidebar-nav-item {
+            width: 100%;
+        }
+
+        .sidebar-nav-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 11px 14px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-main);
+            transition: var(--transition-smooth);
+            position: relative;
+        }
+
+        .sidebar-nav-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sidebar-icon {
+            width: 19px;
+            height: 19px;
+            stroke: currentColor;
+            flex-shrink: 0;
+            opacity: 0.85;
+            transition: var(--transition-smooth);
+        }
+
+        .sidebar-nav-link:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(2px);
+        }
+
+        [data-theme="light"] .sidebar-nav-link:hover {
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        /* Активный пункт сайдбара:
+           Темная: #8b3a35 (терракотово-кирпичный) с легким свечением
+           Светлая: #a84b42 (приглушенный кирпичный)
+        */
+        .sidebar-nav-link.active {
+            background: var(--sidebar-active);
+            color: #ffffff;
+            font-weight: 600;
+            box-shadow: 0 4px 14px var(--sidebar-active-glow);
+        }
+
+        .sidebar-nav-link.active .sidebar-icon {
+            opacity: 1;
+            stroke: #ffffff;
+        }
+
+        /* Бейджи счетчиков */
+        .sidebar-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: var(--badge-bg);
+            color: var(--badge-text);
+            font-family: var(--font-mono);
+            transition: var(--transition-smooth);
+        }
+
+        .sidebar-nav-link.active .sidebar-badge {
+            background: rgba(255, 255, 255, 0.22);
+            color: #ffffff;
+        }
+
+        /* Сайдбар футер */
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid var(--divider);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .system-status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        .status-dot-pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+        }
+
+        /* ==========================================================================
+           6. MAIN CONTENT AREA (SHOWCASE & CARDS)
+           ========================================================================== */
+        .main-content {
+            flex: 1;
+            padding: 28px 32px 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            min-width: 0;
+        }
+
+        /* Заголовок страницы */
+        .page-header-block {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.3px;
+        }
+
+        .page-subtitle {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Сетка метрик */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition-smooth);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--navbar-active);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-main);
+            font-family: var(--font-mono);
+        }
+
+        .metric-footer {
+            font-size: 12px;
+            color: #10b981;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Карточка медиа и реального фотоархива трамваев */
+        .media-showcase-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .section-headline {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-desc {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Фотогалерея с указанием авторов */
+        .tram-photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .photo-card {
+            background: rgba(0, 0, 0, 0.12);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: var(--transition-smooth);
+        }
+
+        .photo-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            border-color: var(--navbar-active);
+        }
+
+        .photo-img-wrap {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            overflow: hidden;
+            background: #111;
+        }
+
+        .photo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .photo-card:hover .photo-img {
+            transform: scale(1.04);
+        }
+
+        .photo-tag {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: var(--sidebar-active);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .photo-caption-block {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .photo-title {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .photo-desc {
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Блок метаданных об авторе и лицензии */
+        .photo-meta-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--divider);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        [data-theme="light"] .photo-meta-box {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .meta-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .meta-author {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        /* Совет для иллюстратора / векторизации */
+        .drawing-guide-box {
+            background: rgba(198, 111, 72, 0.08);
+            border: 1px solid rgba(198, 111, 72, 0.25);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+
+        .guide-icon {
+            font-size: 24px;
+            line-height: 1;
+            flex-shrink: 0;
+            padding-top: 2px;
+        }
+
+        .guide-text {
+            font-size: 13px;
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        .guide-text strong {
+            color: var(--navbar-active);
+        }
+
+        /* ==========================================================================
+           7. RESPONSIVE MEDIA QUERIES
+           ========================================================================== */
+        @media (max-width: 1024px) {
+            .nav-links-center {
+                display: none;
+            }
+            .mobile-menu-btn {
+                display: flex;
+            }
+            .sidebar {
+                position: fixed;
+                left: -300px;
+                top: 68px;
+                bottom: 0;
+                z-index: 99;
+                height: calc(100vh - 68px);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            }
+            .sidebar.mobile-open {
+                left: 0;
+            }
+            .main-content {
+                padding: 20px 16px 40px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .profile-info {
+                display: none;
+            }
+            .brand-desc {
+                display: none;
+            }
+            .tram-photos-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==========================================================================
+         1. NAVBAR
+         ========================================================================== -->
+    <header class="navbar-wrap">
+        <div class="navbar-container">
+            
+            <!-- Левая часть: Логотип -->
+            <a href="/kadry" class="brand-link">
+                <div class="brand-icon-box">
+                    <span class="brand-glyph">К</span>
+                </div>
+                <div class="brand-text-block">
+                    <span class="brand-name">КАДРЫ</span>
+                    <span class="brand-desc">Цифровая HR-платформа</span>
+                </div>
+            </a>
+
+            <!-- Центральная часть: Навигационные ссылки -->
+            <nav class="nav-links-center" aria-label="Основная навигация">
+                <a href="#home" class="nav-link" onclick="setActiveNav(this)">Главная</a>
+                <a href="#about" class="nav-link" onclick="setActiveNav(this)">О проекте</a>
+                <a href="#services" class="nav-link active" onclick="setActiveNav(this)">
+                    <span>Сервисы</span>
+                    <span style="font-size: 9px; padding: 1px 5px; border-radius: 4px; background: rgba(255,255,255,0.25);">PRO</span>
+                </a>
+                <a href="#events" class="nav-link" onclick="setActiveNav(this)">События</a>
+                <a href="#contacts" class="nav-link" onclick="setActiveNav(this)">Контакты</a>
+            </nav>
+
+            <!-- Правая часть: Контролы -->
+            <div class="nav-controls-right">
+                
+                <!-- Переключатель тем (Dark / Light) -->
+                <button id="themeToggleBtn" class="theme-toggle-btn" title="Переключить тему оформления" onclick="toggleTheme()">
+                    <!-- SVG Солнце (видно в темной теме) -->
+                    <svg id="sunIcon" class="theme-icon-svg" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <!-- SVG Луна (видно в светлой теме, скрыта по умолчанию) -->
+                    <svg id="moonIcon" class="theme-icon-svg" style="display: none;" viewBox="0 0 24 24">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+
+                <!-- Колокольчик уведомлений -->
+                <button class="notify-btn" title="Уведомления">
+                    <svg class="theme-icon-svg" viewBox="0 0 24 24">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="notify-dot"></span>
+                </button>
+
+                <!-- Профиль сотрудника -->
+                <div class="profile-badge" title="Служебный профиль">
+                    <div class="profile-avatar">ИИ</div>
+                    <div class="profile-info">
+                        <span class="profile-name">И. И. Иванов</span>
+                        <span class="profile-role">Старший HR-инспектор</span>
+                    </div>
+                </div>
+
+                <!-- Мобильный бургер -->
+                <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()" aria-label="Открыть меню">
+                    <svg class="theme-icon-svg" viewBox="0 0 24 24">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================================================
+         2. APP LAYOUT: SIDEBAR + CONTENT
+         ========================================================================== -->
+    <div class="app-layout">
+
+        <!-- ======================================================================
+             SIDEBAR
+             ====================================================================== -->
+        <aside class="sidebar" id="appSidebar">
+            
+            <!-- 1. Поле «Поиск» вверху -->
+            <div class="sidebar-search-box">
+                <svg class="search-icon-left" viewBox="0 0 24 24" fill="none" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="sidebarSearch" class="sidebar-search-input" placeholder="Поиск по реестру..." />
+                <span class="search-shortcut-badge">⌘K</span>
+            </div>
+
+            <!-- 2. Меню навигации -->
+            <div>
+                <div class="sidebar-section-title">Разделы системы</div>
+                <ul class="sidebar-nav-list">
+                    
+                    <!-- Личный кабинет -->
+                    <li class="sidebar-nav-item">
+                        <a href="#cabinet" class="sidebar-nav-link" onclick="setActiveSidebar(this)">
+                            <div class="sidebar-nav-left">
+                                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <span>Личный кабинет</span>
+                            </div>
+                        </a>
+                    </li>
+
+                    <!-- Реестр заявок (АКТИВНЫЙ БЛОК с бейджем «12») -->
+                    <li class="sidebar-nav-item">
+                        <a href="#registry" class="sidebar-nav-link active" onclick="setActiveSidebar(this)">
+                            <div class="sidebar-nav-left">
+                                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                                <span>Реестр заявок</span>
+                            </div>
+                            <span class="sidebar-badge">12</span>
+                        </a>
+                    </li>
+
+                    <!-- Кадры и Аналитика (бейдж «3») -->
+                    <li class="sidebar-nav-item">
+                        <a href="#analytics" class="sidebar-nav-link" onclick="setActiveSidebar(this)">
+                            <div class="sidebar-nav-left">
+                                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                </svg>
+                                <span>Кадры и Аналитика</span>
+                            </div>
+                            <span class="sidebar-badge">3</span>
+                        </a>
+                    </li>
+
+                    <!-- Настройки -->
+                    <li class="sidebar-nav-item">
+                        <a href="#settings" class="sidebar-nav-link" onclick="setActiveSidebar(this)">
+                            <div class="sidebar-nav-left">
+                                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                                <span>Настройки</span>
+                            </div>
+                        </a>
+                    </li>
+
+                </ul>
+            </div>
+
+            <!-- Сайдбар Футер: Статус сервисов -->
+            <div class="sidebar-footer">
+                <div class="system-status-pill">
+                    <span class="status-dot-pulse"></span>
+                    <span>152-ФЗ Шлюз активен</span>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- ======================================================================
+             MAIN CONTENT
+             ====================================================================== -->
+        <main class="main-content">
+            
+            <!-- Заголовок страницы -->
+            <div class="page-header-block">
+                <div>
+                    <h1 class="page-title">Реестр входящих анкет кандидатов</h1>
+                    <p class="page-subtitle">Государственная информационная система кадрового обеспечения пассажирского транспорта г. Ульяновска</p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <a href="/dashboard" style="display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: var(--radius-md); background: var(--sidebar-active); color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px var(--sidebar-active-glow);">
+                        <span>📊 Кабинет УЭТ</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Сетка метрик с применением токенов дизайна -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-label">Новые анкеты</span>
+                        <span style="font-size: 18px;">📋</span>
+                    </div>
+                    <div class="metric-value">12</div>
+                    <div class="metric-footer">
+                        <span>↑ +4 за сегодня</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-label">В Учебном Центре</span>
+                        <span style="font-size: 18px;">🎓</span>
+                    </div>
+                    <div class="metric-value">18</div>
+                    <div class="metric-footer">
+                        <span>Стипендия 25 000 ₽</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-label">Прошли медосмотр</span>
+                        <span style="font-size: 18px;">🩺</span>
+                    </div>
+                    <div class="metric-value">28</div>
+                    <div class="metric-footer">
+                        <span>Ст. 328.1 ТК РФ OK</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-label">Подвижной состав</span>
+                        <span style="font-size: 18px;">🚋</span>
+                    </div>
+                    <div class="metric-value">71-911ЕМ</div>
+                    <div class="metric-footer">
+                        <span>Депо № 1, 2, 3</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- КАРТОЧКА: АВТОРСКИЕ ФОТОМАТЕРИАЛЫ И ПОДВИЖНОЙ СОСТАВ УЛЬЯНОВСКА -->
+            <section class="media-showcase-card">
+                <div>
+                    <h2 class="section-headline">
+                        <span>🚋 Подвижной состав предприятия и условия труда</span>
+                    </h2>
+                    <p class="section-desc">
+                        В соответствии с запросом, в системе используются качественные фотоматериалы реального ульяновского электротранспорта. Ниже представлены снимки с указанием первоисточников, авторов и рекомендациями для дальнейшей стилизации/отрисовки в брендбуке.
+                    </p>
+                </div>
+
+                <!-- Фотосет -->
+                <div class="tram-photos-grid">
+                    
+                    <!-- Карточка 1: Экстерьер Львёнка у Депо №1 -->
+                    <div class="photo-card">
+                        <div class="photo-img-wrap">
+                            <span class="photo-tag">Вагон № 2108</span>
+                            <img src="/static/images/tram_lvenok.jpg" onerror="this.onerror=null; this.src='images/tram_lvenok.jpg'" alt="Ульяновский трамвай 71-911ЕМ Львенок" class="photo-img" />
+                        </div>
+                        <div class="photo-caption-block">
+                            <div class="photo-title">Трамвай 71-911ЕМ «Львёнок» у Засвияжского депо № 1</div>
+                            <div class="photo-desc">
+                                Низкопольный одиночный вагон нового поколения с фирменной рубиново-бордовой ливреей МУП «УЭТ» и гербом города Ульяновска.
+                            </div>
+                            <div class="photo-meta-box">
+                                <div class="meta-row">
+                                    <span>Источник:</span>
+                                    <span class="meta-author">Пресс-служба МУП «УЭТ» / Администрация г. Ульяновска</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span>Локация:</span>
+                                    <span>Московское шоссе, 1Б (Депо № 1)</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span>Использование:</span>
+                                    <span>Официальные промо-материалы найма</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Карточка 2: Кабина водителя -->
+                    <div class="photo-card">
+                        <div class="photo-img-wrap">
+                            <span class="photo-tag" style="background: var(--navbar-active);">Эргономика</span>
+                            <img src="/static/images/tram_cockpit.jpg" onerror="this.onerror=null; this.src='images/tram_cockpit.jpg'" alt="Кабина водителя трамвая" class="photo-img" />
+                        </div>
+                        <div class="photo-caption-block">
+                            <div class="photo-title">Рабочее место водителя: кабина с климат-контролем</div>
+                            <div class="photo-desc">
+                                Анатомическое кресло с вибропоглощением, приборная панель с CAN-телеметрией, мониторы внешнего и салонного видеонаблюдения.
+                            </div>
+                            <div class="photo-meta-box">
+                                <div class="meta-row">
+                                    <span>Источник:</span>
+                                    <span class="meta-author">ПК «Транспортные системы» (ПК ТС)</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span>Автор фотосессии:</span>
+                                    <span>Технический архив разработчика</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span>Использование:</span>
+                                    <span>Карточки вакансии «Водитель трамвая»</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Карточка 3: Историческая база TransPhoto (СТТС) -->
+                    <div class="photo-card">
+                        <div class="photo-img-wrap">
+                            <span class="photo-tag" style="background: #0284c7;">TransPhoto.org</span>
+                            <img src="/static/images/tram_lvenok.jpg" onerror="this.onerror=null; this.src='images/tram_lvenok.jpg'" alt="Трамвай на улице Гончарова" class="photo-img" style="filter: contrast(1.05);" />
+                        </div>
+                        <div class="photo-caption-block">
+                            <div class="photo-title">Архивные и линейные фото: база TransPhoto</div>
+                            <div class="photo-desc">
+                                Фотохроника работы трамвайной сети Ульяновска: маршруты № 22, № 4, № 15 по центральным улицам Гончарова, Ленина и через волжские мосты.
+                            </div>
+                            <div class="photo-meta-box">
+                                <div class="meta-row">
+                                    <span>Архив:</span>
+                                    <span class="meta-author">TransPhoto.org (Ульяновск)</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span>Ведущие авторы:</span>
+                                    <span>А. Сорокин, Илья Ковалёв, Д. Михайлов</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span>Лицензия:</span>
+                                    <span>СТТС / Репортажная документалистика</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Рекомендация по векторизации и «срисовке» -->
+                <div class="drawing-guide-box">
+                    <div class="guide-icon">🎨</div>
+                    <div class="guide-text">
+                        <strong>Рекомендация по графике и срисовке для интерфейса:</strong><br>
+                        С реальных фотографий «Львёнка» взяты характерные ключевые линии: характерная аэродинамическая маска с LED-фарами в форме клыков, скошенная линия окон кабины и двухцветная окраска (рубиновый низ + кремовый верх). Для векторных иконок и пиктограмм статусов рекомендуется использовать чистый контурный вектор (SVG 24x24 и 48x48) на базе этих реальных обводов кузова.
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ==========================================================================
+         8. JAVASCRIPT: THEME TOGGLING & INTERACTIVE STATES
+         ========================================================================== */
+    -->
+    <script>
+        // Инициализация темы из localStorage или системных предпочтений
+        function initTheme() {
+            const savedTheme = localStorage.getItem('kadry-theme');
+            const html = document.documentElement;
+            const sunIcon = document.getElementById('sunIcon');
+            const moonIcon = document.getElementById('moonIcon');
+
+            if (savedTheme) {
+                html.setAttribute('data-theme', savedTheme);
+            } else {
+                // По умолчанию темная тема согласно ТЗ
+                html.setAttribute('data-theme', 'dark');
+            }
+
+            const current = html.getAttribute('data-theme');
+            if (current === 'light') {
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            } else {
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+            }
+        }
+
+        // Переключение Dark / Light
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('kadry-theme', next);
+
+            const sunIcon = document.getElementById('sunIcon');
+            const moonIcon = document.getElementById('moonIcon');
+
+            if (next === 'light') {
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            } else {
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+            }
+        }
+
+        // Навигация по центру Navbar
+        function setActiveNav(element) {
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        // Навигация по Sidebar
+        function setActiveSidebar(element) {
+            document.querySelectorAll('.sidebar-nav-link').forEach(link => link.classList.remove('active'));
+            element.classList.add('active');
+
+            // На мобильных закрываем сайдбар после выбора
+            if (window.innerWidth <= 1024) {
+                document.getElementById('appSidebar').classList.remove('mobile-open');
+            }
+        }
+
+        // Мобильный переключатель сайдбара
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('appSidebar');
+            sidebar.classList.toggle('mobile-open');
+        }
+
+        // Горячая клавиша ⌘K / Ctrl+K для поиска
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                const search = document.getElementById('sidebarSearch');
+                if (search) search.focus();
+            }
+        });
+
+        // Запуск при загрузке DOM
+        document.addEventListener('DOMContentLoaded', initTheme);
+    </script>
+</body>
+</html>

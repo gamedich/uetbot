@@ -55,6 +55,7 @@ TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DASHBOARD_HTML_PATH = TEMPLATES_DIR / "dashboard.html"
 APPLY_HTML_PATH = TEMPLATES_DIR / "apply.html"
+KADRY_HTML_PATH = TEMPLATES_DIR / "kadry.html"
 
 
 @web.middleware
@@ -128,6 +129,7 @@ class WebPanel:
         self.app.router.add_get("/dashboard", self.handle_dashboard_page)
         self.app.router.add_get("/apply", self.handle_apply_page)
         self.app.router.add_get("/candidate/form", self.handle_apply_page)
+        self.app.router.add_get("/kadry", self.handle_kadry_page)
 
         # Vacancies & Candidate Apply API
         self.app.router.add_get("/api/vacancies", self.handle_api_vacancies)
@@ -214,6 +216,14 @@ class WebPanel:
             content = APPLY_HTML_PATH.read_text(encoding="utf-8")
         else:
             content = "<h1>Ошибка: Шаблон apply.html не найден</h1>"
+        return web.Response(text=content, content_type="text/html", charset="utf-8")
+
+    async def handle_kadry_page(self, request: web.Request) -> web.Response:
+        """Модульная дизайн-система и адаптивная навигация HR-платформы «КАДРЫ»."""
+        if KADRY_HTML_PATH.exists():
+            content = KADRY_HTML_PATH.read_text(encoding="utf-8")
+        else:
+            content = "<h1>Ошибка: Шаблон kadry.html не найден</h1>"
         return web.Response(text=content, content_type="text/html", charset="utf-8")
 
     async def handle_api_candidate_lookup(self, request: web.Request) -> web.Response:

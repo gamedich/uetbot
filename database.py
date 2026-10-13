@@ -641,14 +641,19 @@ class ResumeDB:
         return True, "ok", None
 
     def delete_candidate(self, ticket_id: int) -> bool:
-        """Физическое удаление анкеты кандидата и связанных диалогов."""
-        with self.connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (ticket_id,))
-            deleted = cursor.rowcount > 0
-            cursor.execute("DELETE FROM active_dialogs WHERE ticket_id = ?", (ticket_id,))
-            cursor.execute("DELETE FROM inquiries WHERE ticket_id = ?", (ticket_id,))
-            return deleted
+        """Физическое удаление анкеты кандидата и связанных диалогов из базы (с поддержкой обеих БД)."""
+        is_test = (ticket_id >= 900000)
+        deleted = False
+        for flag in (is_test, not is_test):
+            with self._get_connection(is_test=flag) as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (ticket_id,))
+                if cursor.rowcount > 0:
+                    deleted = True
+                cursor.execute("DELETE FROM active_dialogs WHERE ticket_id = ?", (ticket_id,))
+                cursor.execute("DELETE FROM inquiries WHERE ticket_id = ?", (ticket_id,))
+                conn.commit()
+        return deleted
 
     def delete_candidate_152fz(self, ticket_id: int) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """Удаление анкеты с возвратом метаданных для оформления акта уничтожения."""
@@ -669,38 +674,47 @@ class ResumeDB:
     def reset_candidate_for_test(self, user_id: str, platform: str = "tg") -> bool:
         """Полная очистка тестовых записей администратора без задевания боевых анкет."""
         uid = str(user_id)
-        with self.connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM candidates WHERE user_id = ? AND platform = ?", (uid, platform))
-            deleted = cursor.rowcount > 0
-            cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid,))
-            cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (uid, platform))
-            cursor.execute("DELETE FROM user_cooldowns WHERE user_id = ?", (uid,))
-            return deleted
+        deleted = False
+        for flag in (True, False):
+            with self._get_connection(is_test=flag) as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM candidates WHERE user_id = ? AND platform = ?", (uid, platform))
+                if cursor.rowcount > 0:
+                    deleted = True
+                cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid,))
+                cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (uid, platform))
+                cursor.execute("DELETE FROM user_cooldowns WHERE user_id = ?", (uid,))
+                conn.commit()
+        return deleted
 
     def reset_all_test_data(self) -> Tuple[int, int]:
-        """Очистка всех тестовых анкет и обращений из базы данных."""
-        with self.connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                DELETE FROM candidates 
-                WHERE is_test = 1 OR status LIKE '%Тест%' 
-                   OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%' 
-                   OR ticket_id >= 900000
-                """
-            )
-            cand_cnt = cursor.rowcount
-            cursor.execute(
-                """
-                DELETE FROM inquiries 
-                WHERE is_test = 1 OR question_text LIKE '%Тест%' 
-                   OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%'
-                """
-            )
-            inq_cnt = cursor.rowcount
-            cursor.execute("DELETE FROM active_dialogs WHERE full_name LIKE '%Тест%' OR full_name LIKE '%тест%'")
-            return cand_cnt, inq_cnt
+        """Очистка всех тестовых анкет и обращений из обеих баз данных."""
+        cand_cnt = 0
+        inq_cnt = 0
+        for flag in (True, False):
+            with self._get_connection(is_test=flag) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    DELETE FROM candidates 
+                    WHERE is_test = 1 OR status LIKE '%Тест%' 
+                       OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%' 
+                       OR ticket_id >= 900000
+                    """
+                )
+                cand_cnt += cursor.rowcount
+                cursor.execute(
+                    """
+                    DELETE FROM inquiries 
+                    WHERE is_test = 1 OR question_text LIKE '%Тест%' 
+                       OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%'
+                       OR inquiry_id >= 900000
+                    """
+                )
+                inq_cnt += cursor.rowcount
+                cursor.execute("DELETE FROM active_dialogs WHERE full_name LIKE '%Тест%' OR full_name LIKE '%тест%'")
+                conn.commit()
+        return cand_cnt, inq_cnt
 
     def purge_all_candidates_for_debug(self) -> Tuple[int, int]:
         """Полная очистка всех анкет (только для среды разработки/отладки)."""

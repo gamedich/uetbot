@@ -978,6 +978,9 @@ def format_id_text(user_id: int, chat_id: int, username: Optional[str] = None) -
     )
 
 def format_help_text(user_id: Optional[int] = None, is_hr: bool = False, is_tech: bool = False) -> str:
+    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    is_super = (user_id == super_id) if (user_id and super_id) else False
+
     lines = [
         "📋 <b>СПРАВОЧНИК КОМАНД БОТА:</b>",
         "",
@@ -1000,7 +1003,14 @@ def format_help_text(user_id: Optional[int] = None, is_hr: bool = False, is_tech
         "• <code>/support</code> — экстренная связь с техподдержкой",
         "• <code>/id</code> — узнать свой Telegram ID",
     ]
-    if is_hr or is_tech:
+    if is_hr or is_tech or is_super:
+        lines.extend([
+            "",
+            "<b>Для сотрудников и администраторов:</b>",
+            "• <code>/panel</code> (или <code>/web</code>) — открыть веб-панель управления (Mini App)",
+            "• <code>/password &lt;пароль&gt;</code> — установить или сменить личный пароль для сайта",
+        ])
+    if is_hr or is_super:
         lines.extend([
             "",
             "<b>Для сотрудников отдела кадров (HR):</b>",
@@ -1013,20 +1023,27 @@ def format_help_text(user_id: Optional[int] = None, is_hr: bool = False, is_tech
             "• <code>/ban &lt;id&gt;</code> / <code>/unban &lt;id&gt;</code> — черный список соискателей",
             "• <code>/act &lt;id&gt;</code> — генерация Акта об уничтожении ПДн (РКН № 179)",
         ])
-    if is_tech:
+    if is_tech or is_super:
         lines.extend([
             "",
-            "<b>Для технических специалистов (Tech / Admin):</b>",
+            "<b>Для технических инженеров (Tech):</b>",
             "• <code>/tech</code> — мониторинг системы, RAM, метрики, режим ТО",
-            "• <code>/tests</code> — генерация тестовых анкет TG/VK и пинг",
+            "• <code>/tests</code> — генерация тестовых анкет TG/VK и диагностика",
             "• <code>/backups</code> — создание, скачивание и откат копий SQLite",
             "• <code>/logs</code> — оперативный журнал событий (последние 20)",
-            "• <code>/admins</code> — список администраторов с никнеймами",
-            "• <code>/add_hr &lt;id&gt;</code> / <code>/add_tech &lt;id&gt;</code> — выдача прав",
-            "• <code>/del_admin &lt;id&gt;</code> — безопасный отзыв прав доступа",
-            "• <code>/git</code> — управление коммитами, ветками и перезапуском",
             "• <code>/restart</code> — перезапуск системной службы uet_bot",
             "• <code>/docs</code> — формирование нормативной документации (ГОСТ/152-ФЗ)",
+        ])
+    if is_super:
+        lines.extend([
+            "",
+            "<b>Для Главного администратора (SuperAdmin):</b>",
+            "• <code>/admins</code> — список всех назначенных сотрудников с ролями",
+            "• <code>/add_hr &lt;id&gt;</code> — назначить кадровика",
+            "• <code>/add_tech &lt;id&gt;</code> — назначить инженера",
+            "• <code>/del_admin &lt;id&gt;</code> — отозвать права администратора",
+            "• <code>/notify_panel</code> — разослать сотрудникам ссылку на сайт и инструкцию по входу",
+            "• <b>Панель Git и GitHub</b> — перенесена на сайт во вкладку «👑 SuperAdmin & Git»",
         ])
     return "\n".join(lines)
 

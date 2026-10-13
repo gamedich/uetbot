@@ -1403,11 +1403,16 @@ async def process_add_hr_id(message: types.Message, state: FSMContext, bot: Bot)
 
     full_label, _ = await resolve_user_display(bot, new_id)
 
+    port = CONFIG.get("WEB_APP_PORT", 8080)
+    direct_link = f"http://213.226.124.135:{port}/"
     notify_text = (
         "🎉 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
         "📋 <b>Роль:</b> <b>Специалист отдела кадров (HR)</b>\n"
-        "• Вам доступна кадровая панель резюме: <code>/hr</code>\n"
-        "• Вы будете получать новые анкеты соискателей в личные сообщения.\n"
+        "• Вам доступна кадровая панель: <code>/hr</code>\n"
+        "• Вы будете получать новые анкеты соискателей в личные сообщения.\n\n"
+        f"🌐 <b>Служебная веб-панель:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        "🔑 Для входа на сайт установите любой пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
+        "<i>(Или просто откройте панель прямо в Telegram командой /panel)</i>\n"
     )
     sent = await safe_send(bot, new_id, notify_text)
     note = "✅ Уведомление отправлено в ЛС." if sent else "⚠️ <i>Сотруднику нужно нажать /start в боте для получения анкет в ЛС.</i>"
@@ -1455,6 +1460,8 @@ async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bo
 
     full_label, _ = await resolve_user_display(bot, new_id)
 
+    port = CONFIG.get("WEB_APP_PORT", 8080)
+    direct_link = f"http://213.226.124.135:{port}/"
     notify_text = (
         "🛠 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
         "🔧 <b>Роль:</b> <b>Технический инженер (Tech)</b>\n"
@@ -1462,7 +1469,9 @@ async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bo
         "• Панель тестирования и диагностики: <code>/tests</code>\n"
         "• Системные логи: <code>/logs</code>\n"
         "• Резервное копирование базы данных: <code>/backup</code>\n\n"
-        "<i>Отправьте /help для просмотра полного списка команд.</i>"
+        f"🌐 <b>Служебная веб-панель:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        "🔑 Для входа на сайт установите любой пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n\n"
+        "<i>Отправьте /help для просмотра полного списка команд или /panel для открытия панели.</i>"
     )
     sent = await safe_send(bot, new_id, notify_text)
     note = "✅ Оповещение отправлено инженеру в ЛС." if sent else "⚠️ <i>Инженер назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
@@ -1635,47 +1644,46 @@ async def cb_vac_del_execute(callback: types.CallbackQuery) -> None:
 @tech_router.callback_query(F.data == "tech_git_menu")
 async def cb_tech_git_menu(event: Union[types.Message, types.CallbackQuery]) -> None:
     user_id = event.from_user.id
-    if not is_privileged_user(user_id):
+    if user_id != CONFIG.get("SUPER_ADMIN_ID"):
         if isinstance(event, types.CallbackQuery):
-            await event.answer("🚫 Нет прав!", show_alert=True)
+            await event.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
             return
-        await safe_answer(event, "🚫 Доступ ограничен администраторами.")
+        await safe_answer(
+            event,
+            "🚫 <b>Доступ ограничен.</b>\nУправление Git и версиями доступно исключительно Главному администратору в веб-панели управления.",
+            parse_mode="HTML",
+        )
         return
 
-    _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
-    _, last_commit = await run_shell_cmd("git log -1 --pretty=format:'%h - %s (%cd)' --date=relative")
-    _, status_out = await run_shell_cmd("git status --porcelain")
-
-    branch = branch or "main"
-    last_commit = last_commit or "нет данных"
-    has_uncommitted = "⚠️ Есть незакоммиченные файлы" if status_out else "🟢 Рабочая директория чиста"
-    check_time = datetime.now().strftime("%H:%M:%S")
-
+    port = CONFIG.get("WEB_APP_PORT", 8080)
+    web_url = f"http://213.226.124.135:{port}/"
     text = (
-        "🚀 <b>УПРАВЛЕНИЕ ВЕРСИЯМИ И СЛУЖБОЙ (GIT)</b>\n"
+        "🚀 <b>УПРАВЛЕНИЕ GIT И ВЕРСИЯМИ ПЕРЕНЕСЕНО НА САЙТ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🌿 <b>Текущая ветка:</b> <code>{branch}</code>\n"
-        f"📌 <b>Последний коммит:</b>\n<code>{last_commit}</code>\n"
-        f"📂 <b>Статус файлов:</b> {has_uncommitted}\n"
-        f"🔄 <b>Проверено в:</b> <code>{check_time}</code>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "Выберите необходимое действие:"
+        "Для безопасности и надежности полный контроль версий, переключение веток (main/beta), "
+        "получение обновлений (git pull) и история коммитов перенесены во вкладку <b>👑 SuperAdmin & Git</b> веб-панели управления.\n\n"
+        f"🌐 <b>Открыть веб-панель:</b> <a href='{web_url}'>{web_url}</a>"
     )
-    kb = make_git_menu_keyboard(branch)
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🌐 Открыть веб-панель", web_app=types.WebAppInfo(url=web_url))
+    builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
+    builder.adjust(1)
+    kb = builder.as_markup()
+
     if isinstance(event, types.CallbackQuery):
         try:
             await event.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
         except Exception:
             pass
-        await event.answer("🔄 Статус Git обновлен!")
+        await event.answer()
     else:
         await safe_answer(event, text, reply_markup=kb, parse_mode="HTML")
 
 
 @tech_router.callback_query(F.data == "git_action_pull_restart")
 async def cb_git_pull_restart(callback: types.CallbackQuery) -> None:
-    if not is_privileged_user(callback.from_user.id):
-        await callback.answer("🚫 Нет прав!", show_alert=True)
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
         return
 
     await callback.message.edit_text(
@@ -1707,8 +1715,8 @@ async def cb_git_pull_restart(callback: types.CallbackQuery) -> None:
 
 @tech_router.callback_query(F.data.startswith("git_action_switch_"))
 async def cb_git_switch_branch(callback: types.CallbackQuery) -> None:
-    if not is_privileged_user(callback.from_user.id):
-        await callback.answer("🚫 Нет прав!", show_alert=True)
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
         return
 
     target_branch = callback.data.replace("git_action_switch_", "")
@@ -1741,8 +1749,8 @@ async def cb_git_switch_branch(callback: types.CallbackQuery) -> None:
 
 @tech_router.callback_query(F.data == "git_action_rollback_ask")
 async def cb_git_rollback_ask(callback: types.CallbackQuery) -> None:
-    if not is_privileged_user(callback.from_user.id):
-        await callback.answer("🚫 Нет прав!", show_alert=True)
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
         return
 
     builder = InlineKeyboardBuilder()
@@ -1763,8 +1771,8 @@ async def cb_git_rollback_ask(callback: types.CallbackQuery) -> None:
 
 @tech_router.callback_query(F.data == "git_action_rollback_confirm")
 async def cb_git_rollback_confirm(callback: types.CallbackQuery) -> None:
-    if not is_privileged_user(callback.from_user.id):
-        await callback.answer("🚫 Нет прав!", show_alert=True)
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
         return
 
     code, out = await run_shell_cmd("git reset --hard HEAD~1")
@@ -1822,8 +1830,8 @@ async def cmd_restart(message: types.Message) -> None:
 
 @tech_router.callback_query(F.data == "git_action_forward_ask")
 async def cb_git_forward_ask(callback: types.CallbackQuery) -> None:
-    if not is_privileged_user(callback.from_user.id):
-        await callback.answer("🚫 Нет прав!", show_alert=True)
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
         return
 
     _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
@@ -1847,8 +1855,8 @@ async def cb_git_forward_ask(callback: types.CallbackQuery) -> None:
 
 @tech_router.callback_query(F.data == "git_action_forward_confirm")
 async def cb_git_forward_confirm(callback: types.CallbackQuery) -> None:
-    if not is_privileged_user(callback.from_user.id):
-        await callback.answer("🚫 Нет прав!", show_alert=True)
+    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
+        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
         return
 
     _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")

@@ -296,7 +296,6 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder.button(text=maint_text, callback_data="tech_toggle_maint")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")
     builder.button(text="🔄 Обновить статус", callback_data="tech_refresh")
-    builder.button(text="🚀 Панель GitHub и деплой (/git)", callback_data="tech_git_menu")
     builder.adjust(1)
     return builder.as_markup()
 

@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import hashlib
+import hmac
 import html
 import io
 import json
@@ -21,6 +23,7 @@ import os
 import shutil
 import subprocess
 import time
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -36,6 +39,44 @@ logger = logging.getLogger("UET_WEB_APP")
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 DASHBOARD_HTML_PATH = TEMPLATES_DIR / "dashboard.html"
+
+
+def validate_init_data(init_data_raw: str, bot_token: str) -> Optional[Dict[str, Any]]:
+    """
+    Проверяет валидность строки initData из Telegram Mini App (TMA)
+    в соответствии со спецификацией: https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app
+    """
+    if not init_data_raw or not bot_token:
+        return None
+    try:
+        parsed = dict(urllib.parse.parse_qsl(init_data_raw, keep_blank_values=True))
+        received_hash = parsed.pop("hash", None)
+        if not received_hash:
+            return None
+
+        # Сортировка ключей по алфавиту и форматирование key=value
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(parsed.items()))
+
+        # Секретный ключ: HMAC-SHA256 токена бота с ключом "WebAppData"
+        secret_key = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
+
+        # Вычисление проверочного хеша
+        calc_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+
+        if not hmac.compare_digest(calc_hash, received_hash):
+            return None
+
+        # Распарсить поле user в словарь
+        if "user" in parsed:
+            try:
+                parsed["user"] = json.loads(parsed["user"])
+            except Exception:
+                pass
+
+        return parsed
+    except Exception as e:
+        logger.error("Ошибка валидации Telegram initData: %s", e)
+        return None
 
 
 class WebPanel:
@@ -112,7 +153,54 @@ class WebPanel:
         secret_phrase = CONFIG.get("WEB_SECRET_PHRASE", "uet2026")
         master_pin = CONFIG.get("SUPER_ADMIN_PASSWORD", "7657")
 
-        if method == "phrase":
+        if method == "tma":
+            init_raw = str(data.get("init_data") or data.get("value") or "").strip()
+            bot_token = CONFIG.get("BOT_TOKEN", "")
+            tma_data = validate_init_data(init_raw, bot_token)
+            if not tma_data:
+                return web.json_response({
+                    "ok": False,
+                    "error": "Недействительная подпись Telegram Mini App (проверка HMAC не пройдена)."
+                }, status=401)
+
+            user_obj = tma_data.get("user")
+            tma_user_id = user_obj.get("id") if isinstance(user_obj, dict) else None
+            if not tma_user_id:
+                return web.json_response({
+                    "ok": False,
+                    "error": "Не удалось определить ID пользователя из данных Telegram."
+                }, status=400)
+
+            tma_uid = int(tma_user_id)
+            if tma_uid == super_id:
+                return web.json_response({
+                    "ok": True,
+                    "role": "super",
+                    "user_id": super_id,
+                    "label": "👑 Главный администратор"
+                })
+            if tma_uid == tech_id:
+                return web.json_response({
+                    "ok": True,
+                    "role": "tech",
+                    "user_id": tech_id,
+                    "label": "🛠 Инженер (Tech)"
+                })
+
+            role = self.db.get_admin_role(tma_uid)
+            if role in ("superadmin", "super"):
+                return web.json_response({"ok": True, "role": "super", "user_id": tma_uid, "label": "👑 SuperAdmin"})
+            elif role == "hr":
+                return web.json_response({"ok": True, "role": "hr", "user_id": tma_uid, "label": "👔 Отдел кадров (HR)"})
+            elif role == "tech":
+                return web.json_response({"ok": True, "role": "tech", "user_id": tma_uid, "label": "🛠 Инженер (Tech)"})
+
+            return web.json_response({
+                "ok": False,
+                "error": f"Пользователь Telegram ID {tma_uid} не найден в списке сотрудников. Обратитесь к Главному администратору."
+            }, status=403)
+
+        elif method == "phrase":
             # 1. Проверка мастер-паролей Главного администратора
             if val in (secret_phrase, master_pin, "uet2026", "7657"):
                 return web.json_response({

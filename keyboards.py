@@ -26,23 +26,17 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
     is_hr = bool(user_id and (user_id == super_id or is_hr_admin(user_id)))
 
     if is_tech or is_hr:
-        web_url = CONFIG.get("WEB_APP_URL", "")
-        port = CONFIG.get("WEB_APP_PORT", 8080)
-        direct_url = f"http://213.226.124.135:{port}/"
-        if web_url and web_url.startswith("https://"):
-            builder.button(text="🌐 Веб-панель (Mini App)", web_app=types.WebAppInfo(url=web_url))
-        else:
-            builder.button(text="🌐 Веб-панель управления", url=direct_url)
+        web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+        builder.button(text="🌐 Веб-панель (Mini App)", web_app=types.WebAppInfo(url=web_url))
 
         if is_tech:
             builder.button(text="🛠 Панель инженера (/tech)", callback_data="tech_refresh")
-            builder.button(text="🚀 Управление Git (/git)", callback_data="tech_git_menu")
         if is_hr:
             builder.button(text="📋 Кадровая панель (/admin)", callback_data="admin_stats")
         if is_tech and is_hr:
-            builder.adjust(1, 1, 1, 1, 1, 1, 1, 1, 2, 1)
-        elif is_tech:
             builder.adjust(1, 1, 1, 1, 1, 1, 1, 1, 2)
+        elif is_tech:
+            builder.adjust(1, 1, 1, 1, 1, 1, 1, 1, 1)
         else:
             builder.adjust(1, 1, 1, 1, 1, 1, 1, 1, 1)
     else:

@@ -40,6 +40,8 @@ from aiogram.types import (
     BotCommandScopeChat,
     BotCommandScopeDefault,
     BufferedInputFile,
+    MenuButtonWebApp,
+    WebAppInfo,
 )
 
 from config import CONFIG, update_env_variable, validate_config
@@ -1023,16 +1025,57 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
         logger.warning("Ошибка установки команд HR-пользователей: %s", e)
 
 
+    # 6. Установка нативной кнопки Telegram Mini App (Menu Button) рядом с полем ввода
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+    if web_url and web_url.startswith("https://"):
+        if super_id and super_id > 0:
+            try:
+                await bot_instance.set_chat_menu_button(
+                    chat_id=super_id,
+                    menu_button=MenuButtonWebApp(text="🌐 Панель", web_app=WebAppInfo(url=web_url)),
+                )
+            except Exception as e:
+                logger.debug("Не удалось установить MenuButtonWebApp для SuperAdmin: %s", e)
+        for t_id in all_tech_ids:
+            try:
+                await bot_instance.set_chat_menu_button(
+                    chat_id=t_id,
+                    menu_button=MenuButtonWebApp(text="🛠 Панель", web_app=WebAppInfo(url=web_url)),
+                )
+            except Exception:
+                pass
+        for adm_id, role in db.get_all_admins():
+            if role == "hr" and adm_id > 0 and adm_id != super_id and adm_id not in all_tech_ids:
+                try:
+                    await bot_instance.set_chat_menu_button(
+                        chat_id=adm_id,
+                        menu_button=MenuButtonWebApp(text="📋 Панель", web_app=WebAppInfo(url=web_url)),
+                    )
+                except Exception:
+                    pass
+
+
 async def sync_user_commands(
     bot_instance: Optional[Bot] = None,
     user_id: Optional[int] = None,
     role: Optional[str] = None,
     **kwargs,
 ) -> bool:
-    """Синхронизирует команды бота в интерфейсе пользователя."""
+    """Синхронизирует команды бота и нативную кнопку Mini App в интерфейсе пользователя."""
     try:
         target_bot = bot_instance or bot
         if target_bot:
+            if user_id:
+                web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+                if web_url and web_url.startswith("https://"):
+                    btn_text = "🛠 Панель" if role == "tech" else ("📋 Панель" if role == "hr" else "🌐 Панель")
+                    try:
+                        await target_bot.set_chat_menu_button(
+                            chat_id=user_id,
+                            menu_button=MenuButtonWebApp(text=btn_text, web_app=WebAppInfo(url=web_url)),
+                        )
+                    except Exception:
+                        pass
             await setup_bot_commands(target_bot)
             return True
     except Exception as e:

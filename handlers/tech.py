@@ -1220,20 +1220,21 @@ async def cmd_add_hr(message: types.Message, bot: Bot) -> None:
     db.unblock_user(new_id)
     db.add_admin(new_id, role="hr")
 
-    port = CONFIG.get("WEB_APP_PORT", 8080)
-    direct_link = f"http://213.226.124.135:{port}/"
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     notify_text = (
         "🎉 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
         "📋 <b>Роль:</b> <b>Специалист отдела кадров (HR)</b>\n"
         "• Вам доступна кадровая панель: <code>/hr</code>\n"
         "• Вы будете получать новые анкеты соискателей в личные сообщения.\n\n"
-        f"🌐 <b>Служебная веб-панель:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        f"🌐 <b>Служебная веб-панель:</b> <a href='{web_url}'>{web_url}</a>\n"
         "🔑 Для входа на сайт установите любой пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
         "<i>(Или просто откройте панель прямо в Telegram командой /panel)</i>\n"
     )
-    sent = await safe_send(bot, new_id, notify_text)
+    btn_kb = InlineKeyboardBuilder()
+    btn_kb.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
+    sent = await safe_send(bot, new_id, notify_text, reply_markup=btn_kb.as_markup())
     note = "✅ Уведомление отправлено в ЛС." if sent else "⚠️ <i>Сотруднику нужно нажать /start в боте для получения анкет в ЛС.</i>"
-    await sync_user_commands(bot, new_id)
+    await sync_user_commands(bot, new_id, role="hr")
 
     await safe_answer(
         message,
@@ -1267,8 +1268,7 @@ async def cmd_add_tech(message: types.Message, bot: Bot) -> None:
 
     full_label, _ = await resolve_user_display(bot, new_id)
 
-    port = CONFIG.get("WEB_APP_PORT", 8080)
-    direct_link = f"http://213.226.124.135:{port}/"
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     notify_text = (
         "🛠 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
         "🔧 <b>Роль:</b> <b>Технический инженер (Tech)</b>\n"
@@ -1276,13 +1276,15 @@ async def cmd_add_tech(message: types.Message, bot: Bot) -> None:
         "• Панель тестирования и диагностики: <code>/tests</code>\n"
         "• Системные логи: <code>/logs</code>\n"
         "• Резервное копирование базы данных: <code>/backup</code>\n\n"
-        f"🌐 <b>Служебная веб-панель:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        f"🌐 <b>Служебная веб-панель:</b> <a href='{web_url}'>{web_url}</a>\n"
         "🔑 Для входа на сайт установите любой пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n\n"
         "<i>Отправьте /help для просмотра полного списка команд или /panel для открытия панели.</i>"
     )
-    sent = await safe_send(bot, new_id, notify_text)
+    btn_kb = InlineKeyboardBuilder()
+    btn_kb.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
+    sent = await safe_send(bot, new_id, notify_text, reply_markup=btn_kb.as_markup())
     note = "✅ Оповещение отправлено инженеру в ЛС." if sent else "⚠️ <i>Инженер назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
-    await sync_user_commands(bot, new_id)
+    await sync_user_commands(bot, new_id, role="tech")
 
     await safe_answer(
         message,
@@ -1339,10 +1341,13 @@ async def cmd_notify_panel_broadcast(message: types.Message, bot: Bot) -> None:
 
     all_admins = db.get_all_admins()
     super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
-    port = CONFIG.get("WEB_APP_PORT", 8080)
-    direct_link = f"http://213.226.124.135:{port}/"
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
     sent_count = 0
+    btn_kb = InlineKeyboardBuilder()
+    btn_kb.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
+    app_markup = btn_kb.as_markup()
+
     for adm_id, role in all_admins:
         if adm_id == super_id:
             continue
@@ -1351,15 +1356,15 @@ async def cmd_notify_panel_broadcast(message: types.Message, bot: Bot) -> None:
             "🌐 <b>СЛУЖЕБНАЯ ВЕБ-ПАНЕЛЬ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             f"Уважаемый сотрудник! Вам открыт доступ к рабочей веб-панели управления ({role_label}).\n\n"
-            f"👉 <b>Адрес:</b> <a href='{direct_link}'>{direct_link}</a>\n\n"
+            f"👉 <b>Адрес:</b> <a href='{web_url}'>{web_url}</a>\n\n"
             "🔑 <b>Как войти:</b>\n"
             "1. Задайте любой удобный пароль для входа, отправив команду боту:\n"
             "   👉 <code>/password ВАШ_ПАРОЛЬ</code> <i>(например: /password tram2026)</i>\n"
             "2. Перейдите по ссылке на сайт и введите ваш пароль.\n"
-            "3. Или просто откройте панель командой <code>/panel</code> прямо в Telegram!\n"
+            "3. Или просто нажмите кнопку Mini App ниже прямо в Telegram!\n"
             "━━━━━━━━━━━━━━━━━━━━━"
         )
-        if await safe_send(bot, adm_id, text):
+        if await safe_send(bot, adm_id, text, reply_markup=app_markup):
             sent_count += 1
 
     await safe_answer(
@@ -1403,20 +1408,21 @@ async def process_add_hr_id(message: types.Message, state: FSMContext, bot: Bot)
 
     full_label, _ = await resolve_user_display(bot, new_id)
 
-    port = CONFIG.get("WEB_APP_PORT", 8080)
-    direct_link = f"http://213.226.124.135:{port}/"
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     notify_text = (
         "🎉 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
         "📋 <b>Роль:</b> <b>Специалист отдела кадров (HR)</b>\n"
         "• Вам доступна кадровая панель: <code>/hr</code>\n"
         "• Вы будете получать новые анкеты соискателей в личные сообщения.\n\n"
-        f"🌐 <b>Служебная веб-панель:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        f"🌐 <b>Служебная веб-панель:</b> <a href='{web_url}'>{web_url}</a>\n"
         "🔑 Для входа на сайт установите любой пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
         "<i>(Или просто откройте панель прямо в Telegram командой /panel)</i>\n"
     )
-    sent = await safe_send(bot, new_id, notify_text)
+    btn_kb = InlineKeyboardBuilder()
+    btn_kb.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
+    sent = await safe_send(bot, new_id, notify_text, reply_markup=btn_kb.as_markup())
     note = "✅ Уведомление отправлено в ЛС." if sent else "⚠️ <i>Сотруднику нужно нажать /start в боте для получения анкет в ЛС.</i>"
-    await sync_user_commands(bot, new_id)
+    await sync_user_commands(bot, new_id, role="hr")
 
     await safe_answer(
         message,
@@ -1460,8 +1466,7 @@ async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bo
 
     full_label, _ = await resolve_user_display(bot, new_id)
 
-    port = CONFIG.get("WEB_APP_PORT", 8080)
-    direct_link = f"http://213.226.124.135:{port}/"
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     notify_text = (
         "🛠 <b>Вам выданы права доступа в боте МУП «Ульяновскэлектротранс»!</b>\n\n"
         "🔧 <b>Роль:</b> <b>Технический инженер (Tech)</b>\n"
@@ -1469,13 +1474,15 @@ async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bo
         "• Панель тестирования и диагностики: <code>/tests</code>\n"
         "• Системные логи: <code>/logs</code>\n"
         "• Резервное копирование базы данных: <code>/backup</code>\n\n"
-        f"🌐 <b>Служебная веб-панель:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        f"🌐 <b>Служебная веб-панель:</b> <a href='{web_url}'>{web_url}</a>\n"
         "🔑 Для входа на сайт установите любой пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n\n"
         "<i>Отправьте /help для просмотра полного списка команд или /panel для открытия панели.</i>"
     )
-    sent = await safe_send(bot, new_id, notify_text)
+    btn_kb = InlineKeyboardBuilder()
+    btn_kb.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
+    sent = await safe_send(bot, new_id, notify_text, reply_markup=btn_kb.as_markup())
     note = "✅ Оповещение отправлено инженеру в ЛС." if sent else "⚠️ <i>Инженер назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
-    await sync_user_commands(bot, new_id)
+    await sync_user_commands(bot, new_id, role="tech")
 
     await safe_answer(
         message,
@@ -1655,8 +1662,7 @@ async def cb_tech_git_menu(event: Union[types.Message, types.CallbackQuery]) -> 
         )
         return
 
-    port = CONFIG.get("WEB_APP_PORT", 8080)
-    web_url = f"http://213.226.124.135:{port}/"
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     text = (
         "🚀 <b>УПРАВЛЕНИЕ GIT И ВЕРСИЯМИ ПЕРЕНЕСЕНО НА САЙТ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"

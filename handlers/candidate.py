@@ -223,26 +223,20 @@ async def cmd_web_panel_entry(message: types.Message) -> None:
     pwd_note = "🔑 <i>У вас установлен пароль для сайта.</i>" if cur_pwd else "⚠️ <i>У вас ещё не задан пароль. Задайте его командой:</i> <code>/password ВАШ_ПАРОЛЬ</code>"
 
     builder = InlineKeyboardBuilder()
-    web_url = CONFIG.get("WEB_APP_URL", "")
-    port = CONFIG.get("WEB_APP_PORT", 8080)
-    direct_link = f"http://213.226.124.135:{port}/"
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
-    if web_url and web_url.startswith("https://"):
-        builder.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
-        builder.button(text="🖥 Открыть в браузере", url=direct_link)
-        builder.adjust(1, 1)
-    else:
-        builder.button(text="🌐 Открыть веб-панель", url=direct_link)
-        builder.adjust(1)
+    builder.button(text="🌐 Запустить Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
+    builder.button(text="🖥 Открыть в обычном браузере", url=web_url)
+    builder.adjust(1, 1)
 
     text = (
         "🌐 <b>СЛУЖЕБНАЯ ВЕБ-ПАНЕЛЬ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"👤 <b>Ваш Telegram ID:</b> <code>{user_id}</code>\n"
         f"{pwd_note}\n\n"
-        f"🔗 <b>Прямая ссылка:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        f"🔗 <b>Прямой адрес (HTTPS/SSL):</b> <a href='{web_url}'>{web_url}</a>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "💡 <i>Нажмите кнопку ниже для моментального перехода в панель управления.</i>"
+        "💡 <i>Нажмите «🌐 Запустить Mini App» — панель откроется прямо внутри Telegram!</i>"
     )
     await safe_answer(message, text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
@@ -284,19 +278,22 @@ async def cmd_set_password_entry(message: types.Message) -> None:
         return
 
     db.set_admin_password(user_id, new_pwd)
-    port = CONFIG.get("WEB_APP_PORT", 8080)
-    direct_link = f"http://213.226.124.135:{port}/"
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🌐 Войти в Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
+    builder.adjust(1)
 
     text = (
         "✅ <b>Пароль для веб-панели успешно установлен!</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"🔑 <b>Ваш пароль:</b> <code>{new_pwd}</code>\n"
         f"👤 <b>Ваш логин:</b> <code>{user_id}</code>\n"
-        f"🌐 <b>Адрес панели:</b> <a href='{direct_link}'>{direct_link}</a>\n"
+        f"🌐 <b>Адрес панели (SSL):</b> <a href='{web_url}'>{web_url}</a>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "<i>На сайте выберите вкладку «По паролю» и введите этот пароль для входа.</i>"
+        "<i>На сайте выберите вкладку «По паролю» и введите этот пароль для входа. Либо откройте Mini App по кнопке ниже:</i>"
     )
-    await safe_answer(message, text, parse_mode="HTML")
+    await safe_answer(message, text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
 # ==============================================================================

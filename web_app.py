@@ -799,8 +799,7 @@ class WebPanel:
             if self.bot:
                 try:
                     from common import safe_send
-                    port = CONFIG.get("WEB_APP_PORT", 8080)
-                    direct_link = f"http://213.226.124.135:{port}/"
+                    direct_link = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
                     role_label = "Отдел кадров (HR)" if role == "hr" else "Инженер (Tech)"
                     pwd_info = f"🔑 <b>Пароль для входа:</b> <code>{pwd}</code>\n" if pwd else "🔑 Для входа задайте пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
                     text = (
@@ -839,14 +838,14 @@ class WebPanel:
         if ok and self.bot:
             try:
                 from common import safe_send
-                port = CONFIG.get("WEB_APP_PORT", 8080)
+                direct_link = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
                 await safe_send(
                     self.bot,
                     uid,
                     f"🔑 <b>Для вас установлен пароль в веб-панели МУП «УЭТ»!</b>\n"
                     f"━━━━━━━━━━━━━━━━━━━━━\n"
                     f"Пароль: <code>{pwd}</code>\n"
-                    f"Ссылка: <a href='http://213.226.124.135:{port}/'>http://213.226.124.135:{port}/</a>\n\n"
+                    f"Ссылка: <a href='{direct_link}'>{direct_link}</a>\n\n"
                     f"<i>Вы можете сменить его в любой момент командой:</i> <code>/password НОВЫЙ_ПАРОЛЬ</code>"
                 )
             except Exception as e:
@@ -859,8 +858,7 @@ class WebPanel:
         target_uid = int(data.get("user_id", 0))
         all_admins = self.db.get_all_admins()
         super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
-        port = CONFIG.get("WEB_APP_PORT", 8080)
-        direct_link = f"http://213.226.124.135:{port}/"
+        direct_link = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
         targets = [target_uid] if target_uid > 0 else [aid for aid, _ in all_admins if aid != super_id]
         sent = 0

@@ -137,30 +137,23 @@ async def cb_admin_list(callback: types.CallbackQuery) -> None:
 async def cb_hr_web_panel_info(callback: types.CallbackQuery) -> None:
     """Информация о доступе к веб-панели управления."""
     from config import CONFIG
-    port = CONFIG.get("WEB_APP_PORT", 8080)
-    web_url = CONFIG.get("WEB_APP_URL", "")
-    server_ip = "213.226.124.135"
-    direct_link = f"http://{server_ip}:{port}/"
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
     text = (
         "🌐 <b>ВЕБ-ПАНЕЛЬ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🖥 <b>Прямой доступ в браузере:</b>\n"
-        f"👉 <a href='{direct_link}'>{direct_link}</a>\n\n"
-        "📱 <b>Telegram Mini App (TMA):</b>\n"
-        "Telegram требует наличие защищённого протокола <code>https://</code>.\n"
-    )
-    if web_url:
-        text += f"Текущий URL Mini App: <code>{web_url}</code>\n"
-    else:
-        text += "Для открытия панели прямо внутри Telegram без выхода из приложения укажите домен с SSL в <code>.env</code> (параметр <code>WEB_APP_URL=https://...</code>).\n"
-    text += (
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "<i>Панель содержит интерактивную воронку, поиск по базе, фильтры и статус сервисов в реальном времени.</i>"
+        f"📱 <b>Telegram Mini App (TMA):</b>\n"
+        f"Адрес защищённого портала: <a href='{web_url}'>{web_url}</a>\n\n"
+        "<i>Панель содержит интерактивную воронку кандидатов, быстрый поиск, "
+        "историю заметок, фильтры и статус сервисов в реальном времени.</i>\n\n"
+        "Нажмите кнопку ниже, чтобы открыть панель прямо внутри Telegram:"
     )
 
     builder = InlineKeyboardBuilder()
+    builder.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
+    builder.button(text="🖥 Открыть в обычном браузере", url=web_url)
     builder.button(text="⬅️ Назад в меню", callback_data="admin_stats")
+    builder.adjust(1, 1, 1)
     await callback.message.edit_text(
         text, reply_markup=builder.as_markup(), parse_mode="HTML", disable_web_page_preview=True
     )

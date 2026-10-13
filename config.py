@@ -173,7 +173,7 @@ CONFIG: AppConfig = AppConfig({
     "ALLOW_TEST_SUBMISSIONS_IN_PROD": _get_bool("ALLOW_TEST_SUBMISSIONS_IN_PROD", False),
 
     # --- Telegram Mini App / Веб-панель ---
-    "WEB_APP_URL": _get_str("WEB_APP_URL", ""),
+    "WEB_APP_URL": _get_str("WEB_APP_URL", "https://213.226.124.135.sslip.io/"),
     "WEB_APP_HOST": _get_str("WEB_APP_HOST", "0.0.0.0"),
     "WEB_APP_PORT": _get_int("WEB_APP_PORT", 8080),
 })

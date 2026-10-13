@@ -23,10 +23,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import texts
-try:
-    from services.candidate_service import candidate_service
-except ImportError:
-    from services.candidate_service import candidate_service
+from services.candidate_service import candidate_service
 
 from common import (
     CONFIG,

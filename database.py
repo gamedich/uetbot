@@ -96,7 +96,10 @@ class ResumeDB:
                 admin_note TEXT DEFAULT '',
                 updated_at TIMESTAMP DEFAULT NULL,
                 consent_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                referrer_tab TEXT DEFAULT NULL
+                referrer_tab TEXT DEFAULT NULL,
+                interview_depot TEXT DEFAULT '',
+                interview_time TEXT DEFAULT '',
+                interview_status TEXT DEFAULT 'pending'
             )
             """
         )
@@ -126,6 +129,9 @@ class ResumeDB:
                 ("extra_info", "TEXT DEFAULT ''"),
                 ("raw_data_json", "TEXT DEFAULT '{}'"),
                 ("referrer_tab", "TEXT DEFAULT NULL"),
+                ("interview_depot", "TEXT DEFAULT ''"),
+                ("interview_time", "TEXT DEFAULT ''"),
+                ("interview_status", "TEXT DEFAULT 'pending'"),
             ]
             for col_name, col_def in new_columns:
                 if col_name not in cand_cols:
@@ -489,7 +495,8 @@ class ResumeDB:
                 """
                 SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
                        birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json
+                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
+                       interview_depot, interview_time, interview_status
                 FROM candidates WHERE ticket_id = ?
                 """,
                 (ticket_id,)
@@ -505,7 +512,8 @@ class ResumeDB:
                 """
                 SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
                        birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json
+                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
+                       interview_depot, interview_time, interview_status
                 FROM candidates WHERE ticket_id = ?
                 """,
                 (ticket_id,)
@@ -521,7 +529,8 @@ class ResumeDB:
                     """
                     SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
                            birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                           medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json
+                           medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
+                           interview_depot, interview_time, interview_status
                     FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1
                     """,
                     (str(user_id), platform),
@@ -742,6 +751,35 @@ class ResumeDB:
             cursor = conn.cursor()
             cursor.execute("UPDATE candidates SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?", (note, ticket_id))
             conn.commit()
+
+    def set_interview_details(self, ticket_id: int, depot: str, slot_time: str) -> bool:
+        """Сохранение выбранного филиала депо и времени собеседования."""
+        is_test = (ticket_id >= 900000)
+        with self._get_connection(is_test=is_test) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE candidates
+                SET interview_depot = ?, interview_time = ?, interview_status = 'pending', status = 'Приглашен', updated_at = CURRENT_TIMESTAMP
+                WHERE ticket_id = ?
+                """,
+                (depot, slot_time, ticket_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_interview_status(self, ticket_id: int, status: str) -> bool:
+        """Обновление статуса явки на собеседование (confirmed, reschedule и т.д.)."""
+        is_test = (ticket_id >= 900000)
+        with self._get_connection(is_test=is_test) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE candidates SET interview_status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
+                (status, ticket_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
     def get_statistics(self) -> Dict[str, int]:
         """Агрегированный подсчёт кадровой воронки предприятия."""
         with self.connection() as conn:

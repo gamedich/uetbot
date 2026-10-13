@@ -3,8 +3,9 @@
 Модуль разметки клавиатур и экранных меню для бота
 МУП «Ульяновскэлектротранс».
 """
+import re
 from datetime import datetime
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict, Any
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -95,12 +96,21 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     else:
         builder.button(text="📦 В архив", callback_data=f"status_{ticket_id}_Архив")
 
-    # 5. Дата встречи и удаление
-    builder.button(text="📅 Дата встречи", callback_data=f"invite_custom_{ticket_id}")
+    # 5. Дата встречи и назначение собеседования в депо
+    builder.button(text="🏢 Назначить встречу (Депо)", callback_data=f"schedule_interview_{ticket_id}")
+    builder.button(text="📅 Своя дата встречи", callback_data=f"invite_custom_{ticket_id}")
     builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
-    builder.button(text="🗑 Удалить", callback_data=f"del_ask_{ticket_id}")
 
-    # 6. Переключатель ЧС
+    # Быстрый звонок кандидату
+    phone = str(cand[4]) if cand and len(cand) > 4 and cand[4] else ""
+    if phone:
+        clean_phone = re.sub(r"[^\d+]", "", phone)
+        builder.button(text=f"📞 Позвонить {phone}", url=f"tel:{clean_phone}")
+    else:
+        builder.button(text="📞 Телефон", callback_data=f"cand_call_{ticket_id}")
+
+    # 6. Удаление и переключатель ЧС
+    builder.button(text="🗑 Удалить", callback_data=f"del_ask_{ticket_id}")
     if is_cand_blocked:
         builder.button(text="✅ Снять ЧС", callback_data=f"unblock_cand_{ticket_id}")
     else:
@@ -110,9 +120,37 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     builder.button(text="⬅️ К списку анкет", callback_data="admin_list_all")
 
     if status == "Архив":
-        builder.adjust(1, 2, 2, 1, 2, 1, 2, 1, 1)
+        builder.adjust(1, 2, 2, 1, 2, 2, 1, 2, 1)
     else:
-        builder.adjust(1, 2, 2, 1, 2, 2, 1, 1)
+        builder.adjust(1, 2, 2, 1, 2, 2, 1, 2, 1)
+    return builder.as_markup()
+
+def make_depot_selection_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
+    """Выбор филиала депо для проведения собеседования."""
+    builder = InlineKeyboardBuilder()
+    from texts import DEPOT_BRANCHES
+    for code, info in DEPOT_BRANCHES.items():
+        builder.button(text=f"🏢 {info['short_name']}", callback_data=f"int_depot_{ticket_id}_{code}")
+    builder.button(text="⬅️ Назад к анкете", callback_data=f"view_{ticket_id}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+def make_interview_slots_keyboard(ticket_id: int, depot_code: str, slots: List[str]) -> types.InlineKeyboardMarkup:
+    """Выбор слота времени для собеседования в выбранном филиале."""
+    builder = InlineKeyboardBuilder()
+    for slot in slots:
+        builder.button(text=f"🕒 {slot}", callback_data=f"int_slot_{ticket_id}_{depot_code}_{slot}")
+    builder.button(text="✍️ Указать другое время", callback_data=f"invite_custom_{ticket_id}")
+    builder.button(text="⬅️ Назад к филиалам", callback_data=f"schedule_interview_{ticket_id}")
+    builder.adjust(2, 2, 1, 1)
+    return builder.as_markup()
+
+def make_interview_candidate_response_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
+    """Инлайн-кнопки подтверждения явки на собеседование для соискателя."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Буду точно", callback_data=f"cand_int_confirm_{ticket_id}")
+    builder.button(text="🔄 Прошу перенести", callback_data=f"cand_int_resched_{ticket_id}")
+    builder.adjust(1)
     return builder.as_markup()
 
 def make_cand_reply_keyboard(ticket_id: int = 0) -> types.InlineKeyboardMarkup:

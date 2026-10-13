@@ -438,6 +438,98 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
         self.assertEqual(logs[0][1], 999)
 
 
+class TestComplianceAndInterviewServices(unittest.TestCase):
+    """Тесты комплаенс-скоринга (ст. 328.1 ТК РФ) и сервиса организации собеседований."""
+
+    def setUp(self):
+        from database import ResumeDB
+        self.temp_db_file = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        self.db = ResumeDB(self.temp_db_file.name)
+
+    def tearDown(self):
+        if os.path.exists(self.temp_db_file.name):
+            try:
+                os.remove(self.temp_db_file.name)
+            except Exception:
+                pass
+
+    def test_compliance_clean_candidate(self):
+        from services.compliance_service import ComplianceService
+        data = {
+            "user_id": "111222333",
+            "platform": "tg",
+            "vacancy": "Водитель трамвая",
+            "criminal_record": "Нет",
+            "driver_license": "Tm, B",
+        }
+        res = ComplianceService.score_candidate(data)
+        self.assertEqual(res["risk_level"], "LOW")
+        self.assertIn("🟢", res["badge"])
+        self.assertEqual(len(res["flags"]), 0)
+
+    def test_compliance_art_328_1_tk_rf(self):
+        from services.compliance_service import ComplianceService
+        # Судимость по тяжкой статье при подаче на водителя
+        data = {
+            "user_id": "999888777",
+            "platform": "tg",
+            "vacancy": "Водитель троллейбуса",
+            "criminal_record": "Судимость по ст. 105 УК РФ (убийство), непогашена",
+            "driver_license": "Tb",
+        }
+        res = ComplianceService.score_candidate(data)
+        self.assertEqual(res["risk_level"], "CRITICAL")
+        self.assertIn("328.1", res["badge_html"])
+        has_block, text = ComplianceService.check_criminal_record_risk(data["vacancy"], data["criminal_record"])
+        self.assertTrue(has_block)
+
+    def test_compliance_driver_license_analysis(self):
+        from services.compliance_service import ComplianceService
+        # Водитель трамвая с категорией B - требуется переподготовка
+        analysis = ComplianceService.analyze_driver_licenses("Водитель трамвая", "B, C")
+        self.assertTrue(analysis["offer_training"])
+        self.assertEqual(analysis["training_type"], "retraining")
+
+        # Водитель трамвая без прав - обучение с нуля
+        analysis_zero = ComplianceService.analyze_driver_licenses("Водитель трамвая", "Нет прав")
+        self.assertTrue(analysis_zero["offer_training"])
+        self.assertEqual(analysis_zero["training_type"], "full_school")
+
+    def test_interview_slots_generation(self):
+        from services.interview_service import InterviewService
+        slots = InterviewService.generate_interview_slots(days_ahead=3)
+        self.assertGreaterEqual(len(slots), 4)
+        for s in slots:
+            self.assertTrue(any(time_part in s for time_part in ["09:30", "11:00", "14:00", "15:30"]))
+
+    def test_interview_db_details_and_status(self):
+        # Добавляем тестового кандидата
+        ticket_id = self.db.add_candidate(
+            platform="tg",
+            user_id="777666555",
+            full_name="Собеседуемый Петр",
+            phone="+79271112233",
+            vacancy="Водитель трамвая",
+            experience="Стаж 5 лет"
+        )
+        self.assertGreater(ticket_id, 0)
+
+        # Установка деталей собеседования
+        ok = self.db.set_interview_details(ticket_id, "depot_1", "15 окт (Ср) 11:00")
+        self.assertTrue(ok)
+
+        cand = self.db.get_candidate(ticket_id)
+        # Проверяем колонки interview_depot, interview_time, interview_status (индексы 23, 24, 25)
+        self.assertEqual(cand[23], "depot_1")
+        self.assertEqual(cand[24], "15 окт (Ср) 11:00")
+        self.assertEqual(cand[25], "pending")
+
+        # Обновление статуса собеседования (явка подтверждена)
+        self.db.update_interview_status(ticket_id, "confirmed")
+        cand_updated = self.db.get_candidate(ticket_id)
+        self.assertEqual(cand_updated[25], "confirmed")
+
+
 def run_all_tests() -> tuple[bool, str]:
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
@@ -446,6 +538,7 @@ def run_all_tests() -> tuple[bool, str]:
     suite.addTests(loader.loadTestsFromTestCase(TestSecurityAuthorization))
     suite.addTests(loader.loadTestsFromTestCase(TestCandidateService))
     suite.addTests(loader.loadTestsFromTestCase(TestHRAssistantAndMiniApp))
+    suite.addTests(loader.loadTestsFromTestCase(TestComplianceAndInterviewServices))
 
     stream = io.StringIO()
     runner = unittest.TextTestRunner(stream=stream, verbosity=1)
@@ -462,8 +555,9 @@ def run_all_tests() -> tuple[bool, str]:
         f"• Валидаторы (ФИО, телефоны, возраст 18+): <b>7/7 ✅</b>\n"
         f"• База данных (SQLite CRUD, WAL-оптимизация, RAM): <b>9/9 ✅</b>\n"
         f"• Безопасность и Middleware (HR/Tech): <b>6/6 ✅</b>\n"
-        f"• Сервисный слой (Core Service, 152-ФЗ, триггеры): <b>5/5 ✅</b>"
-        f"• Помощник и Mini App (HTML-валидатор, шаблоны, TMA auth): <b>5/5 ✅</b>"
+        f"• Сервисный слой (Core Service, 152-ФЗ, триггеры): <b>5/5 ✅</b>\n"
+        f"• Помощник и Mini App (HTML-валидатор, шаблоны, TMA auth): <b>5/5 ✅</b>\n"
+        f"• Комплаенс и Собеседования (ст. 328.1 ТК РФ, слоты, депо): <b>5/5 ✅</b>"
     )
     return success, summary
 
@@ -478,6 +572,8 @@ if __name__ == "__main__":
     suite.addTests(loader.loadTestsFromTestCase(TestSecurityAuthorization))
     suite.addTests(loader.loadTestsFromTestCase(TestCandidateService))
     suite.addTests(loader.loadTestsFromTestCase(TestHRAssistantAndMiniApp))
+    suite.addTests(loader.loadTestsFromTestCase(TestComplianceAndInterviewServices))
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
+

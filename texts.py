@@ -1209,3 +1209,106 @@ def format_my_application_full(cand: Union[Tuple[Any, ...], Dict[str, Any]]) -> 
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"📞 <b>Отдел кадров:</b> <code>{hr_phone}</code>"
     )
+
+
+# ==============================================================================
+# ФИЛИАЛЫ ДЕПО И ИНТЕРВЬЮ-МЕНЕДЖМЕНТ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»
+# ==============================================================================
+
+DEPOT_BRANCHES: Dict[str, Dict[str, str]] = {
+    "depot_1": {
+        "code": "depot_1",
+        "name": "Депо №1 (Северное трамвайное)",
+        "short_name": "Депо №1 (Северное)",
+        "address": "г. Ульяновск, ул. Радищева, 144а",
+        "phone": "+7 (8422) 58-46-61",
+        "transport": "Трамваи: 4, 22, остановка «Северное депо»",
+    },
+    "depot_2": {
+        "code": "depot_2",
+        "name": "Депо №2 (Засвияжское трамвайное)",
+        "short_name": "Депо №2 (Засвияжское)",
+        "address": "г. Ульяновск, ул. Октябрьская, 51",
+        "phone": "+7 (8422) 58-46-62",
+        "transport": "Трамваи: 6, 15, 22, остановка «УЗТС»",
+    },
+    "depot_3": {
+        "code": "depot_3",
+        "name": "Депо №3 (Заволжское троллейбусное)",
+        "short_name": "Депо №3 (Заволжское)",
+        "address": "г. Ульяновск, 9-й проезд Инженерный, 34",
+        "phone": "+7 (8422) 58-46-63",
+        "transport": "Троллейбусы: 1, 3, 5, 12, 14, 15",
+    },
+    "depot_admin": {
+        "code": "depot_admin",
+        "name": "Управление МУП «Ульяновскэлектротранс»",
+        "short_name": "Управление (ул. Гончарова)",
+        "address": "г. Ульяновск, ул. Гончарова, 2",
+        "phone": "+7 (8422) 58-46-60",
+        "transport": "Остановка «Центробанк» / «Улица Гончарова»",
+    },
+}
+
+
+def format_interview_invite(fio: str, vacancy: str, depot_info: Dict[str, str], slot_time: str) -> str:
+    """Генерация официального приглашения на собеседование для отправки кандидату."""
+    fio_esc = html.escape(str(fio or "Соискатель"))
+    vac_esc = html.escape(str(vacancy or "вакансию предприятия"))
+    depot_name = html.escape(depot_info.get("name", "Отдел кадров"))
+    address = html.escape(depot_info.get("address", "г. Ульяновск, ул. Гончарова, 2"))
+    phone = html.escape(depot_info.get("phone", "+7 (8422) 58-46-60"))
+    transport = html.escape(depot_info.get("transport", ""))
+
+    text = (
+        f"👋 Здравствуйте, <b>{fio_esc}</b>!\n\n"
+        f"Ваша анкета на должность «<b>{vac_esc}</b>» успешно рассмотрена кадровой службой МУП «Ульяновскэлектротранс».\n\n"
+        f"🏢 <b>Приглашаем вас на очное собеседование:</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📍 <b>Филиал:</b> {depot_name}\n"
+        f"🏠 <b>Адрес:</b> {address}\n"
+        f"🗓 <b>Время:</b> <code>{slot_time}</code>\n"
+    )
+    if transport:
+        text += f"🚊 <b>Как добраться:</b> {transport}\n"
+    text += (
+        f"📞 <b>Контакты депо:</b> <code>{phone}</code>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📄 <b>При себе иметь:</b>\n"
+        f"• Паспорт РФ\n"
+        f"• СНИЛС, ИНН\n"
+        f"• Водительское удостоверение (при наличии)\n"
+        f"• Документ об образовании / военный билет\n\n"
+        f"Пожалуйста, подтвердите вашу явку кнопкой ниже:"
+    )
+    return text
+
+
+def format_interview_confirmed_notification(ticket_id: int, fio: str, vacancy: str, depot_info: Dict[str, str], slot_time: str) -> str:
+    """Уведомление для кадрового чата о подтверждении явки кандидатом."""
+    return (
+        f"✅ <b>КАНДИДАТ ПОДТВЕРДИЛ ЯВКУ НА СОБЕСЕДОВАНИЕ</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📑 <b>Анкета:</b> #{ticket_id}\n"
+        f"👤 <b>ФИО:</b> {html.escape(str(fio))}\n"
+        f"🎯 <b>Должность:</b> {html.escape(str(vacancy))}\n"
+        f"🏢 <b>Филиал:</b> {html.escape(depot_info.get('name', ''))}\n"
+        f"🗓 <b>Время встречи:</b> <code>{slot_time}</code>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Соискатель подтвердил явку в назначенное время."
+    )
+
+
+def format_interview_reschedule_notification(ticket_id: int, fio: str, vacancy: str, depot_info: Dict[str, str], slot_time: str) -> str:
+    """Уведомление для кадрового чата о просьбе кандидата перенести время."""
+    return (
+        f"🔄 <b>ЗАПРОС НА ПЕРЕНОС СОБЕСЕДОВАНИЯ</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📑 <b>Анкета:</b> #{ticket_id}\n"
+        f"👤 <b>ФИО:</b> {html.escape(str(fio))}\n"
+        f"🎯 <b>Должность:</b> {html.escape(str(vacancy))}\n"
+        f"🏢 <b>Филиал:</b> {html.escape(depot_info.get('name', ''))}\n"
+        f"🗓 <b>Ранее назначено:</b> <code>{slot_time}</code>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Соискатель просит перенести встречу. Кадровику рекомендуется связаться для подбора нового слота."
+    )

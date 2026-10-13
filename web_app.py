@@ -1200,29 +1200,13 @@ class WebPanel:
         role = data.get("role", "hr")
         pwd = str(data.get("password", "")).strip()
         if uid > 0:
-            self.db.add_admin(uid, role=role)
-            if pwd:
-                self.db.set_admin_password(uid, pwd)
-
-            # Оповещение нового сотрудника в Telegram
             if self.bot:
-                try:
-                    from common import safe_send
-                    direct_link = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
-                    role_label = "Отдел кадров (HR)" if role == "hr" else "Инженер (Tech)"
-                    pwd_info = f"🔑 <b>Пароль для входа:</b> <code>{pwd}</code>\n" if pwd else "🔑 Для входа задайте пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
-                    text = (
-                        f"🎉 <b>Вам назначены права доступа в МУП «УЭТ»!</b>\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"📋 <b>Роль:</b> {role_label}\n"
-                        f"🌐 <b>Веб-панель:</b> <a href='{direct_link}'>{direct_link}</a>\n"
-                        f"{pwd_info}"
-                        f"━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"<i>Также вы можете открыть веб-панель прямо в боте командой /panel</i>"
-                    )
-                    await safe_send(self.bot, uid, text)
-                except Exception as e:
-                    logger.warning("Не удалось отправить уведомление новому админу %s: %s", uid, e)
+                from common import grant_admin_and_sync
+                await grant_admin_and_sync(self.bot, uid, role=role, password=pwd)
+            else:
+                self.db.add_admin(uid, role=role)
+                if pwd:
+                    self.db.set_admin_password(uid, pwd)
 
             return web.json_response({"ok": True, "user_id": uid, "role": role})
         return web.json_response({"error": "Invalid user_id"}, status=400)
@@ -1232,7 +1216,11 @@ class WebPanel:
         uid = int(data.get("user_id", 0))
         super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
         if uid > 0 and uid != super_id:
-            self.db.remove_admin(uid)
+            if self.bot:
+                from common import revoke_admin_and_sync
+                await revoke_admin_and_sync(self.bot, uid, reason="Отозвано через веб-панель управления")
+            else:
+                self.db.remove_admin(uid)
             return web.json_response({"ok": True, "user_id": uid})
         return web.json_response({"error": "Cannot remove superadmin or invalid ID"}, status=400)
 
@@ -1320,23 +1308,11 @@ class WebPanel:
             return web.json_response({"error": "Роль Главного администратора изменить нельзя"}, status=400)
         if uid <= 0:
             return web.json_response({"error": "Неверный ID пользователя"}, status=400)
-        self.db.set_admin_role(uid, role)
         if self.bot:
-            try:
-                from common import safe_send
-                role_names = {
-                    "hr": "Отдел кадров (HR)",
-                    "tech": "Технический администратор (Tech)",
-                    "depot": "Сотрудник депо (Depot & Рефералы)",
-                }
-                await safe_send(
-                    self.bot,
-                    uid,
-                    f"🔄 <b>Ваша роль в системе МУП «УЭТ» обновлена:</b> {role_names.get(role, role)}\n"
-                    f"Доступные разделы веб-панели и бота синхронизированы."
-                )
-            except Exception as e:
-                logger.warning("Не удалось уведомить о смене роли: %s", e)
+            from common import grant_admin_and_sync
+            await grant_admin_and_sync(self.bot, uid, role=role)
+        else:
+            self.db.set_admin_role(uid, role)
         return web.json_response({"ok": True, "user_id": uid, "role": role})
 
     async def handle_api_admins_toggle_notify(self, request: web.Request) -> web.Response:

@@ -1043,7 +1043,6 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
         BotCommand(command="password", description="🔑 Пароль от веб-панели"),
         BotCommand(command="hr", description="📋 Кадровая панель (соискатели, воронка)"),
         BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД, аптайм)"),
-        BotCommand(command="git", description="🚀 Управление Git и быстрый рестарт"),
         BotCommand(command="admins", description="👥 Управление доступом и ролями"),
         BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
         BotCommand(command="start", description="🏠 Главное меню"),
@@ -1134,28 +1133,187 @@ async def sync_user_commands(
     role: Optional[str] = None,
     **kwargs,
 ) -> bool:
-    """Синхронизирует команды бота и нативную кнопку Mini App в интерфейсе пользователя."""
+    """
+    Синхронизирует выпадающее меню команд Telegram (/) и нативную кнопку Mini App
+    в строгом соответствии с фактической ролью пользователя. При отзыве прав
+    полностью удаляет персональный скоуп команд и возвращает соискательское меню.
+    """
     try:
         target_bot = bot_instance or bot
-        if target_bot:
-            if user_id:
-                web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
-                if web_url and web_url.startswith("https://"):
-                    btn_text = (
-                        "🛠 Панель" if role == "tech"
-                        else ("📋 Панель" if role == "hr"
-                        else ("🚋 Рефералы" if role == "depot"
-                        else "🌐 Панель"))
+        if not target_bot:
+            return False
+
+        web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+
+        if user_id:
+            super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
+            tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
+
+            actual_role = role
+            if actual_role is None:
+                if user_id == super_id:
+                    actual_role = "superadmin"
+                elif user_id == tech_id:
+                    actual_role = "tech"
+                else:
+                    actual_role = db.get_admin_role(user_id) or "none"
+
+            if actual_role in ("none", "revoked", "candidate", ""):
+                # 1. ПРАВА ОТОЗВАНЫ: удаляем персональный скоуп команд и сбрасываем кнопку
+                try:
+                    await target_bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=user_id))
+                except Exception as e:
+                    logger.debug("delete_my_commands for %s: %s", user_id, e)
+
+                try:
+                    await target_bot.set_chat_menu_button(
+                        chat_id=user_id,
+                        menu_button=MenuButtonDefault(),
                     )
+                except Exception as e:
+                    logger.debug("set_chat_menu_button default for %s: %s", user_id, e)
+            else:
+                # 2. ПРАВА АКТИВНЫ: устанавливаем ролевое меню
+                target_commands = []
+                btn_text = "🌐 Панель"
+                if actual_role == "superadmin":
+                    target_commands = [
+                        BotCommand(command="panel", description="🌐 Веб-панель управления"),
+                        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
+                        BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
+                        BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД)"),
+                        BotCommand(command="admins", description="👥 Управление доступом"),
+                        BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
+                        BotCommand(command="start", description="🏠 Главное меню"),
+                        BotCommand(command="help", description="ℹ️ Справочник администратора"),
+                    ]
+                    btn_text = "🌐 Панель"
+                elif actual_role == "tech":
+                    target_commands = [
+                        BotCommand(command="panel", description="🌐 Веб-панель инженера"),
+                        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
+                        BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД)"),
+                        BotCommand(command="start", description="🏠 Главное меню"),
+                        BotCommand(command="help", description="ℹ️ Справочник инженера"),
+                    ]
+                    btn_text = "🛠 Панель"
+                elif actual_role == "hr":
+                    target_commands = [
+                        BotCommand(command="panel", description="🌐 Веб-панель соискателей"),
+                        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
+                        BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
+                        BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
+                        BotCommand(command="start", description="🏠 Главное меню"),
+                        BotCommand(command="help", description="ℹ️ Справка кадровой службы"),
+                    ]
+                    btn_text = "📋 Панель"
+                elif actual_role == "depot":
+                    target_commands = [
+                        BotCommand(command="ref", description="🚋 Реферальная программа депо"),
+                        BotCommand(command="start", description="🏠 Главное меню"),
+                        BotCommand(command="help", description="ℹ️ Справка"),
+                    ]
+                    btn_text = "🚋 Рефералы"
+
+                if target_commands:
+                    try:
+                        await target_bot.set_my_commands(
+                            target_commands, scope=BotCommandScopeChat(chat_id=user_id)
+                        )
+                    except Exception as e:
+                        logger.warning("set_my_commands for %s: %s", user_id, e)
+
+                if web_url and web_url.startswith("https://"):
                     try:
                         await target_bot.set_chat_menu_button(
                             chat_id=user_id,
                             menu_button=MenuButtonWebApp(text=btn_text, web_app=WebAppInfo(url=web_url)),
                         )
-                    except Exception:
-                        pass
-            await setup_bot_commands(target_bot)
-            return True
+                    except Exception as e:
+                        logger.debug("set_chat_menu_button for %s: %s", user_id, e)
+
+        await setup_bot_commands(target_bot)
+        return True
     except Exception as e:
         logger.warning("Ошибка sync_user_commands: %s", e)
-    return False
+        return False
+
+
+async def revoke_admin_and_sync(bot_instance: Bot, user_id: int, reason: str = "") -> bool:
+    """
+    Полный цикл отзыва прав доступа:
+    1. Удаление роли из SQLite
+    2. Уведомление пользователя в ЛС
+    3. Сброс выпадающего меню команд Telegram (/) и возврат к соискательскому
+    4. Сброс нативной кнопки меню к MenuButtonDefault
+    """
+    db.remove_admin(user_id)
+    revoke_text = (
+        "ℹ️ <b>Уведомление об изменении прав доступа:</b>\n\n"
+        "Ваши служебные полномочия в боте <b>МУП «Ульяновскэлектротранс»</b> были отозваны.\n"
+        "Доступ к кадровой панели и служебным командам закрыт."
+    )
+    if reason:
+        revoke_text += f"\n<i>Причина: {reason}</i>"
+
+    try:
+        from keyboards import make_candidate_main_keyboard
+        await safe_send(
+            bot_instance,
+            user_id,
+            revoke_text,
+            reply_markup=make_candidate_main_keyboard(user_id=user_id),
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        logger.warning("Не удалось уведомить пользователя %s об отзыве прав: %s", user_id, e)
+
+    await sync_user_commands(bot_instance, user_id=user_id, role="none")
+    return True
+
+
+async def grant_admin_and_sync(bot_instance: Bot, user_id: int, role: str, password: str = "") -> bool:
+    """
+    Полный цикл назначения роли сотрудника:
+    1. Сохранение роли в SQLite (+ пароль при наличии)
+    2. Отправка уведомления в ЛС
+    3. Установка персонального меню команд (/) под новую роль
+    4. Установка нативной кнопки Mini App
+    """
+    db.add_admin(user_id, role=role)
+    if password:
+        db.set_admin_password(user_id, password)
+
+    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+    role_names = {
+        "hr": "Отдел кадров (HR)",
+        "tech": "Технический администратор (Tech)",
+        "depot": "Сотрудник депо (Depot & Рефералы)",
+    }
+    role_label = role_names.get(role, role)
+    pwd_info = f"🔑 <b>Пароль для веб-панели:</b> <code>{password}</code>\n" if password else "🔑 Для веб-панели задайте пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
+
+    notice = (
+        f"🎉 <b>Вам назначены права доступа в МУП «УЭТ»!</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📋 <b>Роль:</b> {role_label}\n"
+        f"🌐 <b>Веб-панель:</b> <a href='{web_url}'>{web_url}</a>\n"
+        f"{pwd_info}"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"<i>Служебные команды в выпадающем меню (/) и кнопка веб-панели автоматически активированы.</i>"
+    )
+
+    try:
+        from keyboards import make_candidate_main_keyboard
+        await safe_send(
+            bot_instance,
+            user_id,
+            notice,
+            reply_markup=make_candidate_main_keyboard(user_id=user_id),
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        logger.warning("Не удалось уведомить пользователя %s о назначении прав: %s", user_id, e)
+
+    await sync_user_commands(bot_instance, user_id=user_id, role=role)
+    return True

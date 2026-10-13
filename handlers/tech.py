@@ -12,7 +12,7 @@
     /backup    — горячее резервное копирование SQLite
 - Управление администраторами и ролями (/admins, /add_hr, /add_tech, /del_admin)
 - Управление набором вакансий (открытие/закрытие, добавление, удаление)
-- Управление версиями и перезапуском (/git, /restart)
+- Перезапуск службы бота (/restart)
 """
 
 from __future__ import annotations
@@ -47,9 +47,11 @@ from common import (
     get_closed_vacancies,
     get_open_vacancies,
     get_vacancy_icon,
+    grant_admin_and_sync,
     is_hr_admin,
     is_tech_admin,
     memory_log_handler,
+    revoke_admin_and_sync,
     route_new_candidate_ticket,
     route_new_inquiry_ticket,
     safe_answer,
@@ -1157,17 +1159,8 @@ async def cb_adm_del_id(callback: types.CallbackQuery, bot: Bot) -> None:
         await callback.answer("🚫 Нельзя удалить Главного администратора!", show_alert=True)
         return
 
-    db.remove_admin(adm_id)
-
-    revoke_text = (
-        "ℹ️ <b>Уведомление об изменении прав доступа:</b>\n\n"
-        "Ваши права администратора в боте <b>МУП «Ульяновскэлектротранс»</b> были отозваны.\n"
-        "Доступ к служебным панелям закрыт."
-    )
-    await safe_send(bot, adm_id, revoke_text)
-    await sync_user_commands(bot, adm_id)
-
-    await callback.answer(f"Сотрудник {adm_id} удалён!", show_alert=True)
+    await revoke_admin_and_sync(bot, adm_id, reason="Отозвано Главным администратором")
+    await callback.answer(f"Сотрудник {adm_id} удалён, права отозваны!", show_alert=True)
     all_admins = db.get_all_admins()
     tasks = [resolve_user_display(bot, aid) for aid, _ in all_admins]
     resolved = await asyncio.gather(*tasks)
@@ -1378,19 +1371,12 @@ async def cmd_del_admin(message: types.Message, bot: Bot) -> None:
         await safe_answer(message, "🚫 Нельзя отозвать права у Главного администратора!")
         return
 
-    db.remove_admin(adm_id)
-    revoke_text = (
-        "ℹ️ <b>Уведомление об изменении прав доступа:</b>\n\n"
-        "Ваши права администратора в боте <b>МУП «Ульяновскэлектротранс»</b> были отозваны.\n"
-        "Доступ к служебным панелям закрыт."
-    )
-    sent = await safe_send(bot, adm_id, revoke_text)
-    note = "✅ Оповещение об отзыве прав отправлено в ЛС." if sent else "⚠️ <i>Права отозваны, но уведомить в ЛС не удалось (бот заблокирован).</i>"
-    await sync_user_commands(bot, adm_id)
+    await revoke_admin_and_sync(bot, adm_id, reason="Отозвано Главным администратором через команду /del_admin")
 
     await safe_answer(
         message,
-        f"✅ <b>Права администратора для {adm_id} успешно отозваны!</b>\n{note}",
+        f"✅ <b>Права администратора для {adm_id} успешно отозваны!</b>\n"
+        f"Сотрудник уведомлён в ЛС, выпадающее меню команд Telegram сброшено к соискательскому.",
         reply_markup=make_admins_menu_keyboard(db.get_all_admins()),
         parse_mode="HTML",
     )
@@ -1704,10 +1690,9 @@ async def cb_vac_del_execute(callback: types.CallbackQuery) -> None:
 
 
 # ==============================================================================
-# 5. ПАНЕЛЬ GITHUB, ДЕПЛОЙ И ПЕРЕЗАПУСК (/git, /restart)
+# 5. ПАНЕЛЬ GITHUB, ДЕПЛОЙ И ПЕРЕЗАПУСК (/restart)
 # ==============================================================================
 
-@tech_router.message(Command("git", "deploy", "github"))
 @tech_router.callback_query(F.data == "tech_git_menu")
 async def cb_tech_git_menu(event: Union[types.Message, types.CallbackQuery]) -> None:
     user_id = event.from_user.id

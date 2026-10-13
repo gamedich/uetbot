@@ -133,7 +133,6 @@ BTN_NO = "❌ Нет"
 
 # Служебные кнопки панелей управления
 BTN_TECH_PANEL = "🛠 Панель инженера (/tech)"
-BTN_GIT_PANEL = "🚀 Управление Git (/git)"
 BTN_HR_PANEL = "📋 Кадровая панель (/hr)"
 BTN_LIVE_DLG_START = "🟢 Начать прямой диалог"
 BTN_CAND_MSG = "💬 Написать через бота"

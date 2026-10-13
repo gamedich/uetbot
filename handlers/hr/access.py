@@ -33,8 +33,10 @@ from common import (
     CONFIG,
     check_hr_access_or_block,
     db,
+    grant_admin_and_sync,
     is_hr_admin,
     is_tech_admin,
+    revoke_admin_and_sync,
     safe_answer,
     safe_send,
     send_response_to_candidate,
@@ -55,12 +57,12 @@ access_router = Router(name="hr_access")
 # ==============================================================================
 
 async def grant_hr_role_and_welcome(user: types.User, chat_id: int, bot: Bot) -> None:
-    """Выдаёт роль HR в базе и отправляет официальное приветствие."""
+    """Выдаёт роль HR в базе, синхронизирует меню и отправляет официальное приветствие."""
     if user.is_bot or user.id == CONFIG.get("SUPER_ADMIN_ID"):
         return
 
     db.unblock_user(user.id)
-    db.add_admin(user.id, role="hr")
+    await grant_admin_and_sync(bot, user.id, role="hr")
 
     name_escaped = html.escape(user.full_name or "Сотрудник")
     user_tag = f"@{user.username}" if user.username else name_escaped
@@ -113,11 +115,14 @@ async def on_hr_member_left(event: types.ChatMemberUpdated, bot: Bot) -> None:
     if user.is_bot or user.id == super_admin:
         return
 
-    db.remove_admin(user.id)
-    name_escaped = html.escape(user.full_name or "Сотрудник")
-    user_tag = f"@{user.username} ({name_escaped})" if user.username else f"{name_escaped} [ID: <code>{user.id}</code>]"
     actor = event.from_user
     action_text = "исключён из чата" if (actor and actor.id != user.id) else "покинул чат"
+
+    # Полный цикл отзыва прав: удаление из БД, уведомление в ЛС и сброс команд /
+    await revoke_admin_and_sync(bot, user.id, reason=f"Выход из кадровой группы ({action_text})")
+
+    name_escaped = html.escape(user.full_name or "Сотрудник")
+    user_tag = f"@{user.username} ({name_escaped})" if user.username else f"{name_escaped} [ID: <code>{user.id}</code>]"
 
     await safe_send(
         bot,
@@ -161,7 +166,8 @@ async def cmd_kick_hr_reply(message: types.Message, bot: Bot) -> None:
         await safe_answer(message, "🚫 Нельзя исключить данного пользователя.")
         return
 
-    db.remove_admin(target.id)
+    # Отзываем права, отправляем уведомление в ЛС и сбрасываем команды
+    await revoke_admin_and_sync(bot, target.id, reason="Исключение из кадровой группы администратором")
     try:
         await bot.ban_chat_member(message.chat.id, target.id)
         await bot.unban_chat_member(message.chat.id, target.id)
@@ -172,7 +178,7 @@ async def cmd_kick_hr_reply(message: types.Message, bot: Bot) -> None:
     await safe_answer(
         message,
         f"✅ <b>Сотрудник {target_tag} исключён из кадровой группы.</b>\n"
-        f"Роль HR удалена из базы, доступ к панели <code>/hr</code> аннулирован.",
+        f"Роль HR удалена из базы, доступ к панели <code>/hr</code> аннулирован, выпадающее меню команд сброшено.",
         parse_mode="HTML",
     )
 
@@ -294,7 +300,7 @@ async def cmd_sync_group_two_way(event: Union[types.Message, types.CallbackQuery
 
             if db.get_admin_role(u.id) != "hr":
                 db.unblock_user(u.id)
-                db.add_admin(u.id, role="hr")
+                await grant_admin_and_sync(bot, u.id, role="hr")
                 added_list.append(user_label)
                 active_list.append(f"➕ <b>{user_label}</b> — <b>выдана роль HR</b>")
             else:
@@ -312,7 +318,7 @@ async def cmd_sync_group_two_way(event: Union[types.Message, types.CallbackQuery
                 is_still_in_group = False
 
             if not is_still_in_group:
-                db.remove_admin(old_hr_id)
+                await revoke_admin_and_sync(bot, old_hr_id, reason="Синхронизация участников кадровой группы")
                 try:
                     c = await bot.get_chat(old_hr_id)
                     rem_label = f"@{c.username}" if c.username else c.full_name

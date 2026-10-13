@@ -85,11 +85,11 @@ def make_phone_reply_keyboard() -> types.ReplyKeyboardMarkup:
 
 def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     """
-    Карточка соискателя в кадровой группе (Fast Action Bar):
-    Ряд 1: [ 📞 Набрать ] | [ 🟢 Live-чат ] | [ 📝 Заметка ]
-    Ряд 2: [ 📅 Встреча ] | [ 🔍 Проверка рисков ]
-    Ряд 3: [ 📂 В работу ] | [ ❌ Отказ ] | [ 🌐 Карточка на сайте ]
-    Ряд 4: [ 🏢 Выбор депо ] | [ 🗑 Удалить ] | [ ⛔ В ЧС ]
+    Карточка соискателя в кадровой группе (Fast Action Bar для HR):
+    Ряд 1 (Связь):   [ 📞 Телефон ]     [ 🟢 Live-чат ]      [ 💬 Написать ]
+    Ряд 2 (Статус):  [ 📂 В работу ]    [ 🟢 Пригласить ]    [ 🔴 Отказ ]
+    Ряд 3 (Детали):  [ 🏢 Встреча ]     [ 🔍 Риски ТК РФ ]   [ 📝 Заметка ]
+    Ряд 4 (Доп):     [ 🌐 На сайте ]    [ ⛔ В ЧС / Снять ]  [ 🗑 Удалить ]
     """
     builder = InlineKeyboardBuilder()
     cand = db.get_candidate(ticket_id)
@@ -98,52 +98,48 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     status = cand[7] if cand and len(cand) > 7 else "Новая"
     is_cand_blocked = db.is_blocked(user_id) if user_id else False
 
-    # Телефон соискателя для tel: ссылки
-    raw_phone = str(cand[4]) if cand and len(cand) > 4 and cand[4] else ""
-    clean_digits = re.sub(r"[^\d+]", "", raw_phone)
-    if clean_digits.startswith("8") and len(clean_digits) == 11:
-        tel_link = "+7" + clean_digits[1:]
-    elif not clean_digits.startswith("+") and clean_digits:
-        tel_link = "+" + clean_digits
-    else:
-        tel_link = clean_digits
+    phone = str(cand[4]) if cand and len(cand) > 4 and cand[4] else ""
+    phone_btn_text = f"📞 {phone}" if phone else "📞 Телефон"
 
-    # --- РЯД 1: [ 📞 Набрать ] | [ 🟢 Live-чат ] | [ 📝 Заметка ] ---
-    if tel_link:
-        builder.button(text="📞 Набрать", url=f"tel:{tel_link}")
-    else:
-        builder.button(text="📞 Контакт", callback_data=f"cand_call_{ticket_id}")
+    # --- РЯД 1: СВЯЗЬ ---
+    builder.button(text=phone_btn_text, callback_data=f"cand_call_{ticket_id}")
     builder.button(text="🟢 Live-чат", callback_data=f"live_dlg_cand_{ticket_id}")
-    builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
+    builder.button(text="💬 Написать", callback_data=f"cand_msg_{ticket_id}")
 
-    # --- РЯД 2: [ 📅 Встреча ] | [ 🔍 Проверка рисков ] ---
-    builder.button(text="📅 Встреча", callback_data=f"schedule_interview_{ticket_id}")
-    builder.button(text="🔍 Проверка рисков", callback_data=f"cand_risk_{ticket_id}")
-
-    # --- РЯД 3: [ 📂 В работу ] | [ ❌ Отказ ] | [ 🌐 Карточка на сайте ] ---
+    # --- РЯД 2: ВОРОНКА И РЕШЕНИЯ ПО СТАТУСУ ---
     if status == "В работе":
         builder.button(text="🟡 В работе (активно)", callback_data=f"status_noop_{ticket_id}")
     else:
         builder.button(text="📂 В работу", callback_data=f"status_{ticket_id}_В работе")
 
+    if "Приглашен" in status:
+        builder.button(text="🟢 Приглашен (активно)", callback_data=f"status_noop_{ticket_id}")
+    else:
+        builder.button(text="🟢 Пригласить", callback_data=f"status_{ticket_id}_Приглашен")
+
     if status == "Отказ":
         builder.button(text="🔴 Отказ (активно)", callback_data=f"status_noop_{ticket_id}")
     else:
-        builder.button(text="❌ Отказ", callback_data=f"status_{ticket_id}_Отказ")
+        builder.button(text="🔴 Отказ", callback_data=f"status_{ticket_id}_Отказ")
 
+    # --- РЯД 3: ВСТРЕЧА, РИСКИ И ЗАМЕТКА ---
+    builder.button(text="🏢 Встреча", callback_data=f"schedule_interview_{ticket_id}")
+    builder.button(text="🔍 Риски ТК РФ", callback_data=f"cand_risk_{ticket_id}")
+    builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
+
+    # --- РЯД 4: КАРТОЧКА НА САЙТЕ, ЧС, УДАЛЕНИЕ ---
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     cand_web_url = f"{web_url.rstrip('/')}/#cand_{ticket_id}"
-    builder.button(text="🌐 Карточка на сайте", url=cand_web_url)
+    builder.button(text="🌐 На сайте", url=cand_web_url)
 
-    # --- РЯД 4: Дополнительные быстрые действия ---
     if is_cand_blocked:
         builder.button(text="✅ Снять ЧС", callback_data=f"unblock_cand_{ticket_id}")
     else:
         builder.button(text="⛔ В ЧС", callback_data=f"block_cand_{ticket_id}")
-    builder.button(text="🗑 Удалить", callback_data=f"del_ask_{ticket_id}")
-    builder.button(text="⬅️ К списку", callback_data="admin_list_all")
 
-    builder.adjust(3, 2, 3, 3)
+    builder.button(text="🗑 Удалить", callback_data=f"del_ask_{ticket_id}")
+
+    builder.adjust(3, 3, 3, 3)
     return builder.as_markup()
 
 def make_depot_selection_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:

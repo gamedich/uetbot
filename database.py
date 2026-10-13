@@ -824,36 +824,68 @@ class ResumeDB:
             conn.commit()
             return cursor.rowcount > 0
 
-    def get_statistics(self) -> Dict[str, int]:
-        """Агрегированный подсчёт кадровой воронки предприятия."""
-        with self.connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM candidates")
-            total = cursor.fetchone()[0]
+    def get_statistics(self, scope: str = "both") -> Dict[str, int]:
+        """Агрегированный подсчёт кадровой воронки предприятия с поддержкой обеих баз (PROD и TEST)."""
+        if scope == "both":
+            target_dbs = [False, True]
+        elif scope == "test":
+            target_dbs = [True]
+        elif scope == "prod":
+            target_dbs = [False]
+        else:
+            active_db = self.get_setting("active_db_target", "resumes.db")
+            target_dbs = [active_db == "resumes_test.db"]
 
-            cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'Новая'")
-            new_count = cursor.fetchone()[0]
+        res = {
+            "total": 0,
+            "new": 0,
+            "in_progress": 0,
+            "invited": 0,
+            "hired": 0,
+            "rejected": 0,
+            "archive": 0,
+            "test_total": 0,
+            "prod_total": 0,
+        }
 
-            cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'В работе'")
-            in_progress_count = cursor.fetchone()[0]
+        for is_test_db in target_dbs:
+            try:
+                with self.connection(is_test=is_test_db) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT COUNT(*) FROM candidates")
+                    cnt = cursor.fetchone()[0]
+                    res["total"] += cnt
 
-            cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Приглашен%'")
-            invited_count = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE is_test = 1 OR ticket_id >= 900000")
+                    test_cnt = cursor.fetchone()[0]
+                    if is_test_db:
+                        res["test_total"] += cnt
+                        res["prod_total"] += max(0, cnt - test_cnt)
+                    else:
+                        res["test_total"] += test_cnt
+                        res["prod_total"] += max(0, cnt - test_cnt)
 
-            cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Отказ%'")
-            rejected_count = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'Новая'")
+                    res["new"] += cursor.fetchone()[0]
 
-            cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'Архив'")
-            archive_count = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'В работе'")
+                    res["in_progress"] += cursor.fetchone()[0]
 
-            return {
-                "total": total,
-                "new": new_count,
-                "in_progress": in_progress_count,
-                "invited": invited_count,
-                "rejected": rejected_count,
-                "archive": archive_count,
-            }
+                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Приглашен%'")
+                    res["invited"] += cursor.fetchone()[0]
+
+                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Принят%'")
+                    res["hired"] += cursor.fetchone()[0]
+
+                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Отказ%'")
+                    res["rejected"] += cursor.fetchone()[0]
+
+                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'Архив'")
+                    res["archive"] += cursor.fetchone()[0]
+            except Exception as e:
+                logger.error("Ошибка подсчёта статистики в базе (is_test=%s): %s", is_test_db, e)
+
+        return res
 
     # =========================================================================
     # 2. СОГЛАСИЯ И ПЕРСОНАЛЬНЫЕ ДАННЫЕ (152-ФЗ РФ)

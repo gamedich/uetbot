@@ -841,6 +841,10 @@
                     <span class="stat-label">В архиве</span>
                     <span id="statArchive" class="stat-value" style="color: #94a3b8;">...</span>
                 </div>
+                <div class="stat-card" onclick="filterByTestOnly()" title="Показать только тестовые анкеты">
+                    <span class="stat-label">🧪 Тестовые</span>
+                    <span id="statTest" class="stat-value" style="color: #f59e0b;">...</span>
+                </div>
             </div>
 
             <!-- TOOLBAR -->
@@ -852,13 +856,14 @@
                     </button>
                 </div>
                 <div class="toolbar-filter-grid">
-                    <select id="dbScopeSelect" class="select-box" onchange="loadCandidates(1)">
+                    <select id="dbScopeSelect" class="select-box" onchange="loadCandidates(1); loadStats();">
                         <option value="both">🌐 Все базы (Боевая + Тест)</option>
                         <option value="prod">📁 Боевая (resumes.db)</option>
                         <option value="test">🧪 Тестовая (resumes_test.db)</option>
                     </select>
                     <select id="statusFilterSelect" class="select-box" onchange="loadCandidates(1)">
                         <option value="all">Все статусы</option>
+                        <option value="test_only">🧪 Только тестовые</option>
                         <option value="Новая">Новая</option>
                         <option value="В работе">В работе</option>
                         <option value="Приглашен">Приглашен</option>
@@ -1577,7 +1582,8 @@
         // CANDIDATES DATA
         async function loadStats() {
             try {
-                const res = await fetch('/api/stats');
+                const dbScope = (document.getElementById('dbScopeSelect') ? document.getElementById('dbScopeSelect').value : 'both') || 'both';
+                const res = await fetch('/api/stats?db_scope=' + encodeURIComponent(dbScope));
                 if (!res.ok) return;
                 const d = await res.json();
                 document.getElementById('statTotal').innerText = d.total || 0;
@@ -1587,6 +1593,8 @@
                 document.getElementById('statHired').innerText = d.hired || 0;
                 document.getElementById('statRejected').innerText = d.rejected || 0;
                 document.getElementById('statArchive').innerText = d.archive || 0;
+                const elTest = document.getElementById('statTest');
+                if (elTest) elTest.innerText = d.test_total || 0;
                 document.getElementById('countCandidates').innerText = d.total || 0;
                 document.getElementById('countInquiries').innerText = d.inquiries || 0;
                 const optCand = document.getElementById('optCand');
@@ -1602,6 +1610,12 @@
                 bEnv.innerText = 'Среда: ' + (d.env || 'TEST') + ' ⇄';
                 bEnv.className = (d.env === 'PROD') ? 'badge-btn badge-env-prod' : 'badge-btn badge-env-test';
             } catch (e) { console.error(e); }
+        }
+
+        function filterByTestOnly() {
+            const sel = document.getElementById('statusFilterSelect');
+            if (sel) sel.value = 'test_only';
+            loadCandidates(1);
         }
 
         async function loadCandidates(page = 1) {

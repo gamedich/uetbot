@@ -353,19 +353,28 @@ class WebPanel:
     async def handle_api_stats(self, request: web.Request) -> web.Response:
         env = CONFIG.get("ENVIRONMENT", "TEST").upper()
         active_db = self.db.get_setting("active_db_target", "resumes.db")
+        db_scope = request.query.get("db_scope") or request.query.get("scope") or "both"
 
         try:
-            stats = self.db.get_statistics()
+            stats = self.db.get_statistics(scope=db_scope)
             inq_cnt = 0
-            with self.db.connection() as conn:
-                cur = conn.cursor()
-                cur.execute("SELECT COUNT(*) FROM inquiries WHERE status != 'closed'")
-                inq_cnt = cur.fetchone()[0]
+            target_inq_dbs = [False, True] if db_scope == "both" else ([True] if db_scope == "test" else [False])
+            for is_test_db in target_inq_dbs:
+                try:
+                    with self.db.connection(is_test=is_test_db) as conn:
+                        cur = conn.cursor()
+                        cur.execute("SELECT COUNT(*) FROM inquiries WHERE status != 'closed'")
+                        inq_cnt += cur.fetchone()[0]
+                except Exception:
+                    pass
 
             return web.json_response({
                 "env": env,
                 "active_db": active_db,
+                "db_scope": db_scope,
                 "total": stats.get("total", 0),
+                "test_total": stats.get("test_total", 0),
+                "prod_total": stats.get("prod_total", 0),
                 "new": stats.get("new", 0),
                 "in_progress": stats.get("in_progress", 0),
                 "invited": stats.get("invited", 0),
@@ -432,7 +441,10 @@ class WebPanel:
 
             # Фильтрация по статусу
             if status_filter and status_filter != "all":
-                all_rows = [c for c in all_rows if c["status"] == status_filter or (status_filter in c["status"])]
+                if status_filter == "test_only":
+                    all_rows = [c for c in all_rows if c.get("is_test")]
+                else:
+                    all_rows = [c for c in all_rows if c["status"] == status_filter or (status_filter in c["status"])]
 
             # Поиск
             if search:

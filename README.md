@@ -5,6 +5,7 @@
 **Единая платформа подбора персонала, 16-шаговая анкета соискателя, интерактивный HR-пульт в Telegram, Web-портал и Mini App, омниканальный мост (TG / VK / MAX) и строгий контур безопасности 152-ФЗ РФ.**
 
 [![Release](https://img.shields.io/badge/Release-v1.8.0_Main-2563eb?style=for-the-badge&logo=github)](https://github.com/gamedich/uetbot/tree/main)
+[![GitHub Pages](https://img.shields.io/badge/Live_Showcase-GitHub_Pages-ea580c?style=for-the-badge&logo=githubpages&logoColor=white)](https://gamedich.github.io/uetbot/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Aiogram](https://img.shields.io/badge/Aiogram-3.x-009688?style=for-the-badge&logo=telegram&logoColor=white)](https://docs.aiogram.dev/)
 [![Aiohttp](https://img.shields.io/badge/Web_Panel-Aiohttp_3.10-2C5BB4?style=for-the-badge&logo=aiohttp&logoColor=white)](https://docs.aiohttp.org/)
@@ -12,6 +13,7 @@
 [![152-FZ](https://img.shields.io/badge/Compliance-152--ФЗ_РФ-10b981?style=for-the-badge&logo=shield&logoColor=white)](#-соответствие-законодательству-рф-152-фз-и-тк-рф)
 [![Unit Tests](https://img.shields.io/badge/Tests-41%2F41_Passed-brightgreen?style=for-the-badge&logo=pytest)](#-тестирование)
 
+[🌐 Интерактивная презентация (GitHub Pages)](https://gamedich.github.io/uetbot/) •
 [Ключевые возможности](#-ключевые-возможности) •
 [Единый контур: Бот + Веб](#-единый-контур-данных-сайт-и-бот--это-одна-анкета) •
 [16 шагов анкеты](#-16-шаговая-анкета-соискателя) •

@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>МУП «Ульяновскэлектротранс» — Кабинет управления</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --surface-color: #131b2e;
+            --surface-card: #18223a;
+            --surface-hover: #1f2c4a;
+            --surface-border: #243252;
+            --primary: #2563eb;
+            --primary-hover: #3b82f6;
+            --primary-glow: rgba(37, 99, 235, 0.25);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.15);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.15);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.15);
+            --purple: #8b5cf6;
+            --radius-xl: 18px;
+            --radius-lg: 12px;
+            --radius-md: 8px;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(19, 27, 46, 0.95));
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-xl);
+            padding: 18px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo { font-size: 28px; line-height: 1; }
+        .brand-title { font-size: 19px; font-weight: 800; color: var(--text-main); }
+        .brand-subtitle { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge-btn {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+            user-select: none;
+        }
+
+        .badge-btn:hover { transform: scale(1.03); }
+        .badge-db-prod { background: var(--success-bg); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+        .badge-db-test { background: var(--warning-bg); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+        .badge-env-prod { background: rgba(37, 99, 235, 0.2); color: #60a5fa; border-color: rgba(37, 99, 235, 0.4); }
+        .badge-env-test { background: var(--warning-bg); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+
+        .user-tag {
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* NAVIGATION TABS */
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--surface-border);
+            padding-bottom: 8px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+
+        .nav-tab {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .nav-tab:hover { color: var(--text-main); background-color: rgba(255, 255, 255, 0.05); }
+        .nav-tab.active { color: #ffffff; background-color: var(--primary); box-shadow: 0 4px 12px var(--primary-glow); }
+        .tab-count { background: rgba(255, 255, 255, 0.2); padding: 2px 6px; border-radius: 10px; font-size: 11px; }
+
+        /* CARDS */
+        .main-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-xl);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+        }
+
+        /* STATS GRID */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-lg);
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .stat-card:hover { transform: translateY(-2px); border-color: var(--primary); background-color: var(--surface-card); }
+        .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+        .stat-value { font-size: 22px; font-weight: 800; color: var(--text-main); }
+
+        /* TOOLBAR */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            width: 100%;
+            max-width: 950px;
+        }
+
+        .input-box, .select-box {
+            padding: 8px 12px;
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-md);
+            color: var(--text-main);
+            font-size: 13px;
+            outline: none;
+            transition: var(--transition);
+        }
+        .input-box:focus, .select-box:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); }
+        .search-input { flex: 1; min-width: 200px; }
+
+        .btn {
+            background-color: var(--primary);
+            color: #ffffff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+        .btn:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+        .btn-secondary { background-color: var(--surface-card); color: var(--text-main); border: 1px solid var(--surface-border); }
+        .btn-secondary:hover { background-color: var(--surface-hover); }
+        .btn-success { background-color: var(--success); }
+        .btn-danger { background-color: var(--danger); }
+        .btn-warning { background-color: var(--warning); color: #000; }
+
+        /* TABLE */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--surface-border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #172138;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--surface-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--surface-border);
+            vertical-align: middle;
+        }
+
+        tbody tr:hover { background-color: rgba(255, 255, 255, 0.03); }
+
+        .badge-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .st-new { background: rgba(37, 99, 235, 0.2); color: #60a5fa; }
+        .st-work { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .st-invite { background: rgba(139, 92, 246, 0.2); color: #c084fc; }
+        .st-hired { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .st-refused { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .st-archive { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+
+        .db-tag {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .db-tag-prod { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .db-tag-test { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+        /* PAGINATION */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-top: 8px;
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .modal-content {
+            background-color: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-xl);
+            max-width: 780px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            animation: modalFadeIn 0.2s ease;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--surface-border);
+            padding-bottom: 12px;
+        }
+        .modal-title { font-size: 18px; font-weight: 700; }
+        .close-btn { background: transparent; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; }
+        .close-btn:hover { color: var(--text-main); }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .detail-item {
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-md);
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .detail-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .detail-val { font-size: 13px; font-weight: 600; color: var(--text-main); word-break: break-word; }
+
+        .compliance-box {
+            border-radius: var(--radius-md);
+            padding: 12px;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .compliance-safe { background: var(--success-bg); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; }
+        .compliance-risk { background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; }
+
+        .note-textarea {
+            width: 100%;
+            height: 70px;
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-md);
+            color: var(--text-main);
+            padding: 10px;
+            font-size: 13px;
+            outline: none;
+            resize: vertical;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            border-top: 1px solid var(--surface-border);
+            padding-top: 14px;
+            justify-content: flex-end;
+        }
+
+        /* SYSTEM & GIT GRID */
+        .system-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .card-metric {
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background-color: #1e293b;
+            color: #ffffff;
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-md);
+            padding: 12px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 2000;
+        }
+
+        /* LOGIN MODAL */
+        .auth-card {
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header { padding: 14px; }
+            .brand-title { font-size: 17px; }
+            .search-input { width: 100%; }
+            .filter-group { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-top">
+                <div class="brand">
+                    <span class="brand-logo">🚋</span>
+                    <div>
+                        <div class="brand-title">МУП «Ульяновскэлектротранс»</div>
+                        <div class="brand-subtitle">Кабинет управления кадрами и мониторинга</div>
+                    </div>
+                </div>
+                <div class="header-controls">
+                    <span id="badgeDb" class="badge-btn badge-db-prod" onclick="toggleActiveDatabase()" title="Кликните для переключения базы">БД: resumes.db ⇄</span>
+                    <span id="badgeEnv" class="badge-btn badge-env-test" onclick="toggleEnvironment()" title="Кликните для переключения среды">Среда: TEST ⇄</span>
+                    <div id="userBadge" class="user-tag">👤 Не авторизован</div>
+                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="openAuthModal()">🔑 Вход</button>
+                    <button id="btnLogout" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; display: none;" onclick="logout()">Выйти</button>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <nav class="nav-tabs" id="navTabs">
+                <button class="nav-tab active" id="tabCandidatesBtn" onclick="switchTab('candidates')">
+                    📋 Соискатели <span id="countCandidates" class="tab-count">0</span>
+                </button>
+                <button class="nav-tab" id="tabInquiriesBtn" onclick="switchTab('inquiries')">
+                    💬 Вопросы (/ask) <span id="countInquiries" class="tab-count">0</span>
+                </button>
+                <button class="nav-tab" id="tabTechBtn" onclick="switchTab('tech')">
+                    🛠 Панель инженера
+                </button>
+                <button class="nav-tab" id="tabSuperBtn" onclick="switchTab('super')">
+                    👑 SuperAdmin & Git
+                </button>
+                <button class="nav-tab" id="tabAdminsBtn" onclick="switchTab('admins')">
+                    👥 Администраторы
+                </button>
+            </nav>
+        </header>
+
+        <!-- TAB: CANDIDATES -->
+        <section id="tabCandidates" class="main-card">
+            <!-- FUNNEL STATS -->
+            <div class="stats-grid">
+                <div class="stat-card" onclick="filterByStatus('all')">
+                    <span class="stat-label">Всего анкет</span>
+                    <span id="statTotal" class="stat-value">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('Новая')">
+                    <span class="stat-label">Новые</span>
+                    <span id="statNew" class="stat-value" style="color: #60a5fa;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('В работе')">
+                    <span class="stat-label">В работе</span>
+                    <span id="statInProgress" class="stat-value" style="color: #fbbf24;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('Приглашен')">
+                    <span class="stat-label">Собеседование</span>
+                    <span id="statInvited" class="stat-value" style="color: #c084fc;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('Принят')">
+                    <span class="stat-label">Приняты в штат</span>
+                    <span id="statHired" class="stat-value" style="color: #34d399;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('Отказ')">
+                    <span class="stat-label">Отказ / ЧС</span>
+                    <span id="statRejected" class="stat-value" style="color: #f87171;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('Архив')">
+                    <span class="stat-label">В архиве</span>
+                    <span id="statArchive" class="stat-value" style="color: #94a3b8;">...</span>
+                </div>
+            </div>
+
+            <!-- TOOLBAR -->
+            <div class="toolbar">
+                <div class="filter-group">
+                    <input type="text" id="searchInput" class="input-box search-input" placeholder="🔍 Поиск по ФИО, телефону, вакансии или #ID...">
+                    <select id="dbScopeSelect" class="select-box" onchange="loadCandidates(1)">
+                        <option value="both">🌐 Все базы (Боевая + Тест)</option>
+                        <option value="prod">📁 Боевая (resumes.db)</option>
+                        <option value="test">🧪 Тестовая (resumes_test.db)</option>
+                    </select>
+                    <select id="statusFilterSelect" class="select-box" onchange="loadCandidates(1)">
+                        <option value="all">Все статусы</option>
+                        <option value="Новая">Новая</option>
+                        <option value="В работе">В работе</option>
+                        <option value="Приглашен">Приглашен</option>
+                        <option value="Принят">Принят</option>
+                        <option value="Отказ">Отказ / ЧС</option>
+                        <option value="Архив">Архив</option>
+                    </select>
+                    <select id="sortSelect" class="select-box" onchange="loadCandidates(1)">
+                        <option value="desc">Сначала новые (#)</option>
+                        <option value="asc">Сначала старые (#)</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <a href="/api/system/export_csv" class="btn btn-secondary" title="Экспорт в Excel">📥 Экспорт Excel</a>
+                    <button class="btn" onclick="loadCandidates(1)">🔄 Обновить</button>
+                </div>
+            </div>
+
+            <!-- TABLE -->
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>№ ID</th>
+                            <th>База</th>
+                            <th>Дата подачи</th>
+                            <th>ФИО соискателя</th>
+                            <th>Вакансия</th>
+                            <th>Телефон</th>
+                            <th>Права</th>
+                            <th>Статус</th>
+                            <th>Депо / Время</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="candidatesTbody">
+                        <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">Загрузка данных...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PAGINATION -->
+            <div class="pagination">
+                <div id="pageInfo" class="page-info">Показано 0 из 0 анкет</div>
+                <div style="display: flex; gap: 6px;">
+                    <button id="btnPrevPage" class="btn btn-secondary" onclick="changePage(-1)">← Назад</button>
+                    <button id="btnNextPage" class="btn btn-secondary" onclick="changePage(1)">Вперед →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: INQUIRIES -->
+        <section id="tabInquiries" class="main-card" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>💬 Вопросы соискателей (/ask)</h3>
+                <button class="btn" onclick="loadInquiries()">🔄 Обновить</button>
+            </div>
+            <div id="inquiriesList" style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="text-align: center; color: var(--text-muted); padding: 24px;">Загрузка вопросов...</div>
+            </div>
+        </section>
+
+        <!-- TAB: TECH -->
+        <section id="tabTech" class="main-card" style="display: none;">
+            <h3>🛠 Панель инженера и системный мониторинг</h3>
+            <div class="system-grid">
+                <div class="card-metric">
+                    <span class="detail-label">Потребление ОЗУ (Процесс)</span>
+                    <span id="metricRam" class="stat-value">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Системная память</span>
+                    <span id="metricSysRam" class="stat-value">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Аптайм сервиса</span>
+                    <span id="metricUptime" class="stat-value">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Размер боевой БД</span>
+                    <span id="metricDbProd" class="stat-value">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Размер тестовой БД</span>
+                    <span id="metricDbTest" class="stat-value">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Шлюзы</span>
+                    <span style="font-size: 14px; font-weight: 600; color: #34d399;">TG (OK) | VK (OK) | WEB (OK)</span>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 14px;">⚡ Действия технического обслуживания</h4>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; padding-top: 10px;">
+                <button class="btn btn-secondary" onclick="toggleActiveDatabase()">🔄 Переключить БД (Боевая ⇄ Тест)</button>
+                <button class="btn btn-secondary" onclick="toggleEnvironment()">⚙️ Сменить режим (TEST ⇄ PROD)</button>
+                <button class="btn btn-secondary" onclick="createBackup()">💾 Создать резервную копию (Бэкап)</button>
+                <button class="btn btn-secondary" onclick="optimizeDatabase()">🧹 Оптимизировать БД (VACUUM & Checkpoint)</button>
+            </div>
+        </section>
+
+        <!-- TAB: SUPERADMIN & GIT -->
+        <section id="tabSuper" class="main-card" style="display: none;">
+            <h3>👑 Панель SuperAdmin & GitHub</h3>
+            
+            <div class="system-grid">
+                <div class="card-metric">
+                    <span class="detail-label">Текущая ветка Git</span>
+                    <span id="gitBranch" class="stat-value" style="color: #60a5fa;">beta</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Последний коммит</span>
+                    <span id="gitCommit" style="font-size: 13px; font-weight: 600;">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Кулдаун между анкетами</span>
+                    <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
+                        <select id="cooldownSelect" class="select-box" onchange="updateCooldown()">
+                            <option value="300">5 минут</option>
+                            <option value="900">15 минут</option>
+                            <option value="1200" selected>20 минут</option>
+                            <option value="1800">30 минут</option>
+                            <option value="3600">60 минут</option>
+                            <option value="0">Отключен (0)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 14px;">🚀 Git & Служба бота</h4>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; padding-top: 6px;">
+                <button class="btn" onclick="gitPull()">📥 Git Pull (Стянуть обновления)</button>
+                <button class="btn btn-warning" onclick="restartBotService()">⚡ Быстрый рестарт бота</button>
+                <button class="btn btn-danger" onclick="clearAllTestData()">🧪 Удалить все тестовые заявки (#900000+)</button>
+                <button class="btn btn-secondary" onclick="muteAllHr()">🔕 Выключить уведомления в ЛС всем HR</button>
+            </div>
+
+            <h4 style="margin-top: 14px;">📜 Реестр уничтожения ПДн (152-ФЗ)</h4>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>№ Акта</th>
+                            <th>ID кандидата</th>
+                            <th>Платформа</th>
+                            <th>Причина</th>
+                            <th>Дата уничтожения</th>
+                        </tr>
+                    </thead>
+                    <tbody id="destructionLogsTbody">
+                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 12px;">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB: ADMINS (SUPERADMIN ONLY) -->
+        <section id="tabAdmins" class="main-card" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>👥 Назначение администраторов (Только SuperAdmin)</h3>
+                <button class="btn" onclick="loadAdmins()">🔄 Обновить</button>
+            </div>
+
+            <div style="background-color: var(--surface-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--surface-border); display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="newAdminId" class="input-box" placeholder="Telegram ID пользователя...">
+                <select id="newAdminRole" class="select-box">
+                    <option value="hr">HR-специалист (Кадры)</option>
+                    <option value="tech">Инженер (Панель инженера)</option>
+                </select>
+                <button class="btn" onclick="addNewAdmin()">➕ Назначить права</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Telegram ID</th>
+                            <th>Роль</th>
+                            <th>Уведомления в ЛС</th>
+                            <th>Дата назначения</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminsTbody">
+                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- CANDIDATE DETAIL MODAL -->
+    <div id="candidateModal" class="modal-overlay" onclick="onModalOverlayClick(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modalCandTitle" class="modal-title">Анкета соискателя #...</h3>
+                    <div id="modalCandSub" style="font-size: 12px; color: var(--text-muted);">...</div>
+                </div>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+
+            <!-- COMPLIANCE ALERT -->
+            <div id="modalComplianceBox" class="compliance-box compliance-safe">
+                <b>🛡 Проверка безопасности:</b>
+                <span id="modalComplianceText">...</span>
+            </div>
+
+            <!-- DETAILS GRID -->
+            <div class="detail-grid">
+                <div class="detail-item"><span class="detail-label">ФИО</span><span id="mFio" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Телефон</span><span id="mPhone" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Вакансия</span><span id="mVacancy" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Опыт работы</span><span id="mExp" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Водительские категории</span><span id="mLicense" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Дата рождения</span><span id="mBirth" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Город</span><span id="mCity" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Образование</span><span id="mEdu" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Условия</span><span id="mConditions" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Собеседование</span><span id="mInterview" class="detail-val">...</span></div>
+            </div>
+
+            <!-- NOTE EDITOR -->
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <span class="detail-label">Заметка кадровой службы:</span>
+                <textarea id="mAdminNote" class="note-textarea" placeholder="Введите внутренний комментарий..."></textarea>
+                <div style="display: flex; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="saveCandidateNote()">💾 Сохранить заметку</button>
+                </div>
+            </div>
+
+            <!-- STATUS & ACTION BUTTONS -->
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="changeCandidateStatus('В работе')">🟡 В работу</button>
+                <button class="btn btn-secondary" onclick="changeCandidateStatus('Приглашен')">📅 Собеседование</button>
+                <button class="btn btn-success" onclick="changeCandidateStatus('Принят')">🟢 Принят в депо</button>
+                <button class="btn btn-secondary" onclick="changeCandidateStatus('Архив')">📦 В архив</button>
+                <button id="btnModalBlacklist" class="btn btn-warning" onclick="toggleBlacklistCandidate()">⛔ В черный список (ЧС)</button>
+                <button class="btn btn-danger" onclick="deleteCurrentCandidate()">🗑 Удалить анкету</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUTH MODAL -->
+    <div id="authModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 440px;">
+            <div class="modal-header">
+                <h3 class="modal-title">🔐 Авторизация в системе</h3>
+                <button class="close-btn" onclick="closeAuthModal()">×</button>
+            </div>
+            
+            <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--surface-border); padding-bottom: 8px;">
+                <button class="btn btn-secondary" id="btnAuthTabPhrase" style="flex: 1;" onclick="switchAuthTab('phrase')">🔑 По паролю / фразе</button>
+                <button class="btn btn-secondary" id="btnAuthTabId" style="flex: 1;" onclick="switchAuthTab('id')">📱 По ID / Телефону</button>
+            </div>
+
+            <!-- PHRASE AUTH -->
+            <div id="authFormPhrase" class="auth-card">
+                <span class="detail-label">Секретная фраза или пароль:</span>
+                <input type="password" id="authPasswordInput" class="input-box" placeholder="Введите пароль (по умолч. uet2026 или 7657)...">
+                <button class="btn" onclick="submitAuth('phrase')">Войти как SuperAdmin</button>
+                <div style="font-size: 11px; color: var(--text-muted);">Вход без раскрытия номера телефона.</div>
+            </div>
+
+            <!-- ID / PHONE AUTH -->
+            <div id="authFormId" class="auth-card" style="display: none;">
+                <span class="detail-label">Telegram ID или номер телефона:</span>
+                <input type="text" id="authIdInput" class="input-box" placeholder="Например: 7657422832 или +7927...">
+                <button class="btn" onclick="submitAuth('id')">Войти</button>
+            </div>
+
+            <!-- QUICK DEV DEMO BUTTONS -->
+            <div style="display: flex; gap: 6px; flex-direction: column; padding-top: 8px; border-top: 1px solid var(--surface-border);">
+                <span class="detail-label" style="text-align: center;">Быстрый выбор роли (демо):</span>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn btn-secondary" style="flex: 1; font-size: 11px;" onclick="quickLogin('super')">👑 SuperAdmin</button>
+                    <button class="btn btn-secondary" style="flex: 1; font-size: 11px;" onclick="quickLogin('hr')">👔 HR</button>
+                    <button class="btn btn-secondary" style="flex: 1; font-size: 11px;" onclick="quickLogin('tech')">🛠 Инженер</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="toast">Уведомление</div>
+
+    <script>
+        // Telegram Mini App native configuration
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
+            if (tg.setHeaderColor) tg.setHeaderColor('#0b0f19');
+            if (tg.setBackgroundColor) tg.setBackgroundColor('#0b0f19');
+        }
+
+        let currentPage = 1;
+        let totalPages = 1;
+        let activeTicketId = null;
+        let activeCandidateUserId = null;
+        let activeCandidateIsBlocked = false;
+        let currentUserRole = 'super'; // 'super', 'hr', 'tech'
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3200);
+        }
+
+        // Apply role permissions to UI
+        function applyRolePermissions() {
+            const tabCand = document.getElementById('tabCandidatesBtn');
+            const tabInq = document.getElementById('tabInquiriesBtn');
+            const tabTech = document.getElementById('tabTechBtn');
+            const tabSuper = document.getElementById('tabSuperBtn');
+            const tabAdm = document.getElementById('tabAdminsBtn');
+            const userBadge = document.getElementById('userBadge');
+            const btnLogout = document.getElementById('btnLogout');
+
+            btnLogout.style.display = 'inline-block';
+
+            if (currentUserRole === 'tech') {
+                // Engineer: ONLY engineer panel, NO candidate editing, NO admin permissions
+                tabCand.style.display = 'none';
+                tabInq.style.display = 'none';
+                tabSuper.style.display = 'none';
+                tabAdm.style.display = 'none';
+                tabTech.style.display = 'flex';
+                userBadge.innerText = '🛠 Инженер (Tech)';
+                switchTab('tech');
+            } else if (currentUserRole === 'hr') {
+                // HR: Candidates and Inquiries, NO tech and NO admin permissions
+                tabCand.style.display = 'flex';
+                tabInq.style.display = 'flex';
+                tabTech.style.display = 'none';
+                tabSuper.style.display = 'none';
+                tabAdm.style.display = 'none';
+                userBadge.innerText = '👔 Отдел кадров (HR)';
+                switchTab('candidates');
+            } else {
+                // SuperAdmin: Everything
+                tabCand.style.display = 'flex';
+                tabInq.style.display = 'flex';
+                tabTech.style.display = 'flex';
+                tabSuper.style.display = 'flex';
+                tabAdm.style.display = 'flex';
+                userBadge.innerText = '👑 SuperAdmin';
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+            ['tabCandidates', 'tabInquiries', 'tabTech', 'tabSuper', 'tabAdmins'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            if (tab === 'candidates') {
+                document.getElementById('tabCandidates').style.display = 'flex';
+                document.getElementById('tabCandidatesBtn').classList.add('active');
+                loadCandidates(currentPage);
+            } else if (tab === 'inquiries') {
+                document.getElementById('tabInquiries').style.display = 'flex';
+                document.getElementById('tabInquiriesBtn').classList.add('active');
+                loadInquiries();
+            } else if (tab === 'tech') {
+                document.getElementById('tabTech').style.display = 'flex';
+                document.getElementById('tabTechBtn').classList.add('active');
+                loadTechMetrics();
+            } else if (tab === 'super') {
+                document.getElementById('tabSuper').style.display = 'flex';
+                document.getElementById('tabSuperBtn').classList.add('active');
+                loadSuperAdminInfo();
+            } else if (tab === 'admins') {
+                document.getElementById('tabAdmins').style.display = 'flex';
+                document.getElementById('tabAdminsBtn').classList.add('active');
+                loadAdmins();
+            }
+        }
+
+        // AUTH FUNCTIONS
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+
+        function switchAuthTab(type) {
+            if (type === 'phrase') {
+                document.getElementById('authFormPhrase').style.display = 'flex';
+                document.getElementById('authFormId').style.display = 'none';
+                document.getElementById('btnAuthTabPhrase').classList.remove('btn-secondary');
+                document.getElementById('btnAuthTabId').classList.add('btn-secondary');
+            } else {
+                document.getElementById('authFormPhrase').style.display = 'none';
+                document.getElementById('authFormId').style.display = 'flex';
+                document.getElementById('btnAuthTabPhrase').classList.add('btn-secondary');
+                document.getElementById('btnAuthTabId').classList.remove('btn-secondary');
+            }
+        }
+
+        async function submitAuth(type) {
+            const val = type === 'phrase'
+                ? document.getElementById('authPasswordInput').value.trim()
+                : document.getElementById('authIdInput').value.trim();
+
+            if (!val) return;
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ method: type, value: val })
+                });
+                const d = await res.json();
+                if (d.ok) {
+                    currentUserRole = d.role;
+                    localStorage.setItem('uet_role', d.role);
+                    localStorage.setItem('uet_user_id', d.user_id);
+                    applyRolePermissions();
+                    closeAuthModal();
+                    showToast("Успешный вход: " + d.label);
+                } else {
+                    alert(d.error || "Ошибка авторизации");
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function quickLogin(role) {
+            currentUserRole = role;
+            localStorage.setItem('uet_role', role);
+            applyRolePermissions();
+            closeAuthModal();
+            showToast("Режим: " + role.toUpperCase());
+        }
+
+        function logout() {
+            localStorage.removeItem('uet_role');
+            localStorage.removeItem('uet_user_id');
+            document.getElementById('userBadge').innerText = '👤 Не авторизован';
+            document.getElementById('btnLogout').style.display = 'none';
+            openAuthModal();
+        }
+
+        // CANDIDATES DATA
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/stats');
+                if (!res.ok) return;
+                const d = await res.json();
+                document.getElementById('statTotal').innerText = d.total || 0;
+                document.getElementById('statNew').innerText = d.new || 0;
+                document.getElementById('statInProgress').innerText = d.in_progress || 0;
+                document.getElementById('statInvited').innerText = d.invited || 0;
+                document.getElementById('statHired').innerText = d.hired || 0;
+                document.getElementById('statRejected').innerText = d.rejected || 0;
+                document.getElementById('statArchive').innerText = d.archive || 0;
+                document.getElementById('countCandidates').innerText = d.total || 0;
+                document.getElementById('countInquiries').innerText = d.inquiries || 0;
+
+                const bDb = document.getElementById('badgeDb');
+                bDb.innerText = 'БД: ' + (d.active_db || 'resumes.db') + ' ⇄';
+                bDb.className = (d.active_db === 'resumes_test.db') ? 'badge-btn badge-db-test' : 'badge-btn badge-db-prod';
+
+                const bEnv = document.getElementById('badgeEnv');
+                bEnv.innerText = 'Среда: ' + (d.env || 'TEST') + ' ⇄';
+                bEnv.className = (d.env === 'PROD') ? 'badge-btn badge-env-prod' : 'badge-btn badge-env-test';
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadCandidates(page = 1) {
+            currentPage = page;
+            const query = document.getElementById('searchInput').value.trim();
+            const dbScope = document.getElementById('dbScopeSelect').value;
+            const sort = document.getElementById('sortSelect').value;
+            const status = document.getElementById('statusFilterSelect').value;
+
+            const url = `/api/candidates?page=${page}&limit=20&status=${encodeURIComponent(status)}&db_scope=${dbScope}&search=${encodeURIComponent(query)}&sort=${sort}`;
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+                totalPages = data.total_pages || 1;
+
+                document.getElementById('pageInfo').innerText = `Показано ${data.candidates.length} из ${data.total} анкет (Стр. ${data.page} из ${totalPages})`;
+                document.getElementById('btnPrevPage').disabled = (data.page <= 1);
+                document.getElementById('btnNextPage').disabled = (data.page >= totalPages);
+
+                renderCandidatesTable(data.candidates);
+                loadStats();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderCandidatesTable(list) {
+            const tbody = document.getElementById('candidatesTbody');
+            if (!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">Анкеты не найдены</td></tr>';
+                return;
+            }
+
+            let html = '';
+            list.forEach(c => {
+                let stBadge = 'st-new';
+                const st = (c.status || '').toLowerCase();
+                if (st.includes('работ')) stBadge = 'st-work';
+                else if (st.includes('приглаш')) stBadge = 'st-invite';
+                else if (st.includes('принят')) stBadge = 'st-hired';
+                else if (st.includes('отказ')) stBadge = 'st-refused';
+                else if (st.includes('архив')) stBadge = 'st-archive';
+
+                const dbBadge = (c.is_test || c.ticket_id >= 900000)
+                    ? '<span class="db-tag db-tag-test">TEST</span>'
+                    : '<span class="db-tag db-tag-prod">PROD</span>';
+
+                const depotStr = (c.interview_depot || '') + (c.interview_time ? ' (' + c.interview_time + ')' : '');
+
+                html += `<tr>
+                    <td><b>#${c.ticket_id}</b></td>
+                    <td>${dbBadge}</td>
+                    <td style="color: var(--text-muted);">${c.created_at || '—'}</td>
+                    <td><b>${escapeHtml(c.full_name || 'Не указано')}</b></td>
+                    <td>${escapeHtml(c.vacancy || '—')}</td>
+                    <td><code>${escapeHtml(c.phone || '—')}</code></td>
+                    <td><span style="font-size: 11px;">${escapeHtml(c.driver_license || '—')}</span></td>
+                    <td><span class="badge-status ${stBadge}">${escapeHtml(c.status || 'Новая')}</span></td>
+                    <td style="color: var(--text-muted); font-size: 12px;">${escapeHtml(depotStr || '—')}</td>
+                    <td>
+                        <div style="display: flex; gap: 4px;">
+                            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openCandidateModal(${c.ticket_id})">Карточка</button>
+                            <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" title="Удалить" onclick="quickDeleteCandidate(${c.ticket_id})">🗑</button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function openCandidateModal(ticketId) {
+            activeTicketId = ticketId;
+            try {
+                const res = await fetch(`/api/candidate/${ticketId}`);
+                if (!res.ok) return;
+                const c = await res.json();
+                activeCandidateUserId = c.user_id;
+                activeCandidateIsBlocked = c.is_blocked;
+
+                document.getElementById('modalCandTitle').innerText = `Анкета #${c.ticket_id} — ${c.full_name || 'Соискатель'}`;
+                document.getElementById('modalCandSub').innerText = `Статус: ${c.status} | Подано: ${c.created_at} [${(c.platform || 'tg').toUpperCase()}]`;
+
+                document.getElementById('mFio').innerText = c.full_name || '—';
+                document.getElementById('mPhone').innerHTML = `<a href="tel:${c.phone}" style="color: #60a5fa; text-decoration: none;">${c.phone}</a>`;
+                document.getElementById('mVacancy').innerText = c.vacancy || '—';
+                document.getElementById('mExp').innerText = c.experience || '—';
+                document.getElementById('mLicense').innerText = c.driver_license || 'Отсутствует';
+                document.getElementById('mBirth').innerText = c.birth_date || '—';
+                document.getElementById('mCity').innerText = c.city || '—';
+                document.getElementById('mEdu').innerText = c.education || '—';
+                document.getElementById('mConditions').innerText = `Смены: ${c.shift_work || '—'} | Общежитие: ${c.dormitory || '—'}`;
+                document.getElementById('mInterview').innerText = (c.interview_depot || '—') + (c.interview_time ? ' (' + c.interview_time + ')' : '');
+                document.getElementById('mAdminNote').value = c.admin_note || '';
+
+                const compBox = document.getElementById('modalComplianceBox');
+                const compText = document.getElementById('modalComplianceText');
+                if (c.compliance && c.compliance.has_risk) {
+                    compBox.className = 'compliance-box compliance-risk';
+                    compText.innerHTML = c.compliance.text;
+                } else {
+                    compBox.className = 'compliance-box compliance-safe';
+                    compText.innerHTML = 'Соответствует требованиям законодательства (ст. 328.1 ТК РФ и ст. 86 УК РФ).';
+                }
+
+                // Update blacklist button text
+                const btnBl = document.getElementById('btnModalBlacklist');
+                btnBl.innerText = c.is_blocked ? "✅ Снять из ЧС" : "⛔ В черный список (ЧС)";
+
+                document.getElementById('candidateModal').classList.add('active');
+            } catch (e) { console.error(e); }
+        }
+
+        function closeModal() {
+            document.getElementById('candidateModal').classList.remove('active');
+            activeTicketId = null;
+        }
+
+        function onModalOverlayClick(e) {
+            if (e.target.id === 'candidateModal') closeModal();
+        }
+
+        async function saveCandidateNote() {
+            if (!activeTicketId) return;
+            const note = document.getElementById('mAdminNote').value;
+            const res = await fetch(`/api/candidate/${activeTicketId}/note`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note })
+            });
+            if (res.ok) showToast("Заметка успешно сохранена!");
+        }
+
+        async function changeCandidateStatus(newStatus) {
+            if (!activeTicketId) return;
+            const res = await fetch(`/api/candidate/${activeTicketId}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (res.ok) {
+                showToast(`Статус изменен на: ${newStatus}`);
+                closeModal();
+                loadCandidates(currentPage);
+            }
+        }
+
+        // DELETE CANDIDATE
+        async function deleteCurrentCandidate() {
+            if (!activeTicketId) return;
+            if (!confirm(`Вы действительно хотите удалить анкету #${activeTicketId}?`)) return;
+            const res = await fetch(`/api/candidate/${activeTicketId}/delete`, { method: 'POST' });
+            if (res.ok) {
+                showToast(`Анкета #${activeTicketId} удалена!`);
+                closeModal();
+                loadCandidates(currentPage);
+            }
+        }
+
+        async function quickDeleteCandidate(ticketId) {
+            if (!confirm(`Удалить анкету #${ticketId}?`)) return;
+            const res = await fetch(`/api/candidate/${ticketId}/delete`, { method: 'POST' });
+            if (res.ok) {
+                showToast(`Анкета #${ticketId} удалена!`);
+                loadCandidates(currentPage);
+            }
+        }
+
+        // BLACKLIST CANDIDATE
+        async function toggleBlacklistCandidate() {
+            if (!activeTicketId) return;
+            const endpoint = activeCandidateIsBlocked ? 'unblock' : 'block';
+            const actionText = activeCandidateIsBlocked ? 'разблокировать соискателя' : 'внести соискателя в ЧС';
+            if (!confirm(`Вы хотите ${actionText}?`)) return;
+
+            const res = await fetch(`/api/candidate/${activeTicketId}/${endpoint}`, { method: 'POST' });
+            if (res.ok) {
+                showToast(activeCandidateIsBlocked ? "Пользователь разблокирован!" : "Пользователь заблокирован в ЧС!");
+                closeModal();
+                loadCandidates(currentPage);
+            }
+        }
+
+        function filterByStatus(st) {
+            document.getElementById('statusFilterSelect').value = st;
+            loadCandidates(1);
+        }
+
+        function changePage(delta) {
+            const next = currentPage + delta;
+            if (next >= 1 && next <= totalPages) loadCandidates(next);
+        }
+
+        // SYSTEM & TECH
+        async function toggleActiveDatabase() {
+            if (!confirm("Переключить активную базу данных предприятия?")) return;
+            const res = await fetch('/api/system/toggle_db', { method: 'POST' });
+            if (res.ok) {
+                const d = await res.json();
+                showToast("Активная БД: " + d.active_db);
+                loadCandidates(1);
+            }
+        }
+
+        async function toggleEnvironment() {
+            if (!confirm("Сменить режим окружения (TEST / PROD)?")) return;
+            const res = await fetch('/api/system/toggle_env', { method: 'POST' });
+            if (res.ok) {
+                const d = await res.json();
+                showToast("Окружение: " + d.env);
+                loadCandidates(1);
+            }
+        }
+
+        async function createBackup() {
+            showToast("Создание бэкапа...");
+            const res = await fetch('/api/system/backup', { method: 'POST' });
+            if (res.ok) {
+                const d = await res.json();
+                showToast("Бэкап создан: " + d.filename);
+            }
+        }
+
+        async function optimizeDatabase() {
+            showToast("Оптимизация БД...");
+            const res = await fetch('/api/system/optimize_db', { method: 'POST' });
+            if (res.ok) showToast("Базы данных успешно оптимизированы!");
+        }
+
+        async function muteAllHr() {
+            if (!confirm("Отключить уведомления в ЛС всем сотрудникам отдела кадров?")) return;
+            const res = await fetch('/api/admins/mute_all', { method: 'POST' });
+            if (res.ok) showToast("Уведомления в ЛС выключены для всех HR!");
+        }
+
+        async function loadTechMetrics() {
+            try {
+                const res = await fetch('/api/system');
+                if (!res.ok) return;
+                const d = await res.json();
+                document.getElementById('metricRam').innerText = `${d.process_rss_mb} МБ (${d.process_ram_pct}%)`;
+                document.getElementById('metricSysRam').innerText = `${d.system_ram_used_gb} / ${d.system_ram_total_gb} ГБ`;
+                document.getElementById('metricUptime').innerText = d.uptime || '—';
+                document.getElementById('metricDbProd').innerText = `${d.db_prod_kb} КБ (${d.db_prod_rows} анкет)`;
+                document.getElementById('metricDbTest').innerText = `${d.db_test_kb} КБ (${d.db_test_rows} анкет)`;
+            } catch (e) { console.error(e); }
+        }
+
+        // SUPERADMIN PANEL & GIT
+        async function loadSuperAdminInfo() {
+            try {
+                const res = await fetch('/api/super/git_info');
+                if (res.ok) {
+                    const d = await res.json();
+                    document.getElementById('gitBranch').innerText = d.branch || 'beta';
+                    document.getElementById('gitCommit').innerText = d.last_commit || '—';
+                }
+
+                // Load destruction logs
+                const logsRes = await fetch('/api/super/destruction_logs');
+                if (logsRes.ok) {
+                    const logs = await logsRes.json();
+                    const tbody = document.getElementById('destructionLogsTbody');
+                    if (!logs || logs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 12px;">Записей уничтожения нет</td></tr>';
+                    } else {
+                        let html = '';
+                        logs.forEach(l => {
+                            html += `<tr>
+                                <td><b>${escapeHtml(l.act_number || '—')}</b></td>
+                                <td>#${l.candidate_id}</td>
+                                <td>${escapeHtml(l.platform || 'tg')}</td>
+                                <td>${escapeHtml(l.reason || '—')}</td>
+                                <td style="color: var(--text-muted);">${escapeHtml(l.destroyed_at || '—')}</td>
+                            </tr>`;
+                        });
+                        tbody.innerHTML = html;
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function gitPull() {
+            showToast("Выполняется git pull...");
+            const res = await fetch('/api/super/git_pull', { method: 'POST' });
+            if (res.ok) {
+                const d = await res.json();
+                showToast("Git Pull: " + (d.output || "Успешно"));
+                loadSuperAdminInfo();
+            }
+        }
+
+        async function restartBotService() {
+            if (!confirm("Перезапустить фоновый сервис бота?")) return;
+            showToast("Перезапуск службы...");
+            const res = await fetch('/api/super/restart_bot', { method: 'POST' });
+            if (res.ok) showToast("Команда перезапуска отправлена!");
+        }
+
+        async function clearAllTestData() {
+            if (!confirm("ВНИМАНИЕ: Удалить все тестовые заявки (#900000+)? Боевые анкеты не будут затронуты.")) return;
+            const res = await fetch('/api/super/clear_tests', { method: 'POST' });
+            if (res.ok) {
+                const d = await res.json();
+                showToast(`Удалено тестовых анкет: ${d.deleted_candidates}`);
+                loadCandidates(1);
+            }
+        }
+
+        async function updateCooldown() {
+            const sec = document.getElementById('cooldownSelect').value;
+            const res = await fetch('/api/super/set_cooldown', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seconds: parseInt(sec) })
+            });
+            if (res.ok) showToast("Таймаут сохранен!");
+        }
+
+        // INQUIRIES
+        async function loadInquiries() {
+            const listEl = document.getElementById('inquiriesList');
+            try {
+                const res = await fetch('/api/inquiries');
+                if (!res.ok) return;
+                const items = await res.json();
+                if (!items || items.length === 0) {
+                    listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 24px;">Нет открытых обращений</div>';
+                    return;
+                }
+                let html = '';
+                items.forEach(inq => {
+                    html += `<div style="background-color: var(--surface-card); border: 1px solid var(--surface-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <b>#${inq.inquiry_id} | ${escapeHtml(inq.full_name || 'Соискатель')} (${escapeHtml(inq.phone || '—')})</b>
+                            <span class="badge-status st-work">${escapeHtml(inq.status || 'Новое')}</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-main); background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px;">
+                            ${escapeHtml(inq.question_text || '')}
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 4px;">
+                            <input type="text" id="replyInq_${inq.inquiry_id}" class="input-box" style="flex: 1;" placeholder="Ответ соискателю в бот...">
+                            <button class="btn" onclick="sendInquiryReply(${inq.inquiry_id})">Отправить ответ</button>
+                        </div>
+                    </div>`;
+                });
+                listEl.innerHTML = html;
+            } catch (e) { console.error(e); }
+        }
+
+        async function sendInquiryReply(inquiryId) {
+            const inp = document.getElementById(`replyInq_${inquiryId}`);
+            const text = (inp.value || '').trim();
+            if (!text) return;
+            const res = await fetch(`/api/inquiries/${inquiryId}/reply`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reply: text })
+            });
+            if (res.ok) {
+                showToast("Ответ успешно отправлен соискателю!");
+                loadInquiries();
+            }
+        }
+
+        // ADMINS
+        async function loadAdmins() {
+            try {
+                const res = await fetch('/api/admins');
+                if (!res.ok) return;
+                const admins = await res.json();
+                const tbody = document.getElementById('adminsTbody');
+                if (!admins || admins.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">Список пуст</td></tr>';
+                    return;
+                }
+                let html = '';
+                admins.forEach(a => {
+                    const notifyBadge = a.notify_dm ? '<span style="color: #34d399;">🔔 Включено</span>' : '<span style="color: #f87171;">🔕 Выключено</span>';
+                    html += `<tr>
+                        <td><b><code>${a.user_id}</code></b></td>
+                        <td><b>${a.role.toUpperCase()}</b></td>
+                        <td>${notifyBadge}</td>
+                        <td style="color: var(--text-muted);">${a.added_at || '—'}</td>
+                        <td><button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="removeAdmin(${a.user_id})">Отозвать</button></td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.error(e); }
+        }
+
+        async function addNewAdmin() {
+            const uid = document.getElementById('newAdminId').value.trim();
+            const role = document.getElementById('newAdminRole').value;
+            if (!uid) return;
+            const res = await fetch('/api/admins/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid, role })
+            });
+            if (res.ok) {
+                showToast("Администратор назначен!");
+                document.getElementById('newAdminId').value = '';
+                loadAdmins();
+            }
+        }
+
+        async function removeAdmin(uid) {
+            if (!confirm(`Отозвать права администратора у ID ${uid}?`)) return;
+            const res = await fetch('/api/admins/remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid })
+            });
+            if (res.ok) {
+                showToast("Права отозваны!");
+                loadAdmins();
+            }
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') loadCandidates(1);
+        });
+
+        // Init session or auto-login from Telegram WebApp
+        const savedRole = localStorage.getItem('uet_role');
+        if (savedRole) {
+            currentUserRole = savedRole;
+            applyRolePermissions();
+        } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+            const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+            submitAuthWithTelegram(tgUser.id);
+        } else {
+            currentUserRole = 'super'; // Default to full access
+            applyRolePermissions();
+        }
+
+        async function submitAuthWithTelegram(tgId) {
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ method: 'tguid', value: String(tgId) })
+                });
+                const d = await res.json();
+                if (d.ok) {
+                    currentUserRole = d.role;
+                    localStorage.setItem('uet_role', d.role);
+                    applyRolePermissions();
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        loadStats();
+        loadCandidates(1);
+    </script>
+</body>
+</html>

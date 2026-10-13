@@ -52,6 +52,7 @@ from common import (
 logger = logging.getLogger("UET_WEB_APP")
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 DASHBOARD_HTML_PATH = TEMPLATES_DIR / "dashboard.html"
 APPLY_HTML_PATH = TEMPLATES_DIR / "apply.html"
 
@@ -119,6 +120,9 @@ class WebPanel:
         self._setup_routes()
 
     def _setup_routes(self) -> None:
+        if STATIC_DIR.exists():
+            self.app.router.add_static("/static/", STATIC_DIR)
+
         self.app.router.add_get("/", self.handle_index)
         self.app.router.add_get("/app", self.handle_index)
         self.app.router.add_get("/dashboard", self.handle_dashboard_page)

@@ -10,16 +10,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #07090e;
-            --surface-color: #0d121f;
-            --surface-card: #131b2e;
-            --surface-hover: #1c2740;
-            --surface-border: rgba(239, 68, 68, 0.22);
-            --primary: #dc2626;
-            --primary-hover: #ea580c;
-            --primary-glow: rgba(220, 38, 38, 0.35);
-            --accent-orange: #f97316;
-            --text-main: #f8fafc;
+            --bg-color: #0b0f17;
+            --surface-color: #141b27;
+            --surface-card: #192231;
+            --surface-hover: #212c3f;
+            --surface-border: rgba(255, 255, 255, 0.08);
+            --primary: #c5222d;
+            --primary-hover: #a61a23;
+            --primary-glow: rgba(197, 34, 45, 0.2);
+            --accent-orange: #f59e0b;
+            --text-main: #f1f5f9;
             --text-muted: #94a3b8;
             --success: #10b981;
             --success-bg: rgba(16, 185, 129, 0.15);
@@ -28,8 +28,8 @@
             --danger: #ef4444;
             --danger-bg: rgba(239, 68, 68, 0.15);
             --purple: #8b5cf6;
-            --radius-xl: 18px;
-            --radius-lg: 12px;
+            --radius-xl: 14px;
+            --radius-lg: 10px;
             --radius-md: 8px;
             --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -64,15 +64,14 @@
 
         /* HEADER */
         .header {
-            background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(249, 115, 22, 0.08) 50%, rgba(13, 18, 31, 0.95));
+            background: var(--surface-color);
             border: 1px solid var(--surface-border);
             border-radius: var(--radius-xl);
             padding: 18px 22px;
             display: flex;
             flex-direction: column;
             gap: 14px;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
         }
 
         .header-top {
@@ -117,7 +116,7 @@
         .badge-btn:hover { transform: scale(1.03); }
         .badge-db-prod { background: var(--success-bg); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
         .badge-db-test { background: var(--warning-bg); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
-        .badge-env-prod { background: rgba(220, 38, 38, 0.2); color: #f87171; border-color: rgba(220, 38, 38, 0.4); }
+        .badge-env-prod { background: rgba(197, 34, 45, 0.15); color: #f87171; border-color: rgba(197, 34, 45, 0.35); }
         .badge-env-test { background: var(--warning-bg); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
 
         .user-tag {
@@ -160,7 +159,7 @@
         }
 
         .nav-tab:hover { color: var(--text-main); background-color: rgba(255, 255, 255, 0.05); }
-        .nav-tab.active { color: #ffffff; background-color: var(--primary); box-shadow: 0 4px 12px var(--primary-glow); }
+        .nav-tab.active { color: #ffffff; background-color: var(--primary); box-shadow: 0 2px 8px var(--primary-glow); }
         .tab-count { background: rgba(255, 255, 255, 0.2); padding: 2px 6px; border-radius: 10px; font-size: 11px; }
         .mobile-nav-wrap { display: none; }
 
@@ -194,7 +193,7 @@
             cursor: pointer;
             transition: var(--transition);
         }
-        .stat-card:hover { transform: translateY(-2px); border-color: var(--primary); background-color: var(--surface-card); }
+        .stat-card:hover { transform: translateY(-1px); border-color: var(--primary); background-color: var(--surface-card); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); }
         .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
         .stat-value { font-size: 22px; font-weight: 800; color: var(--text-main); }
 
@@ -288,7 +287,7 @@
         }
 
         th {
-            background-color: #172138;
+            background-color: #101622;
             color: var(--text-muted);
             font-weight: 600;
             padding: 12px 14px;
@@ -313,7 +312,7 @@
             white-space: nowrap;
         }
 
-        .st-new { background: rgba(220, 38, 38, 0.2); color: #f87171; }
+        .st-new { background: rgba(197, 34, 45, 0.15); color: #f87171; }
         .st-work { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
         .st-invite { background: rgba(139, 92, 246, 0.2); color: #c084fc; }
         .st-hired { background: rgba(16, 185, 129, 0.2); color: #34d399; }
@@ -756,7 +755,7 @@
         <header class="header">
             <div class="header-top">
                 <div class="brand">
-                    <span class="brand-logo">🚋</span>
+                    <img src="/static/images/tram_lvenok.jpg" onerror="this.onerror=null; this.src='images/tram_lvenok.jpg'" style="width: 44px; height: 44px; border-radius: 10px; object-fit: cover; border: 1px solid rgba(255,255,255,0.15);" alt="Львенок" />
                     <div>
                         <div class="brand-title">МУП «Ульяновскэлектротранс»</div>
                         <div class="brand-subtitle">Кабинет управления кадрами и мониторинга</div>

@@ -7,26 +7,26 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-base: #07090e;
-            --bg-card: rgba(15, 20, 34, 0.9);
-            --bg-card-hover: rgba(28, 35, 54, 0.95);
-            --border-color: rgba(239, 68, 68, 0.22);
-            --border-active: #f97316;
-            --primary: #dc2626;
-            --primary-hover: #ea580c;
-            --primary-glow: rgba(220, 38, 38, 0.35);
-            --accent-cyan: #f97316;
+            --bg-base: #0b0f17;
+            --bg-card: #141b27;
+            --bg-card-hover: #1b2434;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-active: #c5222d;
+            --primary: #c5222d;
+            --primary-hover: #a61a23;
+            --primary-glow: rgba(197, 34, 45, 0.2);
+            --accent-cyan: #38bdf8;
             --accent-green: #10b981;
             --accent-amber: #f59e0b;
             --accent-red: #ef4444;
-            --text-main: #f8fafc;
+            --text-main: #f1f5f9;
             --text-muted: #94a3b8;
             --text-dim: #64748b;
-            --radius-lg: 16px;
-            --radius-md: 12px;
-            --radius-sm: 8px;
-            --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
-            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --radius-lg: 14px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.28);
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
         * {
@@ -38,10 +38,6 @@
 
         body {
             background-color: var(--bg-base);
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(220, 38, 38, 0.16) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(249, 115, 22, 0.14) 0px, transparent 50%);
-            background-attachment: fixed;
             color: var(--text-main);
             font-family: var(--font-family);
             min-height: 100vh;
@@ -65,8 +61,6 @@
         /* HEADER */
         .brand-header {
             background: var(--bg-card);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-lg);
             padding: 18px 20px;
@@ -80,12 +74,12 @@
             width: 50px;
             height: 50px;
             border-radius: var(--radius-md);
-            background: linear-gradient(135deg, #dc2626, #ea580c);
+            background: linear-gradient(135deg, #991b1b, #c5222d);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);
+            box-shadow: 0 2px 10px rgba(197, 34, 45, 0.35);
         }
 
         .brand-logo-wrap svg {
@@ -103,7 +97,7 @@
             font-size: 15px;
             font-weight: 800;
             letter-spacing: 0.3px;
-            color: #ffffff;
+            color: #f1f5f9;
             text-transform: uppercase;
         }
 
@@ -134,7 +128,7 @@
         }
 
         .progress-step-name {
-            color: var(--accent-cyan);
+            color: #f87171;
             font-size: 13px;
         }
 
@@ -150,17 +144,14 @@
         .progress-bar {
             height: 100%;
             width: 6%;
-            background: linear-gradient(90deg, #dc2626, #f97316);
+            background: linear-gradient(90deg, #b91c1c, #dc2626);
             border-radius: 999px;
             transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 14px rgba(249, 115, 22, 0.55);
         }
 
         /* WIZARD CARD */
         .wizard-card {
             background: var(--bg-card);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-lg);
             padding: 24px 20px;
@@ -182,13 +173,13 @@
             width: 44px;
             height: 44px;
             border-radius: var(--radius-md);
-            background: rgba(220, 38, 38, 0.15);
-            border: 1px solid rgba(249, 115, 22, 0.35);
+            background: rgba(197, 34, 45, 0.12);
+            border: 1px solid rgba(197, 34, 45, 0.25);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            color: #f97316;
+            color: #f87171;
         }
 
         .step-icon-badge svg {
@@ -203,8 +194,8 @@
 
         .step-title {
             font-size: 18px;
-            font-weight: 800;
-            color: #ffffff;
+            font-weight: 700;
+            color: #f1f5f9;
             line-height: 1.25;
         }
 
@@ -239,8 +230,8 @@
         }
 
         .option-card {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
             border-radius: var(--radius-md);
             padding: 14px 16px;
             cursor: pointer;
@@ -254,13 +245,13 @@
 
         .option-card:hover {
             background: var(--bg-card-hover);
-            border-color: rgba(249, 115, 22, 0.45);
+            border-color: rgba(197, 34, 45, 0.35);
         }
 
         .option-card.selected {
-            background: rgba(220, 38, 38, 0.2);
-            border-color: #f97316;
-            box-shadow: 0 0 14px rgba(249, 115, 22, 0.35);
+            background: rgba(197, 34, 45, 0.15);
+            border-color: #c5222d;
+            box-shadow: 0 0 0 1px #c5222d;
         }
 
         .option-left {
@@ -270,7 +261,7 @@
         }
 
         .option-icon {
-            color: #60a5fa;
+            color: #f87171;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -288,8 +279,8 @@
 
         .option-label {
             font-size: 14.5px;
-            font-weight: 700;
-            color: #ffffff;
+            font-weight: 600;
+            color: #f1f5f9;
         }
 
         .option-sub {
@@ -315,7 +306,7 @@
             width: 20px;
             height: 20px;
             border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.25);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -324,8 +315,8 @@
         }
 
         .option-card.selected .option-check {
-            background: #dc2626;
-            border-color: #f97316;
+            background: #c5222d;
+            border-color: #c5222d;
         }
 
         .option-check svg {
@@ -348,7 +339,7 @@
 
         .chip-card {
             background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 999px;
             padding: 9px 16px;
             font-size: 13.5px;
@@ -528,24 +519,25 @@
         }
 
         .btn-prev {
-            background: rgba(255, 255, 255, 0.08);
-            color: #e2e8f0;
+            background: rgba(255, 255, 255, 0.06);
+            color: #cbd5e1;
             flex: 1;
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .btn-prev:hover {
-            background: rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .btn-next {
-            background: linear-gradient(135deg, #dc2626, #ea580c);
+            background: #c5222d;
             color: #ffffff;
             flex: 2;
-            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);
+            box-shadow: 0 2px 10px rgba(197, 34, 45, 0.35);
         }
 
         .btn-next:hover {
-            background: linear-gradient(135deg, #b91c1c, #c2410c);
+            background: #a61a23;
         }
 
         .btn-next:disabled {
@@ -555,8 +547,8 @@
         }
 
         .btn-submit {
-            background: linear-gradient(135deg, #10b981, #059669);
-            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+            background: #059669;
+            box-shadow: 0 2px 6px rgba(5, 150, 105, 0.2);
         }
 
         .btn-submit:hover {
@@ -729,10 +721,8 @@
 
         /* HERO PRESENTATION CARD */
         .portal-hero-card {
-            background: linear-gradient(135deg, rgba(220, 38, 38, 0.25), rgba(249, 115, 22, 0.08) 50%, rgba(15, 20, 34, 0.95));
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border: 1px solid rgba(239, 68, 68, 0.28);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius-lg);
             padding: 24px 22px;
             display: flex;
@@ -746,7 +736,7 @@
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            color: #f97316;
+            color: #f59e0b;
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -756,13 +746,13 @@
             font-size: 23px;
             font-weight: 800;
             line-height: 1.25;
-            color: #ffffff;
+            color: #f1f5f9;
         }
 
         .hero-subtitle {
             font-size: 13.5px;
             line-height: 1.6;
-            color: #cbd5e1;
+            color: #94a3b8;
         }
 
         .hero-perks-grid {
@@ -773,8 +763,8 @@
         }
 
         .perk-box {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
             border-radius: var(--radius-md);
             padding: 12px 14px;
             display: flex;
@@ -783,9 +773,9 @@
             transition: all 0.2s ease;
         }
         .perk-box:hover {
-            background: rgba(255, 255, 255, 0.07);
-            border-color: rgba(59, 130, 246, 0.4);
-            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(197, 34, 45, 0.35);
+            transform: translateY(-1px);
         }
 
         .perk-ico {
@@ -804,7 +794,7 @@
         .perk-name {
             font-size: 13.5px;
             font-weight: 700;
-            color: #ffffff;
+            color: #f1f5f9;
         }
 
         .perk-desc {
@@ -816,11 +806,11 @@
         /* PORTAL NAV TABS */
         .portal-tab-bar {
             display: flex;
-            gap: 8px;
-            background: rgba(15, 23, 42, 0.65);
-            padding: 6px;
+            gap: 6px;
+            background: rgba(11, 15, 23, 0.85);
+            padding: 5px;
             border-radius: var(--radius-md);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.07);
             overflow-x: auto;
             scrollbar-width: none;
         }
@@ -831,9 +821,9 @@
             border: none;
             color: #94a3b8;
             padding: 9px 14px;
-            border-radius: 8px;
+            border-radius: 6px;
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
             white-space: nowrap;
@@ -842,13 +832,13 @@
             gap: 6px;
         }
         .portal-tab:hover {
-            color: #ffffff;
-            background: rgba(255, 255, 255, 0.06);
+            color: #f1f5f9;
+            background: rgba(255, 255, 255, 0.05);
         }
         .portal-tab.active {
             color: #ffffff;
-            background: linear-gradient(135deg, #dc2626, #ea580c);
-            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);
+            background: #c5222d;
+            box-shadow: 0 2px 8px rgba(197, 34, 45, 0.35);
         }
 
         /* MODAL */
@@ -912,6 +902,19 @@
             МУП «Ульяновскэлектротранс» — стабильное муниципальное предприятие г. Ульяновска.
             Мы обеспечиваем комфортные и безопасные перевозки жителей города, обучаем новых водителей со стипендией и гарантируем надёжную работу.
         </p>
+
+        <!-- ULYANOVSK TRAM PHOTO BANNER -->
+        <div style="position: relative; border-radius: var(--radius-md); overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.09); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);">
+            <img src="/static/images/tram_lvenok.jpg" onerror="this.onerror=null; this.src='images/tram_lvenok.jpg'" alt="Ульяновский трамвай 71-911ЕМ Львёнок у Депо №1" style="width: 100%; height: 200px; object-fit: cover; display: block; filter: brightness(0.92);" />
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(180deg, transparent 0%, rgba(11, 15, 23, 0.95) 100%); padding: 12px 16px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <span style="display: inline-block; font-size: 11px; font-weight: 800; background: #c5222d; color: #ffffff; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Подвижной состав МУП УЭТ</span>
+                    <div style="color: #f1f5f9; font-weight: 700; font-size: 14px; margin-top: 3px;">Ульяновский трамвай 71-911ЕМ «Львёнок» • Депо № 1</div>
+                </div>
+                <span style="font-size: 11.5px; color: #f59e0b; font-weight: 600;">Комфорт и безопасность</span>
+            </div>
+        </div>
+
         <div class="hero-perks-grid">
             <div class="perk-box">
                 <div class="perk-ico">🎓</div>
@@ -1625,9 +1628,25 @@
                     </div>
                 </div>
             </div>
-            <div style="background: rgba(37,99,235,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: var(--radius-md); padding: 14px; margin-top: 8px;">
+            <!-- FLEET PHOTO GALLERY -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 8px;">
+                <div style="border-radius: var(--radius-md); overflow: hidden; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02);">
+                    <img src="/static/images/tram_lvenok.jpg" onerror="this.onerror=null; this.src='images/tram_lvenok.jpg'" style="width: 100%; height: 160px; object-fit: cover; display: block;" alt="Трамвай Львенок Ульяновск">
+                    <div style="padding: 10px 12px; font-size: 12.5px; color: #cbd5e1; font-weight: 600;">
+                        🚋 Городской трамвай «Львёнок» (Депо № 1, Засвияжье)
+                    </div>
+                </div>
+                <div style="border-radius: var(--radius-md); overflow: hidden; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02);">
+                    <img src="/static/images/tram_cockpit.jpg" onerror="this.onerror=null; this.src='images/tram_cockpit.jpg'" style="width: 100%; height: 160px; object-fit: cover; display: block;" alt="Кабина водителя трамвая">
+                    <div style="padding: 10px 12px; font-size: 12.5px; color: #cbd5e1; font-weight: 600;">
+                        🎛️ Эргономичная кабина с климат-контролем и телеметрией
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: rgba(197,34,45,0.1); border: 1px solid rgba(197,34,45,0.25); border-radius: var(--radius-md); padding: 14px; margin-top: 8px;">
                 <div style="font-weight: 700; color: #ffffff; margin-bottom: 4px;">📞 Отдел кадров предприятия:</div>
-                <div style="font-size: 13.5px; color: #93c5fd;">Телефон: <b>+7 (8422) 58-46-60</b> • Режим работы: Пн-Пт 08:00 – 17:00</div>
+                <div style="font-size: 13.5px; color: #fca5a5;">Телефон: <b>+7 (8422) 58-46-60</b> • Режим работы: Пн-Пт 08:00 – 17:00</div>
                 <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Адрес управления: г. Ульяновск, ул. Гончарова, д. 2</div>
             </div>
         </div>

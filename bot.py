@@ -119,7 +119,7 @@ async def main() -> None:
         from web_app import start_web_panel_task
         web_host = CONFIG.get("WEB_APP_HOST", "0.0.0.0")
         web_port = int(CONFIG.get("WEB_APP_PORT", 8080))
-        web_task = asyncio.create_task(start_web_panel_task(db, host=web_host, port=web_port))
+        web_task = asyncio.create_task(start_web_panel_task(db, bot=bot, host=web_host, port=web_port))
     except Exception as e:
         logger.warning(f"Веб-панель не запущена: {e}")
 

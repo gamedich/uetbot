@@ -34,7 +34,13 @@ from aiogram.exceptions import (
 from aiogram.filters import BaseFilter
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.base import BaseStorage, StorageKey, StateType
-from aiogram.types import BotCommand, BufferedInputFile
+from aiogram.types import (
+    BotCommand,
+    BotCommandScopeAllGroupChats,
+    BotCommandScopeChat,
+    BotCommandScopeDefault,
+    BufferedInputFile,
+)
 
 from config import CONFIG, update_env_variable, validate_config
 from database import ResumeDB
@@ -923,8 +929,9 @@ async def send_photo_to_candidate(user_id: str, photo_bytes: bytes, caption: str
 # ==============================================================================
 
 async def setup_bot_commands(bot_instance: Bot) -> None:
-    """Установка глобального меню команд Telegram."""
-    commands = [
+    """Установка контекстных выпадающих меню команд Telegram (по ролям и чатам)."""
+    # 1. Меню по умолчанию для соискателей в личном диалоге
+    candidate_commands = [
         BotCommand(command="start", description="Главное меню / Перезапуск"),
         BotCommand(command="apply", description="Заполнить анкету на работу (16 шагов)"),
         BotCommand(command="my", description="Моя анкета / Статус рассмотрения"),
@@ -934,14 +941,61 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
         BotCommand(command="ask", description="Задать вопрос специалисту кадров"),
         BotCommand(command="faq", description="Частые вопросы (зарплата, жилье)"),
         BotCommand(command="contacts", description="Контакты и телефоны депо"),
-        BotCommand(command="support", description="Экстренная связь с техподдержкой"),
         BotCommand(command="cancel", description="Отменить текущее действие"),
-        BotCommand(command="help", description="Справочник команд бота"),
+        BotCommand(command="help", description="Справочник команд"),
     ]
     try:
-        await bot_instance.set_my_commands(commands)
+        await bot_instance.set_my_commands(candidate_commands, scope=BotCommandScopeDefault())
     except Exception as e:
-        logger.warning("Не удалось установить команды меню Telegram: %s", e)
+        logger.warning("Не удалось установить дефолтные команды меню Telegram: %s", e)
+
+    # 2. Меню для групп и супергрупп (кадровый чат)
+    group_commands = [
+        BotCommand(command="hr", description="Кадровая панель управления"),
+        BotCommand(command="set_group", description="Привязать кадровый чат для анкет"),
+        BotCommand(command="sync", description="Синхронизировать кадровиков чата"),
+        BotCommand(command="kick", description="Исключить сотрудника (в ответ)"),
+        BotCommand(command="help", description="Справка по командам чата"),
+    ]
+    try:
+        await bot_instance.set_my_commands(group_commands, scope=BotCommandScopeAllGroupChats())
+    except Exception as e:
+        logger.warning("Не удалось установить команды для групп: %s", e)
+
+    # 3. Полное меню для SuperAdmin и TechAdmin в личном диалоге
+    admin_commands = [
+        BotCommand(command="hr", description="📋 Кадровая панель (соискатели, воронка)"),
+        BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД, аптайм)"),
+        BotCommand(command="git", description="🚀 Управление Git и быстрый рестарт"),
+        BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
+        BotCommand(command="start", description="🏠 Главное меню"),
+        BotCommand(command="help", description="ℹ️ Справочник администратора"),
+    ]
+    super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
+    tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
+    for adm_id in {super_id, tech_id}:
+        if adm_id and adm_id > 0:
+            try:
+                await bot_instance.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=adm_id))
+            except Exception as e:
+                logger.debug("Не удалось установить команды для админа %s: %s", adm_id, e)
+
+    # 4. Меню для кадровиков (HR) в личном диалоге
+    hr_commands = [
+        BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
+        BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
+        BotCommand(command="start", description="🏠 Главное меню"),
+        BotCommand(command="help", description="ℹ️ Справка кадровой службы"),
+    ]
+    try:
+        for adm_id, role in db.get_all_admins():
+            if role == "hr" and adm_id > 0 and adm_id not in (super_id, tech_id):
+                try:
+                    await bot_instance.set_my_commands(hr_commands, scope=BotCommandScopeChat(chat_id=adm_id))
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning("Ошибка установки команд HR-пользователей: %s", e)
 
 
 async def sync_user_commands(

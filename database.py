@@ -248,7 +248,78 @@ class ResumeDB:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_status ON inquiries(status)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_dialog_op ON active_dialogs(operator_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_admins_role_dm ON admins(role, notify_dm)")
+            # =========================================================================
+    # МОДУЛЬ СОТРУДНИКОВ ДЕПО (ЛИЧНЫЙ КАБИНЕТ И РЕФЕРАЛКА)
+    # =========================================================================
+    def get_employee_by_tg(self, telegram_id: int) -> Optional[Dict[str, Any]]:
+        """Ищет сотрудника по Telegram ID в активной базе"""
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM employees WHERE telegram_id = ? AND is_active = 1", (telegram_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
 
+    def get_employee_by_phone(self, phone: str) -> Optional[Dict[str, Any]]:
+        """Ищет сотрудника по последним 10 цифрам номера телефона"""
+        import re
+        clean = re.sub(r"\D", "", phone)[-10:]
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM employees WHERE phone LIKE ? AND is_active = 1", (f"%{clean}",))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def link_employee_tg(self, tab_number: str, telegram_id: int) -> bool:
+        """Привязывает Telegram ID к табельному номеру сотрудника"""
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE employees SET telegram_id = ?, updated_at = CURRENT_TIMESTAMP WHERE tab_number = ?",
+                (telegram_id, str(tab_number).strip())
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+    def get_employee_referrals(self, tab_number: str) -> List[Dict[str, Any]]:
+        """Получает список соискателей, пришедших по ссылке этого сотрудника"""
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT ticket_id, full_name, vacancy, status, created_at 
+                FROM candidates 
+                WHERE referrer_tab = ? 
+                ORDER BY ticket_id DESC
+                """,
+                (str(tab_number).strip(),)
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def add_doc_request(self, tab_number: str, full_name: str, req_type: str) -> int:
+        """Создает заявку на получение справки"""
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS employee_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tab_number TEXT NOT NULL,
+                    full_name TEXT NOT NULL,
+                    req_type TEXT NOT NULL,
+                    status TEXT DEFAULT 'Новая',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                """
+            )
+            cur.execute(
+                "INSERT INTO employee_requests (tab_number, full_name, req_type) VALUES (?, ?, ?)",
+                (str(tab_number).strip(), full_name.strip(), req_type.strip())
+            )
+            conn.commit()
+            return cur.lastrowid
             # 9. Таблица персистентных FSM состояний (aiogram 3)
             cursor.execute(
                 """

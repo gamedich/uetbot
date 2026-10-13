@@ -19,6 +19,7 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
     builder.button(text="📞 Контакты отдела кадров", callback_data="cand_hr_contacts")
     builder.button(text="🚨 Экстренная техподдержка", callback_data="cand_support")
     builder.button(text="📄 Политика конфиденциальности", callback_data="cand_privacy_policy")
+    builder.button(text="👔 Я сотрудник депо", callback_data="emp_auth_menu")
 
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     is_tech = bool(user_id and (user_id == super_id or is_tech_admin(user_id)))
@@ -524,3 +525,34 @@ def make_revoke_confirm_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_back_to_menu")
     builder.adjust(1, 1)
     return builder.as_markup()
+
+# === ДОБАВИТЬ В КОНЕЦ keyboards.py ===
+def make_staff_main_kb(tab_number: str) -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🤝 Пригласить друга (рефералка)", callback_data="ref_menu")
+    builder.button(text="👥 Мои приглашенные соискатели", callback_data="ref_my_list")
+    builder.button(text="📄 Заказать справку (2-НДФЛ, стаж)", callback_data="docs_menu")
+    builder.button(text="📞 Контакты депо и диспетчерской", callback_data="emp_contacts_menu")
+    builder.button(text="🚪 Режим соискателя / Главное меню", callback_data="cand_back_to_menu")
+    builder.adjust(1)
+    return builder.as_markup()
+
+def make_docs_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Справка о доходах (2-НДФЛ)", callback_data="doc_req_2ndfl")
+    builder.button(text="Справка с места работы (для банка/соц)", callback_data="doc_req_work")
+    builder.button(text="Копия трудовой книжки", callback_data="doc_req_tk")
+    builder.button(text="⬅️ Назад в меню сотрудника", callback_data="staff_main_menu")
+    builder.adjust(1)
+    return builder.as_markup()
+
+def make_back_to_staff_menu_kb() -> types.InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="⬅️ В меню сотрудника", callback_data="staff_main_menu")
+    return builder.as_markup()
+
+def make_auth_reply_kb() -> types.ReplyKeyboardMarkup:
+    builder = types.ReplyKeyboardBuilder()
+    builder.button(text="📱 Подтвердить номер телефона", request_contact=True)
+    builder.adjust(1)
+    return builder.as_markup(resize_keyboard=True, one_time_keyboard=True)

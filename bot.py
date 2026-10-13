@@ -23,6 +23,7 @@ from common import (
     validate_config
 )
 from handlers import candidate_router, hr_router, tech_router
+from handlers.employee import employee_router
 from gateways.vk_gateway import run_vk_gateway
 from gateways.max_gateway import run_max_gateway
 
@@ -79,6 +80,7 @@ async def main() -> None:
     dp.include_router(tech_router)
     dp.include_router(hr_router)
     dp.include_router(candidate_router)
+    dp.include_router(employee_router)
 
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
 

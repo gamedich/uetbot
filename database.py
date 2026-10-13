@@ -247,7 +247,82 @@ class ResumeDB:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_inq_status ON inquiries(status)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_dialog_op ON active_dialogs(operator_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_admins_role_dm ON admins(role, notify_dm)")
-            # =========================================================================
+
+            # 9. Таблица персистентных FSM состояний (aiogram 3)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS fsm_storage (
+                    storage_key TEXT PRIMARY KEY,
+                    state TEXT,
+                    data TEXT DEFAULT "{}",
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+            # 10. Таблица сессий внешних мессенджеров (VK / MAX)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS external_sessions (
+                    platform TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    data TEXT DEFAULT "{}",
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (platform, user_id)
+                )
+                """
+            )
+
+            # 11. Таблица сотрудников депо (Личный кабинет и рефералка)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS employees (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tab_number TEXT UNIQUE NOT NULL,
+                    full_name TEXT NOT NULL,
+                    depot TEXT DEFAULT '',
+                    position TEXT DEFAULT '',
+                    phone TEXT DEFAULT '',
+                    telegram_id INTEGER DEFAULT NULL,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+            # 12. Таблица заявок сотрудников на документы
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS employee_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tab_number TEXT NOT NULL,
+                    full_name TEXT NOT NULL,
+                    req_type TEXT NOT NULL,
+                    status TEXT DEFAULT 'Новая',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+            # 13. Журнал актов уничтожения ПДн (ст. 21 152-ФЗ)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS destruction_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    candidate_id INTEGER,
+                    user_id TEXT,
+                    platform TEXT,
+                    reason TEXT,
+                    destroyed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    act_number TEXT
+                )
+                """
+            )
+
+            conn.commit()
+
+    # =========================================================================
     # МОДУЛЬ СОТРУДНИКОВ ДЕПО (ЛИЧНЫЙ КАБИНЕТ И РЕФЕРАЛКА)
     # =========================================================================
     def get_employee_by_tg(self, telegram_id: int) -> Optional[Dict[str, Any]]:
@@ -302,49 +377,12 @@ class ResumeDB:
         with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS employee_requests (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tab_number TEXT NOT NULL,
-                    full_name TEXT NOT NULL,
-                    req_type TEXT NOT NULL,
-                    status TEXT DEFAULT 'Новая',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-                """
-            )
-            cur.execute(
                 "INSERT INTO employee_requests (tab_number, full_name, req_type) VALUES (?, ?, ?)",
                 (str(tab_number).strip(), full_name.strip(), req_type.strip())
             )
             conn.commit()
             return cur.lastrowid
-            # 9. Таблица персистентных FSM состояний (aiogram 3)
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS fsm_storage (
-                    storage_key TEXT PRIMARY KEY,
-                    state TEXT,
-                    data TEXT DEFAULT "{}",
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
 
-            # 10. Таблица сессий внешних мессенджеров (VK / MAX)
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS external_sessions (
-                    platform TEXT NOT NULL,
-                    user_id TEXT NOT NULL,
-                    data TEXT DEFAULT "{}",
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (platform, user_id)
-                )
-                """
-            )
-            
-            conn.commit()
     @staticmethod
     def _parse_ts(ts_str: Optional[str]) -> datetime:
         """Безопасный парсинг временных меток разных форматов."""
@@ -400,21 +438,24 @@ class ResumeDB:
         Очищает анкету, связанные диалоги, обращения и согласие.
         """
         uid = str(user_id)
-        with self.connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT ticket_id FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1",
-                (uid, platform),
-            )
-            row = cursor.fetchone()
-            if row:
-                t_id = row[0]
-                cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (t_id,))
-                cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid,))
-                cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (uid, platform))
-                cursor.execute("DELETE FROM user_consents WHERE user_id = ?", (uid,))
-                return int(t_id)
-            return None
+        deleted_id = None
+        for is_test in (False, True):
+            with self._get_connection(is_test=is_test) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT ticket_id FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1",
+                    (uid, platform),
+                )
+                row = cursor.fetchone()
+                if row:
+                    t_id = row[0]
+                    cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (t_id,))
+                    cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (uid, platform))
+                    cursor.execute("DELETE FROM user_consents WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM user_cooldowns WHERE user_id = ?", (uid,))
+                    deleted_id = int(t_id)
+        return deleted_id
 
     def get_candidate_dict_by_user(self, user_id: str, platform: str = "tg") -> Optional[Dict[str, Any]]:
         """Получение словаря данных анкеты для команды выгрузки /mydata (ст. 14 152-ФЗ)."""
@@ -501,64 +542,65 @@ class ResumeDB:
         2. Кулдаун 90 дней (3 месяца) после отказа.
         """
         uid_str = str(user_id)
-        with self.connection() as conn:
-            cursor = conn.cursor()
-            # 1. Проверяем наличие активной анкеты
-            cursor.execute(
-                """
-                SELECT ticket_id, status, created_at, full_name, vacancy 
-                FROM candidates 
-                WHERE user_id = ? AND platform = ? AND (status IN ('Новая', 'В работе', 'Приглашен') OR status LIKE 'Приглашен%')
-                ORDER BY ticket_id DESC LIMIT 1
-                """,
-                (uid_str, platform),
-            )
-            active_row = cursor.fetchone()
-            if active_row:
-                t_id, st, cr, fn, vc = active_row
-                return False, "unprocessed", {
-                    "ticket_id": t_id,
-                    "status": st,
-                    "created_at": cr,
-                    "full_name": fn,
-                    "vacancy": vc,
-                }
-
-            # 2. Проверяем период кулдауна 90 дней после отказа
-            cursor.execute(
-                """
-                SELECT ticket_id, status, created_at, updated_at, full_name, vacancy 
-                FROM candidates 
-                WHERE user_id = ? AND platform = ? AND (status = 'Отказ' OR status LIKE 'Отказ%')
-                ORDER BY ticket_id DESC LIMIT 1
-                """,
-                (uid_str, platform),
-            )
-            refuse_row = cursor.fetchone()
-            if refuse_row:
-                t_id, st, cr, up, fn, vc = refuse_row
-                refuse_ts = up or cr
-                refuse_dt = self._parse_ts(refuse_ts)
-                now = datetime.now()
-                cooldown_days = 90
-                diff_seconds = (now - refuse_dt).total_seconds()
-                diff_days = int(diff_seconds // 86400)
-
-                if diff_days < cooldown_days:
-                    available_dt = refuse_dt + timedelta(days=cooldown_days)
-                    remaining_seconds = max(0.0, (available_dt - now).total_seconds())
-                    days_left = max(1, int(remaining_seconds // 86400) + 1)
-                    return False, "rejected_cooldown", {
+        for is_test in (False, True):
+            with self._get_connection(is_test=is_test) as conn:
+                cursor = conn.cursor()
+                # 1. Проверяем наличие активной анкеты
+                cursor.execute(
+                    """
+                    SELECT ticket_id, status, created_at, full_name, vacancy 
+                    FROM candidates 
+                    WHERE user_id = ? AND platform = ? AND (status IN ('Новая', 'В работе', 'Приглашен') OR status LIKE 'Приглашен%')
+                    ORDER BY ticket_id DESC LIMIT 1
+                    """,
+                    (uid_str, platform),
+                )
+                active_row = cursor.fetchone()
+                if active_row:
+                    t_id, st, cr, fn, vc = active_row
+                    return False, "unprocessed", {
                         "ticket_id": t_id,
                         "status": st,
-                        "refuse_date": refuse_dt.strftime("%d.%m.%Y"),
-                        "available_date": available_dt.strftime("%d.%m.%Y"),
-                        "days_left": days_left,
+                        "created_at": cr,
                         "full_name": fn,
                         "vacancy": vc,
                     }
 
-            return True, "ok", None
+                # 2. Проверяем период кулдауна 90 дней после отказа
+                cursor.execute(
+                    """
+                    SELECT ticket_id, status, created_at, updated_at, full_name, vacancy 
+                    FROM candidates 
+                    WHERE user_id = ? AND platform = ? AND (status = 'Отказ' OR status LIKE 'Отказ%')
+                    ORDER BY ticket_id DESC LIMIT 1
+                    """,
+                    (uid_str, platform),
+                )
+                refuse_row = cursor.fetchone()
+                if refuse_row:
+                    t_id, st, cr, up, fn, vc = refuse_row
+                    refuse_ts = up or cr
+                    refuse_dt = self._parse_ts(refuse_ts)
+                    now = datetime.now()
+                    cooldown_days = 90
+                    diff_seconds = (now - refuse_dt).total_seconds()
+                    diff_days = int(diff_seconds // 86400)
+
+                    if diff_days < cooldown_days:
+                        available_dt = refuse_dt + timedelta(days=cooldown_days)
+                        remaining_seconds = max(0.0, (available_dt - now).total_seconds())
+                        days_left = max(1, int(remaining_seconds // 86400) + 1)
+                        return False, "rejected_cooldown", {
+                            "ticket_id": t_id,
+                            "status": st,
+                            "refuse_date": refuse_dt.strftime("%d.%m.%Y"),
+                            "available_date": available_dt.strftime("%d.%m.%Y"),
+                            "days_left": days_left,
+                            "full_name": fn,
+                            "vacancy": vc,
+                        }
+
+        return True, "ok", None
 
     def delete_candidate(self, ticket_id: int) -> bool:
         """Физическое удаление анкеты кандидата и связанных диалогов."""
@@ -971,6 +1013,13 @@ class ResumeDB:
                     ticket_id, platform, str(user_id), full_name, phone, vacancy, question_text,
                     1 if use_test else 0, consent_timestamp or ""
                 )
+            )
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO user_cooldowns (user_id, last_inquiry_at)
+                VALUES (?, CURRENT_TIMESTAMP)
+                """,
+                (str(user_id),)
             )
             conn.commit()
             return cursor.lastrowid

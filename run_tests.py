@@ -278,7 +278,7 @@ class TestCandidateService(unittest.TestCase):
         self.db_path = os.path.join(self.temp_dir.name, "test_service.db")
         from database import ResumeDB
         self.db = ResumeDB(self.db_path)
-        from candidate_service import CandidateService
+        from services.candidate_service import CandidateService
         self.service = CandidateService(db_instance=self.db)
 
     def tearDown(self):

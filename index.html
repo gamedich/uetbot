@@ -28,13 +28,13 @@
               100: '#ffe1df',
               200: '#ffc8c5',
               300: '#ffa29d',
-              400: '#ff6d64',
-              500: '#f83b30',
-              600: '#e52115',
-              700: '#c1160c',
-              800: '#9f160e',
-              900: '#831812',
-              950: '#480703',
+              400: '#f87171',
+              500: '#c5222d',
+              600: '#a61a23',
+              700: '#88131b',
+              800: '#6f1117',
+              900: '#540f13',
+              950: '#34080a',
             },
             fire: {
               400: '#fb923c',
@@ -46,9 +46,9 @@
               500: '#f59e0b',
             },
             darkbg: {
-              950: '#07090e',
-              900: '#0d121f',
-              800: '#141c2e',
+              950: '#0b0f17',
+              900: '#141b27',
+              800: '#192231',
             }
           },
           animation: {
@@ -255,7 +255,7 @@
           <!-- CTA Buttons -->
           <div class="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 mb-16">
             <a href="https://213.226.124.135.sslip.io/" target="_blank" rel="noopener noreferrer"
-               class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl bg-gradient-to-r from-brand-600 via-fire-500 to-amber-500 hover:from-brand-500 hover:to-fire-400 text-white font-bold text-sm shadow-[0_0_30px_rgba(229,33,21,0.4)] hover:shadow-[0_0_40px_rgba(249,115,22,0.55)] transition-all group">
+               class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl bg-gradient-to-r from-brand-600 via-brand-500 to-amber-500 hover:from-brand-500 hover:to-amber-500 text-white font-bold text-sm shadow-lg shadow-brand-950/50 hover:shadow-xl transition-all group">
               <i data-lucide="file-text" class="w-4 h-4 text-white"></i>
               <span>Заполнить анкету на сайте</span>
               <i data-lucide="arrow-up-right" class="w-4 h-4 text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"></i>
@@ -276,7 +276,7 @@
         </div>
 
         <!-- Metric Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl mx-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl mx-auto mb-16">
           <div class="glass-card glass-card-hover rounded-2xl p-5 sm:p-6 relative overflow-hidden group">
             <div class="absolute -right-6 -top-6 w-24 h-24 bg-brand-600/15 rounded-full blur-xl group-hover:bg-brand-600/25 transition-all"></div>
             <div class="flex items-center justify-between mb-3">
@@ -323,6 +323,50 @@
             </div>
             <div class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1">4 канала связи</div>
             <p class="text-xs text-slate-400">Единое окно: Telegram, VK Мессенджер, корпоративный MAX и Веб-портал</p>
+          </div>
+        </div>
+
+        <!-- AUTHENTIC FLEET SHOWCASE -->
+        <div class="max-w-6xl mx-auto rounded-3xl border border-white/10 bg-darkbg-900/80 backdrop-blur-xl p-6 sm:p-8 shadow-2xl">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-white/5">
+            <div>
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-brand-600/20 border border-brand-500/30 text-brand-400 text-xs font-mono mb-2">
+                <span>🚋 ПОДВИЖНОЙ СОСТАВ И УСЛОВИЯ ТРУДА</span>
+              </div>
+              <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                Наш транспорт: 71-911ЕМ «Львёнок» в городе Ульяновске
+              </h2>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3.5 py-2 rounded-xl">
+              <i data-lucide="map-pin" class="w-4 h-4 text-amber-400"></i>
+              <span>Депо № 1 (Засвияжье) &bull; Депо № 2 (Север)</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Exterior Tram Photo -->
+            <div class="group relative rounded-2xl overflow-hidden border border-white/10 shadow-lg">
+              <img src="images/tram_lvenok.jpg" onerror="this.onerror=null; this.src='static/images/tram_lvenok.jpg'" alt="Ульяновский трамвай 71-911ЕМ Львенок" class="w-full h-64 sm:h-72 object-cover transition-transform duration-500 group-hover:scale-105" />
+              <div class="absolute inset-0 bg-gradient-to-t from-darkbg-950 via-darkbg-950/20 to-transparent flex flex-col justify-end p-5">
+                <span class="inline-block px-2.5 py-1 rounded bg-brand-600 text-white text-xs font-bold uppercase tracking-wider mb-1 w-fit">
+                  Городской маршрут № 22
+                </span>
+                <h3 class="text-white text-base font-bold">Низкопольный трамвай «Львёнок»</h3>
+                <p class="text-slate-300 text-xs mt-1">Климат-контроль, плавный ход, 100% низкий пол и эргономичные места для пассажиров.</p>
+              </div>
+            </div>
+
+            <!-- Cockpit Photo -->
+            <div class="group relative rounded-2xl overflow-hidden border border-white/10 shadow-lg">
+              <img src="images/tram_cockpit.jpg" onerror="this.onerror=null; this.src='static/images/tram_cockpit.jpg'" alt="Кабина водителя трамвая Ульяновск" class="w-full h-64 sm:h-72 object-cover transition-transform duration-500 group-hover:scale-105" />
+              <div class="absolute inset-0 bg-gradient-to-t from-darkbg-950 via-darkbg-950/20 to-transparent flex flex-col justify-end p-5">
+                <span class="inline-block px-2.5 py-1 rounded bg-amber-500 text-darkbg-950 text-xs font-bold uppercase tracking-wider mb-1 w-fit">
+                  Рабочее место водителя
+                </span>
+                <h3 class="text-white text-base font-bold">Цифровая кабина с телеметрией</h3>
+                <p class="text-slate-300 text-xs mt-1">Эргономичное кресло, круговой обзор, мониторы видеонаблюдения и электронное управление.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

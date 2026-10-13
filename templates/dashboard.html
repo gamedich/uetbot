@@ -161,6 +161,7 @@
         .nav-tab:hover { color: var(--text-main); background-color: rgba(255, 255, 255, 0.05); }
         .nav-tab.active { color: #ffffff; background-color: var(--primary); box-shadow: 0 4px 12px var(--primary-glow); }
         .tab-count { background: rgba(255, 255, 255, 0.2); padding: 2px 6px; border-radius: 10px; font-size: 11px; }
+        .mobile-nav-wrap { display: none; }
 
         /* CARDS */
         .main-card {
@@ -524,18 +525,49 @@
                 padding: 4px 8px;
             }
             .nav-tabs {
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-                padding-bottom: 4px;
-                gap: 6px;
+                display: none !important;
             }
-            .nav-tab {
-                flex-shrink: 0;
-                padding: 7px 12px;
-                font-size: 12px;
-                white-space: nowrap;
+            .mobile-nav-wrap {
+                display: flex !important;
+                flex-direction: column;
+                gap: 5px;
+                width: 100%;
+                margin-top: 4px;
+            }
+            .mobile-nav-label {
+                font-size: 11px;
+                font-weight: 700;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .mobile-select-wrapper {
+                position: relative;
+                width: 100%;
+            }
+            .mobile-nav-select {
+                width: 100% !important;
+                padding: 11px 36px 11px 14px !important;
+                font-size: 14px !important;
+                font-weight: 700 !important;
+                color: #ffffff !important;
+                background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(26, 38, 66, 0.95)) !important;
+                border: 1px solid rgba(59, 130, 246, 0.45) !important;
+                border-radius: var(--radius-lg) !important;
+                appearance: none !important;
+                -webkit-appearance: none !important;
+                cursor: pointer !important;
+                outline: none !important;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+            }
+            .mobile-select-chevron {
+                position: absolute;
+                right: 14px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 11px;
+                color: #60a5fa;
+                pointer-events: none;
             }
             .main-card {
                 padding: 12px;
@@ -759,6 +791,22 @@
                     👥 Администраторы
                 </button>
             </nav>
+
+            <!-- MOBILE SECTION SELECTOR -->
+            <div class="mobile-nav-wrap">
+                <div class="mobile-nav-label">📂 Раздел кабинета:</div>
+                <div class="mobile-select-wrapper">
+                    <select id="mobileNavSelect" class="mobile-nav-select" onchange="switchTab(this.value)">
+                        <option value="candidates" id="optCand">📋 Соискатели (0)</option>
+                        <option value="inquiries" id="optInq">💬 Вопросы (/ask) (0)</option>
+                        <option value="depot" id="optDepot">🚋 Депо & Рефералы</option>
+                        <option value="tech" id="optTech">🛠 Панель инженера</option>
+                        <option value="super" id="optSuper">👑 SuperAdmin & Git</option>
+                        <option value="admins" id="optAdm">👥 Администраторы</option>
+                    </select>
+                    <span class="mobile-select-chevron">▼</span>
+                </div>
+            </div>
         </header>
 
         <!-- TAB: CANDIDATES -->
@@ -1335,6 +1383,19 @@
             const userBadge = document.getElementById('userBadge');
             const btnLogout = document.getElementById('btnLogout');
 
+            const optCand = document.getElementById('optCand');
+            const optInq = document.getElementById('optInq');
+            const optDepot = document.getElementById('optDepot');
+            const optTech = document.getElementById('optTech');
+            const optSuper = document.getElementById('optSuper');
+            const optAdm = document.getElementById('optAdm');
+
+            const setOptVis = (el, show) => {
+                if (!el) return;
+                el.hidden = !show;
+                el.style.display = show ? '' : 'none';
+            };
+
             btnLogout.style.display = 'inline-block';
             const btnAuthOpen = document.getElementById('btnAuthOpen');
             if (btnAuthOpen) btnAuthOpen.style.display = 'none';
@@ -1347,6 +1408,12 @@
                 tabSuper.style.display = 'none';
                 tabAdm.style.display = 'none';
                 tabDepot.style.display = 'flex';
+                setOptVis(optCand, false);
+                setOptVis(optInq, false);
+                setOptVis(optTech, false);
+                setOptVis(optSuper, false);
+                setOptVis(optAdm, false);
+                setOptVis(optDepot, true);
                 userBadge.innerText = '🚋 Сотрудник депо (Рефералы)';
                 switchTab('depot');
             } else if (currentUserRole === 'tech') {
@@ -1357,6 +1424,12 @@
                 tabSuper.style.display = 'none';
                 tabAdm.style.display = 'none';
                 tabTech.style.display = 'flex';
+                setOptVis(optCand, false);
+                setOptVis(optInq, false);
+                setOptVis(optDepot, false);
+                setOptVis(optSuper, false);
+                setOptVis(optAdm, false);
+                setOptVis(optTech, true);
                 userBadge.innerText = '🛠 Инженер (Tech)';
                 switchTab('tech');
             } else if (currentUserRole === 'hr') {
@@ -1367,6 +1440,12 @@
                 tabTech.style.display = 'none';
                 tabSuper.style.display = 'none';
                 tabAdm.style.display = 'none';
+                setOptVis(optCand, true);
+                setOptVis(optInq, true);
+                setOptVis(optDepot, true);
+                setOptVis(optTech, false);
+                setOptVis(optSuper, false);
+                setOptVis(optAdm, false);
                 userBadge.innerText = '👔 Отдел кадров (HR)';
                 switchTab('candidates');
             } else {
@@ -1377,11 +1456,22 @@
                 tabTech.style.display = 'flex';
                 tabSuper.style.display = 'flex';
                 tabAdm.style.display = 'flex';
+                setOptVis(optCand, true);
+                setOptVis(optInq, true);
+                setOptVis(optDepot, true);
+                setOptVis(optTech, true);
+                setOptVis(optSuper, true);
+                setOptVis(optAdm, true);
                 userBadge.innerText = '👑 SuperAdmin';
             }
         }
 
         function switchTab(tab) {
+            const mobSel = document.getElementById('mobileNavSelect');
+            if (mobSel && mobSel.value !== tab) {
+                mobSel.value = tab;
+            }
+
             document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
             ['tabCandidates', 'tabInquiries', 'tabDepot', 'tabTech', 'tabSuper', 'tabAdmins'].forEach(id => {
                 const el = document.getElementById(id);
@@ -1499,6 +1589,10 @@
                 document.getElementById('statArchive').innerText = d.archive || 0;
                 document.getElementById('countCandidates').innerText = d.total || 0;
                 document.getElementById('countInquiries').innerText = d.inquiries || 0;
+                const optCand = document.getElementById('optCand');
+                if (optCand) optCand.innerText = '📋 Соискатели (' + (d.total || 0) + ')';
+                const optInq = document.getElementById('optInq');
+                if (optInq) optInq.innerText = '💬 Вопросы (/ask) (' + (d.inquiries || 0) + ')';
 
                 const bDb = document.getElementById('badgeDb');
                 bDb.innerText = 'БД: ' + (d.active_db || 'resumes.db') + ' ⇄';

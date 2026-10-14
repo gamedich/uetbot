@@ -81,6 +81,11 @@
                         <svg class="w-4 h-4 text-[#1371B9] dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         <span>Кандидаты</span>
                     </button>
+                    <!-- Кнопка скрыть/показать меню кандидатов для администратора -->
+                    <button id="btnToggleCandidatesNav" onclick="toggleCandidatesMenu()" class="hidden px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 text-[11px] items-center gap-1 transition select-none" title="Показать или скрыть разделы кандидатов">
+                        <span id="candidatesNavIcon">👁️</span>
+                        <span id="candidatesNavText">Кандидаты: Скрыты</span>
+                    </button>
                     <button onclick="switchTab('vacancies')" id="topBtnVacancies" class="px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                         <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                         <span>Вакансии (Вкл/Выкл)</span>
@@ -144,12 +149,16 @@
         <!-- Выпадающее мобильное меню (аккуратно встроено в шапку) -->
         <div id="mobileNavDropdown" class="hidden md:hidden pt-3 mt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-1 text-xs font-semibold">
             <button onclick="switchTab('landing'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">🏠 Главная</button>
-            <button onclick="switchTab('survey16'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">📝 Анкета (16 шагов)</button>
-            <button onclick="switchTab('cabinet'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">📊 Мой статус</button>
+            <button id="mBtnSurvey" onclick="switchTab('survey16'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">📝 Анкета (16 шагов)</button>
+            <button id="mBtnCabinet" onclick="switchTab('cabinet'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">📊 Мой статус</button>
             <button onclick="openLoginModal('login'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-[#1371B9] font-bold">🔑 Вход в систему (ТГ / Сайт)</button>
             <button onclick="openRegisterModal(); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 font-bold">📝 Регистрация соискателя</button>
             <div id="mServiceNav" class="hidden flex-col gap-1 pt-1 mt-1 border-t border-slate-200 dark:border-slate-800">
-                <button onclick="switchTab('applicants'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-[#1371B9] dark:text-blue-400 font-bold">👥 Кандидаты (Воронка)</button>
+                <button id="mBtnApplicants" onclick="switchTab('applicants'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-[#1371B9] dark:text-blue-400 font-bold">👥 Кандидаты (Воронка)</button>
+                <button id="mBtnToggleCandidatesNav" onclick="toggleCandidatesMenu()" class="hidden text-left px-3 py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 font-semibold text-xs items-center gap-1.5">
+                    <span id="mCandidatesNavIcon">👁️</span>
+                    <span id="mCandidatesNavText">Показать меню кандидатов</span>
+                </button>
                 <button onclick="switchTab('vacancies'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-amber-600 dark:text-amber-400 font-bold">💼 Вакансии (Вкл/Выкл)</button>
                 <button onclick="switchTab('questions'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold">⚙️ Конструктор вопросов</button>
                 <button onclick="switchTab('security'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-sky-600 dark:text-sky-400 font-bold">🛡️ 152-ФЗ / ГОСТ</button>
@@ -652,7 +661,11 @@
                         <span class="text-xs font-extrabold uppercase px-2.5 py-1 rounded-md bg-[#D31224] text-white">ROOT ACCESS</span>
                         <h2 class="text-2xl font-extrabold mt-1">Техническая панель Супер-Админа</h2>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex flex-wrap gap-2">
+                        <button id="btnTechToggleCandidates" onclick="toggleCandidatesMenu()" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5 transition border border-slate-200 dark:border-slate-700">
+                            <span id="techToggleCandidatesIcon">👁️</span>
+                            <span id="techToggleCandidatesText">Меню кандидатов: Скрыто (Показать)</span>
+                        </button>
                         <button id="btnRunTests" onclick="runAutotests()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                             <span>Запустить автотесты (Pytest)</span>
@@ -1317,6 +1330,8 @@
                 handleTelegramQuickAuth(true);
             }
 
+            applyCandidatesMenuVisibility();
+
             // Проверка URL параметров
             const urlParams = new URLSearchParams(window.location.search);
             const reqTab = urlParams.get('tab');
@@ -1895,6 +1910,104 @@
                 loadRecruitmentConfig();
                 loadRealCandidates();
             }
+
+            applyCandidatesMenuVisibility();
+        }
+
+        let adminShowCandidates = localStorage.getItem('uet_admin_show_candidates') === 'true'; // false по умолчанию для админа
+
+        function toggleCandidatesMenu() {
+            adminShowCandidates = !adminShowCandidates;
+            localStorage.setItem('uet_admin_show_candidates', adminShowCandidates ? 'true' : 'false');
+            applyCandidatesMenuVisibility();
+        }
+
+        function applyCandidatesMenuVisibility() {
+            const isSuperAdmin = (state.role === 'superadmin' || state.role === 'super');
+            const toggleBtn = document.getElementById('btnToggleCandidatesNav');
+            const mToggleBtn = document.getElementById('mBtnToggleCandidatesNav');
+            const techToggleBtn = document.getElementById('btnTechToggleCandidates');
+            const iconSpan = document.getElementById('candidatesNavIcon');
+            const textSpan = document.getElementById('candidatesNavText');
+            const mIconSpan = document.getElementById('mCandidatesNavIcon');
+            const mTextSpan = document.getElementById('mCandidatesNavText');
+            const techIconSpan = document.getElementById('techToggleCandidatesIcon');
+            const techTextSpan = document.getElementById('techToggleCandidatesText');
+
+            const candElements = [
+                document.getElementById('topBtnApplicants'),
+                document.getElementById('topBtnSurvey'),
+                document.getElementById('topBtnCabinet'),
+                document.getElementById('mBtnApplicants'),
+                document.getElementById('mBtnSurvey'),
+                document.getElementById('mBtnCabinet')
+            ];
+
+            if (isSuperAdmin) {
+                // Кнопка переключения меню кандидатов видна администратору
+                if (toggleBtn) {
+                    toggleBtn.classList.remove('hidden');
+                    toggleBtn.classList.add('flex');
+                }
+                if (mToggleBtn) {
+                    mToggleBtn.classList.remove('hidden');
+                    mToggleBtn.classList.add('flex');
+                }
+                if (techToggleBtn) {
+                    techToggleBtn.classList.remove('hidden');
+                }
+
+                if (adminShowCandidates) {
+                    // Кандидаты ПОКАЗАНЫ
+                    candElements.forEach(el => el && el.classList.remove('hidden'));
+                    if (iconSpan) iconSpan.innerText = '🙈';
+                    if (textSpan) textSpan.innerText = 'Кандидаты: Показаны';
+                    if (mIconSpan) mIconSpan.innerText = '🙈';
+                    if (mTextSpan) mTextSpan.innerText = 'Скрыть меню кандидатов';
+                    if (techIconSpan) techIconSpan.innerText = '🙈';
+                    if (techTextSpan) techTextSpan.innerText = 'Меню кандидатов: Показано (Скрыть)';
+                    if (toggleBtn) toggleBtn.className = 'px-2.5 py-1.5 rounded-xl border border-blue-400 bg-blue-50 dark:bg-blue-950/40 text-[#1371B9] dark:text-blue-400 text-[11px] font-bold flex items-center gap-1 transition select-none';
+                } else {
+                    // Кандидаты СКРЫТЫ (чистая админка по умолчанию)
+                    candElements.forEach(el => el && el.classList.add('hidden'));
+                    if (iconSpan) iconSpan.innerText = '👁️';
+                    if (textSpan) textSpan.innerText = 'Кандидаты: Скрыты';
+                    if (mIconSpan) mIconSpan.innerText = '👁️';
+                    if (mTextSpan) mTextSpan.innerText = 'Показать меню кандидатов';
+                    if (techIconSpan) techIconSpan.innerText = '👁️';
+                    if (techTextSpan) techTextSpan.innerText = 'Меню кандидатов: Скрыто (Показать)';
+                    if (toggleBtn) toggleBtn.className = 'px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 text-[11px] flex items-center gap-1 transition select-none';
+                }
+            } else {
+                // Не суперадмин
+                if (toggleBtn) {
+                    toggleBtn.classList.add('hidden');
+                    toggleBtn.classList.remove('flex');
+                }
+                if (mToggleBtn) {
+                    mToggleBtn.classList.add('hidden');
+                    mToggleBtn.classList.remove('flex');
+                }
+                if (techToggleBtn) {
+                    techToggleBtn.classList.add('hidden');
+                }
+
+                if (state.role === 'hr') {
+                    const topApp = document.getElementById('topBtnApplicants');
+                    const mApp = document.getElementById('mBtnApplicants');
+                    if (topApp) topApp.classList.remove('hidden');
+                    if (mApp) mApp.classList.remove('hidden');
+                } else {
+                    const topSurvey = document.getElementById('topBtnSurvey');
+                    const topCabinet = document.getElementById('topBtnCabinet');
+                    const mSurvey = document.getElementById('mBtnSurvey');
+                    const mCabinet = document.getElementById('mBtnCabinet');
+                    if (topSurvey) topSurvey.classList.remove('hidden');
+                    if (topCabinet) topCabinet.classList.remove('hidden');
+                    if (mSurvey) mSurvey.classList.remove('hidden');
+                    if (mCabinet) mCabinet.classList.remove('hidden');
+                }
+            }
         }
 
         function logoutUser() {
@@ -1929,6 +2042,7 @@
                 if (el) el.classList.add('hidden');
             });
 
+            applyCandidatesMenuVisibility();
             renderCabinetView();
             switchTab('landing');
         }

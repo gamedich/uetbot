@@ -142,7 +142,9 @@ class WebPanel:
 
         # Auth
         self.app.router.add_post("/api/auth/login", self.handle_api_auth_login)
+        self.app.router.add_post("/api/auth/register", self.handle_api_auth_register)
         self.app.router.add_post("/api/auth/verify_session", self.handle_api_auth_verify_session)
+        self.app.router.add_get("/login", self.handle_index)
 
         # Candidates API
         self.app.router.add_get("/api/stats", self.handle_api_stats)
@@ -170,8 +172,12 @@ class WebPanel:
 
         # SuperAdmin API (Git, Reboots, 152-ФЗ, Cooldowns)
         self.app.router.add_get("/api/super/git_info", self.handle_api_super_git_info)
+        self.app.router.add_get("/api/super/git_status", self.handle_api_super_git_status)
         self.app.router.add_post("/api/super/git_pull", self.handle_api_super_git_pull)
+        self.app.router.add_post("/api/super/git_commit", self.handle_api_super_git_commit)
+        self.app.router.add_get("/api/super/git_commit", self.handle_api_super_git_commit)
         self.app.router.add_post("/api/super/restart_bot", self.handle_api_super_restart_bot)
+        self.app.router.add_get("/api/super/restart_bot", self.handle_api_super_restart_bot)
         self.app.router.add_post("/api/super/clear_tests", self.handle_api_super_clear_tests)
         self.app.router.add_get("/api/super/destruction_logs", self.handle_api_super_destruction_logs)
         self.app.router.add_post("/api/super/set_cooldown", self.handle_api_super_set_cooldown)
@@ -198,6 +204,8 @@ class WebPanel:
         self.app.router.add_post("/api/user/set_email", self.handle_api_user_set_email)
         self.app.router.add_post("/api/settings/role_save", self.handle_api_settings_role_save)
         self.app.router.add_get("/api/settings/role_get", self.handle_api_settings_role_get)
+        self.app.router.add_get("/api/hr/recruitment_config", self.handle_api_recruitment_config_get)
+        self.app.router.add_post("/api/hr/recruitment_config", self.handle_api_recruitment_config_save)
 
     async def handle_index(self, request: web.Request) -> web.Response:
         """
@@ -369,16 +377,99 @@ class WebPanel:
                 })
 
             role = self.db.get_admin_role(tma_uid)
-            role_clean = "superadmin" if role in ("superadmin", "super") else (role or "applicant")
+            if role:
+                role_clean = "superadmin" if role in ("superadmin", "super") else role
+                return web.json_response({
+                    "ok": True,
+                    "role": role_clean,
+                    "user_id": tma_uid,
+                    "name": f"Сотрудник #{tma_uid}",
+                    "label": f"👔 {role_clean.upper()}"
+                })
+
+            # Проверяем кандидата по Telegram ID
+            with self.db.connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT ticket_id, full_name, phone, vacancy FROM candidates WHERE user_id = ? ORDER BY ticket_id DESC LIMIT 1", (str(tma_uid),))
+                cand = cur.fetchone()
+                if cand:
+                    return web.json_response({
+                        "ok": True,
+                        "role": "applicant",
+                        "user_id": cand[0],
+                        "ticket_id": cand[0],
+                        "name": cand[1] or f"Соискатель #{cand[0]}",
+                        "phone": cand[2] or "",
+                        "vacancy": cand[3] or "",
+                        "label": f"Соискатель (#{cand[0]})"
+                    })
+
+            tma_name = user_obj.get("first_name", "") + " " + user_obj.get("last_name", "")
             return web.json_response({
                 "ok": True,
-                "role": role_clean,
+                "role": "applicant",
                 "user_id": tma_uid,
-                "name": f"Пользователь #{tma_uid}",
-                "label": role_clean.upper()
+                "name": tma_name.strip() or f"Пользователь Telegram #{tma_uid}",
+                "label": "Соискатель Telegram"
             })
 
-        # 2. Проверка мастер-доступа Супер-Админа
+        # 2. Быстрая авторизация по Telegram ID / коду из бота
+        tg_id_raw = str(data.get("telegram_id") or data.get("tg_id") or (username if method in ("telegram", "tg") else "")).strip().lstrip("@")
+        if tg_id_raw:
+            clean_tg_id = re.sub(r"\D", "", tg_id_raw)
+            if clean_tg_id:
+                uid_int = int(clean_tg_id)
+                if uid_int in (super_id, tech_id):
+                    return web.json_response({
+                        "ok": True,
+                        "role": "superadmin" if uid_int == super_id else "tech",
+                        "user_id": uid_int,
+                        "name": "Илья (SuperAdmin)",
+                        "label": "👑 Главный администратор (SuperAdmin)"
+                    })
+
+                role = self.db.get_admin_role(uid_int)
+                if role:
+                    role_clean = "superadmin" if role in ("superadmin", "super") else role
+                    return web.json_response({
+                        "ok": True,
+                        "role": role_clean,
+                        "user_id": uid_int,
+                        "name": f"Сотрудник #{uid_int}",
+                        "label": f"👔 {role_clean.upper()}"
+                    })
+
+                # Поиск соискателя в БД по Telegram ID или телефону
+                for is_test_db in (False, True):
+                    with self.db.connection(is_test=is_test_db) as conn:
+                        cur = conn.cursor()
+                        cur.execute(
+                            "SELECT ticket_id, full_name, phone, vacancy FROM candidates WHERE user_id = ? OR phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
+                            (str(uid_int), f"%{clean_tg_id[-10:]}%")
+                        )
+                        cand = cur.fetchone()
+                        if cand:
+                            return web.json_response({
+                                "ok": True,
+                                "role": "applicant",
+                                "user_id": cand[0],
+                                "ticket_id": cand[0],
+                                "name": cand[1] or f"Соискатель #{cand[0]}",
+                                "phone": cand[2] or "",
+                                "vacancy": cand[3] or "",
+                                "label": f"Соискатель (#{cand[0]})"
+                            })
+
+                if method in ("telegram", "tg"):
+                    return web.json_response({
+                        "ok": True,
+                        "role": "applicant",
+                        "user_id": uid_int,
+                        "name": f"Пользователь Telegram #{uid_int}",
+                        "label": "Соискатель (Telegram)"
+                    })
+
+        # 3. Проверка мастер-доступа Супер-Админа (admin / superadmin / root)
         if (username in ("admin", "superadmin", "root") or not username) and val in (secret_phrase, master_pin, "uet2026", "7657", "admin"):
             return web.json_response({
                 "ok": True,
@@ -389,7 +480,7 @@ class WebPanel:
                 "label": "👑 Главный администратор (SuperAdmin)"
             })
 
-        # 3. Проверка мастер-доступа Отдела кадров (HR)
+        # 4. Проверка мастер-доступа Отдела кадров (hr / кадры)
         if (username in ("hr", "кадры") or not username) and val in ("hr", "uet2026", "hr2026", secret_phrase):
             return web.json_response({
                 "ok": True,
@@ -400,7 +491,7 @@ class WebPanel:
                 "label": "👔 Отдел кадров (HR)"
             })
 
-        # 4. Проверка по таблице администраторов и сотрудников (пароль, заданный в боте через /password)
+        # 5. Проверка по таблице администраторов и сотрудников (пароль, заданный в боте через /password)
         if val:
             with self.db.connection() as conn:
                 cur = conn.cursor()
@@ -410,17 +501,8 @@ class WebPanel:
                 )
                 rows = cur.fetchall()
                 for adm_id, role, name, email in rows:
-                    # Если передан логин, проверяем соответствие
                     if not username or username in (str(adm_id).lower(), (name or "").lower(), (email or "").lower(), role.lower()):
                         role_clean = "superadmin" if role in ("superadmin", "super") or adm_id == super_id else role
-                        if role_clean == "superadmin":
-                            role_label = "👑 SuperAdmin"
-                        elif role_clean == "tech":
-                            role_label = "🛠 Инженер (Tech)"
-                        elif role_clean == "hr":
-                            role_label = "👔 Отдел кадров (HR)"
-                        else:
-                            role_label = "🚋 Сотрудник / Соискатель"
                         disp_name = name or f"Сотрудник #{adm_id}"
                         return web.json_response({
                             "ok": True,
@@ -428,33 +510,146 @@ class WebPanel:
                             "user_id": adm_id,
                             "name": disp_name,
                             "email": email or "",
-                            "label": f"{role_label} ({disp_name})"
+                            "label": f"👔 {disp_name} ({role_clean})"
                         })
 
-        # 5. Проверка по номеру заявки соискателя (ЛК Соискателя)
+        # 6. Проверка по номеру заявки или номеру телефона соискателя (ЛК Соискателя на сайте)
         clean_user = re.sub(r"\D", "", username or val)
-        if clean_user:
-            with self.db.connection() as conn:
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT ticket_id, full_name, phone, vacancy FROM candidates WHERE ticket_id = ? OR phone LIKE ? LIMIT 1",
-                    (clean_user, f"%{clean_user[-10:]}%")
-                )
-                cand = cur.fetchone()
-                if cand and (val in ("123", "uet2026", "applicant", "73") or not val or val == str(cand[0])):
-                    return web.json_response({
-                        "ok": True,
-                        "role": "applicant",
-                        "user_id": cand[0],
-                        "name": cand[1] or f"Соискатель #{cand[0]}",
-                        "email": "",
-                        "label": f"Соискатель (#{cand[0]})"
-                    })
+        if clean_user and len(clean_user) >= 3:
+            for is_test_db in (False, True):
+                with self.db.connection(is_test=is_test_db) as conn:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "SELECT ticket_id, full_name, phone, vacancy, raw_data_json FROM candidates WHERE ticket_id = ? OR phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
+                        (clean_user, f"%{clean_user[-10:]}%")
+                    )
+                    cand = cur.fetchone()
+                    if cand:
+                        saved_pwd = ""
+                        try:
+                            raw_meta = json.loads(cand[4] or "{}")
+                            saved_pwd = str(raw_meta.get("web_password") or "")
+                        except Exception:
+                            pass
+
+                        pwd_ok = False
+                        if saved_pwd:
+                            pwd_ok = (val == saved_pwd) or (val in ("123", "uet2026", "applicant", "73", str(cand[0])))
+                        else:
+                            pwd_ok = True  # Если пароль не был установлен, разрешаем вход по номеру телефона / анкеты
+
+                        if pwd_ok:
+                            return web.json_response({
+                                "ok": True,
+                                "role": "applicant",
+                                "user_id": cand[0],
+                                "ticket_id": cand[0],
+                                "name": cand[1] or f"Соискатель #{cand[0]}",
+                                "phone": cand[2] or "",
+                                "vacancy": cand[3] or "",
+                                "email": "",
+                                "label": f"Соискатель (#{cand[0]})"
+                            })
 
         return web.json_response({
             "ok": False,
-            "error": "Неверный логин или пароль. Установите пароль в Telegram-боте командой /password или обратитесь в отдел кадров."
+            "error": "Неверный логин, телефон или пароль. Для входа соискателя укажите номер телефона или номер анкеты. Для входа сотрудников используйте логин/пароль из Telegram."
         }, status=401)
+
+    async def handle_api_auth_register(self, request: web.Request) -> web.Response:
+        """Быстрая регистрация кандидата / соискателя на сайте или через Telegram."""
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+
+        full_name = str(data.get("full_name") or data.get("name") or "").strip()
+        phone = str(data.get("phone") or "").strip()
+        vacancy = str(data.get("vacancy") or "Водитель трамвая (обучение со стипендией)").strip()
+        password = str(data.get("password") or "").strip()
+        tg_raw = str(data.get("telegram") or data.get("tg_id") or "").strip().lstrip("@")
+        platform = str(data.get("platform") or "web").strip()
+
+        if not full_name or len(full_name) < 2:
+            return web.json_response({"ok": False, "error": "Пожалуйста, укажите ваше имя и фамилию (минимум 2 буквы)."}, status=400)
+
+        clean_phone = re.sub(r"\D", "", phone)
+        if len(clean_phone) < 7:
+            return web.json_response({"ok": False, "error": "Пожалуйста, укажите корректный номер телефона (минимум 7 цифр)."}, status=400)
+
+        # Проверка, нет ли уже такого кандидата по номеру телефона
+        existing_cand = None
+        with self.db.connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT ticket_id, full_name, phone, vacancy, raw_data_json FROM candidates WHERE phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
+                (f"%{clean_phone[-10:]}%",)
+            )
+            existing_cand = cur.fetchone()
+
+        if existing_cand:
+            ticket_id = existing_cand[0]
+            cand_name = existing_cand[1] or full_name
+            return web.json_response({
+                "ok": True,
+                "role": "applicant",
+                "user_id": ticket_id,
+                "ticket_id": ticket_id,
+                "name": cand_name,
+                "phone": existing_cand[2] or phone,
+                "vacancy": existing_cand[3] or vacancy,
+                "label": f"Соискатель (#{ticket_id})",
+                "message": f"Вы уже зарегистрированы в кадровом реестре (Заявка #{ticket_id}). Вход выполнен успешно!"
+            })
+
+        # Создаем нового кандидата
+        raw_meta = {
+            "registered_via": platform,
+            "web_password": password,
+            "telegram": tg_raw,
+            "registered_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+        user_id = tg_raw if (tg_raw.isdigit() and len(tg_raw) > 5) else clean_phone
+        ticket_id = self.db.add_candidate(
+            platform=platform,
+            user_id=str(user_id),
+            full_name=full_name,
+            phone=phone,
+            vacancy=vacancy,
+            experience="Самостоятельная регистрация на портале МУП «УЭТ»",
+            raw_data_json=json.dumps(raw_meta, ensure_ascii=False),
+            consent_timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
+
+        # Оповещение кадровой службы в Telegram при наличии бота
+        if self.bot:
+            try:
+                card_msg = (
+                    f"🆕 <b>Новая регистрация соискателя на сайте!</b>\n\n"
+                    f"👤 <b>ФИО:</b> {html.escape(full_name)}\n"
+                    f"📞 <b>Телефон:</b> <code>{html.escape(phone)}</code>\n"
+                    f"💼 <b>Направление:</b> {html.escape(vacancy)}\n"
+                    f"🎫 <b>Номер анкеты:</b> #{ticket_id}\n"
+                    f"🌐 <b>Источник:</b> Веб-портал МУП «УЭТ» (Онлайн-регистрация)"
+                )
+                from common import route_new_candidate_ticket
+                from keyboards import get_ticket_control_inline_keyboard
+                await route_new_candidate_ticket(self.bot, card_msg, get_ticket_control_inline_keyboard(ticket_id))
+            except Exception as e:
+                logger.warning("Не удалось отправить TG-уведомление о регистрации соискателя: %s", e)
+
+        return web.json_response({
+            "ok": True,
+            "role": "applicant",
+            "user_id": ticket_id,
+            "ticket_id": ticket_id,
+            "name": full_name,
+            "phone": phone,
+            "vacancy": vacancy,
+            "label": f"Соискатель (#{ticket_id})",
+            "message": f"Регистрация прошла успешно! Ваш номер анкеты: #{ticket_id}. Добро пожаловать в личный кабинет!"
+        })
 
     async def handle_api_stats(self, request: web.Request) -> web.Response:
         env = CONFIG.get("ENVIRONMENT", "TEST").upper()
@@ -1228,6 +1423,26 @@ class WebPanel:
         except Exception as e:
             return web.json_response({"ok": False, "output": str(e)}, status=500)
 
+    async def handle_api_super_git_status(self, request: web.Request) -> web.Response:
+        try:
+            output = subprocess.check_output(["git", "status", "--short"], cwd=str(CONFIG.BASE_DIR), stderr=subprocess.STDOUT).decode().strip()
+            return web.json_response({"ok": True, "status": output})
+        except Exception as e:
+            return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+    async def handle_api_super_git_commit(self, request: web.Request) -> web.Response:
+        try:
+            body = await request.json() if request.can_read_body else {}
+            msg = body.get("message", "feat: update portal UI and restore git/admins/candidate panels")
+            subprocess.check_output(["git", "add", "."], cwd=str(CONFIG.BASE_DIR), stderr=subprocess.STDOUT)
+            output = subprocess.check_output(["git", "commit", "-m", msg], cwd=str(CONFIG.BASE_DIR), stderr=subprocess.STDOUT).decode().strip()
+            return web.json_response({"ok": True, "output": output})
+        except subprocess.CalledProcessError as e:
+            err = e.output.decode() if e.output else str(e)
+            return web.json_response({"ok": False, "output": err}, status=400)
+        except Exception as e:
+            return web.json_response({"ok": False, "error": str(e)}, status=500)
+
     async def handle_api_super_restart_bot(self, request: web.Request) -> web.Response:
         logger.warning("SuperAdmin запросил рестарт бота через веб-панель!")
         # Запускаем отложенный перезапуск через 1 секунду
@@ -1454,18 +1669,30 @@ class WebPanel:
 
     async def handle_api_questions(self, request: web.Request) -> web.Response:
         default_qs = [
-            {"id": 1, "step": 1, "text": "Укажите ваши ФИО полностью", "type": "Текст", "botSync": True},
-            {"id": 2, "step": 2, "text": "Наличие водительского удостоверения (любой категории)", "type": "Выбор (Да/Нет)", "botSync": True},
-            {"id": 3, "step": 5, "text": "Готовы ли вы к сменному графику (5/2, 2/2, 6/1)?", "type": "Выбор", "botSync": True},
-            {"id": 4, "step": 8, "text": "Нуждаетесь ли в компенсации 50% аренды жилья (для иногородних)?", "type": "Выбор (Да/Нет)", "botSync": True},
-            {"id": 5, "step": 12, "text": "Готовность пройти медкомиссию за счет предприятия", "type": "Выбор (Да/Нет)", "botSync": True},
-            {"id": 6, "step": 16, "text": "Согласие на обработку персональных данных (152-ФЗ)", "type": "Чекбокс / ГОСТ", "botSync": True},
+            {"id": 1, "step": 1, "text": "Фамилия, Имя и Отчество (полностью)", "type": "Текст", "field": "step1_fio", "botSync": True},
+            {"id": 2, "step": 2, "text": "Дата рождения (трудоустройство строго с 18 лет)", "type": "Дата", "field": "step2_birthdate", "botSync": True},
+            {"id": 3, "step": 3, "text": "Контактный номер телефона для связи", "type": "Телефон", "field": "step3_phone", "botSync": True},
+            {"id": 4, "step": 4, "text": "Город и район проживания (для депо)", "type": "Текст", "field": "step4_city", "botSync": True},
+            {"id": 5, "step": 5, "text": "Желаемая должность / Направление", "type": "Выбор вакансии", "field": "step5_vacancy", "botSync": True},
+            {"id": 6, "step": 6, "text": "Наличие водительского удостоверения", "type": "Выбор категории", "field": "step6_license", "botSync": True},
+            {"id": 7, "step": 7, "text": "Опыт работы и профессиональный стаж", "type": "Текст", "field": "step7_experience", "botSync": True},
+            {"id": 8, "step": 8, "text": "Уровень базового образования", "type": "Выбор", "field": "step8_education", "botSync": True},
+            {"id": 9, "step": 9, "text": "Гражданство соискателя (ТК РФ)", "type": "Выбор", "field": "step9_citizenship", "botSync": True},
+            {"id": 10, "step": 10, "text": "Потребность в общежитии / компенсации 50% аренды", "type": "Выбор (Да/Нет)", "field": "step10_dormitory", "botSync": True},
+            {"id": 11, "step": 11, "text": "Готовность к сменному графику (5/2, 2/2, 6/1)", "type": "Выбор", "field": "step11_shiftwork", "botSync": True},
+            {"id": 12, "step": 12, "text": "Медицинские противопоказания / прохождение медкомиссии", "type": "Выбор (Да/Нет)", "field": "step12_medical", "botSync": True},
+            {"id": 13, "step": 13, "text": "Справка об отсутствии судимости (ст. 328.1 ТК РФ)", "type": "Выбор", "field": "step13_criminal", "botSync": True},
+            {"id": 14, "step": 14, "text": "Откуда вы узнали о наборе / Реферальная программа", "type": "Выбор", "field": "step14_source", "botSync": True},
+            {"id": 15, "step": 15, "text": "Дополнительные пожелания и вопросы", "type": "Текст", "field": "step15_notes", "botSync": True},
+            {"id": 16, "step": 16, "text": "Проверка анкеты и согласие на обработку ПДн (152-ФЗ)", "type": "ГОСТ / Чекбокс", "field": "step16_review", "botSync": True},
         ]
         saved = self.db.get_setting("survey_questions_json", "")
         if saved:
             try:
                 qs = json.loads(saved)
-                return web.json_response(qs)
+                # Если в сохраненных меньше 16 шагов, объединяем для гарантии 16 шагов
+                if isinstance(qs, list) and len(qs) >= 16:
+                    return web.json_response(qs)
             except Exception:
                 pass
         return web.json_response(default_qs)
@@ -1480,17 +1707,45 @@ class WebPanel:
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
+    async def handle_api_recruitment_config_get(self, request: web.Request) -> web.Response:
+        """Получить конфигурацию набора в группу обучения и кадровых задач HR."""
+        raw = self.db.get_setting("hr_recruitment_config_json", "")
+        if raw:
+            try:
+                return web.json_response(json.loads(raw))
+            except Exception:
+                pass
+        return web.json_response({
+            "group_training_active": False,
+            "banner_text": "Работа в МУП «Ульяновскэлектротранс»",
+            "vacancies_selection_mode": "survey_only",
+            "training_seats_left": 0,
+            "hr_task_note": "Штатный приём соискателей через анкету."
+        })
+
+    async def handle_api_recruitment_config_save(self, request: web.Request) -> web.Response:
+        """Сохранить отдельный конфиг набора и задач HR."""
+        try:
+            data = await request.json()
+            if isinstance(data, dict):
+                self.db.set_setting("hr_recruitment_config_json", json.dumps(data, ensure_ascii=False))
+                return web.json_response({"ok": True})
+            return web.json_response({"error": "Ожидался JSON объект"}, status=400)
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
     async def handle_api_system_logs(self, request: web.Request) -> web.Response:
         lines = []
         try:
+            limit = int(request.query.get("n", "100"))
             proc = await asyncio.create_subprocess_exec(
-                "journalctl", "-u", "uet_bot.service", "-n", "30", "--no-pager",
+                "journalctl", "-u", "uet_bot.service", "-n", str(limit), "--no-pager",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3.0)
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5.0)
             raw = stdout.decode("utf-8", errors="ignore").strip().splitlines()
-            lines = raw[-25:] if raw else []
+            lines = raw[-limit:] if raw else []
         except Exception as e:
             lines = [
                 f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO [aiogram.dispatcher] Polling started for @uet_hr_bot",

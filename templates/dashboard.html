@@ -37,8 +37,9 @@
 <body class="min-h-screen bg-[#F3F6FA] dark:bg-[#0A192F] text-slate-800 dark:text-slate-100 transition-colors duration-300 pb-20 md:pb-0">
 
     <!-- ВЕРХНЯЯ ПАНЕЛЬ (ШАПКА И АВТОРИЗОВАННАЯ НАВИГАЦИЯ) -->
-    <header class="sticky top-0 z-40 backdrop-blur-md bg-white/90 dark:bg-[#112240]/90 border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-3 transition-colors">
-        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+    <!-- ВЕРХНЯЯ ПАНЕЛЬ: ЕДИНОЕ УДОБНОЕ МЕНЮ И НАВИГАЦИЯ -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-white/95 dark:bg-[#112240]/95 border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-3 transition-colors shadow-sm">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
             
             <!-- Логотип УЭТ -->
             <div class="flex items-center gap-3 cursor-pointer select-none" onclick="switchTab('landing')">
@@ -49,129 +50,113 @@
                     <div class="flex items-center gap-2">
                         <span class="font-extrabold text-lg tracking-tight text-[#1371B9] dark:text-blue-400">МУП «УЭТ»</span>
                         <span class="hidden sm:inline-block text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-[#1371B9] dark:bg-blue-900/50 dark:text-blue-300">
-                            HR-Экосистема
+                            Кадровый портал
                         </span>
                     </div>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Ульяновскэлектротранс • UETBot</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Ульяновскэлектротранс • Официальный сервис</p>
                 </div>
             </div>
 
-            <!-- Главное меню разделов сайта -->
-            <div class="hidden md:flex items-center gap-2 text-xs font-semibold">
-                <button onclick="switchTab('landing')" id="topBtnLanding" class="px-3 py-2 rounded-xl transition bg-[#1371B9] text-white">
-                    Главный экран
+            <!-- ЕДИНОЕ МЕНЮ (НАВИГАЦИЯ САЙТА И СЛУЖЕБНОГО КАБИНЕТА) -->
+            <nav id="unifiedNav" class="hidden md:flex items-center gap-1.5 text-xs font-semibold">
+                <!-- Публичные разделы -->
+                <button onclick="switchTab('landing')" id="topBtnLanding" class="px-3.5 py-2 rounded-xl transition bg-[#1371B9] text-white font-bold flex items-center gap-1.5">
+                    <span>Главная</span>
                 </button>
-                <button onclick="switchTab('survey16')" id="topBtnSurvey" class="px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <button onclick="switchTab('survey16')" id="topBtnSurvey" class="px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                     <span>Анкета (16 шагов)</span>
-                    <span class="text-[10px] bg-red-500 text-white px-1.5 py-0.2 rounded-full font-bold">New</span>
                 </button>
-                <button onclick="switchTab('cabinet')" id="topBtnCabinet" class="px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
-                    Мой статус / ЛК
+                <button onclick="switchTab('cabinet')" id="topBtnCabinet" class="px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <span>Мой статус</span>
                 </button>
-                <button onclick="handleRoleProtectedClick('hr')" id="topBtnHr" class="px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                    <span>HR-Отдел</span>
-                </button>
-                <button onclick="handleRoleProtectedClick('superadmin')" id="topBtnSuper" class="px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
-                    <span>Супер-Админ</span>
-                </button>
-            </div>
 
-            <!-- Правый блок: Тема + Кнопка Авторизации -->
-            <div class="flex items-center gap-3">
+                <!-- Служебные разделы (видны только авторизованным сотрудникам) -->
+                <div id="serviceNavItems" class="hidden items-center gap-1.5 pl-2 ml-1 border-l border-slate-200 dark:border-slate-700">
+                    <button onclick="switchTab('applicants')" id="topBtnApplicants" class="px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-[#1371B9] dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>Кандидаты</span>
+                    </button>
+                    <button onclick="switchTab('questions')" id="topBtnQuestions" class="px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Конструктор (16 шагов)</span>
+                    </button>
+                    <button onclick="switchTab('security')" id="topBtnSecurity" class="px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        <span>152-ФЗ / ГОСТ</span>
+                    </button>
+                    <button onclick="switchTab('admins')" id="topBtnAdmins" class="hidden px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        <span>Права и Доступ</span>
+                    </button>
+                    <button onclick="switchTab('git')" id="topBtnGit" class="hidden px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                        <span>Git & Обновления</span>
+                    </button>
+                    <button onclick="switchTab('tech')" id="topBtnTech" class="hidden px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        <span>Root</span>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Правый блок: Тема + Кнопка Авторизации / Профиль + Мобильное меню -->
+            <div class="flex items-center gap-2 sm:gap-3">
                 <button onclick="toggleDarkMode()" id="themeToggleBtn" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-amber-400 hover:scale-105 transition" title="Переключить тему">
                     <svg id="themeIconSun" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                     <svg id="themeIconMoon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                 </button>
 
-                <!-- Авторизация -->
-                <div id="authGuestBlock">
-                    <button onclick="openLoginModal()" class="bg-[#1371B9] hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-sm flex items-center gap-2 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                        <span>Вход по паролю</span>
+                <!-- Авторизация гостя: Вход и Регистрация -->
+                <div id="authGuestBlock" class="flex items-center gap-1.5 sm:gap-2">
+                    <button onclick="openLoginModal('login')" class="bg-[#1371B9] hover:bg-blue-700 text-white font-semibold px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs sm:text-sm shadow-sm flex items-center gap-1.5 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                        <span>Вход</span>
+                    </button>
+                    <button onclick="openRegisterModal()" class="hidden sm:flex bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs sm:text-sm shadow-sm items-center gap-1.5 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                        <span>Регистрация</span>
                     </button>
                 </div>
 
+                <!-- Авторизованный профиль -->
                 <div id="authUserBlock" class="hidden items-center gap-2">
                     <div class="text-right hidden sm:block">
-                        <div id="userProfileName" class="text-xs font-bold text-slate-800 dark:text-slate-100">Илья (SuperAdmin)</div>
-                        <div id="userRoleBadge" class="text-[10px] text-emerald-500 font-medium">● Сессия активна</div>
+                        <div id="userProfileName" class="text-xs font-bold text-slate-800 dark:text-slate-100">Сотрудник</div>
+                        <div id="userRoleBadge" class="text-[10px] text-emerald-500 font-medium">● Сессия защищена</div>
                     </div>
-                    <button onclick="logoutUser()" class="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition" title="Выйти из защищенного контура">
+                    <button onclick="logoutUser()" class="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition" title="Выйти из личного кабинета">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     </button>
                 </div>
+
+                <!-- Кнопка мобильного меню -->
+                <button onclick="toggleMobileNav()" id="mobileMenuBtn" class="md:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Выпадающее мобильное меню (аккуратно встроено в шапку) -->
+        <div id="mobileNavDropdown" class="hidden md:hidden pt-3 mt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-1 text-xs font-semibold">
+            <button onclick="switchTab('landing'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">🏠 Главная</button>
+            <button onclick="switchTab('survey16'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">📝 Анкета (16 шагов)</button>
+            <button onclick="switchTab('cabinet'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">📊 Мой статус</button>
+            <button onclick="openLoginModal('login'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-[#1371B9] font-bold">🔑 Вход в систему (ТГ / Сайт)</button>
+            <button onclick="openRegisterModal(); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 font-bold">📝 Регистрация соискателя</button>
+            <div id="mServiceNav" class="hidden flex-col gap-1 pt-1 mt-1 border-t border-slate-200 dark:border-slate-800">
+                <button onclick="switchTab('applicants'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-[#1371B9] dark:text-blue-400 font-bold">👥 Кандидаты (Воронка)</button>
+                <button onclick="switchTab('questions'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold">⚙️ Конструктор вопросов</button>
+                <button onclick="switchTab('security'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-sky-600 dark:text-sky-400 font-bold">🛡️ 152-ФЗ / ГОСТ</button>
+                <button onclick="switchTab('admins'); toggleMobileNav();" id="mAdminsBtn" class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-purple-600 dark:text-purple-400 font-bold">👥 Права и Доступ</button>
+                <button onclick="switchTab('git'); toggleMobileNav();" id="mGitBtn" class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-orange-500 font-bold">🚀 Git & Обновления</button>
+                <button onclick="switchTab('tech'); toggleMobileNav();" id="mTechBtn" class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-red-500 font-bold">⚡ Тех. панель Root</button>
             </div>
         </div>
     </header>
 
-    <!-- ОСНОВНОЙ КОНТЕЙНЕР: САЙДБАР (ДЛЯ АВТОРИЗОВАННЫХ) + РАБОЧАЯ ОБЛАСТЬ -->
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 p-4 lg:p-8">
-        
-        <!-- Боковая навигация (показывается для авторизованных ролей) -->
-        <aside id="sidebarNav" class="hidden flex-col w-64 shrink-0 bg-white dark:bg-[#112240] rounded-3xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-800 h-fit sticky top-24 transition-colors">
-            <div id="sidebarTitle" class="text-xs font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">
-                Служебный кабинет
-            </div>
-            <nav class="space-y-1.5" id="sidebarLinks">
-                <!-- Кабинет сотрудника -->
-                <button onclick="switchTab('cabinet')" id="navCabinet" class="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70">
-                    <div class="flex items-center gap-3">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>Моя анкета и Ref</span>
-                    </div>
-                </button>
-
-                <!-- HR меню -->
-                <div id="hrNavItems" class="space-y-1.5 hidden">
-                    <button onclick="switchTab('applicants')" id="navApplicants" class="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70">
-                        <div class="flex items-center gap-3">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                            <span>Воронка соискателей</span>
-                        </div>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-300 font-bold">16 шагов</span>
-                    </button>
-
-                    <button onclick="switchTab('questions')" id="navQuestions" class="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70">
-                        <div class="flex items-center gap-3">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span>Конструктор вопросов</span>
-                        </div>
-                    </button>
-
-                    <button onclick="switchTab('security')" id="navSecurity" class="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70">
-                        <div class="flex items-center gap-3">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                            <span>Контур 152-ФЗ и ГОСТ</span>
-                        </div>
-                    </button>
-                </div>
-
-                <!-- SuperAdmin меню -->
-                <div id="superNavItems" class="space-y-1.5 hidden">
-                    <button onclick="switchTab('tech')" id="navTech" class="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70">
-                        <div class="flex items-center gap-3">
-                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
-                            <span>Тех. панель (UETBot)</span>
-                        </div>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-red-500 text-white font-bold">ROOT</span>
-                    </button>
-                </div>
-
-                <div class="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
-                    <button onclick="switchTab('landing')" id="navLanding" class="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70">
-                        <div class="flex items-center gap-3">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                            <span>Главный экран</span>
-                        </div>
-                    </button>
-                </div>
-            </nav>
-        </aside>
-
-        <!-- ГЛАВНАЯ ОБЛАСТЬ КОНТЕНТА -->
-        <main class="flex-1 min-w-0">
+    <!-- ОСНОВНОЙ КОНТЕЙНЕР: РАБОЧАЯ ОБЛАСТЬ БЕЗ КОНФЛИКТУЮЩЕГО САЙДБАРА -->
+    <div class="max-w-7xl mx-auto p-4 lg:p-8">
+        <main class="w-full">
 
             <!-- =========================================================================
                 1. ГЛАВНЫЙ ЭКРАН (ПУБЛИЧНЫЙ ЛЕНДИНГ ПРЕДПРИЯТИЯ)
@@ -181,15 +166,15 @@
                 <div class="relative rounded-3xl overflow-hidden bg-gradient-to-r from-[#0A192F] via-[#1371B9] to-blue-600 text-white p-6 md:p-10 shadow-xl">
                     <img src="/static/images/tram_lvenok.jpg" alt="Трамвай Львенок Ульяновск" class="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none mix-blend-overlay">
                     <div class="relative z-10 max-w-2xl space-y-4">
-                        <div class="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-semibold">
+                        <div id="heroRecruitmentBadge" class="hidden inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-semibold">
                             <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
-                            <span>Набор в новую группу обучения водителей: осталось 5 мест!</span>
+                            <span id="heroRecruitmentBadgeText">Набор в новую группу обучения водителей</span>
                         </div>
                         <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
-                            Работа и обучение в МУП «Ульяновскэлектротранс»
+                            Работа в МУП «Ульяновскэлектротранс»
                         </h1>
                         <p class="text-blue-100 text-sm md:text-base leading-relaxed">
-                            Официальное трудоустройство, заработная плата до <strong>100 000 ₽</strong>, стипендия на время курсов, оплачиваемый отпуск до 40 дней и компенсация 50% аренды жилья иногородним.
+                            Официальное трудоустройство по ТК РФ, заработная плата до <strong>100 000 ₽</strong>, оплачиваемый отпуск до 40 дней, стабильный соцпакет и компенсация 50% аренды жилья иногородним.
                         </p>
                         
                         <!-- Преимущества -->
@@ -225,71 +210,18 @@
                     </div>
                 </div>
 
-                <!-- Вакансии и омниканальные боты -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Информационные сервисы: Омниканальные боты, Личный кабинет и Прямой контакт -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     
-                    <!-- Вакансии предприятия -->
-                    <div class="lg:col-span-2 bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <div>
-                                <h2 class="text-xl font-bold">Актуальные вакансии предприятия</h2>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">Официальное трудоустройство в МУП «УЭТ» по ТК РФ</p>
+                    <!-- Блок 1: Официальные боты в мессенджерах -->
+                    <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-7 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="p-2 rounded-xl bg-sky-500/10 text-sky-500 font-bold">🤖</span>
+                                <h3 class="font-bold text-base">Официальные боты УЭТ</h3>
                             </div>
-                            <span class="text-xs font-bold text-[#1371B9] dark:text-blue-400">г. Ульяновск</span>
-                        </div>
-
-                        <div class="space-y-3">
-                            <div class="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-[#1371B9] transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
-                                <div>
-                                    <div class="font-bold text-base flex items-center gap-2">
-                                        <span>Водитель трамвая (Вагон 71-911ЕМ «Львёнок»)</span>
-                                        <span class="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded-full">Стипендия</span>
-                                    </div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Обучение всего 2 месяца при наличии прав любой категории. Зарплата от 65 000 до 100 000 ₽.</p>
-                                </div>
-                                <button onclick="startSurveyWithVacancy('Водитель трамвая (обучение со стипендией)')" class="bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shrink-0">
-                                    Откликнуться →
-                                </button>
-                            </div>
-
-                            <div class="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-[#1371B9] transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
-                                <div>
-                                    <div class="font-bold text-base">Водитель троллейбуса (Заволжское депо)</div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Категория «Тб», современные троллейбусы с УАХ. Зарплата до 95 000 ₽.</p>
-                                </div>
-                                <button onclick="startSurveyWithVacancy('Водитель троллейбуса')" class="bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shrink-0">
-                                    Откликнуться →
-                                </button>
-                            </div>
-
-                            <div class="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-[#1371B9] transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
-                                <div>
-                                    <div class="font-bold text-base">Слесарь-электрик по ремонту подвижного состава</div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">График 5/2 или 2/2, теплые цеха, спецтехника и инструмент. Зарплата от 55 000 ₽.</p>
-                                </div>
-                                <button onclick="startSurveyWithVacancy('Слесарь по ремонту подвижного состава')" class="bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shrink-0">
-                                    Откликнуться →
-                                </button>
-                            </div>
-
-                            <div class="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-[#1371B9] transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
-                                <div>
-                                    <div class="font-bold text-base">Монтер пути / Электромонтер контактной сети</div>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Льготный стаж, обеспечение спецодеждой, доплата за работу на линии.</p>
-                                </div>
-                                <button onclick="startSurveyWithVacancy('Монтер пути / Контактник')" class="bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shrink-0">
-                                    Откликнуться →
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Правая колонка: Омниканальные боты + Контакт методиста -->
-                    <div class="space-y-6">
-                        <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                            <h3 class="font-bold text-base mb-2">Удобнее заполнить в мессенджере?</h3>
                             <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                                Официальный бот УЭТ проведет вас по всем 16 шагам и запишет на собеседование в депо:
+                                Заполните анкету или задайте вопрос прямо в любимом мессенджере:
                             </p>
                             <div class="space-y-2.5">
                                 <a href="https://t.me/uet_hr_bot" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 font-semibold text-sm hover:bg-sky-500/20 transition">
@@ -300,23 +232,56 @@
                                     <span>ВКонтакте • Бот УЭТ</span>
                                     <span class="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-md">Online</span>
                                 </a>
-                                <div class="flex items-center justify-between p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-semibold text-sm">
-                                    <span>🇷🇺 Мессенджер MAX</span>
-                                    <span class="text-xs px-2 py-0.5 bg-indigo-600 text-white rounded-md">Шлюз активен</span>
+                                <div class="flex items-center justify-between p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 font-semibold text-sm">
+                                    <div class="flex items-center gap-2">
+                                        <span>🇷🇺 Мессенджер MAX</span>
+                                    </div>
+                                    <span class="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-md font-bold">В разработке</span>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Прямой контакт отдела подготовки кадров -->
-                        <div class="bg-gradient-to-br from-[#F26E22] to-amber-600 rounded-3xl p-6 text-white shadow-md">
-                            <div class="text-xs uppercase font-bold opacity-80 mb-1">Прямая связь с отделом кадров</div>
-                            <div class="font-extrabold text-lg mb-1">Раиса Ивановна</div>
-                            <p class="text-xs text-orange-100 mb-4">Методист по подготовке кадров МУП «УЭТ»</p>
-                            <a href="tel:+79510990060" class="flex items-center gap-2 bg-black/20 hover:bg-black/30 transition px-4 py-2.5 rounded-xl font-mono text-sm font-bold w-fit">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                                <span>+7 (951) 099-00-60</span>
-                            </a>
+                    <!-- Блок 2: Быстрая регистрация и Личный кабинет -->
+                    <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-7 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 font-bold">⚡</span>
+                                <h3 class="font-bold text-base">Личный кабинет портала</h3>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                                Быстрый вход через Telegram или регистрация на сайте для соискателей и сотрудников:
+                            </p>
+                            <div class="space-y-3">
+                                <button onclick="openRegisterModal()" class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-md">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                                    <span>Быстрая регистрация соискателя</span>
+                                </button>
+                                <button onclick="openLoginModal('login')" class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs transition shadow-md">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                                    <span>Вход через Telegram или сайт</span>
+                                </button>
+                            </div>
                         </div>
+                        <div class="pt-4 text-[11px] text-slate-400 flex items-center gap-1.5">
+                            <span>🔒 Защита персональных данных 152-ФЗ / ГОСТ</span>
+                        </div>
+                    </div>
+
+                    <!-- Блок 3: Прямой контакт отдела подготовки кадров -->
+                    <div class="bg-gradient-to-br from-[#F26E22] to-amber-600 rounded-3xl p-6 md:p-7 text-white shadow-md flex flex-col justify-between">
+                        <div>
+                            <div class="text-xs uppercase font-bold opacity-80 mb-1">Прямая связь с отделом кадров</div>
+                            <div class="font-extrabold text-xl mb-1">Раиса Ивановна</div>
+                            <p class="text-xs text-orange-100 mb-4">Методист по подготовке кадров МУП «УЭТ»</p>
+                            <p class="text-xs text-white/90 leading-relaxed mb-4">
+                                Ответим на любые вопросы об обучении, графике смен, стипендии и общежитии.
+                            </p>
+                        </div>
+                        <a href="tel:+79510990060" class="flex items-center gap-2 bg-black/20 hover:bg-black/30 transition px-4 py-3 rounded-2xl font-mono text-sm font-bold w-fit">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                            <span>+7 (951) 099-00-60</span>
+                        </a>
                     </div>
 
                 </div>
@@ -491,6 +456,7 @@
                                     <th class="py-3.5 px-4">Текущий этап воронки</th>
                                     <th class="py-3.5 px-4">Источник</th>
                                     <th class="py-3.5 px-4">Статус 152-ФЗ</th>
+                                    <th class="py-3.5 px-4 text-right">Действия</th>
                                 </tr>
                             </thead>
                             <tbody id="applicantsTableBody" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -531,25 +497,65 @@
                     </div>
                 </div>
 
+                <!-- КОНФИГУРАЦИЯ ЗАДАЧ И НАБОРА HR (ОТДЕЛЬНЫЙ КОНФИГ) -->
+                <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-4">
+                    <div class="flex flex-wrap justify-between items-center gap-3">
+                        <div>
+                            <h3 class="font-bold text-base flex items-center gap-2">
+                                <span>🎯 Кадровые задачи и режим набора предприятия</span>
+                                <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">Отдельный конфиг</span>
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Управление отображением набора в группу обучения со стипендией и текущими кадровыми задачами</p>
+                        </div>
+                        <button onclick="saveRecruitmentConfig()" class="px-4 py-2 bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition">
+                            Сохранить конфиг набора
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs pt-1">
+                        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input id="hrCfgGroupTraining" type="checkbox" class="w-4 h-4 rounded accent-[#1371B9]">
+                                <span class="font-bold">Набор в новую группу обучения</span>
+                            </label>
+                            <p class="text-slate-400 text-[11px]">Показывает плашку спецнабора водителей на сайте (при выключении — обычный приём)</p>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                            <label class="block font-bold text-slate-600 dark:text-slate-300">Свободных мест в группе</label>
+                            <input id="hrCfgSeatsLeft" type="number" min="0" max="100" value="5" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                            <p class="text-slate-400 text-[11px]">Динамический счетчик вакантных мест в группе</p>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                            <label class="block font-bold text-slate-600 dark:text-slate-300">Текущая задача для кадровиков</label>
+                            <input id="hrCfgTaskNote" type="text" placeholder="Штатный приём соискателей..." class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs">
+                            <p class="text-slate-400 text-[11px]">Внутренний приоритет для кадрового отдела</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- =========================================================================
-                5. КОНСТРУКТОР ВОПРОСОВ АНКЕТЫ И БОТА
+                5. КОНСТРУКТОР ВОПРОСОВ АНКЕТЫ И БОТА (ВСЕ 16 ШАГОВ)
             ========================================================================= -->
             <div id="tabContentQuestions" class="space-y-6 hidden">
                 <div class="flex flex-wrap justify-between items-center gap-4">
                     <div>
-                        <h2 class="text-2xl font-extrabold">Редактор вопросов воронки</h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Изменения мгновенно применяются на веб-сайте и в состояниях FSM бота</p>
+                        <h2 class="text-2xl font-extrabold flex items-center gap-2">
+                            <span>Конструктор вопросов воронки</span>
+                            <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">16 шагов синхронизированы</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Синхронизировано со всеми 16 шагами анкеты соискателя, Telegram-бота @uet_hr_bot и ГОСТ</p>
                     </div>
-                    <button onclick="promptAddQuestion()" class="bg-[#1371B9] hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Добавить шаг опроса
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="loadQuestions()" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-bold transition">
+                            🔄 Обновить шаги
+                        </button>
+                    </div>
                 </div>
 
                 <div id="questionsListContainer" class="space-y-3">
-                    <!-- Заполняется динамически -->
+                    <!-- Заполняется динамически со всеми 16 шагами -->
                 </div>
             </div>
 
@@ -703,75 +709,452 @@
                 </div>
             </div>
 
+            <!-- =========================================================================
+                8. ПРАВА И УПРАВЛЕНИЕ ДОСТУПОМ (SUPERADMIN ONLY)
+            ========================================================================= -->
+            <div id="tabContentAdmins" class="space-y-6 hidden">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-extrabold flex items-center gap-2">
+                            <span>👥 Команда и управление доступом</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Назначение ролей, синхронизация паролей веб-панели и уведомлений (Только SuperAdmin)</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="syncAdminsFromEnv()" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition flex items-center gap-1.5">
+                            <span>🔄 Синхронизировать (.env)</span>
+                        </button>
+                        <button onclick="notifyAllAdminsPanel()" class="px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-[#1371B9] dark:text-blue-300 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1.5">
+                            <span>📲 Разослать доступ всем</span>
+                        </button>
+                        <button onclick="loadAdminsList()" class="px-3.5 py-2 rounded-xl bg-[#1371B9] text-white hover:bg-blue-700 text-xs font-bold transition flex items-center gap-1.5">
+                            <span>🔄 Обновить</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Форма назначения нового сотрудника -->
+                <div class="bg-white dark:bg-[#112240] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                    <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">➕ Назначить нового администратора / сотрудника</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <input type="text" id="newAdminId" placeholder="Telegram ID (например: 12345678)..." class="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                        <select id="newAdminRole" class="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                            <option value="hr">👔 Отдел кадров (HR)</option>
+                            <option value="tech">🛠 Инженер систем (Tech)</option>
+                            <option value="depot">🚋 Сотрудник депо (Рефералы)</option>
+                            <option value="superadmin">👑 SuperAdmin</option>
+                        </select>
+                        <input type="text" id="newAdminPassword" placeholder="Пароль для сайта (необязательно)..." class="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                        <button onclick="addNewAdminSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
+                            Выдать доступ
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Таблица сотрудников и ролей -->
+                <div class="bg-white dark:bg-[#112240] rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase text-slate-400 bg-slate-50/50 dark:bg-slate-800/40">
+                                    <th class="py-3.5 px-4">Сотрудник / ID</th>
+                                    <th class="py-3.5 px-4">Роль в системе</th>
+                                    <th class="py-3.5 px-4">Пароль на сайте</th>
+                                    <th class="py-3.5 px-4">ЛС-уведомления</th>
+                                    <th class="py-3.5 px-4">Дата назначения</th>
+                                    <th class="py-3.5 px-4 text-right">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminsTbody" class="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm">
+                                <tr><td colspan="6" class="text-center text-slate-400 py-6">Загрузка списка сотрудников...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =========================================================================
+                9. ПАНЕЛЬ GIT, ОБНОВЛЕНИЙ И 152-ФЗ (SUPERADMIN ONLY)
+            ========================================================================= -->
+            <div id="tabContentGit" class="space-y-6 hidden">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-extrabold flex items-center gap-2">
+                            <span>🚀 Панель Git, обновлений и службы бота</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Синхронизация с GitHub, перезапуск systemd службы, таймауты и акты уничтожения ПДн</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="loadGitPanelInfo()" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition flex items-center gap-1.5">
+                            <span>🔄 Обновить статус</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Метрики Git и таймауты -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white dark:bg-[#112240] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                        <span class="text-xs font-bold uppercase text-slate-400">Текущая ветка Git</span>
+                        <div id="gitBranchVal" class="text-xl font-extrabold text-[#1371B9] dark:text-blue-400 font-mono">beta</div>
+                        <div class="text-[11px] text-slate-400">Официальный репозиторий UET</div>
+                    </div>
+                    <div class="bg-white dark:bg-[#112240] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                        <span class="text-xs font-bold uppercase text-slate-400">Последний коммит</span>
+                        <div id="gitCommitVal" class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono break-all">Загрузка...</div>
+                        <div class="text-[11px] text-slate-400">HEAD коммит на сервере</div>
+                    </div>
+                    <div class="bg-white dark:bg-[#112240] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                        <span class="text-xs font-bold uppercase text-slate-400">Таймаут защиты от спама (Cooldown)</span>
+                        <select id="cooldownSelectVal" onchange="updateCooldownValue()" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                            <option value="300">5 минут</option>
+                            <option value="900">15 минут</option>
+                            <option value="1200" selected>20 минут</option>
+                            <option value="1800">30 минут</option>
+                            <option value="3600">60 минут</option>
+                            <option value="0">Отключен (0)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Действия службы и Git -->
+                <div class="bg-white dark:bg-[#112240] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                    <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Управление обновлениями и службой</h3>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="triggerGitPull()" class="px-4 py-2.5 rounded-xl bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5">
+                            <span>📥 Git Pull (Стянуть обновления)</span>
+                        </button>
+                        <button onclick="triggerRestartBotService()" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5">
+                            <span>⚡ Быстрый рестарт бота</span>
+                        </button>
+                        <button onclick="triggerClearAllTestData()" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 font-bold text-xs transition flex items-center gap-1.5">
+                            <span>🧪 Удалить тестовые заявки (#900000+)</span>
+                        </button>
+                        <button onclick="triggerToggleGlobalNotifications(false)" class="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition">
+                            <span>🔕 Отключить уведомления всем</span>
+                        </button>
+                        <button onclick="triggerToggleGlobalNotifications(true)" class="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition">
+                            <span>🔔 Включить уведомления всем</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Реестр актов уничтожения ПДн -->
+                <div class="bg-white dark:bg-[#112240] rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
+                    <div class="p-5 border-b border-slate-200 dark:border-slate-800">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">📜 Реестр уничтожения ПДн (152-ФЗ / ГОСТ)</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Электронные акты безвозвратного уничтожения персональных данных отказных кандидатов</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase text-slate-400 bg-slate-50/50 dark:bg-slate-800/40">
+                                    <th class="py-3.5 px-4">№ Акта</th>
+                                    <th class="py-3.5 px-4">ID кандидата</th>
+                                    <th class="py-3.5 px-4">Платформа</th>
+                                    <th class="py-3.5 px-4">Причина</th>
+                                    <th class="py-3.5 px-4">Дата уничтожения</th>
+                                </tr>
+                            </thead>
+                            <tbody id="destructionLogsTbody" class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                                <tr><td colspan="5" class="text-center text-slate-400 py-6">Загрузка реестра...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
-    <!-- МОБИЛЬНАЯ НАВИГАЦИЯ (BOTTOM BAR) -->
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#112240]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex justify-around py-2 z-40">
-        <button onclick="switchTab('landing')" id="mTabLanding" class="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[#1371B9] dark:text-blue-400 font-bold">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-            <span class="text-[10px] mt-0.5">Главная</span>
-        </button>
-        <button onclick="switchTab('survey16')" id="mTabSurvey" class="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-400">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-            <span class="text-[10px] mt-0.5">16 шагов</span>
-        </button>
-        <button onclick="switchTab('cabinet')" id="mTabCabinet" class="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-400">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <span class="text-[10px] mt-0.5">Кабинет</span>
-        </button>
-        <button onclick="handleRoleProtectedClick('hr')" id="mTabHr" class="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-400">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            <span class="text-[10px] mt-0.5">HR</span>
-        </button>
-        <button onclick="handleRoleProtectedClick('superadmin')" id="mTabTech" class="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-400">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-            <span class="text-[10px] mt-0.5">Root</span>
-        </button>
-    </nav>
 
-    <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ (ЗАЩИЩЕННЫЙ ВХОД ПО ПАРОЛЮ) -->
-    <div id="loginModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-[#112240] rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-slate-200 dark:border-slate-700 transition-colors">
-            <div class="flex justify-between items-center mb-6">
+
+    <!-- МОДАЛЬНОЕ ОКНО ДЕТАЛЬНОГО ПРОСМОТРА АНКЕТЫ СОИСКАТЕЛЯ (16 ШАГОВ) -->
+    <div id="candidateModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-[#112240] rounded-3xl max-w-3xl w-full p-6 md:p-8 shadow-2xl border border-slate-200 dark:border-slate-700 transition-colors my-8 space-y-5">
+            
+            <!-- Заголовок модалки -->
+            <div class="flex justify-between items-start border-b border-slate-200 dark:border-slate-700 pb-4">
                 <div>
-                    <h3 class="text-xl font-extrabold">Вход в защищенный контур</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Авторизация по логину и паролю из бота</p>
+                    <h3 id="modalCandTitle" class="text-xl font-extrabold text-slate-900 dark:text-white">Анкета соискателя #...</h3>
+                    <div id="modalCandSub" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Загрузка данных анкеты...</div>
                 </div>
-                <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+                <button onclick="closeCandidateModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition">✕</button>
             </div>
-            <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+
+            <!-- Плашка проверки комплаенса / СБ (152-ФЗ / 328.1 ТК РФ / 86 УК РФ) -->
+            <div id="modalComplianceBox" class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-1">
+                <div class="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <span>🛡 Проверка безопасности и соответствия:</span>
+                </div>
+                <p id="modalComplianceText" class="text-slate-700 dark:text-slate-300">Соответствует требованиям законодательства (ст. 328.1 ТК РФ и ст. 86 УК РФ).</p>
+            </div>
+
+            <!-- Сетка всех данных 16 шагов -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">ФИО соискателя</span>
+                    <span id="mFio" class="font-semibold text-slate-800 dark:text-slate-200 text-sm">—</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Контактный телефон</span>
+                    <span id="mPhone" class="font-semibold text-[#1371B9] dark:text-blue-400">—</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Вакансия / Направление</span>
+                    <span id="mVacancy" class="font-semibold text-slate-800 dark:text-slate-200">—</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Дата рождения</span>
+                    <span id="mBirth" class="font-semibold text-slate-800 dark:text-slate-200">—</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Город / Район</span>
+                    <span id="mCity" class="font-semibold text-slate-800 dark:text-slate-200">—</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Водительские категории</span>
+                    <span id="mLicense" class="font-semibold text-slate-800 dark:text-slate-200">—</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Опыт работы и стаж</span>
+                    <span id="mExp" class="font-semibold text-slate-800 dark:text-slate-200">—</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Базовое образование</span>
+                    <span id="mEdu" class="font-semibold text-slate-800 dark:text-slate-200">—</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Смены и общежитие</span>
+                    <span id="mConditions" class="font-semibold text-slate-800 dark:text-slate-200">—</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 sm:col-span-2">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Назначенное собеседование (Депо и время)</span>
+                    <span id="mInterview" class="font-semibold text-slate-800 dark:text-slate-200">—</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400">Источник анкеты</span>
+                    <span id="mSource" class="font-semibold text-slate-800 dark:text-slate-200">—</span>
+                </div>
+            </div>
+
+            <!-- Поле заметок отдела кадров (HR) -->
+            <div class="space-y-2">
+                <label class="block text-xs font-bold uppercase text-slate-400">Внутренняя заметка отдела кадров</label>
+                <textarea id="mAdminNote" rows="2" placeholder="Введите внутренний комментарий HR по соискателю..." class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:outline-none focus:border-[#1371B9]"></textarea>
+                <div class="flex justify-end">
+                    <button onclick="saveCandidateNoteFromModal()" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition">
+                        💾 Сохранить заметку
+                    </button>
+                </div>
+            </div>
+
+            <!-- Кнопки смены статуса и действий -->
+            <div class="pt-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-2 justify-between items-center">
+                <div class="flex flex-wrap gap-1.5">
+                    <button onclick="changeCandidateStatusAction('В работе')" class="px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-[#1371B9] dark:text-blue-300 hover:bg-blue-100 text-xs font-bold transition">
+                        🟡 В работу
+                    </button>
+                    <button onclick="changeCandidateStatusAction('Приглашен')" class="px-3 py-2 rounded-xl bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 hover:bg-purple-100 text-xs font-bold transition">
+                        📅 Собеседование
+                    </button>
+                    <button onclick="changeCandidateStatusAction('Принят')" class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-sm transition">
+                        🟢 Принят в депо
+                    </button>
+                    <button onclick="changeCandidateStatusAction('Отказ')" class="px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-300 hover:bg-red-100 text-xs font-bold transition">
+                        ❌ Отказ
+                    </button>
+                    <button onclick="changeCandidateStatusAction('Архив')" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold transition">
+                        📦 В архив
+                    </button>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    <button id="btnModalBlacklist" onclick="toggleBlacklistCurrentCandidate()" class="px-3 py-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-xs font-bold transition">
+                        ⛔ В черный список (ЧС)
+                    </button>
+                    <button onclick="deleteCurrentCandidateAction()" class="px-3 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 text-xs font-bold transition">
+                        🗑 Удалить
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ И РЕГИСТРАЦИИ (ТЕЛЕГРАМ / САЙТ) -->
+    <div id="loginModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-[#112240] rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-slate-200 dark:border-slate-700 transition-colors my-8">
+            
+            <!-- Заголовок и кнопка закрытия -->
+            <div class="flex justify-between items-center mb-5">
                 <div>
-                    <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Логин / Табельный номер / ID</label>
-                    <input
-                        id="loginUsername"
-                        type="text"
-                        placeholder="admin, hr или ваш Telegram ID..."
-                        class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-sm"
-                        required
-                    />
+                    <h3 class="text-xl font-extrabold flex items-center gap-2">
+                        <span>Личный кабинет МУП «УЭТ»</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Вход и регистрация через Telegram или на сайте</p>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Пароль</label>
-                    <input
-                        id="loginPassword"
-                        type="password"
-                        placeholder="••••••••"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-sm"
-                        required
-                    />
-                </div>
-                <div id="loginErrorMsg" class="hidden text-xs text-red-500 font-semibold p-2.5 rounded-xl bg-red-500/10 border border-red-500/20"></div>
-                
-                <div class="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/60 p-3 rounded-xl space-y-1">
-                    <div>🔑 <strong>Как получить пароль:</strong> отправьте боту <code>@uet_hr_bot</code> команду <code>/password ВАШ_ПАРОЛЬ</code>.</div>
-                    <div>💡 <strong>Служебный вход:</strong> <code>admin</code> (пароль <code>uet2026</code>) или <code>hr</code> (пароль <code>hr</code>).</div>
-                </div>
-                
-                <button type="submit" id="btnLoginSubmit" class="w-full py-3.5 bg-[#1371B9] hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition">
-                    Войти в систему
+                <button onclick="closeLoginModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition">✕</button>
+            </div>
+
+            <!-- Вкладки: Вход / Регистрация -->
+            <div class="flex rounded-2xl bg-slate-100 dark:bg-slate-800/80 p-1 mb-5">
+                <button id="authTabBtnLogin" onclick="switchAuthTab('login')" class="flex-1 py-2.5 rounded-xl font-bold text-xs transition bg-[#1371B9] text-white shadow-sm flex items-center justify-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                    <span>Вход в систему</span>
                 </button>
-            </form>
+                <button id="authTabBtnRegister" onclick="switchAuthTab('register')" class="flex-1 py-2.5 rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                    <span>Регистрация соискателя</span>
+                </button>
+            </div>
+
+            <!-- ================= ВКЛАДКА 1: ВХОД ================= -->
+            <div id="authContentLogin" class="space-y-4">
+                
+                <!-- Быстрый вход через Telegram -->
+                <div class="p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="font-bold text-xs text-sky-800 dark:text-sky-300 flex items-center gap-1.5">
+                            <span>✈️ Вход через Telegram</span>
+                        </div>
+                        <span class="text-[10px] bg-sky-500 text-white font-bold px-2 py-0.5 rounded-full">1 клик</span>
+                    </div>
+                    
+                    <button type="button" onclick="handleTelegramQuickAuth()" id="btnTgQuickAuth" class="w-full py-3 px-4 rounded-xl bg-[#229ED9] hover:bg-[#1E88C7] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.17 3.35-1.37 3.73-1.37.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                        <span>Войти через Telegram-аккаунт</span>
+                    </button>
+                    
+                    <div class="flex items-center justify-between text-[11px] text-sky-700 dark:text-sky-400 pt-1">
+                        <a href="https://t.me/uet_hr_bot?start=site_auth" target="_blank" class="hover:underline flex items-center gap-1">
+                            <span>🤖 Открыть бота @uet_hr_bot</span>
+                            <span>↗</span>
+                        </a>
+                        <span class="text-slate-400">Команда: <code>/password</code></span>
+                    </div>
+                </div>
+
+                <!-- Разделитель -->
+                <div class="relative flex items-center justify-center my-2">
+                    <div class="border-t border-slate-200 dark:border-slate-700 w-full"></div>
+                    <span class="bg-white dark:bg-[#112240] px-3 text-[11px] text-slate-400 font-semibold uppercase shrink-0">или вход по логину / телефону</span>
+                </div>
+
+                <!-- Форма входа на сайте -->
+                <form onsubmit="handleLoginSubmit(event)" autocomplete="off" class="space-y-3.5">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Телефон, номер анкеты или логин</label>
+                        <input
+                            id="loginUsername"
+                            type="text"
+                            autocomplete="off"
+                            autocorrect="off"
+                            placeholder="+7 900 123-45-67, № анкеты, admin или hr..."
+                            class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-xs sm:text-sm"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Пароль</label>
+                        <input
+                            id="loginPassword"
+                            type="password"
+                            autocomplete="new-password"
+                            placeholder="••••••••"
+                            class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-xs sm:text-sm"
+                        />
+                        <p class="text-[10px] text-slate-400 mt-1">Для соискателей: если пароль не задавали, оставьте пустым или введите номер анкеты</p>
+                    </div>
+
+                    <div id="loginErrorMsg" class="hidden text-xs text-red-500 font-semibold p-3 rounded-xl bg-red-500/10 border border-red-500/20"></div>
+
+                    <button type="submit" id="btnLoginSubmit" class="w-full py-3.5 bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition">
+                        Войти на сайте
+                    </button>
+                </form>
+            </div>
+
+            <!-- ================= ВКЛАДКА 2: РЕГИСТРАЦИЯ СОИСКАТЕЛЯ ================= -->
+            <div id="authContentRegister" class="space-y-4 hidden">
+                
+                <!-- Быстрая регистрация через бота -->
+                <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 space-y-2">
+                    <div class="font-bold text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                        <span>✈️ Быстро в Telegram-боте</span>
+                        <span class="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">Удобно</span>
+                    </div>
+                    <p class="text-[11px] text-emerald-700 dark:text-emerald-400">
+                        Бот задаст вопросы в диалоговом режиме и сразу запишет вас на собеседование.
+                    </p>
+                    <a href="https://t.me/uet_hr_bot?start=survey" target="_blank" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
+                        <span>Открыть @uet_hr_bot в Telegram</span>
+                        <span>↗</span>
+                    </a>
+                </div>
+
+                <!-- Разделитель -->
+                <div class="relative flex items-center justify-center my-2">
+                    <div class="border-t border-slate-200 dark:border-slate-700 w-full"></div>
+                    <span class="bg-white dark:bg-[#112240] px-3 text-[11px] text-slate-400 font-semibold uppercase shrink-0">или регистрация на сайте</span>
+                </div>
+
+                <!-- Форма онлайн-регистрации на сайте -->
+                <form onsubmit="handleRegisterSubmit(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Ваше ФИО *</label>
+                        <input
+                            id="regFullName"
+                            type="text"
+                            placeholder="Иванов Иван Иванович"
+                            class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Номер телефона *</label>
+                        <input
+                            id="regPhone"
+                            type="tel"
+                            placeholder="+7 (900) 123-45-67"
+                            class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Интересующая вакансия</label>
+                        <select id="regVacancy" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm">
+                            <option value="Водитель трамвая (обучение со стипендией)">Водитель трамвая (Вагон «Львёнок», обучение 2 мес., стипендия)</option>
+                            <option value="Водитель троллейбуса">Водитель троллейбуса (Заволжское депо)</option>
+                            <option value="Слесарь по ремонту подвижного состава">Слесарь-электрик по ремонту подвижного состава</option>
+                            <option value="Монтер пути / Контактник">Монтер пути / Электромонтер контактной сети</option>
+                            <option value="Другая специальность">Другая специальность / Резерв</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Пароль для личного кабинета</label>
+                        <input
+                            id="regPassword"
+                            type="password"
+                            placeholder="Придумайте пароль (от 3 символов)..."
+                            class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                        />
+                    </div>
+
+                    <div class="flex items-start gap-2 pt-1">
+                        <input id="regConsentCheck" type="checkbox" checked required class="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500">
+                        <label for="regConsentCheck" class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Я даю согласие на обработку персональных данных в соответствии со ст. 9 ФЗ-152 и правилами МУП «УЭТ».
+                        </label>
+                    </div>
+
+                    <div id="regErrorMsg" class="hidden text-xs text-red-500 font-semibold p-3 rounded-xl bg-red-500/10 border border-red-500/20"></div>
+                    <div id="regSuccessMsg" class="hidden text-xs text-emerald-600 dark:text-emerald-400 font-semibold p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20"></div>
+
+                    <button type="submit" id="btnRegSubmit" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition">
+                        Зарегистрироваться и открыть кабинет
+                    </button>
+                </form>
+            </div>
+
         </div>
     </div>
 
@@ -858,6 +1241,9 @@
                 } catch (e) {
                     sessionStorage.removeItem('uet_session');
                 }
+            } else if (window.Telegram?.WebApp?.initData && window.Telegram.WebApp.initData.length > 5) {
+                // Бесшовный вход для Telegram Mini App
+                handleTelegramQuickAuth(true);
             }
 
             // Проверка URL параметров
@@ -866,10 +1252,16 @@
             if (reqTab && ['landing', 'survey16', 'cabinet'].includes(reqTab)) {
                 switchTab(reqTab);
             }
+            if (urlParams.get('auth') || urlParams.get('login') || window.location.pathname === '/login') {
+                openLoginModal('login');
+            } else if (urlParams.get('register')) {
+                openRegisterModal();
+            }
 
             // Инициализация данных
             loadRealCandidates();
             loadQuestions();
+            loadRecruitmentConfig();
             loadSystemStats();
             fetchSystemLogs();
             loadDestructionLogs();
@@ -897,22 +1289,205 @@
         }
 
         // =========================================================================
-        // АВТОРИЗАЦИЯ И РАЗГРАНИЧЕНИЕ ПРАВ (ТОЛЬКО ПО ПАРОЛЮ)
+        // АВТОРИЗАЦИЯ И РАЗГРАНИЧЕНИЕ ПРАВ (ТЕЛЕГРАМ / САЙТ / РЕГИСТРАЦИЯ)
         // =========================================================================
 
-        function openLoginModal(targetRole) {
-            document.getElementById('loginErrorMsg').classList.add('hidden');
-            document.getElementById('loginModal').classList.remove('hidden');
-            if (targetRole === 'superadmin') {
-                document.getElementById('loginUsername').value = 'admin';
-            } else if (targetRole === 'hr') {
-                document.getElementById('loginUsername').value = 'hr';
+        function switchAuthTab(tab) {
+            const btnLogin = document.getElementById('authTabBtnLogin');
+            const btnReg = document.getElementById('authTabBtnRegister');
+            const contentLogin = document.getElementById('authContentLogin');
+            const contentReg = document.getElementById('authContentRegister');
+            const errLogin = document.getElementById('loginErrorMsg');
+            const errReg = document.getElementById('regErrorMsg');
+            const succReg = document.getElementById('regSuccessMsg');
+
+            if (errLogin) errLogin.classList.add('hidden');
+            if (errReg) errReg.classList.add('hidden');
+            if (succReg) succReg.classList.add('hidden');
+
+            if (tab === 'register') {
+                btnLogin.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1.5';
+                btnReg.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs transition bg-emerald-600 text-white shadow-sm flex items-center justify-center gap-1.5';
+                contentLogin.classList.add('hidden');
+                contentReg.classList.remove('hidden');
+                setTimeout(() => document.getElementById('regFullName')?.focus(), 50);
+            } else {
+                btnLogin.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs transition bg-[#1371B9] text-white shadow-sm flex items-center justify-center gap-1.5';
+                btnReg.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1.5';
+                contentLogin.classList.remove('hidden');
+                contentReg.classList.add('hidden');
+                setTimeout(() => document.getElementById('loginUsername')?.focus(), 50);
             }
-            document.getElementById('loginPassword').focus();
+        }
+
+        function openLoginModal(targetTabOrRole = 'login', targetRole = '') {
+            const errEl = document.getElementById('loginErrorMsg');
+            if (errEl) errEl.classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('hidden');
+
+            let tab = 'login';
+            if (targetTabOrRole === 'register') {
+                tab = 'register';
+            }
+
+            switchAuthTab(tab);
+
+            // Очищаем поля ввода - никаких авто-заполняемых логинов и паролей
+            const uInput = document.getElementById('loginUsername');
+            const pInput = document.getElementById('loginPassword');
+            if (uInput) uInput.value = '';
+            if (pInput) pInput.value = '';
+        }
+
+        function openRegisterModal() {
+            openLoginModal('register');
         }
 
         function closeLoginModal() {
             document.getElementById('loginModal').classList.add('hidden');
+        }
+
+        async function handleTelegramQuickAuth(silent = false) {
+            const tg = window.Telegram?.WebApp;
+            const btn = document.getElementById('btnTgQuickAuth');
+            const errEl = document.getElementById('loginErrorMsg');
+
+            if (errEl) errEl.classList.add('hidden');
+
+            // 1. Если открыто внутри Telegram Mini App
+            if (tg && tg.initData && tg.initData.length > 5) {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerText = 'Вход через Telegram Mini App...';
+                }
+                try {
+                    const resp = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ method: 'tma', init_data: tg.initData })
+                    });
+                    const res = await resp.json();
+                    if (res.ok) {
+                        sessionStorage.setItem('uet_session', JSON.stringify(res));
+                        applyAuthSuccess(res);
+                        closeLoginModal();
+                        if (res.role === 'superadmin' || res.role === 'super') switchTab('tech');
+                        else if (res.role === 'hr') switchTab('applicants');
+                        else switchTab('cabinet');
+                        return;
+                    } else if (!silent) {
+                        if (errEl) {
+                            errEl.innerText = res.error || 'Ошибка входа через Telegram Mini App.';
+                            errEl.classList.remove('hidden');
+                        }
+                    }
+                } catch (e) {
+                    console.error('TMA error:', e);
+                } finally {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.17 3.35-1.37 3.73-1.37.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg><span>Войти через Telegram-аккаунт</span>`;
+                    }
+                }
+            }
+
+            if (silent) return;
+
+            // 2. Если в обычном браузере
+            const tgPrompt = prompt('Введите ваш Telegram ID или номер телефона, привязанный к боту @uet_hr_bot:');
+            if (!tgPrompt) return;
+
+            try {
+                const resp = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ method: 'telegram', telegram_id: tgPrompt.trim(), username: tgPrompt.trim() })
+                });
+                const res = await resp.json();
+                if (res.ok) {
+                    sessionStorage.setItem('uet_session', JSON.stringify(res));
+                    applyAuthSuccess(res);
+                    closeLoginModal();
+                    if (res.role === 'superadmin' || res.role === 'super') switchTab('tech');
+                    else if (res.role === 'hr') switchTab('applicants');
+                    else switchTab('cabinet');
+                } else {
+                    if (errEl) {
+                        errEl.innerText = res.error || 'Пользователь не найден. Запустите бота @uet_hr_bot или зарегистрируйтесь во вкладке «Регистрация».';
+                        errEl.classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                if (errEl) {
+                    errEl.innerText = 'Ошибка связи с сервером при входе через Telegram.';
+                    errEl.classList.remove('hidden');
+                }
+            }
+        }
+
+        async function handleRegisterSubmit(e) {
+            e.preventDefault();
+            const fullName = document.getElementById('regFullName').value.trim();
+            const phone = document.getElementById('regPhone').value.trim();
+            const vacancy = document.getElementById('regVacancy').value;
+            const password = document.getElementById('regPassword').value.trim();
+            const errEl = document.getElementById('regErrorMsg');
+            const succEl = document.getElementById('regSuccessMsg');
+            const submitBtn = document.getElementById('btnRegSubmit');
+
+            errEl.classList.add('hidden');
+            succEl.classList.add('hidden');
+
+            if (!fullName) {
+                errEl.innerText = 'Пожалуйста, введите ваше ФИО.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            if (!phone || phone.replace(/\D/g, '').length < 7) {
+                errEl.innerText = 'Пожалуйста, укажите корректный номер телефона (от 7 цифр).';
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Регистрация в кадровой системе...';
+
+            try {
+                const resp = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        full_name: fullName,
+                        phone: phone,
+                        vacancy: vacancy,
+                        password: password,
+                        platform: 'web'
+                    })
+                });
+                const res = await resp.json();
+
+                if (res.ok) {
+                    succEl.innerText = res.message || `Регистрация завершена! Номер вашей анкеты: #${res.ticket_id}`;
+                    succEl.classList.remove('hidden');
+
+                    sessionStorage.setItem('uet_session', JSON.stringify(res));
+                    applyAuthSuccess(res);
+
+                    setTimeout(() => {
+                        closeLoginModal();
+                        switchTab('cabinet');
+                    }, 1200);
+                } else {
+                    errEl.innerText = res.error || 'Ошибка при регистрации. Проверьте данные.';
+                    errEl.classList.remove('hidden');
+                }
+            } catch (err) {
+                errEl.innerText = 'Сбой сети при регистрации. Попробуйте еще раз.';
+                errEl.classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Зарегистрироваться и открыть кабинет';
+            }
         }
 
         function handleRoleProtectedClick(targetRole) {
@@ -926,7 +1501,7 @@
                 return;
             }
             // Иначе требуем пароль
-            openLoginModal(targetRole);
+            openLoginModal('login', targetRole);
         }
 
         async function handleLoginSubmit(e) {
@@ -962,7 +1537,7 @@
                         switchTab('cabinet');
                     }
                 } else {
-                    errEl.innerText = res.error || 'Неверный логин или пароль';
+                    errEl.innerText = res.error || 'Неверный логин, телефон или пароль';
                     errEl.classList.remove('hidden');
                 }
             } catch (err) {
@@ -970,7 +1545,7 @@
                 errEl.classList.remove('hidden');
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerText = 'Войти в систему';
+                submitBtn.innerText = 'Войти на сайте';
             }
         }
 
@@ -983,27 +1558,58 @@
             userBlock.classList.remove('hidden');
             userBlock.classList.add('flex');
 
-            document.getElementById('userProfileName').innerText = authData.name || (authData.role === 'superadmin' ? 'Супер-Админ' : 'Сотрудник');
+            document.getElementById('userProfileName').innerText = authData.name || (authData.role === 'superadmin' ? 'Супер-Админ' : (authData.role === 'applicant' ? `Соискатель #${authData.ticket_id || authData.user_id}` : 'Сотрудник'));
             document.getElementById('userRoleBadge').innerText = `● ${authData.label || 'Сессия защищена'}`;
 
-            // Показываем сайдбар для служебных пользователей
-            const sidebar = document.getElementById('sidebarNav');
-            sidebar.classList.remove('hidden');
-            sidebar.classList.add('md:flex');
+            // Если авторизован соискатель — предзаполняем его кабинет
+            if (state.role === 'applicant') {
+                const cabTitle = document.getElementById('cabinetStepTitle');
+                const cabSub = document.getElementById('cabinetVacancySub');
+                const lookupInput = document.getElementById('candidateLookupInput');
+                if (cabTitle) cabTitle.innerText = `Личный кабинет: ${authData.name || 'Соискатель'}`;
+                if (cabSub && authData.vacancy) cabSub.innerText = `Направление: ${authData.vacancy} (Заявка #${authData.ticket_id || authData.user_id})`;
+                if (lookupInput && (authData.phone || authData.ticket_id)) {
+                    lookupInput.value = authData.phone || authData.ticket_id;
+                    lookupCandidateStatus();
+                }
+            }
 
-            const hrNavItems = document.getElementById('hrNavItems');
-            const superNavItems = document.getElementById('superNavItems');
+            // Показываем служебные разделы в ЕДИНОМ верхнем меню
+            const serviceNav = document.getElementById('serviceNavItems');
+            const mServiceNav = document.getElementById('mServiceNav');
+            if (serviceNav) {
+                serviceNav.classList.remove('hidden');
+                serviceNav.classList.add('flex');
+            }
+            if (mServiceNav) {
+                mServiceNav.classList.remove('hidden');
+                mServiceNav.classList.add('flex');
+            }
+
+            const techBtn = document.getElementById('topBtnTech');
+            const mTechBtn = document.getElementById('mTechBtn');
+            const adminsBtn = document.getElementById('topBtnAdmins');
+            const mAdminsBtn = document.getElementById('mAdminsBtn');
+            const gitBtn = document.getElementById('topBtnGit');
+            const mGitBtn = document.getElementById('mGitBtn');
 
             if (state.role === 'superadmin') {
-                hrNavItems.classList.remove('hidden');
-                superNavItems.classList.remove('hidden');
-            } else if (state.role === 'hr') {
-                hrNavItems.classList.remove('hidden');
-                superNavItems.classList.add('hidden');
+                if (techBtn) techBtn.classList.remove('hidden');
+                if (mTechBtn) mTechBtn.classList.remove('hidden');
+                if (adminsBtn) adminsBtn.classList.remove('hidden');
+                if (mAdminsBtn) mAdminsBtn.classList.remove('hidden');
+                if (gitBtn) gitBtn.classList.remove('hidden');
+                if (mGitBtn) mGitBtn.classList.remove('hidden');
             } else {
-                hrNavItems.classList.add('hidden');
-                superNavItems.classList.add('hidden');
+                if (techBtn) techBtn.classList.add('hidden');
+                if (mTechBtn) mTechBtn.classList.add('hidden');
+                if (adminsBtn) adminsBtn.classList.add('hidden');
+                if (mAdminsBtn) mAdminsBtn.classList.add('hidden');
+                if (gitBtn) gitBtn.classList.add('hidden');
+                if (mGitBtn) mGitBtn.classList.add('hidden');
             }
+
+            loadRecruitmentConfig();
         }
 
         function logoutUser() {
@@ -1016,11 +1622,29 @@
             userBlock.classList.add('hidden');
             userBlock.classList.remove('flex');
 
-            const sidebar = document.getElementById('sidebarNav');
-            sidebar.classList.add('hidden');
-            sidebar.classList.remove('md:flex');
+            // Скрываем служебные разделы из единого меню
+            const serviceNav = document.getElementById('serviceNavItems');
+            const mServiceNav = document.getElementById('mServiceNav');
+            if (serviceNav) {
+                serviceNav.classList.add('hidden');
+                serviceNav.classList.remove('flex');
+            }
+            if (mServiceNav) {
+                mServiceNav.classList.add('hidden');
+                mServiceNav.classList.remove('flex');
+            }
+
+            ['topBtnTech', 'mTechBtn', 'topBtnAdmins', 'mAdminsBtn', 'topBtnGit', 'mGitBtn'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
 
             switchTab('landing');
+        }
+
+        function toggleMobileNav() {
+            const el = document.getElementById('mobileNavDropdown');
+            if (el) el.classList.toggle('hidden');
         }
 
         // =========================================================================
@@ -1038,6 +1662,8 @@
                 'questions': document.getElementById('tabContentQuestions'),
                 'security': document.getElementById('tabContentSecurity'),
                 'tech': document.getElementById('tabContentTech'),
+                'admins': document.getElementById('tabContentAdmins'),
+                'git': document.getElementById('tabContentGit'),
             };
 
             Object.keys(tabs).forEach(k => {
@@ -1046,30 +1672,36 @@
                 }
             });
 
-            // Обновление верхних кнопок
+            // Обновление кнопок в ЕДИНОМ меню
             const topBtns = [
                 { id: 'topBtnLanding', tab: 'landing' },
                 { id: 'topBtnSurvey', tab: 'survey16' },
                 { id: 'topBtnCabinet', tab: 'cabinet' },
-                { id: 'topBtnHr', tab: 'applicants' },
-                { id: 'topBtnSuper', tab: 'tech' }
+                { id: 'topBtnApplicants', tab: 'applicants' },
+                { id: 'topBtnQuestions', tab: 'questions' },
+                { id: 'topBtnSecurity', tab: 'security' },
+                { id: 'topBtnAdmins', tab: 'admins' },
+                { id: 'topBtnGit', tab: 'git' },
+                { id: 'topBtnTech', tab: 'tech' }
             ];
             topBtns.forEach(b => {
                 const el = document.getElementById(b.id);
                 if (el) {
                     if (b.tab === tabName) {
-                        el.className = "px-3 py-2 rounded-xl transition bg-[#1371B9] text-white shadow-sm font-bold";
+                        el.className = "px-3.5 py-2 rounded-xl transition bg-[#1371B9] text-white shadow-sm font-bold flex items-center gap-1.5";
                     } else {
-                        el.className = "px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300";
+                        el.className = "px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5";
                     }
                 }
             });
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
-            if (tabName === 'applicants') renderApplicantsTable();
-            if (tabName === 'questions') renderQuestions();
+            if (tabName === 'applicants') loadRealCandidates();
+            if (tabName === 'questions') loadQuestions();
             if (tabName === 'tech') fetchSystemLogs();
+            if (tabName === 'admins') loadAdminsList();
+            if (tabName === 'git') loadGitPanelInfo();
         }
 
         // =========================================================================
@@ -1460,6 +2092,7 @@
                 if (data.candidates && data.candidates.length > 0) {
                     state.applicants = data.candidates.map(c => ({
                         id: `73-${c.ticket_id}`,
+                        rawId: c.ticket_id,
                         name: c.full_name || 'Соискатель',
                         vacancy: c.vacancy || 'Водитель трамвая',
                         step: c.status || 'Новая',
@@ -1480,23 +2113,28 @@
             const list = filteredList || state.applicants;
             tbody.innerHTML = list.map(app => `
                 <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                    <td class="py-3.5 px-4 font-mono text-xs font-bold text-[#1371B9] dark:text-blue-400">${app.id}</td>
-                    <td class="py-3.5 px-4 font-semibold">${app.name}</td>
-                    <td class="py-3.5 px-4 text-xs">${app.vacancy}</td>
+                    <td class="py-3.5 px-4 font-mono text-xs font-bold text-[#1371B9] dark:text-blue-400">#${app.rawId || app.id}</td>
+                    <td class="py-3.5 px-4 font-semibold cursor-pointer hover:underline" onclick="openCandidateModal(${app.rawId || 0})">${escapeHtml(app.name)}</td>
+                    <td class="py-3.5 px-4 text-xs">${escapeHtml(app.vacancy)}</td>
                     <td class="py-3.5 px-4">
                         <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-300">
-                            ${app.step}
+                            ${escapeHtml(app.step)}
                         </span>
                     </td>
-                    <td class="py-3.5 px-4 text-xs text-slate-500">${app.source}</td>
+                    <td class="py-3.5 px-4 text-xs text-slate-500">${escapeHtml(app.source)}</td>
                     <td class="py-3.5 px-4">
                         <span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${
                             app.pdStatus.includes('Уничтожено') 
                                 ? 'bg-red-500/10 text-red-500' 
                                 : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                         }">
-                            ${app.pdStatus}
+                            ${escapeHtml(app.pdStatus)}
                         </span>
+                    </td>
+                    <td class="py-3.5 px-4 text-right">
+                        <button onclick="openCandidateModal(${app.rawId || 0})" class="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-[#1371B9] dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-bold text-xs inline-flex items-center gap-1 transition">
+                            <span>👁️ Анкета</span>
+                        </button>
                     </td>
                 </tr>
             `).join('');
@@ -1514,7 +2152,10 @@
             renderApplicantsTable(filtered);
         }
 
-        // Конструктор вопросов
+        // =========================================================================
+        // КОНСТРУКТОР ВОПРОСОВ (СИНХРОНИЗИРОВАН СО ВСЕМИ 16 ШАГАМИ)
+        // =========================================================================
+
         async function loadQuestions() {
             try {
                 const resp = await fetch('/api/questions');
@@ -1529,70 +2170,125 @@
         function renderQuestions() {
             const container = document.getElementById('questionsListContainer');
             if (!container) return;
+
+            // Если список пуст, используем стандартные 16 шагов
+            if (!state.questions || state.questions.length === 0) {
+                state.questions = [
+                    { id: 1, step: 1, text: "Фамилия, Имя и Отчество (полностью)", type: "Текст", field: "step1_fio", botSync: true },
+                    { id: 2, step: 2, text: "Дата рождения (трудоустройство строго с 18 лет)", type: "Дата", field: "step2_birthdate", botSync: true },
+                    { id: 3, step: 3, text: "Контактный номер телефона для связи", type: "Телефон", field: "step3_phone", botSync: true },
+                    { id: 4, step: 4, text: "Город и район проживания (для депо)", type: "Текст", field: "step4_city", botSync: true },
+                    { id: 5, step: 5, text: "Желаемая должность / Направление", type: "Выбор вакансии", field: "step5_vacancy", botSync: true },
+                    { id: 6, step: 6, text: "Наличие водительского удостоверения", type: "Выбор категории", field: "step6_license", botSync: true },
+                    { id: 7, step: 7, text: "Опыт работы и профессиональный стаж", type: "Текст", field: "step7_experience", botSync: true },
+                    { id: 8, step: 8, text: "Уровень базового образования", type: "Выбор", field: "step8_education", botSync: true },
+                    { id: 9, step: 9, text: "Гражданство соискателя (ТК РФ)", type: "Выбор", field: "step9_citizenship", botSync: true },
+                    { id: 10, step: 10, text: "Потребность в общежитии / компенсации 50% аренды", type: "Выбор (Да/Нет)", field: "step10_dormitory", botSync: true },
+                    { id: 11, step: 11, text: "Готовность к сменному графику (5/2, 2/2, 6/1)", type: "Выбор", field: "step11_shiftwork", botSync: true },
+                    { id: 12, step: 12, text: "Медицинские противопоказания / прохождение медкомиссии", type: "Выбор (Да/Нет)", field: "step12_medical", botSync: true },
+                    { id: 13, step: 13, text: "Справка об отсутствии судимости (ст. 328.1 ТК РФ)", type: "Выбор", field: "step13_criminal", botSync: true },
+                    { id: 14, step: 14, text: "Откуда вы узнали о наборе / Реферальная программа", type: "Выбор", field: "step14_source", botSync: true },
+                    { id: 15, step: 15, text: "Дополнительные пожелания и вопросы", type: "Текст", field: "step15_notes", botSync: true },
+                    { id: 16, step: 16, text: "Проверка анкеты и согласие на обработку ПДн (152-ФЗ)", type: "ГОСТ / Чекбокс", field: "step16_review", botSync: true }
+                ];
+            }
+
             container.innerHTML = state.questions.map(q => `
-                <div class="bg-white dark:bg-[#112240] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 transition-colors">
+                <div class="bg-white dark:bg-[#112240] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors hover:border-[#1371B9]">
                     <div class="flex items-center gap-3.5">
-                        <span class="w-9 h-9 rounded-xl bg-[#1371B9]/10 text-[#1371B9] dark:bg-blue-500/20 dark:text-blue-300 font-extrabold flex items-center justify-center text-xs">
-                            #${q.step}
+                        <span class="w-10 h-10 rounded-xl bg-[#1371B9]/10 text-[#1371B9] dark:bg-blue-500/20 dark:text-blue-300 font-extrabold flex items-center justify-center text-xs shrink-0">
+                            Шаг ${q.step}
                         </span>
                         <div>
-                            <div class="font-semibold text-sm">${q.text}</div>
-                            <div class="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
-                                <span>Тип поля: ${q.type}</span>
+                            <div class="font-bold text-sm text-slate-800 dark:text-slate-100">${q.text}</div>
+                            <div class="text-[11px] text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
+                                <span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 font-mono">Тип: ${q.type}</span>
                                 <span>•</span>
-                                <span class="text-emerald-500 font-medium">Синхронизировано с UETBot</span>
+                                <span class="text-emerald-500 font-semibold flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Синхронизировано с UETBot (16 шагов)
+                                </span>
                             </div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="deleteQuestion(${q.id})" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-500 transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <div class="flex items-center gap-2 self-end sm:self-center">
+                        <button onclick="editQuestionPrompt(${q.step})" class="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-[#1371B9] hover:text-white text-xs font-semibold transition" title="Редактировать формулировку">
+                            Изменить
                         </button>
                     </div>
                 </div>
             `).join('');
         }
 
-        function promptAddQuestion() {
-            document.getElementById('newQStep').value = state.questions.length + 1;
-            document.getElementById('newQText').value = '';
-            document.getElementById('addQuestionModal').classList.remove('hidden');
-        }
-
-        function closeAddQuestionModal() {
-            document.getElementById('addQuestionModal').classList.add('hidden');
-        }
-
-        async function saveNewQuestion() {
-            const step = parseInt(document.getElementById('newQStep').value) || (state.questions.length + 1);
-            const text = document.getElementById('newQText').value.trim();
-            const type = document.getElementById('newQType').value;
-
-            if (!text) return;
-            const newQ = { id: Date.now(), step: step, text: text, type: type, botSync: true };
-            state.questions.push(newQ);
-            renderQuestions();
-            closeAddQuestionModal();
-
-            try {
-                await fetch('/api/questions', {
+        function editQuestionPrompt(step) {
+            const q = state.questions.find(item => item.step === step);
+            if (!q) return;
+            const newText = prompt(`Шаг ${step} из 16:\nВведите новую формулировку вопроса:`, q.text);
+            if (newText && newText.trim()) {
+                q.text = newText.trim();
+                renderQuestions();
+                fetch('/api/questions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(state.questions)
-                });
+                }).catch(() => {});
+            }
+        }
+
+        // =========================================================================
+        // УПРАВЛЕНИЕ КАДРОВЫМИ ЗАДАЧАМИ И НАБОРОМ (ОТДЕЛЬНЫЙ КОНФИГ)
+        // =========================================================================
+
+        async function loadRecruitmentConfig() {
+            try {
+                const resp = await fetch('/api/hr/recruitment_config');
+                const cfg = await resp.json();
+                const badge = document.getElementById('heroRecruitmentBadge');
+                const badgeText = document.getElementById('heroRecruitmentBadgeText');
+                const chk = document.getElementById('hrCfgGroupTraining');
+                const seats = document.getElementById('hrCfgSeatsLeft');
+                const note = document.getElementById('hrCfgTaskNote');
+
+                if (chk) chk.checked = !!cfg.group_training_active;
+                if (seats) seats.value = cfg.training_seats_left || 0;
+                if (note) note.value = cfg.hr_task_note || '';
+
+                if (badge && badgeText) {
+                    if (cfg.group_training_active) {
+                        badge.classList.remove('hidden');
+                        badgeText.innerText = `Набор в новую группу обучения водителей: осталось ${cfg.training_seats_left || 5} мест!`;
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
             } catch (e) {}
         }
 
-        async function deleteQuestion(id) {
-            state.questions = state.questions.filter(q => q.id !== id);
-            renderQuestions();
+        async function saveRecruitmentConfig() {
+            const chk = document.getElementById('hrCfgGroupTraining');
+            const seats = document.getElementById('hrCfgSeatsLeft');
+            const note = document.getElementById('hrCfgTaskNote');
+            const payload = {
+                group_training_active: chk ? chk.checked : false,
+                training_seats_left: seats ? parseInt(seats.value) || 0 : 0,
+                hr_task_note: note ? note.value.trim() : '',
+                banner_text: 'Работа в МУП «Ульяновскэлектротранс»'
+            };
+
             try {
-                await fetch('/api/questions', {
+                const resp = await fetch('/api/hr/recruitment_config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(state.questions)
+                    body: JSON.stringify(payload)
                 });
-            } catch (e) {}
+                const res = await resp.json();
+                if (res.ok) {
+                    alert('✓ Конфигурация кадровых задач и набора успешно сохранена!');
+                    loadRecruitmentConfig();
+                }
+            } catch (e) {
+                alert('Ошибка сохранения конфигурации');
+            }
         }
 
         // Журнал уничтожения ПДн
@@ -1710,6 +2406,479 @@
                 await fetch('/api/super/restart_bot', { method: 'POST' });
                 alert('Команда перезапуска отправлена в systemd.');
             } catch (e) { alert('Перезапуск отправлен'); }
+        }
+
+        // =========================================================================
+        // КАРТОЧКА И ДЕТАЛЬНЫЙ ПРОСМОТР АНКЕТЫ СОИСКАТЕЛЯ (16 ШАГОВ)
+        // =========================================================================
+        let currentModalTicketId = null;
+        let currentModalCandidateUserId = null;
+        let currentModalIsBlocked = false;
+
+        async function openCandidateModal(ticketId) {
+            currentModalTicketId = ticketId;
+            const modal = document.getElementById('candidateModal');
+            if (modal) modal.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`/api/candidate/${ticketId}`);
+                if (!res.ok) {
+                    alert(`Не удалось загрузить данные анкеты #${ticketId}`);
+                    return;
+                }
+                const c = await res.json();
+                currentModalCandidateUserId = c.user_id;
+                currentModalIsBlocked = !!c.is_blocked;
+
+                const titleEl = document.getElementById('modalCandTitle');
+                const subEl = document.getElementById('modalCandSub');
+                if (titleEl) titleEl.innerText = `Анкета #${c.ticket_id} — ${c.full_name || 'Соискатель'}`;
+                if (subEl) subEl.innerText = `Статус: ${c.status || 'Новая'} | Подано: ${c.created_at || 'Сегодня'} [${(c.platform || 'tg').toUpperCase()}]`;
+
+                const setVal = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = val || '—';
+                };
+
+                setVal('mFio', c.full_name);
+                const phoneEl = document.getElementById('mPhone');
+                if (phoneEl) {
+                    phoneEl.innerHTML = c.phone ? `<a href="tel:${c.phone}" class="text-[#1371B9] hover:underline">${c.phone}</a>` : '—';
+                }
+                setVal('mVacancy', c.vacancy);
+                setVal('mBirth', c.birth_date);
+                setVal('mCity', c.city);
+                setVal('mLicense', c.driver_license || 'Отсутствует');
+                setVal('mExp', c.experience);
+                setVal('mEdu', c.education);
+                setVal('mConditions', `Смены: ${c.shift_work || '—'} | Общежитие: ${c.dormitory || '—'}`);
+                setVal('mInterview', (c.interview_depot || '—') + (c.interview_time ? ` (${c.interview_time})` : ''));
+                setVal('mSource', c.source || (c.is_test ? 'Тестовый контур' : 'Сайт / Бот'));
+
+                const noteEl = document.getElementById('mAdminNote');
+                if (noteEl) noteEl.value = c.admin_note || '';
+
+                const compBox = document.getElementById('modalComplianceBox');
+                const compText = document.getElementById('modalComplianceText');
+                if (compBox && compText) {
+                    if (c.compliance && c.compliance.has_risk) {
+                        compBox.className = 'p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1';
+                        compText.innerHTML = `<span class="text-amber-600 dark:text-amber-400 font-bold">Внимание:</span> ${c.compliance.text}`;
+                    } else {
+                        compBox.className = 'p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-1';
+                        compText.innerText = 'Соответствует требованиям законодательства (ст. 328.1 ТК РФ и ст. 86 УК РФ).';
+                    }
+                }
+
+                const blBtn = document.getElementById('btnModalBlacklist');
+                if (blBtn) {
+                    blBtn.innerText = currentModalIsBlocked ? '✅ Снять из ЧС' : '⛔ В черный список (ЧС)';
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки карточки:', e);
+            }
+        }
+
+        function closeCandidateModal() {
+            const modal = document.getElementById('candidateModal');
+            if (modal) modal.classList.add('hidden');
+            currentModalTicketId = null;
+        }
+
+        async function saveCandidateNoteFromModal() {
+            if (!currentModalTicketId) return;
+            const noteEl = document.getElementById('mAdminNote');
+            const note = noteEl ? noteEl.value.trim() : '';
+
+            try {
+                const res = await fetch(`/api/candidate/${currentModalTicketId}/note`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ note })
+                });
+                if (res.ok) {
+                    alert('Заметка успешно сохранена!');
+                } else {
+                    alert('Ошибка сохранения заметки');
+                }
+            } catch (e) {
+                alert('Сетевая ошибка при сохранении заметки');
+            }
+        }
+
+        async function changeCandidateStatusAction(newStatus) {
+            if (!currentModalTicketId) return;
+            try {
+                const res = await fetch(`/api/candidate/${currentModalTicketId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (res.ok) {
+                    alert(`Статус анкеты #${currentModalTicketId} изменен на: ${newStatus}`);
+                    closeCandidateModal();
+                    loadRealCandidates();
+                } else {
+                    alert('Ошибка изменения статуса');
+                }
+            } catch (e) {
+                alert('Сетевая ошибка при смене статуса');
+            }
+        }
+
+        async function toggleBlacklistCurrentCandidate() {
+            if (!currentModalTicketId) return;
+            const action = currentModalIsBlocked ? 'unblock' : 'block';
+            const actionLabel = currentModalIsBlocked ? 'разблокировать' : 'внести в черный список (ЧС)';
+            if (!confirm(`Вы действительно хотите ${actionLabel} данного соискателя?`)) return;
+
+            try {
+                const res = await fetch(`/api/candidate/${currentModalTicketId}/${action}`, { method: 'POST' });
+                if (res.ok) {
+                    alert(currentModalIsBlocked ? 'Соискатель разблокирован!' : 'Соискатель внесен в ЧС!');
+                    closeCandidateModal();
+                    loadRealCandidates();
+                }
+            } catch (e) {
+                alert('Ошибка выполнения операции с ЧС');
+            }
+        }
+
+        async function deleteCurrentCandidateAction() {
+            if (!currentModalTicketId) return;
+            if (!confirm(`ВНИМАНИЕ: Безвозвратно удалить анкету #${currentModalTicketId} с фиксацией акта уничтожения ПДн (152-ФЗ)?`)) return;
+
+            try {
+                const res = await fetch(`/api/candidate/${currentModalTicketId}/delete`, { method: 'POST' });
+                if (res.ok) {
+                    alert(`Анкета #${currentModalTicketId} успешно удалена!`);
+                    closeCandidateModal();
+                    loadRealCandidates();
+                } else {
+                    alert('Ошибка удаления анкеты');
+                }
+            } catch (e) {
+                alert('Сетевая ошибка при удалении анкеты');
+            }
+        }
+
+        // =========================================================================
+        // ПРАВА, РОЛИ И УПРАВЛЕНИЕ АДМИНИСТРАТОРАМИ (SUPERADMIN)
+        // =========================================================================
+
+        async function loadAdminsList() {
+            const tbody = document.getElementById('adminsTbody');
+            if (!tbody) return;
+
+            try {
+                const res = await fetch('/api/admins');
+                if (!res.ok) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red-400 py-6">Ошибка загрузки администраторов</td></tr>';
+                    return;
+                }
+                const admins = await res.json();
+                if (!admins || admins.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-400 py-6">Список сотрудников пуст</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = admins.map(a => {
+                    const isSuper = (a.role === 'super' || a.role === 'superadmin');
+                    const notifyBtn = `<button onclick="toggleAdminNotify(${a.user_id})" class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${a.notify_dm ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 text-red-500'}">
+                        ${a.notify_dm ? '🔔 Вкл' : '🔕 Выкл'}
+                    </button>`;
+                    const pwdBadge = a.has_password
+                        ? '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">✅ Задан</span>'
+                        : '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-500">⚠️ Не задан</span>';
+                    const nameLabel = a.full_name ? `${escapeHtml(a.full_name)} <span class="text-slate-400 text-xs">(${a.user_id})</span>` : `<code>${a.user_id}</code>`;
+
+                    const roleSelect = `<select onchange="changeAdminRole(${a.user_id}, this.value)" ${isSuper ? 'disabled' : ''} class="px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                        <option value="hr" ${a.role === 'hr' ? 'selected' : ''}>👔 HR (Кадры)</option>
+                        <option value="tech" ${a.role === 'tech' ? 'selected' : ''}>🛠 Tech (Инженер)</option>
+                        <option value="depot" ${a.role === 'depot' ? 'selected' : ''}>🚋 Депо (Рефералы)</option>
+                        ${isSuper ? '<option value="superadmin" selected>👑 SuperAdmin</option>' : '<option value="superadmin">👑 SuperAdmin</option>'}
+                    </select>`;
+
+                    return `
+                        <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                            <td class="py-3.5 px-4 font-semibold">${nameLabel}</td>
+                            <td class="py-3.5 px-4">${roleSelect}</td>
+                            <td class="py-3.5 px-4">${pwdBadge}</td>
+                            <td class="py-3.5 px-4">${notifyBtn}</td>
+                            <td class="py-3.5 px-4 text-xs text-slate-400">${a.added_at || '—'}</td>
+                            <td class="py-3.5 px-4 text-right">
+                                <div class="inline-flex gap-1.5 flex-wrap justify-end">
+                                    <button onclick="setAdminPasswordPrompt(${a.user_id})" class="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition">🔑 Пароль</button>
+                                    <button onclick="notifyAdminPanel(${a.user_id})" class="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-[#1371B9] dark:text-blue-300 hover:bg-blue-100 text-xs font-bold transition">📲 Доступ</button>
+                                    ${!isSuper ? `<button onclick="removeAdmin(${a.user_id})" class="px-2.5 py-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs font-bold transition">Отозвать</button>` : ''}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function addNewAdminSubmit() {
+            const uid = (document.getElementById('newAdminId').value || '').trim();
+            const role = document.getElementById('newAdminRole').value;
+            const pwd = (document.getElementById('newAdminPassword').value || '').trim();
+
+            if (!uid) {
+                alert('Укажите Telegram ID сотрудника!');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admins/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: uid, role, password: pwd })
+                });
+                const d = await res.json();
+                if (res.ok && d.ok) {
+                    alert(`Сотрудник ${uid} успешно добавлен с ролью ${role.toUpperCase()}!`);
+                    document.getElementById('newAdminId').value = '';
+                    document.getElementById('newAdminPassword').value = '';
+                    loadAdminsList();
+                } else {
+                    alert(`Ошибка: ${d.error || 'Не удалось добавить сотрудника'}`);
+                }
+            } catch (e) {
+                alert('Ошибка сети при добавлении сотрудника');
+            }
+        }
+
+        async function changeAdminRole(userId, newRole) {
+            try {
+                const res = await fetch('/api/admins/set_role', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, role: newRole })
+                });
+                if (res.ok) {
+                    alert(`Роль сотрудника ${userId} успешно изменена на: ${newRole.toUpperCase()}`);
+                    loadAdminsList();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Ошибка смены роли');
+                    loadAdminsList();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function setAdminPasswordPrompt(userId) {
+            const pwd = prompt(`Введите новый веб-пароль для сотрудника с ID ${userId}:`);
+            if (!pwd || !pwd.trim()) return;
+
+            try {
+                const res = await fetch('/api/admins/set_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, password: pwd.trim() })
+                });
+                if (res.ok) {
+                    alert(`Веб-пароль для ID ${userId} установлен и выслан в Telegram!`);
+                    loadAdminsList();
+                } else {
+                    alert('Ошибка установки пароля');
+                }
+            } catch (e) {
+                alert('Сетевая ошибка');
+            }
+        }
+
+        async function toggleAdminNotify(userId) {
+            try {
+                const res = await fetch('/api/admins/toggle_notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                if (res.ok) {
+                    const d = await res.json();
+                    alert(`Уведомления для ${userId}: ${d.notify_dm ? 'ВКЛЮЧЕНЫ 🔔' : 'ОТКЛЮЧЕНЫ 🔕'}`);
+                    loadAdminsList();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function notifyAdminPanel(userId) {
+            try {
+                const res = await fetch('/api/admins/notify_panel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                if (res.ok) {
+                    alert(`Инструкция по входу в веб-панель отправлена пользователю ${userId} в Telegram!`);
+                }
+            } catch (e) {
+                alert('Ошибка отправки уведомления');
+            }
+        }
+
+        async function notifyAllAdminsPanel() {
+            if (!confirm('Разослать инструкции по доступу к панели всем сотрудникам в Telegram?')) return;
+            try {
+                const res = await fetch('/api/admins/notify_panel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: 0 })
+                });
+                const d = await res.json();
+                alert(`Уведомления отправлены (всего: ${d.sent_count || 0})`);
+            } catch (e) {
+                alert('Ошибка рассылки');
+            }
+        }
+
+        async function syncAdminsFromEnv() {
+            try {
+                const res = await fetch('/api/admins/sync', { method: 'POST' });
+                if (res.ok) {
+                    alert('Синхронизация администраторов с конфигурацией .env завершена!');
+                    loadAdminsList();
+                }
+            } catch (e) {
+                alert('Ошибка синхронизации');
+            }
+        }
+
+        async function removeAdmin(userId) {
+            if (!confirm(`Отозвать права администратора у ID ${userId}?`)) return;
+            try {
+                const res = await fetch('/api/admins/remove', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                if (res.ok) {
+                    alert(`Права у ID ${userId} отозваны!`);
+                    loadAdminsList();
+                }
+            } catch (e) {
+                alert('Ошибка отзыва прав');
+            }
+        }
+
+        // =========================================================================
+        // ПАНЕЛЬ GIT, ОБНОВЛЕНИЯ И 152-ФЗ
+        // =========================================================================
+
+        async function loadGitPanelInfo() {
+            try {
+                const res = await fetch('/api/super/git_info');
+                if (res.ok) {
+                    const d = await res.json();
+                    const bEl = document.getElementById('gitBranchVal');
+                    const cEl = document.getElementById('gitCommitVal');
+                    if (bEl) bEl.innerText = d.branch || 'beta';
+                    if (cEl) cEl.innerText = d.last_commit || '—';
+                }
+
+                // Загрузка актов уничтожения ПДн
+                const logsRes = await fetch('/api/super/destruction_logs');
+                const tbody = document.getElementById('destructionLogsTbody');
+                if (logsRes.ok && tbody) {
+                    const logs = await logsRes.json();
+                    if (!logs || logs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 py-6">Записей об уничтожении ПДн нет</td></tr>';
+                    } else {
+                        tbody.innerHTML = logs.map(l => `
+                            <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                                <td class="py-3 px-4 font-bold font-mono text-[#1371B9] dark:text-blue-400">${escapeHtml(l.act_number || '—')}</td>
+                                <td class="py-3 px-4 font-mono font-semibold">#${l.candidate_id}</td>
+                                <td class="py-3 px-4 uppercase text-xs">${escapeHtml(l.platform || 'tg')}</td>
+                                <td class="py-3 px-4 text-xs">${escapeHtml(l.reason || 'Отказ')}</td>
+                                <td class="py-3 px-4 text-xs text-slate-400">${escapeHtml(l.destroyed_at || '—')}</td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+            } catch (e) {
+                console.error('Ошибка loadGitPanelInfo:', e);
+            }
+        }
+
+        async function triggerGitPull() {
+            if (!confirm('Выполнить git pull для получения последних обновлений с GitHub?')) return;
+            try {
+                const res = await fetch('/api/super/git_pull', { method: 'POST' });
+                const d = await res.json();
+                alert(`Git Pull результат:\n${d.output || 'Успешно'}`);
+                loadGitPanelInfo();
+            } catch (e) {
+                alert('Ошибка выполнения git pull');
+            }
+        }
+
+        async function triggerRestartBotService() {
+            if (!confirm('Перезапустить фоновый сервис uetbot?')) return;
+            try {
+                const res = await fetch('/api/super/restart_bot', { method: 'POST' });
+                if (res.ok) alert('Команда перезапуска службы отправлена в systemd!');
+            } catch (e) {
+                alert('Ошибка перезапуска службы');
+            }
+        }
+
+        async function triggerClearAllTestData() {
+            if (!confirm('ВНИМАНИЕ: Удалить все тестовые заявки (#900000+)? Боевые анкеты не будут затронуты.')) return;
+            try {
+                const res = await fetch('/api/super/clear_tests', { method: 'POST' });
+                if (res.ok) {
+                    const d = await res.json();
+                    alert(`Успешно удалено тестовых анкет: ${d.deleted_candidates}`);
+                    loadRealCandidates();
+                }
+            } catch (e) {
+                alert('Ошибка очистки тестовых данных');
+            }
+        }
+
+        async function updateCooldownValue() {
+            const sec = document.getElementById('cooldownSelectVal').value;
+            try {
+                const res = await fetch('/api/super/set_cooldown', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ seconds: parseInt(sec) })
+                });
+                if (res.ok) alert('Таймаут Cooldown успешно обновлен!');
+            } catch (e) {
+                alert('Ошибка сохранения таймаута');
+            }
+        }
+
+        async function triggerToggleGlobalNotifications(enable) {
+            try {
+                const res = await fetch('/api/settings/toggle_notifications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enable })
+                });
+                if (res.ok) {
+                    alert(enable ? '🔔 Уведомления сотрудникам ВКЛЮЧЕНЫ' : '🔕 Уведомления сотрудникам ОТКЛЮЧЕНЫ');
+                }
+            } catch (e) {
+                alert('Ошибка переключения уведомлений');
+            }
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     </script>
 </body>

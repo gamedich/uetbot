@@ -228,20 +228,18 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     builder.button(text="📊 Скачать Excel (/export)", callback_data="hr_export_excel")
     builder.button(text="🔄 Обновить", callback_data="admin_stats")
     
-    # 4 ряд — вакансии и таймаут
-    builder.button(text="🎯 Вакансии и набор  пока не работают как надо пытюсь починить", callback_data="tech_vacancies_menu")
+    # 4 ряд — таймаут и веб-панель
     cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
     cd_label = f"{cur_cd // 60} мин" if cur_cd > 0 else "0 (выкл)"
     builder.button(text=f"⏱ Таймаут: [{cd_label}]", callback_data="hr_toggle_cooldown")
 
-    # 5 ряд — Веб-панель управления и Mini App
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     if web_url and web_url.startswith("https://"):
         builder.button(text="🌐 Веб-панель (Mini App)", web_app=types.WebAppInfo(url=web_url))
     else:
         builder.button(text="🌐 Веб-панель управления", callback_data="hr_web_panel_info")
 
-    # 6 ряд — персональные уведомления в ЛС (видят все)
+    # 5 ряд — персональные уведомления в ЛС (видят все)
     is_enabled = db.get_admin_notify_status(user_id)
     toggle_text = "🔔 Уведы в ЛС: [ВКЛ]" if is_enabled else "🔕 Уведы в ЛС: [ВЫКЛ]"
     builder.button(text=toggle_text, callback_data="toggle_dm_notify")
@@ -249,9 +247,9 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     # Кнопку массового отключения видит ТОЛЬКО Главный администратор:
     if is_super:
         builder.button(text="🔕 Выкл всем HR", callback_data="hr_mute_all_dm")
-        builder.adjust(2, 2, 2, 2, 1, 2)
+        builder.adjust(2, 2, 2, 2, 2)
     else:
-        builder.adjust(2, 2, 2, 2, 1, 1)
+        builder.adjust(2, 2, 2, 2, 1)
 
     return builder.as_markup()
 

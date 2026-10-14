@@ -32,6 +32,136 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 9999px; }
+
+        /* Элегантные анимации и эффекты */
+        @keyframes float-slow {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-4px); }
+        }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.88; transform: scale(1.02); }
+        }
+        @keyframes fadeInScale {
+            0% { opacity: 0; transform: scale(0.97) translateY(6px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes glowSweep {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .animate-float-slow { animation: float-slow 4s ease-in-out infinite; }
+        .animate-pulse-subtle { animation: pulse-subtle 2.2s ease-in-out infinite; }
+        .animate-card-in { animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* Интерактивные карточки и элементы с микро-откликом */
+        .interactive-card {
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .interactive-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        }
+        .dark .interactive-card:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Выразительные статусные бейджи */
+        .badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: 0.01em;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            white-space: nowrap;
+        }
+        .badge-status:hover {
+            transform: scale(1.05);
+        }
+
+        /* 1. Статус: НОВАЯ (Голубой / Неон) */
+        .badge-status-new {
+            background: rgba(14, 165, 233, 0.15);
+            color: #0284c7;
+            border: 1px solid rgba(14, 165, 233, 0.4);
+        }
+        .dark .badge-status-new {
+            background: rgba(14, 165, 233, 0.22);
+            color: #38bdf8;
+            border-color: rgba(56, 189, 248, 0.5);
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.22);
+        }
+
+        /* 2. Статус: В РАБОТЕ (Теплый Янтарь / Оранжевый) */
+        .badge-status-progress {
+            background: rgba(245, 158, 11, 0.15);
+            color: #b45309;
+            border: 1px solid rgba(245, 158, 11, 0.42);
+        }
+        .dark .badge-status-progress {
+            background: rgba(245, 158, 11, 0.24);
+            color: #fbbf24;
+            border-color: rgba(251, 191, 36, 0.5);
+            box-shadow: 0 0 14px rgba(251, 191, 36, 0.22);
+        }
+
+        /* 3. Статус: ПРИГЛАШЕН / СОБЕСЕДОВАНИЕ (Фиолетовый / Пурпурный) */
+        .badge-status-interview {
+            background: rgba(168, 85, 247, 0.15);
+            color: #7e22ce;
+            border: 1px solid rgba(168, 85, 247, 0.42);
+        }
+        .dark .badge-status-interview {
+            background: rgba(168, 85, 247, 0.24);
+            color: #c084fc;
+            border-color: rgba(192, 132, 252, 0.5);
+            box-shadow: 0 0 14px rgba(192, 132, 252, 0.28);
+        }
+
+        /* 4. Статус: ПРИНЯТ / ОДОБРЕНО (Изумрудный Зеленый) */
+        .badge-status-approved {
+            background: rgba(16, 185, 129, 0.15);
+            color: #047857;
+            border: 1px solid rgba(16, 185, 129, 0.42);
+        }
+        .dark .badge-status-approved {
+            background: rgba(16, 185, 129, 0.24);
+            color: #34d399;
+            border-color: rgba(52, 211, 153, 0.5);
+            box-shadow: 0 0 14px rgba(52, 211, 153, 0.24);
+        }
+
+        /* 5. Статус: ОТКАЗ / УНИЧТОЖЕНО (Алый / Розовый) */
+        .badge-status-rejected {
+            background: rgba(244, 63, 94, 0.15);
+            color: #be123c;
+            border: 1px solid rgba(244, 63, 94, 0.4);
+        }
+        .dark .badge-status-rejected {
+            background: rgba(244, 63, 94, 0.24);
+            color: #fb7185;
+            border-color: rgba(251, 113, 133, 0.5);
+        }
+
+        /* 6. Статус: АРХИВ (Серый) */
+        .badge-status-archive {
+            background: rgba(100, 116, 139, 0.15);
+            color: #475569;
+            border: 1px solid rgba(100, 116, 139, 0.35);
+        }
+        .dark .badge-status-archive {
+            background: rgba(100, 116, 139, 0.22);
+            color: #94a3b8;
+            border-color: rgba(148, 163, 184, 0.4);
+        }
     </style>
 </head>
 <body class="min-h-screen bg-[#F3F6FA] dark:bg-[#0A192F] text-slate-800 dark:text-slate-100 transition-colors duration-300 pb-20 md:pb-0">
@@ -497,35 +627,56 @@
                     </div>
                 </div>
 
-                <!-- СЧЕТЧИКИ АНКЕТ ПО СТАТУСАМ ВОРОНКИ -->
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div onclick="setFilterStatus('all')" class="cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border border-slate-200 dark:border-slate-800 hover:border-[#1371B9] transition shadow-sm">
-                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Всего анкет</div>
+                <!-- СЧЕТЧИКИ АНКЕТ ПО СТАТУСАМ ВОРОНКИ (ИНТЕРАКТИВНЫЕ ФИЛЬТРЫ С АНИМАЦИЕЙ) -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <div id="statCardAll" onclick="setFilterStatus('all')" class="interactive-card cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border-2 border-blue-500/30 hover:border-[#1371B9] transition shadow-sm ring-2 ring-[#1371B9]/30">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                            <span>Все анкеты</span>
+                            <span>📊</span>
+                        </div>
                         <div id="applicantStatTotal" class="text-2xl font-black text-[#1371B9] dark:text-blue-400 mt-1">0</div>
                     </div>
-                    <div onclick="setFilterStatus('Новая')" class="cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border border-slate-200 dark:border-slate-800 hover:border-blue-400 transition shadow-sm">
-                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Новые заявки</div>
-                        <div id="applicantStatNew" class="text-2xl font-black text-blue-500 mt-1">0</div>
+                    <div id="statCardNew" onclick="setFilterStatus('Новая')" class="interactive-card cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border-2 border-sky-400/30 hover:border-sky-400 transition shadow-sm">
+                        <div class="text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider flex items-center justify-between">
+                            <span>Новые</span>
+                            <span class="w-2 h-2 rounded-full bg-sky-500 animate-ping"></span>
+                        </div>
+                        <div id="applicantStatNew" class="text-2xl font-black text-sky-500 mt-1">0</div>
                     </div>
-                    <div onclick="setFilterStatus('Собеседование')" class="cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border border-slate-200 dark:border-slate-800 hover:border-purple-400 transition shadow-sm">
-                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Собеседование</div>
+                    <div id="statCardWork" onclick="setFilterStatus('В работе')" class="interactive-card cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border-2 border-amber-400/30 hover:border-amber-400 transition shadow-sm">
+                        <div class="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center justify-between">
+                            <span>В работе</span>
+                            <span class="text-xs">⚡</span>
+                        </div>
+                        <div id="applicantStatWork" class="text-2xl font-black text-amber-500 mt-1">0</div>
+                    </div>
+                    <div id="statCardInterview" onclick="setFilterStatus('Приглашен')" class="interactive-card cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border-2 border-purple-400/30 hover:border-purple-400 transition shadow-sm">
+                        <div class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center justify-between">
+                            <span>Приглашены</span>
+                            <span class="text-xs">📅</span>
+                        </div>
                         <div id="applicantStatInterview" class="text-2xl font-black text-purple-500 mt-1">0</div>
                     </div>
-                    <div onclick="setFilterStatus('Одобрено')" class="cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border border-slate-200 dark:border-slate-800 hover:border-emerald-400 transition shadow-sm">
-                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Приняты в штат</div>
+                    <div id="statCardApproved" onclick="setFilterStatus('Принят')" class="interactive-card cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border-2 border-emerald-400/30 hover:border-emerald-400 transition shadow-sm">
+                        <div class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+                            <span>В штат</span>
+                            <span class="text-xs">✅</span>
+                        </div>
                         <div id="applicantStatApproved" class="text-2xl font-black text-emerald-500 mt-1">0</div>
                     </div>
                 </div>
 
                 <!-- Фильтры поиска -->
                 <div class="bg-white dark:bg-[#112240] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-wrap gap-3 items-center">
-                    <input id="applicantSearchInput" oninput="filterApplicants()" type="text" placeholder="Поиск по ФИО, телефону или вакансии..." class="flex-1 min-w-[220px] px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
-                    <select id="applicantStatusFilter" onchange="filterApplicants()" class="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
-                        <option value="all">Все статусы воронки</option>
-                        <option value="Новая">Новая заявка</option>
-                        <option value="Собеседование">Собеседование</option>
-                        <option value="Одобрено">Одобрено</option>
-                        <option value="Отказ">Отказ / Уничтожено</option>
+                    <input id="applicantSearchInput" oninput="filterApplicants()" type="text" placeholder="Поиск по ФИО, телефону или вакансии..." class="flex-1 min-w-[220px] px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-[#1371B9] outline-none transition">
+                    <select id="applicantStatusFilter" onchange="filterApplicants(); syncFilterCardsHighlight(this.value);" class="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold focus:ring-2 focus:ring-[#1371B9] outline-none transition">
+                        <option value="all">📊 Все статусы воронки</option>
+                        <option value="Новая">🆕 Новые отклики</option>
+                        <option value="В работе">⚡ В работе</option>
+                        <option value="Приглашен">📅 Приглашены на собеседование</option>
+                        <option value="Принят">✅ Приняты в штат</option>
+                        <option value="Отказ">🛑 Отказ / Уничтожено</option>
+                        <option value="Архив">📦 В архиве</option>
                     </select>
                 </div>
 
@@ -2889,9 +3040,7 @@
                             <div class="text-xs text-slate-500 dark:text-slate-400">Вакансия: <b class="text-slate-800 dark:text-slate-200">${escapeHtml(candData.vacancy || 'Водитель')}</b></div>
                         </div>
                         <div class="text-right">
-                            <span class="inline-block px-3.5 py-1.5 rounded-xl font-extrabold text-xs ${isRejected ? 'bg-red-500/15 text-red-600 border border-red-500/30' : (isApproved ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-blue-500/15 text-[#1371B9] dark:text-blue-400 border border-blue-500/30')}">
-                                ● ${escapeHtml(candData.status || 'Зарегистрирована')}
-                            </span>
+                            ${getStatusBadgeHtml(candData.status || 'Зарегистрирована')}
                         </div>
                     </div>
 
@@ -3249,6 +3398,57 @@
             }
         }
 
+        // ФУНКЦИЯ ФОРМИРОВАНИЯ ДИНАМИЧЕСКИХ СТАТУСНЫХ БЕЙДЖЕЙ С АНИМАЦИЕЙ
+        function getStatusBadgeHtml(statusRaw) {
+            const s = (statusRaw || 'Новая').trim();
+            const lower = s.toLowerCase();
+
+            if (lower.includes('приглаш') || lower.includes('собесед')) {
+                return `
+                    <span class="badge-status badge-status-interview">
+                        <span class="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+                        <span>📅 ${escapeHtml(s)}</span>
+                    </span>
+                `;
+            } else if (lower.includes('работ')) {
+                return `
+                    <span class="badge-status badge-status-progress">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                        <span>⚡ ${escapeHtml(s)}</span>
+                    </span>
+                `;
+            } else if (lower.includes('принят') || lower.includes('одобр')) {
+                return `
+                    <span class="badge-status badge-status-approved">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>✅ ${escapeHtml(s)}</span>
+                    </span>
+                `;
+            } else if (lower.includes('отказ') || lower.includes('уничтож')) {
+                return `
+                    <span class="badge-status badge-status-rejected">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        <span>🛑 ${escapeHtml(s)}</span>
+                    </span>
+                `;
+            } else if (lower.includes('архив')) {
+                return `
+                    <span class="badge-status badge-status-archive">
+                        <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                        <span>📦 ${escapeHtml(s)}</span>
+                    </span>
+                `;
+            } else {
+                // Новая заявка
+                return `
+                    <span class="badge-status badge-status-new animate-pulse-subtle">
+                        <span class="w-2 h-2 rounded-full bg-sky-500 animate-ping"></span>
+                        <span>🆕 ${escapeHtml(s)}</span>
+                    </span>
+                `;
+            }
+        }
+
         function renderApplicantsTable(filteredList) {
             const tbody = document.getElementById('applicantsTableBody');
             if (!tbody) return;
@@ -3256,25 +3456,35 @@
 
             // Живой расчет счетчиков воронки
             const total = state.applicants ? state.applicants.length : 0;
-            const newCount = state.applicants ? state.applicants.filter(a => (a.step || '').includes('Новая')).length : 0;
-            const interviewCount = state.applicants ? state.applicants.filter(a => (a.step || '').includes('Приглашен') || (a.step || '').includes('Собеседование')).length : 0;
-            const approvedCount = state.applicants ? state.applicants.filter(a => (a.step || '').includes('Принят') || (a.step || '').includes('Одобрено')).length : 0;
+            const newCount = state.applicants ? state.applicants.filter(a => (a.step || '').toLowerCase().includes('нова')).length : 0;
+            const workCount = state.applicants ? state.applicants.filter(a => (a.step || '').toLowerCase().includes('работ')).length : 0;
+            const interviewCount = state.applicants ? state.applicants.filter(a => {
+                const s = (a.step || '').toLowerCase();
+                return s.includes('приглаш') || s.includes('собесед');
+            }).length : 0;
+            const approvedCount = state.applicants ? state.applicants.filter(a => {
+                const s = (a.step || '').toLowerCase();
+                return s.includes('принят') || s.includes('одобр');
+            }).length : 0;
 
             const elTotal = document.getElementById('applicantStatTotal');
             const elNew = document.getElementById('applicantStatNew');
+            const elWork = document.getElementById('applicantStatWork');
             const elInterview = document.getElementById('applicantStatInterview');
             const elApproved = document.getElementById('applicantStatApproved');
             if (elTotal) elTotal.innerText = total;
             if (elNew) elNew.innerText = newCount;
+            if (elWork) elWork.innerText = workCount;
             if (elInterview) elInterview.innerText = interviewCount;
             if (elApproved) elApproved.innerText = approvedCount;
 
             if (list.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="py-8 text-center text-slate-400">
-                            <div class="text-2xl mb-1">📭</div>
-                            Анкет соискателей в выбранной категории не обнаружено
+                        <td colspan="7" class="py-10 text-center text-slate-400">
+                            <div class="text-3xl mb-2 animate-bounce">📭</div>
+                            <div class="font-bold text-sm">Анкет соискателей в выбранной категории не найдено</div>
+                            <div class="text-xs text-slate-500 mt-1">Попробуйте изменить поисковый запрос или выбрать другой статус воронки</div>
                         </td>
                     </tr>
                 `;
@@ -3282,37 +3492,37 @@
             }
 
             tbody.innerHTML = list.map(app => `
-                <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                <tr class="hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors duration-150 group">
                     <td class="py-3.5 px-4 font-mono text-xs font-bold text-[#1371B9] dark:text-blue-400">#${app.rawId || app.id}</td>
-                    <td class="py-3.5 px-4 font-semibold cursor-pointer hover:underline" onclick="openCandidateModal(${app.rawId || 0})">${escapeHtml(app.name)}</td>
-                    <td class="py-3.5 px-4 text-xs">${escapeHtml(app.vacancy)}</td>
-                    <td class="py-3.5 px-4">
-                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                            (app.step || '').includes('Приглашен') ? 'bg-purple-500/10 text-purple-600 dark:text-purple-300' :
-                            (app.step || '').includes('Принят') ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                            (app.step || '').includes('Отказ') ? 'bg-red-500/10 text-red-500' :
-                            'bg-blue-500/10 text-blue-600 dark:text-blue-300'
-                        }">
-                            ${escapeHtml(app.step)}
-                        </span>
+                    <td class="py-3.5 px-4 font-semibold text-slate-900 dark:text-white cursor-pointer hover:text-[#1371B9] dark:hover:text-blue-400 transition" onclick="openCandidateModal(${app.rawId || 0})">
+                        <div class="flex items-center gap-2">
+                            <span>${escapeHtml(app.name)}</span>
+                        </div>
                     </td>
-                    <td class="py-3.5 px-4 text-xs text-slate-500">${escapeHtml(app.source)}</td>
+                    <td class="py-3.5 px-4 text-xs text-slate-600 dark:text-slate-300 font-medium">${escapeHtml(app.vacancy)}</td>
                     <td class="py-3.5 px-4">
-                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                        ${getStatusBadgeHtml(app.step)}
+                    </td>
+                    <td class="py-3.5 px-4 text-xs text-slate-500 flex items-center gap-1.5 pt-4">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                        <span>${escapeHtml(app.source)}</span>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${
                             app.pdStatus.includes('Уничтожено') 
-                                ? 'bg-red-500/10 text-red-500' 
-                                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20' 
+                                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                         }">
                             ${escapeHtml(app.pdStatus)}
                         </span>
                     </td>
                     <td class="py-3.5 px-4 text-right">
                         <div class="flex items-center justify-end gap-1.5">
-                            <button onclick="quickInviteCandidate(${app.rawId || 0})" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white font-bold text-xs inline-flex items-center gap-1 transition shadow-sm" title="Пригласить соискателя на очное собеседование в депо">
-                                <span>🟢 Пригласить</span>
+                            <button onclick="quickInviteCandidate(${app.rawId || 0})" class="px-2.5 py-1.5 rounded-xl bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-600 hover:text-white font-bold text-xs inline-flex items-center gap-1 transition shadow-sm active:scale-95" title="Пригласить соискателя на очное собеседование в депо">
+                                <span>📅 Пригласить</span>
                             </button>
-                            <button onclick="openCandidateModal(${app.rawId || 0})" class="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-[#1371B9] dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-bold text-xs inline-flex items-center gap-1 transition">
-                                <span>👁️ Анкета</span>
+                            <button onclick="openCandidateModal(${app.rawId || 0})" class="px-2.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-[#1371B9] dark:text-blue-300 hover:bg-[#1371B9] hover:text-white font-bold text-xs inline-flex items-center gap-1 transition shadow-sm active:scale-95">
+                                <span>👁️ Карточка</span>
                             </button>
                         </div>
                     </td>
@@ -3340,21 +3550,66 @@
             }
         }
 
+        function syncFilterCardsHighlight(status) {
+            const map = {
+                'all': 'statCardAll',
+                'Новая': 'statCardNew',
+                'В работе': 'statCardWork',
+                'Приглашен': 'statCardInterview',
+                'Собеседование': 'statCardInterview',
+                'Принят': 'statCardApproved',
+                'Одобрено': 'statCardApproved'
+            };
+            const targetId = map[status] || 'statCardAll';
+            ['statCardAll', 'statCardNew', 'statCardWork', 'statCardInterview', 'statCardApproved'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (id === targetId) {
+                        el.classList.add('ring-2', 'ring-[#1371B9]', 'border-[#1371B9]', 'scale-[1.02]');
+                    } else {
+                        el.classList.remove('ring-2', 'ring-[#1371B9]', 'border-[#1371B9]', 'scale-[1.02]');
+                    }
+                }
+            });
+        }
+
         function setFilterStatus(status) {
             const filterEl = document.getElementById('applicantStatusFilter');
             if (filterEl) {
                 filterEl.value = status;
                 filterApplicants();
             }
+            syncFilterCardsHighlight(status);
         }
 
         function filterApplicants() {
-            const query = (document.getElementById('applicantSearchInput').value || '').toLowerCase();
+            const query = (document.getElementById('applicantSearchInput').value || '').toLowerCase().trim();
             const status = document.getElementById('applicantStatusFilter').value;
 
             const filtered = state.applicants.filter(a => {
-                const matchQuery = a.name.toLowerCase().includes(query) || a.vacancy.toLowerCase().includes(query) || a.id.toLowerCase().includes(query);
-                const matchStatus = status === 'all' || (status === 'Отказ' ? a.pdStatus.includes('Уничтожено') : a.step.includes(status));
+                const s = (a.step || '').toLowerCase();
+                const matchQuery = (a.name || '').toLowerCase().includes(query) || 
+                                   (a.vacancy || '').toLowerCase().includes(query) || 
+                                   String(a.rawId || a.id || '').toLowerCase().includes(query);
+                
+                let matchStatus = true;
+                if (status === 'all') {
+                    matchStatus = true;
+                } else if (status === 'Новая') {
+                    matchStatus = s.includes('нова');
+                } else if (status === 'В работе') {
+                    matchStatus = s.includes('работ');
+                } else if (status === 'Приглашен' || status === 'Собеседование') {
+                    matchStatus = s.includes('приглаш') || s.includes('собесед');
+                } else if (status === 'Принят' || status === 'Одобрено') {
+                    matchStatus = s.includes('принят') || s.includes('одобр');
+                } else if (status === 'Отказ') {
+                    matchStatus = s.includes('отказ') || (a.pdStatus && a.pdStatus.includes('Уничтожено'));
+                } else if (status === 'Архив') {
+                    matchStatus = s.includes('архив');
+                } else {
+                    matchStatus = s.includes(status.toLowerCase());
+                }
                 return matchQuery && matchStatus;
             });
             renderApplicantsTable(filtered);
@@ -3878,9 +4133,15 @@
                 currentModalIsBlocked = !!c.is_blocked;
 
                 const titleEl = document.getElementById('modalCandTitle');
-                const subEl = document.getElementById('modalCandSub');
                 if (titleEl) titleEl.innerText = `Анкета #${c.ticket_id} — ${c.full_name || 'Соискатель'}`;
-                if (subEl) subEl.innerText = `Статус: ${c.status || 'Новая'} | Подано: ${c.created_at || 'Сегодня'} [${(c.platform || 'tg').toUpperCase()}]`;
+                if (subEl) {
+                    subEl.innerHTML = `
+                        <div class="flex flex-wrap items-center gap-2 mt-1">
+                            ${getStatusBadgeHtml(c.status || 'Новая')}
+                            <span class="text-xs text-slate-500 dark:text-slate-400">Подано: ${escapeHtml(c.created_at || 'Сегодня')} [${escapeHtml((c.platform || 'tg').toUpperCase())}]</span>
+                        </div>
+                    `;
+                }
 
                 const setVal = (id, val) => {
                     const el = document.getElementById(id);

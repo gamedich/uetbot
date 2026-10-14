@@ -230,6 +230,44 @@
                     </div>
                 </div>
 
+                <!-- Авторская фотогалерея нового подвижного состава (Ульяновский «Львёнок») -->
+                <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="inline-flex items-center gap-2 bg-blue-500/10 text-[#1371B9] dark:text-blue-400 px-3 py-1 rounded-full text-xs font-bold mb-1">
+                                <span>🚋 Подвижной состав МУП «УЭТ»</span>
+                            </div>
+                            <h3 class="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white">Современные вагоны 71-911ЕМ «Львёнок» на улицах Ульяновска</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Реальные фотографии наших трамваев на городских маршрутах № 22 и № 4 (Авторские снимки предприятия)</p>
+                        </div>
+                        <span class="text-[11px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                            📷 Авторские фото МУП «УЭТ»
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                        <!-- Фото 1: Маршрут 22 на остановке -->
+                        <div class="group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm aspect-video md:aspect-[16/10]">
+                            <img src="/static/images/tram_lvenok.jpg" alt="Трамвай Львёнок Ульяновск маршрут 22" class="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 text-white">
+                                <span class="px-2 py-0.5 rounded bg-[#1371B9] text-white text-[10px] font-extrabold uppercase w-fit mb-1">Маршрут № 22 • Остановка «Улица Радищева»</span>
+                                <div class="text-sm font-bold">Вагон 71-911ЕМ «Львёнок» в летнем городе</div>
+                                <div class="text-[11px] text-slate-300">100% низкий уровень пола, система кондиционирования и просторный салон</div>
+                            </div>
+                        </div>
+
+                        <!-- Фото 2: Вагон 1314 на маршруте 4 -->
+                        <div class="group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm aspect-video md:aspect-[16/10]">
+                            <img src="/static/images/tram_lvenok_1314.jpg" alt="Трамвай Львёнок №1314 маршрут 4" class="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 text-white">
+                                <span class="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold uppercase w-fit mb-1">Вагон № 1314 • Маршрут № 4</span>
+                                <div class="text-sm font-bold">Работа на центральной линии</div>
+                                <div class="text-[11px] text-slate-300">Плавный пуск, электронная телеметрия и эргономичное рабочее место водителя</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Информационные сервисы: Официальные боты и Прямой контакт (2 колонки) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     
@@ -445,11 +483,10 @@
                         <h2 class="text-2xl font-extrabold">Воронка соискателей (16 шагов)</h2>
                         <p class="text-xs text-slate-500 dark:text-slate-400">Все заявки с сайта, Telegram, VK и мессенджера MAX в единой базе SQLite</p>
                     </div>
-                    <div class="flex gap-2">
-                        <a href="/api/system/export_csv" class="bg-[#1371B9] hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition">
+                        <button onclick="downloadCandidatesRegistry()" class="bg-[#1371B9] hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            Выгрузить отчет по ГОСТ
-                        </a>
+                            <span>Выгрузить отчет по ГОСТ</span>
+                        </button>
                     </div>
                 </div>
 
@@ -666,8 +703,9 @@
                                 <div class="font-bold text-sm">Акт об уничтожении ПДн (Приказ РКН №179)</div>
                                 <div class="text-xs text-slate-400">Очистка записей в SQLite + генерация акта</div>
                             </div>
-                            <button onclick="createDestructionActDemo()" class="px-3 py-2 bg-[#D31224] hover:bg-red-700 text-white text-xs font-bold rounded-xl transition">
-                                Сформировать акт
+                            <button onclick="generateDestructionAct()" class="px-3.5 py-2 bg-[#D31224] hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <span>Сформировать и скачать акт</span>
                             </button>
                         </div>
                         <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex justify-between items-center">
@@ -675,15 +713,21 @@
                                 <div class="font-bold text-sm">Журнал учета согласий (ГОСТ)</div>
                                 <div class="text-xs text-slate-400">Экспорт реестра подписей с таймштампами</div>
                             </div>
-                            <a href="/api/system/export_csv" class="px-3 py-2 bg-[#1371B9] hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition">
-                                Скачать реестр
-                            </a>
+                            <button onclick="downloadCandidatesRegistry()" class="px-3.5 py-2 bg-[#1371B9] hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                <span>Скачать реестр (CSV)</span>
+                            </button>
                         </div>
                     </div>
 
                     <!-- Таблица журнала уничтожений -->
                     <div class="mt-8">
-                        <h3 class="font-bold text-sm mb-3">Реестр актов об уничтожении ПДн (Приказ РКН №179):</h3>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-sm">Реестр актов об уничтожении ПДн (Приказ РКН №179):</h3>
+                            <button onclick="generateDestructionAct()" class="text-xs text-[#1371B9] dark:text-blue-400 font-bold hover:underline flex items-center gap-1">
+                                <span>+ Новый акт уничтожения</span>
+                            </button>
+                        </div>
                         <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-100 dark:bg-slate-800 text-slate-400 font-bold uppercase">
@@ -692,6 +736,7 @@
                                         <th class="p-3">ID анкеты</th>
                                         <th class="p-3">Причина</th>
                                         <th class="p-3">Дата уничтожения</th>
+                                        <th class="p-3 text-right">Официальный файл</th>
                                     </tr>
                                 </thead>
                                 <tbody id="destructionLogsBody" class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1984,18 +2029,21 @@
             const techIconSpan = document.getElementById('techToggleCandidatesIcon');
             const techTextSpan = document.getElementById('techToggleCandidatesText');
 
+            // Пользователь: "меню кандидата это анкета статус анкету скрыть надо а личный кабинет и кандидаты не скрывать"
             const candElements = [
-                document.getElementById('topBtnApplicants'),
                 document.getElementById('topBtnSurvey'),
                 document.getElementById('topBtnStatus'),
-                document.getElementById('topBtnCabinet'),
-                document.getElementById('mBtnApplicants'),
                 document.getElementById('mBtnSurvey'),
-                document.getElementById('mBtnStatus'),
-                document.getElementById('mBtnCabinet')
+                document.getElementById('mBtnStatus')
             ];
 
             if (isSuperAdmin) {
+                // Личный кабинет и Воронка кандидатов ВСЕГДА открыты для администратора
+                document.getElementById('topBtnApplicants')?.classList.remove('hidden');
+                document.getElementById('mBtnApplicants')?.classList.remove('hidden');
+                document.getElementById('topBtnCabinet')?.classList.remove('hidden');
+                document.getElementById('mBtnCabinet')?.classList.remove('hidden');
+
                 // Кнопка переключения меню кандидатов видна администратору
                 if (toggleBtn) {
                     toggleBtn.classList.remove('hidden');
@@ -2010,24 +2058,24 @@
                 }
 
                 if (adminShowCandidates) {
-                    // Кандидаты ПОКАЗАНЫ
+                    // Анкета и статус ПОКАЗАНЫ
                     candElements.forEach(el => el && el.classList.remove('hidden'));
                     if (iconSpan) iconSpan.innerText = '🙈';
-                    if (textSpan) textSpan.innerText = 'Кандидаты: Показаны';
+                    if (textSpan) textSpan.innerText = 'Анкета и статус: Показаны';
                     if (mIconSpan) mIconSpan.innerText = '🙈';
-                    if (mTextSpan) mTextSpan.innerText = 'Скрыть меню кандидатов';
+                    if (mTextSpan) mTextSpan.innerText = 'Скрыть анкету и статус';
                     if (techIconSpan) techIconSpan.innerText = '🙈';
-                    if (techTextSpan) techTextSpan.innerText = 'Меню кандидатов: Показано (Скрыть)';
+                    if (techTextSpan) techTextSpan.innerText = 'Анкета и статус: Показаны (Скрыть)';
                     if (toggleBtn) toggleBtn.className = 'px-2.5 py-1.5 rounded-xl border border-blue-400 bg-blue-50 dark:bg-blue-950/40 text-[#1371B9] dark:text-blue-400 text-[11px] font-bold flex items-center gap-1 transition select-none';
                 } else {
-                    // Кандидаты СКРЫТЫ (чистая админка по умолчанию)
+                    // Анкета и статус СКРЫТЫ
                     candElements.forEach(el => el && el.classList.add('hidden'));
                     if (iconSpan) iconSpan.innerText = '👁️';
-                    if (textSpan) textSpan.innerText = 'Кандидаты: Скрыты';
+                    if (textSpan) textSpan.innerText = 'Анкета и статус: Скрыты';
                     if (mIconSpan) mIconSpan.innerText = '👁️';
-                    if (mTextSpan) mTextSpan.innerText = 'Показать меню кандидатов';
+                    if (mTextSpan) mTextSpan.innerText = 'Показать анкету и статус';
                     if (techIconSpan) techIconSpan.innerText = '👁️';
-                    if (techTextSpan) techTextSpan.innerText = 'Меню кандидатов: Скрыто (Показать)';
+                    if (techTextSpan) techTextSpan.innerText = 'Анкета и статус: Скрыты (Показать)';
                     if (toggleBtn) toggleBtn.className = 'px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 text-[11px] flex items-center gap-1 transition select-none';
                 }
             } else {
@@ -2047,8 +2095,12 @@
                 if (state.role === 'hr') {
                     const topApp = document.getElementById('topBtnApplicants');
                     const mApp = document.getElementById('mBtnApplicants');
+                    const topCab = document.getElementById('topBtnCabinet');
+                    const mCab = document.getElementById('mBtnCabinet');
                     if (topApp) topApp.classList.remove('hidden');
                     if (mApp) mApp.classList.remove('hidden');
+                    if (topCab) topCab.classList.remove('hidden');
+                    if (mCab) mCab.classList.remove('hidden');
                 } else {
                     const topSurvey = document.getElementById('topBtnSurvey');
                     const topStatus = document.getElementById('topBtnStatus');
@@ -3543,28 +3595,83 @@
                 const tbody = document.getElementById('destructionLogsBody');
                 if (tbody && Array.isArray(logs) && logs.length > 0) {
                     tbody.innerHTML = logs.map(l => `
-                        <tr>
-                            <td class="p-3 font-mono font-bold text-red-500">${l.act_number || `АКТ-179-${l.id}`}</td>
-                            <td class="p-3 font-mono">#${l.candidate_id}</td>
-                            <td class="p-3">${l.reason || 'Отзыв согласия / Отказ соискателя'}</td>
-                            <td class="p-3 text-slate-400">${l.destroyed_at || '14.10.2026'}</td>
+                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                            <td class="p-3 font-mono font-bold text-red-500">${escapeHtml(l.act_number || `АКТ-179-${l.id}`)}</td>
+                            <td class="p-3 font-mono">#${escapeHtml(String(l.candidate_id))}</td>
+                            <td class="p-3">${escapeHtml(l.reason || 'Отзыв согласия / Отказ соискателя')}</td>
+                            <td class="p-3 text-slate-400">${escapeHtml(l.destroyed_at || '14.10.2026')}</td>
+                            <td class="p-3 text-right">
+                                <button onclick="generateDestructionAct('${escapeHtml(l.act_number || l.id)}')" class="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white text-xs font-bold transition inline-flex items-center gap-1">
+                                    <span>📥 Скачать акт</span>
+                                </button>
+                            </td>
                         </tr>
                     `).join('');
                 } else if (tbody) {
                     tbody.innerHTML = `
                         <tr>
-                            <td class="p-3 font-mono font-bold text-red-500">АКТ-179-042</td>
+                            <td class="p-3 font-mono font-bold text-red-500">АКТ-179-2026-01</td>
                             <td class="p-3 font-mono">#73-101</td>
-                            <td class="p-3">Отзыв согласия соискателем (Попов Игорь)</td>
-                            <td class="p-3 text-slate-400">14.10.2026 07:15</td>
+                            <td class="p-3">Отзыв согласия соискателем (Архив)</td>
+                            <td class="p-3 text-slate-400">14.10.2026 15:00</td>
+                            <td class="p-3 text-right">
+                                <button onclick="generateDestructionAct('АКТ-179-2026-01')" class="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white text-xs font-bold transition inline-flex items-center gap-1">
+                                    <span>📥 Скачать акт</span>
+                                </button>
+                            </td>
                         </tr>
                     `;
                 }
             } catch (e) {}
         }
 
-        function createDestructionActDemo() {
-            alert('Сформирован электронный Акт уничтожения персональных данных в строгом соответствии с Приказом Роскомнадзора № 179. Запись внесена в журнал.');
+        async function generateDestructionAct(actId) {
+            try {
+                const token = sessionStorage.getItem('uet_token') || localStorage.getItem('uet_token') || (state.user && state.user.token) || '';
+                const url = `/api/system/download_destruction_act?token=${encodeURIComponent(token)}${actId ? `&act_id=${encodeURIComponent(actId)}` : ''}`;
+                const resp = await fetch(url, { headers: getAuthHeaders() });
+                if (!resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    alert(data.error || 'Для формирования акта требуется авторизация администратора.');
+                    return;
+                }
+                const blob = await resp.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `Akt_Unichtozheniya_PDn_RKN_179_${actId || new Date().toISOString().slice(0, 10)}.doc`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(downloadUrl);
+                loadDestructionLogs();
+            } catch (e) {
+                alert('Ошибка при формировании акта уничтожения ПДн.');
+            }
+        }
+
+        async function downloadCandidatesRegistry() {
+            try {
+                const token = sessionStorage.getItem('uet_token') || localStorage.getItem('uet_token') || (state.user && state.user.token) || '';
+                const url = `/api/system/export_csv?token=${encodeURIComponent(token)}`;
+                const resp = await fetch(url, { headers: getAuthHeaders() });
+                if (!resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    alert(data.error || 'Для скачивания реестра требуется авторизация сотрудника отдела кадров или администратора.');
+                    return;
+                }
+                const blob = await resp.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `candidates_registry_gost_${new Date().toISOString().slice(0, 10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(downloadUrl);
+            } catch (e) {
+                alert('Ошибка при выгрузке реестра соискателей.');
+            }
         }
 
         // Супер-Админ: метрики и live terminal

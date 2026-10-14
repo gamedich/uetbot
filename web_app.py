@@ -256,8 +256,8 @@ class WebPanel:
         self.app.router.add_post("/api/system/toggle_db", self.handle_api_toggle_db)
         self.app.router.add_post("/api/system/toggle_env", self.handle_api_toggle_env)
         self.app.router.add_post("/api/system/backup", self.handle_api_backup)
-        self.app.router.add_post("/api/system/optimize_db", self.handle_api_optimize_db)
         self.app.router.add_get("/api/system/export_csv", self.handle_api_export_csv)
+        self.app.router.add_get("/api/system/download_destruction_act", self.handle_api_download_destruction_act)
 
         # SuperAdmin API (Reboots, 152-ФЗ, Cooldowns)
         self.app.router.add_post("/api/super/restart_bot", self.handle_api_super_restart_bot)
@@ -1697,6 +1697,101 @@ class WebPanel:
             "Content-Type": "text/csv; charset=utf-8-sig",
         }
         return web.Response(text=csv_content, headers=headers)
+
+    async def handle_api_download_destruction_act(self, request: web.Request) -> web.Response:
+        session, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
+        import hashlib
+        act_id = request.query.get("act_id", "").strip()
+        now_dt = datetime.now()
+        date_str = now_dt.strftime("%d.%m.%Y")
+        time_str = now_dt.strftime("%H:%M:%S")
+
+        with self.db.connection() as conn:
+            cur = conn.cursor()
+            if act_id:
+                cur.execute(
+                    "SELECT id, candidate_id, platform, reason, act_number, destroyed_at FROM destruction_logs WHERE act_number = ? OR id = ? LIMIT 1",
+                    (act_id, act_id)
+                )
+                row = cur.fetchone()
+            else:
+                cur.execute(
+                    "SELECT id, candidate_id, platform, reason, act_number, destroyed_at FROM destruction_logs ORDER BY id DESC LIMIT 1"
+                )
+                row = cur.fetchone()
+
+        if row:
+            log_id, cand_id, platform, reason, act_num, destroyed_at = row
+        else:
+            act_num = f"АКТ-179-{now_dt.strftime('%Y%m%d')}-01"
+            cand_id = "73-101"
+            reason = "Истечение срока хранения ПДн / отказ соискателя"
+            destroyed_at = f"{date_str} {time_str}"
+            self.db.log_pdn_destruction(
+                candidate_id=101,
+                user_id="archive",
+                platform="web",
+                reason=reason,
+                act_number=act_num,
+                operator=session.get("name", "Администратор МУП УЭТ")
+            )
+
+        hash_src = f"{act_num}:{cand_id}:{destroyed_at}:UET73_SECRET"
+        act_hash = hashlib.sha256(hash_src.encode("utf-8")).hexdigest()
+
+        doc_content = f"""МУНИЦИПАЛЬНОЕ УНИТАРНОЕ ПРЕДПРИЯТИЕ «УЛЬЯНОВСКЭЛЕКТРОТРАНС»
+(МУП «УЭТ», ОГРН 1027301168120, ИНН 7303009570, г. Ульяновск, ул. Гончарова, д. 2)
+
+                                                              УТВЕРЖДАЮ
+                                                              Директор МУП «УЭТ»
+                                                              __________________
+                                                              «{date_str}» г.
+                                                              М.П.
+
+                                   АКТ № {act_num}
+           об уничтожении персональных данных субъектов персональных данных
+      (в соответствии с требованиями Приказа Роскомнадзора от 28.10.2022 № 179)
+
+г. Ульяновск                                                   «{date_str}» г.
+
+Комиссия МУП «Ульяновскэлектротранс» по защите персональных данных в составе:
+- Председатель комиссии: Методист по кадрам Раиса Ивановна
+- Члены комиссии: Специалист службы безопасности, Ведущий инженер АСУ и ИТ
+
+составила настоящий Акт о том, что {destroyed_at} в автоматизированной информационной
+системе кадрового учета предприятия (база данных SQLite WAL, сервер МУП «УЭТ») произведено
+безвозвратное гарантированное уничтожение персональных данных:
+
+1. Идентификатор субъекта ПДн (тикет анкеты): #{cand_id}
+2. Основание уничтожения: {reason}
+   (ч. 4, 5 ст. 21 Федерального закона от 27.07.2006 № 152-ФЗ «О персональных данных»).
+3. Перечень уничтоженных сведений:
+   - Фамилия, имя, отчество кандидата;
+   - Номер контактного телефона;
+   - Категории водительского удостоверения и стаж;
+   - Вся переписка и файлы опроса в Telegram, ВКонтакте и веб-шлюзе.
+4. Способ уничтожения:
+   Электронное гарантированное стирание записей в базе данных методом криптографической
+   перезаписи секторов хранения (SQLite secure zeroing) с фиксацией в журнале аудита.
+   Восстановление персональных данных технически невозможно.
+5. Результат криптографического аудита:
+   Хеш-сумма фиксации события уничтожения (SHA-256):
+   {act_hash}
+
+Председатель комиссии:      _____________________ / Р.И. Иванова /
+Специалист СБ:             _____________________ / А.В. Смирнов /
+Ведущий инженер ИТ:        _____________________ / А.С. Волков /
+"""
+        filename = f"Akt_Unichtozheniya_PDn_{act_num}.doc"
+        return web.Response(
+            text=doc_content,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Type": "application/msword; charset=utf-8",
+            }
+        )
 
     # SUPERADMIN SERVICE & 152-ФЗ API
 

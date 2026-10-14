@@ -229,8 +229,8 @@
                                 Заполните анкету или задайте вопрос прямо в любимом мессенджере:
                             </p>
                             <div class="space-y-2.5">
-                                <a href="https://t.me/uet_hr_bot" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 font-semibold text-sm hover:bg-sky-500/20 transition">
-                                    <span>Telegram • @uet_hr_bot</span>
+                                <a href="https://t.me/UetFeedback_bot" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 font-semibold text-sm hover:bg-sky-500/20 transition">
+                                    <span>Telegram • @UetFeedback_bot</span>
                                     <span class="text-xs px-2 py-0.5 bg-sky-500 text-white rounded-md">Online</span>
                                 </a>
                                 <a href="https://vk.com/uet73" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-2xl bg-blue-600/10 border border-blue-600/20 text-blue-600 dark:text-blue-400 font-semibold text-sm hover:bg-blue-600/20 transition">
@@ -440,7 +440,7 @@
                         Отправьте персональную ссылку другу. Когда он пройдет 16 шагов воронки в UETBot и выйдет на смену в депо, вам начисляется премия.
                     </p>
                     <div class="flex flex-wrap items-center gap-2 bg-black/25 p-2 rounded-2xl w-fit border border-white/15">
-                        <code id="refLinkText" class="px-3 py-1.5 text-xs md:text-sm font-mono">https://t.me/uet_hr_bot?start=ref_73001</code>
+                        <code id="refLinkText" class="px-3 py-1.5 text-xs md:text-sm font-mono">https://t.me/UetFeedback_bot?start=ref_73001</code>
                         <button onclick="copyRefLink()" class="bg-white text-[#1371B9] px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-50 transition">
                             Скопировать ссылку
                         </button>
@@ -578,7 +578,7 @@
                             <span>Конструктор вопросов воронки</span>
                             <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">16 шагов синхронизированы</span>
                         </h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Синхронизировано со всеми 16 шагами анкеты соискателя, Telegram-бота @uet_hr_bot и ГОСТ</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Синхронизировано со всеми 16 шагами анкеты соискателя, Telegram-бота @UetFeedback_bot и ГОСТ</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <button onclick="loadQuestions()" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-bold transition">
@@ -1065,8 +1065,8 @@
                     </button>
                     
                     <div class="flex items-center justify-between text-[11px] text-sky-700 dark:text-sky-400 pt-1">
-                        <a href="https://t.me/uet_hr_bot?start=site_auth" target="_blank" class="hover:underline flex items-center gap-1">
-                            <span>🤖 Открыть бота @uet_hr_bot</span>
+                        <a href="https://t.me/UetFeedback_bot?start=site_auth" target="_blank" class="hover:underline flex items-center gap-1">
+                            <span>🤖 Открыть бота @UetFeedback_bot</span>
                             <span>↗</span>
                         </a>
                         <span class="text-slate-400">Команда: <code>/password</code></span>
@@ -1125,8 +1125,8 @@
                     <p class="text-[11px] text-emerald-700 dark:text-emerald-400">
                         Бот задаст вопросы в диалоговом режиме и сразу запишет вас на собеседование.
                     </p>
-                    <a href="https://t.me/uet_hr_bot?start=survey" target="_blank" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
-                        <span>Открыть @uet_hr_bot в Telegram</span>
+                    <a href="https://t.me/UetFeedback_bot?start=survey" target="_blank" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
+                        <span>Открыть @UetFeedback_bot в Telegram</span>
                         <span>↗</span>
                     </a>
                 </div>
@@ -1519,7 +1519,7 @@
             if (silent) return;
 
             // 2. Если в обычном браузере — требуем логин и пароль для безопасности
-            alert('Для входа через Telegram откройте WebApp напрямую в боте @uet_hr_bot по кнопке «Кабинет» или «Сайт».\n\nНа сайте используйте форму авторизации по логину/телефону и паролю.');
+            alert('Для входа через Telegram откройте WebApp напрямую в боте @UetFeedback_bot по кнопке «Кабинет» или «Сайт».\n\nНа сайте используйте форму авторизации по логину/телефону и паролю.');
         }
 
         async function handleRegisterSubmit(e) {
@@ -1884,7 +1884,7 @@
             ], desc: 'По требованию статьи 328.1 ТК РФ для работы на общественном транспорте требуется справка.' },
             { step: 14, title: 'Откуда вы узнали о наборе?', field: 'step14_source', type: 'select', options: [
                 'Официальный сайт МУП «УЭТ»',
-                'Telegram-бот @uet_hr_bot',
+                'Telegram-бот @UetFeedback_bot',
                 'Группа ВКонтакте',
                 'Посоветовал действующий сотрудник депо (Реферал)',
                 'Объявление в вагоне / на остановке'

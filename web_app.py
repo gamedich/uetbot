@@ -2097,7 +2097,7 @@ class WebPanel:
             lines = raw[-limit:] if raw else []
         except Exception as e:
             lines = [
-                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO [aiogram.dispatcher] Polling started for @uet_hr_bot",
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO [aiogram.dispatcher] Polling started for @UetFeedback_bot",
                 f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO [db.sqlite] Connection pool initialized (PRAGMA journal_mode=WAL)",
                 f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] AUDIT [152-FZ] Сформирован хэш согласия ПДн",
                 f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] SUCCESS [gost.docs] Автогенерация анкеты ГОСТ Р 7.0.97-2016 завершена"

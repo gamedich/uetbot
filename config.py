@@ -131,7 +131,7 @@ os.environ["DB_PATH"] = resolved_db_path
 CONFIG: AppConfig = AppConfig({
     # --- Среда выполнения и версия ---
     "ENVIRONMENT": _get_str("ENVIRONMENT", "TEST").upper(),
-    "BOT_VERSION": _get_str("BOT_VERSION", "1.8.0"),
+    "BOT_VERSION": _get_str("BOT_VERSION", "1.9.0"),
 
     # --- Пути файловой системы ---
     "BASE_DIR": str(BASE_DIR),
@@ -175,6 +175,8 @@ CONFIG: AppConfig = AppConfig({
     "ALLOW_TEST_SUBMISSIONS_IN_PROD": _get_bool("ALLOW_TEST_SUBMISSIONS_IN_PROD", False),
 
     # --- Telegram Mini App / Веб-панель ---
+    "BOT_USERNAME": _get_str("BOT_USERNAME", "UetFeedback_bot"),
+    "TG_BOT_URL": _get_str("TG_BOT_URL", "https://t.me/UetFeedback_bot"),
     "WEB_APP_URL": _get_str("WEB_APP_URL", "https://213.226.124.135.sslip.io/"),
     "WEB_APP_HOST": _get_str("WEB_APP_HOST", "127.0.0.1"),
     "WEB_APP_PORT": _get_int("WEB_APP_PORT", 8080),

@@ -612,11 +612,13 @@ class WebPanel:
             resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
             return resp
 
-        # 2. ВХОД ПО ЛОГИНУ И ПАРОЛЮ (Для всех сотрудников пароль СТРОГО обязателен!)
+        # 2. ВХОД ПО ЛОГИНУ / РОЛИ И ПАРОЛЮ (Для всех сотрудников пароль СТРОГО обязателен!)
+        req_role = str(data.get("role") or "").strip().lower()
+
         if not val:
             # Для соискателей: разрешаем вход в личный кабинет по номеру телефона / анкеты, если пароль не был установлен
             clean_user = re.sub(r"\D", "", username)
-            if clean_user and len(clean_user) >= 4:
+            if clean_user and len(clean_user) >= 3:
                 cand = None
                 with self.db.connection() as conn:
                     cur = conn.cursor()
@@ -656,7 +658,7 @@ class WebPanel:
 
         # 3. Проверка мастер-доступа Супер-Админа (admin / superadmin / root / id)
         valid_super_pwds = {secret_phrase, master_pin, "uet2026", "uet2026super", "7657", str(CONFIG.get("SUPER_ADMIN_PASSWORD", "uet2026super"))}
-        if (username in ("admin", "superadmin", "root", str(super_id), "") or username.startswith("admin")) and val in valid_super_pwds:
+        if (req_role in ("superadmin", "admin") or username in ("admin", "superadmin", "root", str(super_id), "") or username.startswith("admin")) and val in valid_super_pwds:
             tok = generate_auth_token(super_id, "superadmin", "Илья (SuperAdmin)")
             resp = web.json_response({
                 "ok": True,
@@ -672,7 +674,7 @@ class WebPanel:
 
         # 4. Проверка мастер-доступа Отдела кадров (hr / кадры)
         valid_hr_pwds = {"hr", "uet2026", "hr2026", "uet2026hr", secret_phrase, str(CONFIG.get("HR_ADMIN_PASSWORD", "uet2026hr"))}
-        if (username in ("hr", "кадры", "отдел кадров", "") or username.startswith("hr")) and val in valid_hr_pwds:
+        if (req_role == "hr" or username in ("hr", "кадры", "отдел кадров", "") or username.startswith("hr")) and val in valid_hr_pwds:
             tok = generate_auth_token(73002, "hr", "Раиса Ивановна (HR)")
             resp = web.json_response({
                 "ok": True,
@@ -686,7 +688,7 @@ class WebPanel:
             resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
             return resp
 
-        # 5. Проверка по таблице администраторов и сотрудников (персональный пароль из Telegram /password)
+        # 5. Проверка по таблице администраторов и сотрудников (персональный пароль из Telegram /password или веб-панели)
         with self.db.connection() as conn:
             cur = conn.cursor()
             cur.execute(
@@ -695,7 +697,18 @@ class WebPanel:
             )
             rows = cur.fetchall()
             for adm_id, role, name, email in rows:
-                if not username or username in (str(adm_id).lower(), (name or "").lower(), (email or "").lower(), role.lower()):
+                role_match = (
+                    not req_role or
+                    req_role in ("staff", "employee", "any") or
+                    req_role == role.lower() or
+                    (req_role == "hr" and role.lower() in ("hr", "cadres")) or
+                    (req_role in ("admin", "superadmin") and role.lower() in ("admin", "superadmin", "super"))
+                )
+                user_match = (
+                    not username or
+                    username in (str(adm_id).lower(), (name or "").lower(), (email or "").lower(), role.lower(), "staff", "сотрудник")
+                )
+                if role_match and (user_match or len(rows) == 1):
                     role_clean = "superadmin" if role in ("superadmin", "super") or adm_id == super_id else role
                     disp_name = name or f"Сотрудник #{adm_id}"
                     tok = generate_auth_token(adm_id, role_clean, disp_name)
@@ -755,7 +768,7 @@ class WebPanel:
 
         return web.json_response({
             "ok": False,
-            "error": "Неверный логин или пароль. Для входа сотрудников используйте служебный пароль или команду /password в Telegram. Для входа соискателей введите телефон или номер анкеты."
+            "error": "Неверный логин, роль или пароль. Проверьте выбранную роль и правильность пароля. Персональный пароль можно задать в Telegram командой /password."
         }, status=401)
 
     async def handle_api_auth_register(self, request: web.Request) -> web.Response:

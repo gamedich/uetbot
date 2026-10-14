@@ -985,33 +985,69 @@
                 <!-- Разделитель -->
                 <div class="relative flex items-center justify-center my-2">
                     <div class="border-t border-slate-200 dark:border-slate-700 w-full"></div>
-                    <span class="bg-white dark:bg-[#112240] px-3 text-[11px] text-slate-400 font-semibold uppercase shrink-0">или вход по логину / телефону</span>
+                    <span class="bg-white dark:bg-[#112240] px-3 text-[11px] text-slate-400 font-semibold uppercase shrink-0">или вход на сайте по роли и паролю</span>
+                </div>
+
+                <!-- Селектор роли пользователя -->
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        <span>Кто входит в систему?</span>
+                        <span id="roleBadgeHelp" class="text-[10px] text-[#1371B9] dark:text-sky-400 font-semibold cursor-pointer hover:underline" onclick="toggleAuthHelp(true)">💡 Как это работает?</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
+                        <button type="button" id="roleBtnApplicant" onclick="selectLoginRole('applicant')" class="py-2 px-1 text-center rounded-xl font-bold text-xs transition bg-[#1371B9] text-white shadow-sm flex flex-col items-center justify-center gap-0.5">
+                            <span class="text-base leading-none">👤</span>
+                            <span>Соискатель</span>
+                        </button>
+                        <button type="button" id="roleBtnStaff" onclick="selectLoginRole('staff')" class="py-2 px-1 text-center rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex flex-col items-center justify-center gap-0.5">
+                            <span class="text-base leading-none">💼</span>
+                            <span>Сотрудник / HR</span>
+                        </button>
+                        <button type="button" id="roleBtnAdmin" onclick="selectLoginRole('superadmin')" class="py-2 px-1 text-center rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex flex-col items-center justify-center gap-0.5">
+                            <span class="text-base leading-none">👑</span>
+                            <span>Администратор</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Быстрые фишки должностей для Сотрудников -->
+                <div id="staffPresetsBox" class="hidden p-3 rounded-2xl bg-sky-50/80 dark:bg-sky-950/25 border border-sky-200/60 dark:border-sky-900/40 space-y-2">
+                    <div class="flex items-center justify-between text-[11px] text-sky-800 dark:text-sky-300 font-bold">
+                        <span>👔 Быстрый выбор должности:</span>
+                        <span class="text-[10px] font-normal text-slate-400">или укажите свой Telegram ID</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        <button type="button" onclick="setStaffRolePreset('hr', 'Отдел кадров')" class="py-1.5 px-2 text-[11px] font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">💼 Кадры (HR)</button>
+                        <button type="button" onclick="setStaffRolePreset('dispatcher', 'Диспетчер движения')" class="py-1.5 px-2 text-[11px] font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">🚦 Диспетчер</button>
+                        <button type="button" onclick="setStaffRolePreset('tech', 'Инженер / Путь')" class="py-1.5 px-2 text-[11px] font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">🛠 Инженер</button>
+                        <button type="button" onclick="setStaffRolePreset('id', 'Telegram ID')" class="py-1.5 px-2 text-[11px] font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">🆔 Мой ID</button>
+                    </div>
                 </div>
 
                 <!-- Форма входа на сайте -->
                 <form onsubmit="handleLoginSubmit(event)" autocomplete="off" class="space-y-3.5">
                     <div>
-                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Телефон, номер анкеты или логин</label>
+                        <label id="loginUsernameLabel" class="block text-xs font-bold uppercase text-slate-400 mb-1">Номер телефона или номер анкеты</label>
                         <input
                             id="loginUsername"
                             type="text"
                             autocomplete="off"
                             autocorrect="off"
-                            placeholder="+7 900 123-45-67, № анкеты, admin или hr..."
-                            class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-xs sm:text-sm"
+                            placeholder="+7 900 123-45-67 или № 1042..."
+                            class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-xs sm:text-sm font-medium"
                             required
                         />
                     </div>
                     <div>
-                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Пароль</label>
+                        <label id="loginPasswordLabel" class="block text-xs font-bold uppercase text-slate-400 mb-1">Пароль от личного кабинета</label>
                         <input
                             id="loginPassword"
                             type="password"
                             autocomplete="new-password"
                             placeholder="••••••••"
-                            class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-xs sm:text-sm"
+                            class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-xs sm:text-sm font-medium"
                         />
-                        <p class="text-[10px] text-slate-400 mt-1">Для соискателей: если пароль не задавали, оставьте пустым или введите номер анкеты</p>
+                        <p id="loginPasswordHint" class="text-[10px] text-slate-400 mt-1">Для соискателей: если пароль не задавали, оставьте пустым — вход по номеру</p>
                     </div>
 
                     <div class="flex items-center justify-between text-xs pt-0.5">
@@ -1028,10 +1064,44 @@
                             Закрыть
                         </button>
                         <button type="submit" id="btnLoginSubmit" class="flex-1 py-3.5 bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition">
-                            Войти на сайте
+                            Войти в личный кабинет соискателя
                         </button>
                     </div>
                 </form>
+
+                <!-- Интерактивная шпаргалка с инструкциями прямо в окне входа -->
+                <div class="pt-2 border-t border-slate-200 dark:border-slate-700/80">
+                    <button type="button" onclick="toggleAuthHelp()" class="w-full text-left flex items-center justify-between text-xs font-bold text-[#1371B9] hover:text-blue-700 dark:text-sky-400 transition py-1">
+                        <span class="flex items-center gap-1.5">
+                            <span class="text-sm">📖</span>
+                            <span>Инструкция: как задать пароль и войти?</span>
+                        </span>
+                        <span id="authHelpChevron" class="text-xs font-bold transform transition-transform duration-200">▼</span>
+                    </button>
+                    <div id="authHelpContent" class="hidden mt-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 space-y-2.5">
+                        <div class="flex items-start gap-2">
+                            <span class="text-base shrink-0">👤</span>
+                            <div>
+                                <span class="font-bold text-slate-800 dark:text-slate-100">Соискателю (Кандидату):</span>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Логином является ваш <b>номер телефона</b> (например, <code>+79270000000</code>) или <b>номер анкеты</b> (например: <code>1042</code>). Пароль — тот, что вы придумали во вкладке «Регистрация соискателя». Если пароль не указывали, оставьте поле пароля пустым — система пустит по номеру.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="text-base shrink-0">💼</span>
+                            <div>
+                                <span class="font-bold text-slate-800 dark:text-slate-100">Сотруднику / Кадрам (HR) / Диспетчеру:</span>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Выберите вашу должность или введите ваш Telegram ID, и укажите ваш персональный пароль. Чтобы задать или изменить свой пароль: откройте бота <a href="https://t.me/UetFeedback_bot" target="_blank" class="text-[#1371B9] dark:text-sky-400 font-bold underline">@UetFeedback_bot</a> в Telegram и отправьте команду <code>/password МойПароль</code>. Бот сохранит пароль, и система сразу узнает вас на сайте!</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="text-base shrink-0">👑</span>
+                            <div>
+                                <span class="font-bold text-slate-800 dark:text-slate-100">Администратору:</span>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Вход по логину <code>admin</code> и мастер-паролю из настроек безопасности. Назначать новые роли сотрудникам и выдавать права можно во вкладке <b>«Права и Доступ»</b> прямо в веб-панели.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- ================= ВКЛАДКА 2: РЕГИСТРАЦИЯ СОИСКАТЕЛЯ ================= -->
@@ -1415,6 +1485,102 @@
             }
         }
 
+        let currentLoginRole = 'applicant';
+
+        function selectLoginRole(role) {
+            currentLoginRole = role;
+            const btnApp = document.getElementById('roleBtnApplicant');
+            const btnStaff = document.getElementById('roleBtnStaff');
+            const btnAdmin = document.getElementById('roleBtnAdmin');
+            const staffBox = document.getElementById('staffPresetsBox');
+            const uInput = document.getElementById('loginUsername');
+            const uLabel = document.getElementById('loginUsernameLabel');
+            const pInput = document.getElementById('loginPassword');
+            const pLabel = document.getElementById('loginPasswordLabel');
+            const pHint = document.getElementById('loginPasswordHint');
+            const submitBtn = document.getElementById('btnLoginSubmit');
+            const errEl = document.getElementById('loginErrorMsg');
+
+            if (errEl) errEl.classList.add('hidden');
+
+            const activeClass = 'py-2 px-1 text-center rounded-xl font-bold text-xs transition bg-[#1371B9] text-white shadow-sm flex flex-col items-center justify-center gap-0.5';
+            const inactiveClass = 'py-2 px-1 text-center rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex flex-col items-center justify-center gap-0.5';
+
+            if (btnApp) btnApp.className = role === 'applicant' ? activeClass : inactiveClass;
+            if (btnStaff) btnStaff.className = role === 'staff' ? activeClass : inactiveClass;
+            if (btnAdmin) btnAdmin.className = role === 'superadmin' ? activeClass : inactiveClass;
+
+            if (role === 'staff') {
+                if (staffBox) staffBox.classList.remove('hidden');
+                if (uLabel) uLabel.innerText = 'Должность, роль или Telegram ID';
+                if (uInput) {
+                    uInput.placeholder = 'hr, dispatcher, ваш Telegram ID или email...';
+                    uInput.required = false;
+                }
+                if (pLabel) pLabel.innerText = 'Ваш персональный пароль';
+                if (pHint) pHint.innerText = 'Пароль, выданный администратором или заданный в боте через команду /password';
+                if (submitBtn) submitBtn.innerText = 'Войти как сотрудник';
+            } else if (role === 'superadmin') {
+                if (staffBox) staffBox.classList.add('hidden');
+                if (uLabel) uLabel.innerText = 'Логин администратора';
+                if (uInput) {
+                    uInput.value = 'admin';
+                    uInput.placeholder = 'admin';
+                    uInput.required = true;
+                }
+                if (pLabel) pLabel.innerText = 'Мастер-пароль администратора';
+                if (pHint) pHint.innerText = 'Служебный мастер-пароль безопасности сервера';
+                if (submitBtn) submitBtn.innerText = 'Войти как Администратор';
+            } else {
+                // applicant
+                if (staffBox) staffBox.classList.add('hidden');
+                if (uLabel) uLabel.innerText = 'Номер телефона или номер анкеты';
+                if (uInput) {
+                    uInput.placeholder = '+7 900 123-45-67 или № 1042...';
+                    uInput.required = true;
+                }
+                if (pLabel) pLabel.innerText = 'Пароль от личного кабинета';
+                if (pHint) pHint.innerText = 'Для соискателей: если пароль не задавали, оставьте пустым — вход по номеру';
+                if (submitBtn) submitBtn.innerText = 'Войти в личный кабинет соискателя';
+            }
+        }
+
+        function setStaffRolePreset(presetKey, title) {
+            const uInput = document.getElementById('loginUsername');
+            const pInput = document.getElementById('loginPassword');
+            const pHint = document.getElementById('loginPasswordHint');
+
+            if (presetKey === 'id') {
+                if (uInput) {
+                    uInput.value = '';
+                    uInput.placeholder = 'Введите ваш цифровой Telegram ID...';
+                    uInput.focus();
+                }
+                if (pHint) pHint.innerText = 'Укажите ваш Telegram ID и персональный пароль';
+            } else {
+                if (uInput) {
+                    uInput.value = presetKey;
+                }
+                if (pHint) pHint.innerText = `Выбрана роль: ${title}. Введите ваш пароль:`;
+                if (pInput) setTimeout(() => pInput.focus(), 50);
+            }
+        }
+
+        function toggleAuthHelp(forceOpen = false) {
+            const content = document.getElementById('authHelpContent');
+            const chevron = document.getElementById('authHelpChevron');
+            if (!content) return;
+
+            const isCurrentlyHidden = content.classList.contains('hidden');
+            if (forceOpen || isCurrentlyHidden) {
+                content.classList.remove('hidden');
+                if (chevron) chevron.innerText = '▲';
+            } else {
+                content.classList.add('hidden');
+                if (chevron) chevron.innerText = '▼';
+            }
+        }
+
         function openLoginModal(targetTabOrRole = 'login', targetRole = '') {
             const errEl = document.getElementById('loginErrorMsg');
             if (errEl) errEl.classList.add('hidden');
@@ -1427,13 +1593,21 @@
 
             switchAuthTab(tab);
 
+            // Определение целевой роли
+            const roleToSelect = targetRole || (targetTabOrRole === 'superadmin' ? 'superadmin' : (targetTabOrRole === 'hr' ? 'staff' : 'applicant'));
+            selectLoginRole(roleToSelect === 'hr' ? 'staff' : (roleToSelect === 'superadmin' ? 'superadmin' : 'applicant'));
+
+            if (roleToSelect === 'hr') {
+                setStaffRolePreset('hr', 'Отдел кадров');
+            }
+
             // Восстановление запомненного логина или телефона
             const savedUsername = localStorage.getItem('uet_remember_username') || '';
             const uInput = document.getElementById('loginUsername');
             const pInput = document.getElementById('loginPassword');
             const rememberCheck = document.getElementById('loginRememberMe');
             
-            if (uInput) {
+            if (uInput && roleToSelect !== 'superadmin' && roleToSelect !== 'hr') {
                 uInput.value = savedUsername;
             }
             if (pInput) {
@@ -1443,7 +1617,7 @@
                 rememberCheck.checked = true;
             }
 
-            if (savedUsername && pInput) {
+            if (savedUsername && pInput && roleToSelect !== 'superadmin') {
                 setTimeout(() => pInput.focus(), 60);
             } else if (uInput) {
                 setTimeout(() => uInput.focus(), 60);
@@ -1607,7 +1781,11 @@
                 const resp = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: username, password: password })
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        role: currentLoginRole
+                    })
                 });
                 const res = await resp.json();
 
@@ -1633,7 +1811,7 @@
                         switchTab('cabinet');
                     }
                 } else {
-                    errEl.innerText = res.error || 'Неверный логин, телефон или пароль';
+                    errEl.innerText = res.error || 'Неверный логин, роль или пароль. Попробуйте еще раз.';
                     errEl.classList.remove('hidden');
                 }
             } catch (err) {
@@ -1641,7 +1819,13 @@
                 errEl.classList.remove('hidden');
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerText = 'Войти на сайте';
+                if (currentLoginRole === 'staff') {
+                    submitBtn.innerText = 'Войти как сотрудник';
+                } else if (currentLoginRole === 'superadmin') {
+                    submitBtn.innerText = 'Войти как Администратор';
+                } else {
+                    submitBtn.innerText = 'Войти в личный кабинет соискателя';
+                }
             }
         }
 

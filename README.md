@@ -4,7 +4,7 @@
 
 **Единая платформа подбора персонала, 16-шаговая анкета соискателя, интерактивный HR-пульт в Telegram, Web-портал и Mini App, омниканальный мост (TG / VK / MAX) и строгий контур безопасности 152-ФЗ РФ.**
 
-[![Release](https://img.shields.io/badge/Release-v1.8.0_Main-2563eb?style=for-the-badge&logo=github)](https://github.com/gamedich/uetbot/tree/main)
+[![Release](https://img.shields.io/badge/Release-v1.9.0_Main-2563eb?style=for-the-badge&logo=github)](https://github.com/gamedich/uetbot/tree/main)
 [![Telegram Bot](https://img.shields.io/badge/Telegram_Bot-@UetFeedback__bot-229ED9?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/UetFeedback_bot)
 [![GitHub Pages](https://img.shields.io/badge/Live_Showcase-GitHub_Pages-ea580c?style=for-the-badge&logo=githubpages&logoColor=white)](https://gamedich.github.io/uetbot/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)

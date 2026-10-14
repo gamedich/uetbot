@@ -235,9 +235,18 @@
                         <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         <span>Права и Доступ</span>
                     </button>
+                    <button onclick="switchTab('git')" id="topBtnGit" class="hidden px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span>Git & Ветки</span>
+                    </button>
                     <button onclick="switchTab('tech')" id="topBtnTech" class="hidden px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                         <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                         <span>Root</span>
+                    </button>
+                    <!-- Кнопка глобального режима ТО в меню -->
+                    <button id="navBtnMaintenance" onclick="triggerToggleMaintenance()" class="hidden px-3 py-1.5 rounded-xl text-xs font-bold transition items-center gap-1.5 border shadow-sm select-none" title="Глобальный режим технического обслуживания предприятия">
+                        <span id="navMaintDot" class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span id="navMaintText">🟢 ТО: ВЫКЛ</span>
                     </button>
                 </div>
             </nav>
@@ -299,7 +308,13 @@
                 <button onclick="switchTab('questions'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold">⚙️ Конструктор вопросов</button>
                 <button onclick="switchTab('security'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-sky-600 dark:text-sky-400 font-bold">🛡️ 152-ФЗ / ГОСТ</button>
                 <button onclick="switchTab('admins'); toggleMobileNav();" id="mAdminsBtn" class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-purple-600 dark:text-purple-400 font-bold">👥 Права и Доступ</button>
+                <button onclick="switchTab('git'); toggleMobileNav();" id="mGitBtn" class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-purple-600 dark:text-purple-400 font-bold">🚀 Git и Ветки</button>
                 <button onclick="switchTab('tech'); toggleMobileNav();" id="mTechBtn" class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-red-500 font-bold">⚡ Тех. панель Root</button>
+                <!-- Мобильная кнопка переключения режима ТО -->
+                <button id="mNavBtnMaintenance" onclick="triggerToggleMaintenance(); toggleMobileNav();" class="hidden text-left px-3 py-2 rounded-xl font-bold text-xs items-center justify-between border border-slate-200 dark:border-slate-700 select-none">
+                    <span id="mNavMaintLabel">🟢 Режим ТО: <b>ВЫКЛЮЧЕН</b></span>
+                    <span id="mNavMaintBadge" class="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded">ВЫКЛ</span>
+                </button>
             </div>
         </div>
     </header>
@@ -1096,6 +1111,99 @@
                 </div>
             </div>
 
+            <!-- =========================================================================
+                9. ЛОКАЛЬНАЯ ПАНЕЛЬ УПРАВЛЕНИЯ GIT И ВЕТКАМИ (SUPERADMIN ONLY)
+            ========================================================================= -->
+            <div id="tabContentGit" class="space-y-6 hidden">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-extrabold flex items-center gap-2">
+                            <span>🚀 Управление Git, ветками и версиями</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Локальный пульт разработчика (переключение веток, синхронизация с репозиторием, история коммитов)</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="triggerGitFetch()" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition flex items-center gap-1.5">
+                            <span>📡 Fetch</span>
+                        </button>
+                        <button onclick="triggerGitPull()" class="px-3.5 py-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 hover:bg-purple-100 text-xs font-bold transition flex items-center gap-1.5">
+                            <span>⬇️ Git Pull</span>
+                        </button>
+                        <button onclick="loadGitPanelInfo()" class="px-3.5 py-2 rounded-xl bg-[#1371B9] text-white hover:bg-blue-700 text-xs font-bold transition flex items-center gap-1.5">
+                            <span>🔄 Обновить статус</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI карточки текущей ветки и статуса -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white dark:bg-[#112240] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase text-slate-400">Текущая ветка Git</span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                        </div>
+                        <div id="gitBranchVal" class="text-2xl font-extrabold text-[#1371B9] dark:text-blue-400 font-mono">main</div>
+                        <div class="text-[11px] text-slate-400">Активный контур сервера</div>
+                    </div>
+                    <div class="bg-white dark:bg-[#112240] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                        <span class="text-xs font-bold uppercase text-slate-400">Последний коммит (HEAD)</span>
+                        <div id="gitCommitVal" class="text-xs font-semibold text-slate-700 dark:text-slate-300 break-words leading-relaxed">Загрузка...</div>
+                    </div>
+                    <div class="bg-white dark:bg-[#112240] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                        <span class="text-xs font-bold uppercase text-slate-400">Статус рабочего дерева</span>
+                        <div id="gitCleanVal" class="text-sm font-semibold text-slate-700 dark:text-slate-300 pt-1">Проверка...</div>
+                    </div>
+                </div>
+
+                <!-- Блок смены ветки -->
+                <div class="bg-white dark:bg-[#112240] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <h3 class="text-base font-bold flex items-center gap-2">
+                        <span>🔀 Переключение рабочей ветки (Git Checkout)</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Выберите целевую ветку для быстрого переключения кода проекта на сервере:</p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <select id="gitBranchSelect" class="flex-1 min-w-[280px] px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold focus:ring-2 focus:ring-[#1371B9]">
+                            <option value="">Загрузка списка веток...</option>
+                        </select>
+                        <button onclick="triggerGitCheckout()" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md transition flex items-center gap-2">
+                            <span>🔀 Переключить ветку</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Консоль логов Git операций -->
+                <div class="bg-[#050C1A] text-purple-400 rounded-3xl p-6 font-mono text-xs shadow-xl border border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center text-slate-400 pb-2 border-b border-slate-800">
+                        <span class="font-bold flex items-center gap-2">💻 Вывод команд Git</span>
+                        <button onclick="document.getElementById('gitTerminalLog').innerText = 'Готов к выполнению команд...'" class="text-[11px] hover:text-slate-200">Очистить</button>
+                    </div>
+                    <pre id="gitTerminalLog" class="h-32 overflow-y-auto whitespace-pre-wrap leading-relaxed text-slate-300 text-[11px]">Готов к выполнению команд...</pre>
+                </div>
+
+                <!-- История коммитов -->
+                <div class="bg-white dark:bg-[#112240] rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 dark:border-slate-800">
+                        <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400">История недавних коммитов</h4>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase text-slate-400 bg-slate-50/50 dark:bg-slate-800/40">
+                                    <th class="py-2.5 px-3">Хэш</th>
+                                    <th class="py-2.5 px-3">Сообщение</th>
+                                    <th class="py-2.5 px-3">Автор</th>
+                                    <th class="py-2.5 px-3">Дата</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gitCommitsTbody" class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                                <tr><td colspan="4" class="text-center py-4 text-slate-400">Загрузка коммитов...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+
         </main>
     </div>
 
@@ -1578,8 +1686,10 @@
                 enableDarkMode(false);
             }
 
-            // Проверка режима технического обслуживания (ТО)
+            // Проверка и непрерывная синхронизация режима технического обслуживания (ТО)
             checkMaintenanceMode();
+            setInterval(checkMaintenanceMode, 5000);
+
 
             // Восстановление авторизованной сессии (sessionStorage или сохраненная в localStorage)
             let savedSession = sessionStorage.getItem('uet_session');
@@ -1676,6 +1786,12 @@
             const stub = document.getElementById('surveyMaintenanceStub');
             const container = document.getElementById('surveyActiveContainer');
             const badge = document.getElementById('badgeMaintenanceStatus');
+            const navBtn = document.getElementById('navBtnMaintenance');
+            const navDot = document.getElementById('navMaintDot');
+            const navText = document.getElementById('navMaintText');
+            const mNavBtn = document.getElementById('mNavBtnMaintenance');
+            const mNavLabel = document.getElementById('mNavMaintLabel');
+            const mNavBadge = document.getElementById('mNavMaintBadge');
 
             if (banner) banner.classList.toggle('hidden', !state.isMaintenance);
             if (stub && container) {
@@ -1687,6 +1803,38 @@
                 badge.className = state.isMaintenance 
                     ? 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500 text-slate-950 animate-pulse' 
                     : 'text-[10px] px-2 py-0.5 rounded font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
+            }
+
+            // Синхронизация кнопки ТО в десктопном меню
+            if (navBtn) {
+                if (state.isMaintenance) {
+                    navBtn.className = "px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border shadow-sm select-none bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/50 hover:bg-amber-500/30 animate-pulse";
+                    if (navDot) navDot.className = "inline-block w-2 h-2 rounded-full bg-red-500 animate-ping";
+                    if (navText) navText.innerText = "⚠️ ТО: ВКЛЮЧЕНО";
+                } else {
+                    navBtn.className = "px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border shadow-sm select-none bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 text-slate-700 dark:text-slate-300";
+                    if (navDot) navDot.className = "inline-block w-2 h-2 rounded-full bg-emerald-500";
+                    if (navText) navText.innerText = "🟢 ТО: ВЫКЛ";
+                }
+            }
+
+            // Синхронизация кнопки ТО в мобильном меню
+            if (mNavBtn) {
+                if (state.isMaintenance) {
+                    mNavBtn.className = "text-left px-3 py-2 rounded-xl font-bold text-xs flex items-center justify-between border select-none bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40";
+                    if (mNavLabel) mNavLabel.innerHTML = "<span>⚠️ Режим ТО: <b class='text-amber-500'>ВКЛЮЧЕН</b></span>";
+                    if (mNavBadge) {
+                        mNavBadge.className = "text-[10px] bg-amber-500 text-slate-900 font-bold px-2 py-0.5 rounded animate-pulse";
+                        mNavBadge.innerText = "ВКЛ";
+                    }
+                } else {
+                    mNavBtn.className = "text-left px-3 py-2 rounded-xl font-bold text-xs flex items-center justify-between border select-none border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300";
+                    if (mNavLabel) mNavLabel.innerHTML = "<span>🟢 Режим ТО: <b class='text-emerald-500'>ВЫКЛЮЧЕН</b></span>";
+                    if (mNavBadge) {
+                        mNavBadge.className = "text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold px-2 py-0.5 rounded";
+                        mNavBadge.innerText = "ВЫКЛ";
+                    }
+                }
             }
         }
 
@@ -2166,17 +2314,34 @@
             const mTechBtn = document.getElementById('mTechBtn');
             const adminsBtn = document.getElementById('topBtnAdmins');
             const mAdminsBtn = document.getElementById('mAdminsBtn');
+            const gitBtn = document.getElementById('topBtnGit');
+            const mGitBtn = document.getElementById('mGitBtn');
+            const navMaintBtn = document.getElementById('navBtnMaintenance');
+            const mNavMaintBtn = document.getElementById('mNavBtnMaintenance');
 
-            if (state.role === 'superadmin') {
+            if (state.role === 'superadmin' || state.role === 'super') {
                 if (techBtn) techBtn.classList.remove('hidden');
                 if (mTechBtn) mTechBtn.classList.remove('hidden');
                 if (adminsBtn) adminsBtn.classList.remove('hidden');
                 if (mAdminsBtn) mAdminsBtn.classList.remove('hidden');
+                if (gitBtn) gitBtn.classList.remove('hidden');
+                if (mGitBtn) mGitBtn.classList.remove('hidden');
             } else {
                 if (techBtn) techBtn.classList.add('hidden');
                 if (mTechBtn) mTechBtn.classList.add('hidden');
                 if (adminsBtn) adminsBtn.classList.add('hidden');
                 if (mAdminsBtn) mAdminsBtn.classList.add('hidden');
+                if (gitBtn) gitBtn.classList.add('hidden');
+                if (mGitBtn) mGitBtn.classList.add('hidden');
+            }
+
+            if (isStaff) {
+                if (navMaintBtn) navMaintBtn.classList.remove('hidden');
+                if (mNavMaintBtn) mNavMaintBtn.classList.remove('hidden');
+                updateMaintenanceUI();
+            } else {
+                if (navMaintBtn) navMaintBtn.classList.add('hidden');
+                if (mNavMaintBtn) mNavMaintBtn.classList.add('hidden');
             }
 
             if (isStaff) {
@@ -2324,7 +2489,7 @@
                 mServiceNav.classList.remove('flex');
             }
 
-            ['topBtnTech', 'mTechBtn', 'topBtnAdmins', 'mAdminsBtn'].forEach(id => {
+            ['topBtnTech', 'mTechBtn', 'topBtnAdmins', 'mAdminsBtn', 'topBtnGit', 'mGitBtn', 'navBtnMaintenance', 'mNavBtnMaintenance'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
             });
@@ -2345,14 +2510,14 @@
 
         function switchTab(tabName) {
             if (tabName === 'survey') tabName = 'survey16';
-            const staffTabs = ['vacancies', 'applicants', 'questions', 'security', 'tech', 'admins'];
+            const staffTabs = ['vacancies', 'applicants', 'questions', 'security', 'tech', 'admins', 'git'];
             if (staffTabs.includes(tabName)) {
-                if (!['hr', 'tech', 'superadmin', 'depot'].includes(state.role)) {
+                if (!['hr', 'tech', 'superadmin', 'super', 'depot'].includes(state.role)) {
                     alert('Доступ ограничен. Данный раздел предназначен только для уполномоченных сотрудников отдела кадров и администраторов МУП «УЭТ».');
                     openLoginModal('login');
                     return;
                 }
-                if (['tech', 'admins'].includes(tabName) && state.role !== 'superadmin') {
+                if (['tech', 'admins', 'git'].includes(tabName) && !['superadmin', 'super'].includes(state.role)) {
                     alert('Доступ запрещен. Требуются права Главного администратора (SuperAdmin).');
                     return;
                 }
@@ -2371,6 +2536,7 @@
                 'security': document.getElementById('tabContentSecurity'),
                 'tech': document.getElementById('tabContentTech'),
                 'admins': document.getElementById('tabContentAdmins'),
+                'git': document.getElementById('tabContentGit'),
             };
 
             Object.keys(tabs).forEach(k => {
@@ -2390,6 +2556,7 @@
                 { id: 'topBtnQuestions', tab: 'questions' },
                 { id: 'topBtnSecurity', tab: 'security' },
                 { id: 'topBtnAdmins', tab: 'admins' },
+                { id: 'topBtnGit', tab: 'git' },
                 { id: 'topBtnTech', tab: 'tech' }
             ];
             topBtns.forEach(b => {
@@ -2413,7 +2580,138 @@
             if (tabName === 'questions') loadQuestions();
             if (tabName === 'tech') fetchSystemLogs();
             if (tabName === 'admins') loadAdminsList();
+            if (tabName === 'git') loadGitPanelInfo();
         }
+
+        // =========================================================================
+        // УПРАВЛЕНИЕ ЛОКАЛЬНЫМ GIT И СМЕНОЙ ВЕТОК
+        // =========================================================================
+
+        async function loadGitPanelInfo() {
+            try {
+                const [infoResp, branchesResp] = await Promise.all([
+                    fetch('/api/local/git/info', { headers: getAuthHeaders() }),
+                    fetch('/api/local/git/branches', { headers: getAuthHeaders() })
+                ]);
+                
+                if (infoResp.ok) {
+                    const info = await infoResp.json();
+                    const bEl = document.getElementById('gitBranchVal');
+                    const cEl = document.getElementById('gitCommitVal');
+                    const sEl = document.getElementById('gitCleanVal');
+                    
+                    if (bEl) bEl.innerText = info.branch || 'unknown';
+                    if (cEl) {
+                        const c = info.commit || {};
+                        cEl.innerHTML = `<span class="text-amber-500 font-mono font-bold">${c.hash || '—'}</span> — ${escapeHtml(c.message || '—')} <span class="text-[11px] text-slate-400">(${c.relative_date || ''}, ${escapeHtml(c.author || '')})</span>`;
+                    }
+                    if (sEl) {
+                        sEl.innerHTML = info.is_clean 
+                            ? '<span class="text-emerald-500 font-bold">● Рабочее дерево чисто</span>' 
+                            : `<span class="text-amber-500 font-bold">● Есть изменения (${info.modified_count} файлов)</span>`;
+                    }
+                    
+                    // Таблица последних коммитов
+                    const logTbody = document.getElementById('gitCommitsTbody');
+                    if (logTbody && Array.isArray(info.recent_commits)) {
+                        if (info.recent_commits.length === 0) {
+                            logTbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-slate-400">Нет данных коммитов</td></tr>';
+                        } else {
+                            logTbody.innerHTML = info.recent_commits.map(cm => `
+                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                                    <td class="py-2.5 px-3 font-mono font-bold text-amber-500 text-xs">${cm.hash}</td>
+                                    <td class="py-2.5 px-3 text-xs text-slate-800 dark:text-slate-200 font-semibold">${escapeHtml(cm.message)}</td>
+                                    <td class="py-2.5 px-3 text-xs text-slate-500 dark:text-slate-400">${escapeHtml(cm.author)}</td>
+                                    <td class="py-2.5 px-3 text-xs text-slate-400">${cm.date}</td>
+                                </tr>
+                            `).join('');
+                        }
+                    }
+                }
+
+                if (branchesResp.ok) {
+                    const bData = await branchesResp.json();
+                    const sel = document.getElementById('gitBranchSelect');
+                    if (sel && Array.isArray(bData.all)) {
+                        sel.innerHTML = bData.all.map(br => {
+                            const isCur = br === bData.current;
+                            return `<option value="${br}" ${isCur ? 'selected' : ''}>${isCur ? '⭐ ' : ''}${br}${isCur ? ' (текущая)' : ''}</option>`;
+                        }).join('');
+                    }
+                }
+            } catch (err) {
+                console.error("Ошибка загрузки Git данных:", err);
+            }
+        }
+
+        async function triggerGitCheckout() {
+            const sel = document.getElementById('gitBranchSelect');
+            if (!sel) return;
+            const targetBranch = sel.value;
+            if (!targetBranch) return;
+
+            if (!confirm(`Вы действительно хотите переключиться на ветку "${targetBranch}"?\n\nФайлы репозитория на сервере будут переключены.`)) {
+                return;
+            }
+
+            appendGitTerminal(`> git checkout ${targetBranch}...`);
+            try {
+                const resp = await fetch('/api/local/git/checkout', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ branch: targetBranch })
+                });
+                const data = await resp.json();
+                appendGitTerminal(data.output || (data.ok ? 'Ветка успешно переключена.' : data.error));
+                if (data.ok) {
+                    alert(`Ветка успешно переключена на: ${data.branch}`);
+                    loadGitPanelInfo();
+                } else {
+                    alert(`Ошибка переключения: ${data.error || 'Проверьте терминал вывода'}`);
+                }
+            } catch (e) {
+                appendGitTerminal(`Ошибка запроса: ${e}`);
+            }
+        }
+
+        async function triggerGitPull() {
+            appendGitTerminal('> git pull...');
+            try {
+                const resp = await fetch('/api/local/git/pull', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' })
+                });
+                const data = await resp.json();
+                appendGitTerminal(data.output || 'Команда pull завершена');
+                loadGitPanelInfo();
+            } catch (e) {
+                appendGitTerminal(`Ошибка запроса: ${e}`);
+            }
+        }
+
+        async function triggerGitFetch() {
+            appendGitTerminal('> git fetch --all --prune...');
+            try {
+                const resp = await fetch('/api/local/git/fetch', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' })
+                });
+                const data = await resp.json();
+                appendGitTerminal(data.output || 'Связь с удаленными ветками обновлена');
+                loadGitPanelInfo();
+            } catch (e) {
+                appendGitTerminal(`Ошибка запроса: ${e}`);
+            }
+        }
+
+        function appendGitTerminal(msg) {
+            const term = document.getElementById('gitTerminalLog');
+            if (!term) return;
+            const time = new Date().toLocaleTimeString();
+            term.innerText += `\n[${time}] ${msg}`;
+            term.scrollTop = term.scrollHeight;
+        }
+
 
         // =========================================================================
         // УПРАВЛЕНИЕ И КАСТОМИЗАЦИЯ ВАКАНСИЙ (ОТКРЫТЬ / ЗАКРЫТЬ НАБОР)

@@ -233,11 +233,21 @@ async def cb_tech_toggle_maint(callback: types.CallbackQuery) -> None:
 
     status_str = "ВКЛЮЧЕН (прием анкет на паузе)" if new_state else "ВЫКЛЮЧЕН (штатная работа)"
     await callback.answer(f"Режим ТО: {status_str}", show_alert=True)
-    screen_text, kb = get_tech_screen_data(callback.from_user.id)
-    try:
-        await callback.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
-    except Exception:
-        pass
+    if callback.message:
+        msg_text = callback.message.text or ""
+        if "ТЕХНИЧЕСКИЙ МОНИТОРИНГ" in msg_text:
+            screen_text, kb = get_tech_screen_data(callback.from_user.id)
+            try:
+                await callback.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
+            except Exception:
+                pass
+        else:
+            try:
+                from keyboards import make_admin_menu_keyboard
+                await callback.message.edit_reply_markup(reply_markup=make_admin_menu_keyboard(callback.from_user.id))
+            except Exception:
+                pass
+
 
 
 # ==============================================================================

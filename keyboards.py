@@ -18,7 +18,9 @@ from common import (
     get_vacancy_icon,
     is_hr_admin,
     is_tech_admin,
+    is_maintenance_active,
 )
+
 
 def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
     """
@@ -244,10 +246,13 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     toggle_text = "🔔 Уведы в ЛС: [ВКЛ]" if is_enabled else "🔕 Уведы в ЛС: [ВЫКЛ]"
     builder.button(text=toggle_text, callback_data="toggle_dm_notify")
 
-    # Кнопку массового отключения видит ТОЛЬКО Главный администратор:
+    # Кнопку ТО и массового отключения видит ТОЛЬКО Главный администратор:
     if is_super:
+        is_maint = is_maintenance_active()
+        maint_btn_text = "🟡 ТО: [ВКЛЮЧЕН] ⇄" if is_maint else "🟢 ТО: [ВЫКЛЮЧЕН] ⇄"
+        builder.button(text=maint_btn_text, callback_data="tech_toggle_maint")
         builder.button(text="🔕 Выкл всем HR", callback_data="hr_mute_all_dm")
-        builder.adjust(2, 2, 2, 2, 2)
+        builder.adjust(2, 2, 2, 2, 1, 2)
     else:
         builder.adjust(2, 2, 2, 2, 1)
 
@@ -311,7 +316,7 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder.button(text=db_btn_text, callback_data="tech_toggle_db")
 
     builder.button(text="💾 Управление бэкапами (/backups)", callback_data="tech_manage_backups")
-    maint_text = "🟡 Выключить ТО" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Включить ТО (пауза)"
+    maint_text = "🟡 Выключить ТО" if is_maintenance_active() else "🟢 Включить ТО (пауза)"
     builder.button(text=maint_text, callback_data="tech_toggle_maint")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")
     builder.button(text="🔄 Обновить статус", callback_data="tech_refresh")
@@ -334,7 +339,7 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
     vk_status = "🟢 Онлайн" if SYSTEM_METRICS["vk_online"] else ("🟡 Не настроен" if not CONFIG.get("VK_GROUP_TOKEN") else "🔴 Ошибка")
     max_status = "🟢 Онлайн" if SYSTEM_METRICS["max_online"] else ("🟡 Не настроен" if not CONFIG.get("MAX_BOT_TOKEN") else "🔴 Ошибка")
     db_status = "🟢 Исправна" if db.check_health() else "🔴 Сбой целостности"
-    maint_status = "🟡 Включен (прием на паузе)" if CONFIG.get("MAINTENANCE_MODE") else "🟢 Работа в штатном режиме"
+    maint_status = "🟡 Включен (прием на паузе)" if is_maintenance_active() else "🟢 Работа в штатном режиме"
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
     check_time = datetime.now().strftime("%H:%M:%S")
 

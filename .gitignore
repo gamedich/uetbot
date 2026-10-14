@@ -70,3 +70,6 @@ switch_script.sh
 deploy/server_switch_branch.sh
 scripts/local_admin_*
 private/
+local_git.py
+local_git*
+

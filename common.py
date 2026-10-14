@@ -282,14 +282,17 @@ if saved_maint:
 
 
 def is_maintenance_active() -> bool:
-    """Проверяет глобальный режим ТО предприятия (из CONFIG или из БД)."""
-    if CONFIG.get("MAINTENANCE_MODE", False):
-        return True
+    """Проверяет глобальный режим ТО предприятия (из БД или из CONFIG)."""
     try:
-        val = db.get_setting("maintenance_mode", "0")
-        return str(val).strip() in ("1", "true", "True")
+        val = db.get_setting("maintenance_mode", None)
+        if val is not None:
+            active = str(val).strip() in ("1", "true", "True")
+            CONFIG["MAINTENANCE_MODE"] = active
+            return active
     except Exception:
-        return False
+        pass
+    return bool(CONFIG.get("MAINTENANCE_MODE", False))
+
 
 
 def set_maintenance_active(active: bool) -> bool:

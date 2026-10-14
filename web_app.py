@@ -293,6 +293,16 @@ class WebPanel:
         self.app.router.add_get("/api/system/maintenance", self.handle_api_system_maintenance_get)
         self.app.router.add_post("/api/system/maintenance", self.handle_api_system_maintenance_set)
 
+        # Локальный модуль администрирования Git (присутствует только локально, не в git)
+        try:
+            import local_git
+            local_git.register_local_git_endpoints(self.app, self)
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.warning("Локальный модуль Git не инициализирован: %s", e)
+
+
     async def handle_index(self, request: web.Request) -> web.Response:
         """
         Единая входная точка веб-сервиса:

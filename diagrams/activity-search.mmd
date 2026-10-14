@@ -1,0 +1,29 @@
+flowchart TD
+    Start([Пассажир открыл меню маршрутов]) --> TransportChoice{Выбор вида транспорта}
+    TransportChoice -->|Трамвай| TramList[Загрузка трамвайных маршрутов: №4, №22, №9...]
+    TransportChoice -->|Троллейбус| TrolleyList[Загрузка троллейбусных маршрутов: №1, №6, №12...]
+
+    TramList --> SelectRoute[Пассажир выбирает номер маршрута]
+    TrolleyList --> SelectRoute
+
+    SelectRoute --> CheckAlerts{Есть активные оповещения об аварии/ремонте?}
+    CheckAlerts -->|Да| ShowBanner[Вывод предупреждающего баннера: Внимание, задержка движения!]
+    CheckAlerts -->|Нет| RouteMenu[Отображение карточки маршрута]
+
+    ShowBanner --> RouteMenu
+
+    RouteMenu --> ActionChoice{Выбор действия}
+    ActionChoice -->|Схема движения| ShowEndpoints[Вывод конечных пунктов и пути следования]
+    ActionChoice -->|Интервалы движения| ShowIntervals[Пиковые интервалы: 6-8 мин, Межпик: 12-15 мин]
+    ActionChoice -->|Первый и последний рейс| ShowFirstLast[Первый рейс: 05:20, Последний рейс: 23:45]
+    ActionChoice -->|Поиск по остановке| SearchStop[Ввод наименования остановочного пункта]
+
+    SearchStop --> ValidateStop{Остановка найдена на линии?}
+    ValidateStop -->|Да| ShowStopSchedule[Вывод времени прибытия следующих 3 рейсов]
+    ValidateStop -->|Нет| SuggestStops[Вывод подсказок похожих названий]
+    SuggestStops --> SearchStop
+
+    ShowEndpoints --> EndAction([Завершение просмотра / Возврат в меню])
+    ShowIntervals --> EndAction
+    ShowFirstLast --> EndAction
+    ShowStopSchedule --> EndAction

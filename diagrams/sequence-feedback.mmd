@@ -1,0 +1,33 @@
+sequenceDiagram
+    autonumber
+    actor Passenger as Пассажир
+    participant TG as Telegram Bot
+    participant FSM as FSM Storage (SQLiteFSM)
+    participant Feedback as FeedbackHandler
+    participant DB as SQLite WAL
+    actor Dispatcher as Диспетчер движения (Чат депо)
+
+    Passenger->>TG: /feedback или кнопка "📩 Обратная связь / Забытые вещи"
+    TG->>Feedback: Команда инициализации
+    Feedback->>FSM: set_state(FeedbackState.waiting_category)
+    Feedback-->>TG: Меню: Жалоба / Благодарность / Забытая вещь
+    TG-->>Passenger: Запрос категории обращения
+
+    Passenger->>TG: Выбор "Забытая вещь в салоне"
+    TG->>Feedback: Обработка категории
+    Feedback->>FSM: update_data(category="lost_item")
+    Feedback-->>TG: Запрос: "Укажите маршрут, бортовой номер вагона и описание вещи"
+
+    Passenger->>TG: Ввод: "Трамвай 22, борт №342, оставлен синий рюкзак"
+    TG->>Feedback: Текстовое сообщение
+    Feedback->>FSM: update_data(details=...)
+    Feedback-->>TG: "Прикрепите фото (если есть) или нажмите 'Пропустить'"
+
+    Passenger->>TG: Отправка фото или кнопка "Пропустить"
+    TG->>Feedback: Завершение шага FSM
+    Feedback->>DB: INSERT INTO passenger_feedback (category, details, user_id, status)
+    DB-->>Feedback: ID обращения #1042
+    Feedback->>Dispatcher: Пересылка карточки тикета #1042 в группу диспетчерской службы
+    Feedback->>FSM: clear()
+    Feedback-->>TG: "✅ Обращение #1042 принято! Диспетчер проверит вагон на конечной станции."
+    TG-->>Passenger: Подтверждение доставки с номером обращения

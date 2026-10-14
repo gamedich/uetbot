@@ -1,0 +1,69 @@
+@startuml
+skinparam componentStyle uml2
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+
+package "Внешние клиенты" {
+    [Пассажир (Telegram Bot)] as TG_Passenger
+    [Пассажир (VK / Сайт)] as VK_Passenger
+    [Диспетчер / Кадровик (Web Browser / TMA)] as Web_Admin
+    [DevOps / Администратор (SSH Terminal)] as SSH_Admin
+}
+
+package "Периметр безопасности и Сеть" {
+    [Nginx Reverse Proxy\n(HTTPS, TLS 1.3, Rate Limiting)] as Nginx
+    [SSH Daemon\n(Port 22, Ed25519 Keys Only)] as SSHD
+}
+
+package "Серверное приложение UETBot (Python 3.12)" {
+    component "Aiogram 3 Dispatcher" as TG_Engine {
+        [Routers & Handlers] as Handlers
+        [Middlewares & Filters] as Middlewares
+        [FSM State Manager] as FSM
+    }
+
+    component "Aiohttp Web API" as Web_Engine {
+        [Auth & RBAC Bearer Tokens] as Auth_Module
+        [Candidate & Vacancy Controllers] as Controllers
+    }
+
+    component "Бизнес-сервисы" as Services {
+        [Schedule & Transit Service] as Sched_Service
+        [Compliance & 152-FZ Service] as Comp_Service
+        [Candidate Processing Service] as Cand_Service
+    }
+
+    component "Data Access Layer" as DAL {
+        [DatabaseManager (Connection Pool)] as DB_Pool
+    }
+}
+
+package "Хранилище данных (Storage)" {
+    database "SQLite WAL DB\n(resumes.db)" as SQLite_DB
+    folder "Local Backup Storage\n(/root/uetbot/backups)" as Backups
+}
+
+package "Локальный изолированный контур" {
+    file "deploy/server_switch_branch.sh\n(chmod 700)" as Deploy_Script
+    [Systemd Service\n(uet_bot.service)] as Systemd
+}
+
+TG_Passenger --> TG_Engine : Telegram MTProto
+VK_Passenger --> Handlers : VK LongPoll Gateway
+Web_Admin --> Nginx : HTTPS (Port 443)
+Nginx --> Web_Engine : Proxy pass 127.0.0.1:8080
+
+SSH_Admin --> SSHD : SSH Port 22
+SSHD --> Deploy_Script : Запуск администратором
+Deploy_Script --> Systemd : systemctl restart
+Deploy_Script --> SQLite_DB : Валидация схемы
+
+Handlers --> Middlewares
+Middlewares --> Services
+Controllers --> Auth_Module
+Controllers --> Services
+
+Services --> DB_Pool
+DB_Pool --> SQLite_DB : PRAGMA journal_mode=WAL
+DB_Pool --> Backups : Атомарный бэкап
+@enduml

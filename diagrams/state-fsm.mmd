@@ -1,0 +1,29 @@
+stateDiagram-v2
+    [*] --> Idle: Пользователь открыл бота /start
+
+    Idle --> Disclaimer_152FZ: Нажатие "📝 Заполнить анкету"
+    Disclaimer_152FZ --> Rejected_NoConsent: Отказ от согласия 152-ФЗ
+    Rejected_NoConsent --> [*]
+
+    Disclaimer_152FZ --> Step1_FullName: Согласие принято
+    Step1_FullName --> Step2_Phone: Ввод ФИО (валидация 2+ слова)
+    Step2_Phone --> Step3_BirthDate: Ввод телефона (+7 / 8...)
+    Step3_BirthDate --> Step4_Citizenship: Проверка возраста (18+ лет)
+    Step4_Citizenship --> Step5_City: Гражданство РФ / ЕАЭС
+    Step5_City --> Step6_Vacancy: Город проживания (Ульяновск)
+    Step6_Vacancy --> Step7_Experience: Выбор вакансии (Водитель / Кондуктор)
+    Step7_Experience --> Step8_License: Опыт работы на транспорте
+    Step8_License --> Step9_Education: Категории прав (B / C / D / Tm / Tb)
+    Step9_Education --> Step10_Military: Уровень образования
+    Step10_Military --> Step11_CriminalCheck: Отношение к воинской службе
+    Step11_CriminalCheck --> Step12_Health: Проверка ст. 328.1 ТК РФ
+    Step12_Health --> Step13_DepotChoice: Медкомиссия для водителей
+    Step13_DepotChoice --> Step14_Schedule: Выбор депо (Северное / Засвияжское / Заволжское)
+    Step14_Schedule --> Step15_Comments: Желаемый график смен
+    Step15_Comments --> Step16_Confirmation: Дополнительные навыки / комментарии
+
+    Step16_Confirmation --> Saved_In_DB: Подтверждение отправки
+    Step16_Confirmation --> Idle: Отмена / Сброс (/cancel)
+
+    Saved_In_DB --> Ticket_Routed_HR: Генерация карточки тикета #73-XXXX
+    Ticket_Routed_HR --> [*]: Ожидание собеседования

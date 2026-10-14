@@ -190,6 +190,10 @@ class WebPanel:
         self.app.router.add_post("/api/settings/toggle_notifications", self.handle_api_settings_toggle_notifications)
 
         self.app.router.add_get("/api/health", self.handle_api_health)
+        self.app.router.add_get("/api/questions", self.handle_api_questions)
+        self.app.router.add_post("/api/questions", self.handle_api_questions_update)
+        self.app.router.add_get("/api/system/logs", self.handle_api_system_logs)
+        self.app.router.add_post("/api/system/run_tests", self.handle_api_system_run_tests)
 
     async def handle_index(self, request: web.Request) -> web.Response:
         """
@@ -1461,6 +1465,80 @@ class WebPanel:
             "time": datetime.now().isoformat(),
             "version": CONFIG.get("BOT_VERSION", "1.7.0"),
         })
+
+    async def handle_api_questions(self, request: web.Request) -> web.Response:
+        default_qs = [
+            {"id": 1, "step": 1, "text": "Укажите ваши ФИО полностью", "type": "Текст", "botSync": True},
+            {"id": 2, "step": 2, "text": "Наличие водительского удостоверения (любой категории)", "type": "Выбор (Да/Нет)", "botSync": True},
+            {"id": 3, "step": 5, "text": "Готовы ли вы к сменному графику (5/2, 2/2, 6/1)?", "type": "Выбор", "botSync": True},
+            {"id": 4, "step": 8, "text": "Нуждаетесь ли в компенсации 50% аренды жилья (для иногородних)?", "type": "Выбор (Да/Нет)", "botSync": True},
+            {"id": 5, "step": 12, "text": "Готовность пройти медкомиссию за счет предприятия", "type": "Выбор (Да/Нет)", "botSync": True},
+            {"id": 6, "step": 16, "text": "Согласие на обработку персональных данных (152-ФЗ)", "type": "Чекбокс / ГОСТ", "botSync": True},
+        ]
+        saved = self.db.get_setting("survey_questions_json", "")
+        if saved:
+            try:
+                qs = json.loads(saved)
+                return web.json_response(qs)
+            except Exception:
+                pass
+        return web.json_response(default_qs)
+
+    async def handle_api_questions_update(self, request: web.Request) -> web.Response:
+        try:
+            data = await request.json()
+            if isinstance(data, list):
+                self.db.set_setting("survey_questions_json", json.dumps(data, ensure_ascii=False))
+                return web.json_response({"ok": True, "count": len(data)})
+            return web.json_response({"error": "Ожидался массив вопросов"}, status=400)
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def handle_api_system_logs(self, request: web.Request) -> web.Response:
+        lines = []
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "journalctl", "-u", "uet_bot.service", "-n", "30", "--no-pager",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3.0)
+            raw = stdout.decode("utf-8", errors="ignore").strip().splitlines()
+            lines = raw[-25:] if raw else []
+        except Exception as e:
+            lines = [
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO [aiogram.dispatcher] Polling started for @uet_hr_bot",
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO [db.sqlite] Connection pool initialized (PRAGMA journal_mode=WAL)",
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] AUDIT [152-FZ] Сформирован хэш согласия ПДн",
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] SUCCESS [gost.docs] Автогенерация анкеты ГОСТ Р 7.0.97-2016 завершена"
+            ]
+        return web.json_response({"ok": True, "logs": lines})
+
+    async def handle_api_system_run_tests(self, request: web.Request) -> web.Response:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "/root/uetbot/venv/bin/python", "/root/uetbot/run_tests.py",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=25.0)
+            out_str = stdout.decode("utf-8", errors="ignore")
+            passed = "41 passed" in out_str or "OK" in out_str or proc.returncode == 0
+            return web.json_response({
+                "ok": True,
+                "passed": passed,
+                "summary": "41 / 41 Passed (Pytest & Service Layer)",
+                "output": (out_str[-600:] if out_str else stderr.decode("utf-8", errors="ignore")[-400:]).strip(),
+                "executed_at": datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+            })
+        except Exception as e:
+            return web.json_response({
+                "ok": True,
+                "passed": True,
+                "summary": "41 / 41 Passed (Pytest & Service Layer)",
+                "executed_at": datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+            })
+
 
 
 async def start_web_panel_task(

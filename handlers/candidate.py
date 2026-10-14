@@ -255,34 +255,48 @@ async def cmd_web_panel_entry(message: types.Message) -> None:
     await safe_answer(message, text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
-@candidate_router.message(Command("password", "set_password"))
-async def cmd_set_password_entry(message: types.Message) -> None:
-    """Установка или смена личного пароля сотрудника для входа в веб-панель."""
-    user_id = message.from_user.id
-    is_admin = is_any_staff(user_id)
-    if not is_admin:
-        await safe_answer(
-            message,
-            "🚫 <b>Доступ ограничен.</b> Установка пароля доступна только сотрудникам МУП «УЭТ».",
-            parse_mode="HTML"
-        )
-        return
+@candidate_router.message(Command("password", "set_password", "cabinet", "login"))
+@candidate_router.callback_query(lambda c: c.data in ("cand_web_credentials", "cand_cabinet_auth"))
+async def cmd_set_password_entry(event: types.Message | types.CallbackQuery) -> None:
+    """Установка или просмотр личного логина/пароля для входа в веб-портал МУП «УЭТ»."""
+    is_callback = isinstance(event, types.CallbackQuery)
+    message = event.message if is_callback else event
+    user_id = event.from_user.id
 
-    parts = (message.text or "").strip().split(maxsplit=1)
-    if len(parts) < 2 or not parts[1].strip():
+    if is_callback:
+        await event.answer()
+
+    parts = (event.message.text if is_callback and event.message and event.message.text else (message.text or "")).strip().split(maxsplit=1)
+    # Если вызов по кнопке или без аргументов — показываем статус и инструкцию
+    if is_callback or len(parts) < 2 or not parts[1].strip():
         cur_pwd = db.get_admin_password(user_id)
-        cur_status = f"🔑 <b>Ваш текущий пароль:</b> <code>{cur_pwd}</code>\n\n" if cur_pwd else "⚠️ <b>Пароль ещё не задан!</b>\n\n"
+        cur_email = db.get_admin_email(user_id)
+        is_staff = is_any_staff(user_id)
+        role_desc = "Сотрудник депо / Кадровик" if is_staff else "Соискатель / Личный кабинет"
+
+        cur_status = f"🔑 <b>Ваш текущий пароль:</b> <code>{cur_pwd}</code>\n" if cur_pwd else "⚠️ <b>Пароль ещё не задан!</b>\n"
+        email_status = f"📧 <b>Привязанный Email:</b> <code>{cur_email}</code>\n" if cur_email else "📧 <i>Почта не привязана (можно привязать в ЛК)</i>\n"
+
+        web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🌐 Открыть Личный кабинет", web_app=types.WebAppInfo(url=web_url))
+        builder.adjust(1)
+
         text = (
-            "🔐 <b>УПРАВЛЕНИЕ ПАРОЛЕМ ВЕБ-ПАНЕЛИ</b>\n"
+            "🔐 <b>ЛИЧНЫЙ КАБИНЕТ И ПАРОЛЬ ДЛЯ САЙТА</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 <b>Ваш логин:</b> <code>{user_id}</code>\n"
+            f"🏷 <b>Категория доступа:</b> <i>{role_desc}</i>\n"
             f"{cur_status}"
-            "Чтобы задать или изменить пароль для входа на сайте, отправьте:\n"
-            "👉 <code>/password НОВЫЙ_ПАРОЛЬ</code>\n\n"
+            f"{email_status}\n"
+            "Чтобы задать или сменить пароль для входа на сайте, отправьте:\n"
+            "👉 <code>/password ВАШ_ПАРОЛЬ</code>\n\n"
             "<i>(Например: <code>/password uet2026</code> или <code>/password tram73</code>)</i>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            "После этого вы сможете мгновенно входить на сайте по этому паролю."
+            f"🌐 <b>Адрес сайта:</b> <a href='{web_url}'>{web_url}</a>\n"
+            "<i>После установки пароля вы сможете входить на сайт в защищенный контур.</i>"
         )
-        await safe_answer(message, text, parse_mode="HTML")
+        await safe_answer(message, text, reply_markup=builder.as_markup(), parse_mode="HTML")
         return
 
     new_pwd = parts[1].strip()

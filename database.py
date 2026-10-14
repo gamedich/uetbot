@@ -230,6 +230,8 @@ class ResumeDB:
                 cursor.execute("ALTER TABLE admins ADD COLUMN phone TEXT")
             if "full_name" not in admin_cols:
                 cursor.execute("ALTER TABLE admins ADD COLUMN full_name TEXT")
+            if "email" not in admin_cols:
+                cursor.execute("ALTER TABLE admins ADD COLUMN email TEXT DEFAULT ''")
 
             # 6. Таблица кулдауна обращений (антифлуд)
             cursor.execute(
@@ -1055,11 +1057,17 @@ class ResumeDB:
             return str(row[0]) if row else None
 
     def set_admin_password(self, user_id: int, password: str) -> bool:
-        """Установка или сброс персонального пароля сотрудника для веб-панели."""
+        """Установка или сброс персонального пароля сотрудника или соискателя для веб-панели."""
         with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("UPDATE admins SET web_password = ? WHERE user_id = ?", (password.strip(), user_id))
-            return cursor.rowcount > 0
+            if cursor.rowcount == 0:
+                cursor.execute(
+                    "INSERT INTO admins (user_id, role, notify_dm, web_password) VALUES (?, 'applicant', 1, ?)",
+                    (user_id, password.strip())
+                )
+            conn.commit()
+            return True
 
     def get_admin_password(self, user_id: int) -> Optional[str]:
         """Получение пароля веб-панели сотрудника."""
@@ -1068,6 +1076,27 @@ class ResumeDB:
             cursor.execute("SELECT web_password FROM admins WHERE user_id = ?", (user_id,))
             row = cursor.fetchone()
             return str(row[0]) if row and row[0] else None
+
+    def set_admin_email(self, user_id: int, email: str) -> bool:
+        """Привязка электронной почты сотрудника или соискателя."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE admins SET email = ? WHERE user_id = ?", (email.strip(), user_id))
+            if cursor.rowcount == 0:
+                cursor.execute(
+                    "INSERT INTO admins (user_id, role, notify_dm, email) VALUES (?, 'applicant', 1, ?)",
+                    (user_id, email.strip())
+                )
+            conn.commit()
+            return True
+
+    def get_admin_email(self, user_id: int) -> str:
+        """Получение электронной почты сотрудника или соискателя."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT email FROM admins WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+            return str(row[0]) if row and row[0] else ""
 
     def set_admin_phone(self, user_id: int, phone: str) -> bool:
         """Привязка номера телефона сотрудника."""

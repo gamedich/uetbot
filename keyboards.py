@@ -67,15 +67,18 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
     builder.button(text="🎓 Обучение со стипендией", callback_data="cand_training_info")
     builder.button(text="📞 Контакты депо", callback_data="cand_hr_contacts")
 
+    # 4. Личный кабинет и пароль для сайта
+    builder.button(text="🔑 Личный кабинет / Пароль", callback_data="cand_web_credentials")
+
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     is_tech = bool(user_id and (user_id == super_id or is_tech_admin(user_id)))
     is_hr = bool(user_id and (user_id == super_id or is_hr_admin(user_id)))
 
     if is_tech or is_hr:
         builder.button(text="👔 Служебный кабинет", web_app=types.WebAppInfo(url=f"{web_url.rstrip('/')}/dashboard"))
-        builder.adjust(2, 2, 2, 1)
+        builder.adjust(2, 2, 2, 1, 1)
     else:
-        builder.adjust(2, 2, 2)
+        builder.adjust(2, 2, 2, 1)
 
     return builder.as_markup()
 

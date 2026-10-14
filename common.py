@@ -251,8 +251,13 @@ if _proxy_url:
 else:
     _bot_session = None
 
+_bot_token_candidate = CONFIG.get("TG_BOT_TOKEN")
+if not _bot_token_candidate or ":" not in _bot_token_candidate:
+    # Валидный по формату aiogram фиктивный токен для CI и модульного тестирования
+    _bot_token_candidate = f"{'1' * 9}:{'a' * 35}"
+
 bot = Bot(
-    token=CONFIG.get("TG_BOT_TOKEN", ""),
+    token=_bot_token_candidate,
     session=_bot_session,
     default=DefaultBotProperties(parse_mode="HTML"),
 )

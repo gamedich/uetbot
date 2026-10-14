@@ -4,6 +4,12 @@ site_description: Официальная документация пассажи
 docs_dir: docs
 site_dir: site
 
+exclude_docs: |
+  index.html
+  adr/001-language-and-framework.md
+  adr/002-database-storage.md
+  adr/003-architectural-style.md
+
 nav:
   - Главная: index.md
   - PRD (Требования): prd.md
@@ -14,6 +20,7 @@ nav:
       - 002. Архитектура базы данных SQLite: adr/002-database-and-orm-architecture.md
       - 003. Архитектурный стиль приложения: adr/003-architecture-style.md
       - 004. Стратегия ветвления Git: adr/004-git-branching-strategy.md
+      - 005. Медиа-шлюз VK и Telegram: adr/004-vk-media-gateway.md
   - Безопасность: security.md
   - История изменений: CHANGELOG.md
 

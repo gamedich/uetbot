@@ -6,6 +6,7 @@ services_dir = os.path.join(current_dir, "services")
 if services_dir not in sys.path:
     sys.path.insert(0, services_dir)
 os.environ["DB_PATH"] = "/tmp/test_sec_suite.db"
+os.environ.setdefault("TG_BOT_TOKEN", f"{'1' * 9}:{'a' * 35}")
 import importlib.util
 for mod_name in ['assistant', 'web_app']:
     mod_file = os.path.join(current_dir, f'{mod_name}.py')

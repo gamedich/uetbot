@@ -108,6 +108,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Run Unit Tests
+        env:
+          TG_BOT_TOKEN: "123456789:TestEnvironmentMockTokenForCiChecks12"
         run: |
           echo "=== Запуск полного набора автотестов uetbot ==="
           python run_tests.py

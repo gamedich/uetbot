@@ -11,12 +11,19 @@ import os
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-import docx
-from docx.shared import Inches, Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
-from docx.oxml import parse_xml
-from docx.oxml.ns import nsdecls
+try:
+    import docx
+    from docx.shared import Inches, Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
+    from docx.oxml import parse_xml
+    from docx.oxml.ns import nsdecls
+except ImportError:
+    docx = None
+    Inches = Pt = RGBColor = None
+    WD_ALIGN_PARAGRAPH = None
+    WD_TABLE_ALIGNMENT = WD_ALIGN_VERTICAL = None
+    parse_xml = nsdecls = None
 
 COLOR_PRIMARY = "003B57"   # Тёмно-синий фирменный цвет МУП УЭТ
 COLOR_ALT_ROW = "F1F5F9"   # Светло-серый фон для четных строк

@@ -480,13 +480,40 @@
             <div id="tabContentApplicants" class="space-y-6 hidden">
                 <div class="flex flex-wrap justify-between items-center gap-4">
                     <div>
-                        <h2 class="text-2xl font-extrabold">Воронка соискателей (16 шагов)</h2>
+                        <div class="inline-flex items-center gap-2 bg-blue-100 dark:bg-blue-900/40 text-[#1371B9] dark:text-blue-300 px-3 py-1 rounded-full text-xs font-bold mb-2">
+                            <span>👥 Кадровая панель HR</span>
+                        </div>
+                        <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white">Воронка соискателей (16 шагов)</h2>
                         <p class="text-xs text-slate-500 dark:text-slate-400">Все заявки с сайта, Telegram, VK и мессенджера MAX в единой базе SQLite</p>
                     </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="switchTab('questions')" class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition shadow-sm">
+                            <span>⚙️ Настройка анкет (16 шагов)</span>
+                        </button>
                         <button onclick="downloadCandidatesRegistry()" class="bg-[#1371B9] hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                             <span>Выгрузить отчет по ГОСТ</span>
                         </button>
+                    </div>
+                </div>
+
+                <!-- СЧЕТЧИКИ АНКЕТ ПО СТАТУСАМ ВОРОНКИ -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div onclick="setFilterStatus('all')" class="cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border border-slate-200 dark:border-slate-800 hover:border-[#1371B9] transition shadow-sm">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Всего анкет</div>
+                        <div id="applicantStatTotal" class="text-2xl font-black text-[#1371B9] dark:text-blue-400 mt-1">0</div>
+                    </div>
+                    <div onclick="setFilterStatus('Новая')" class="cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border border-slate-200 dark:border-slate-800 hover:border-blue-400 transition shadow-sm">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Новые заявки</div>
+                        <div id="applicantStatNew" class="text-2xl font-black text-blue-500 mt-1">0</div>
+                    </div>
+                    <div onclick="setFilterStatus('Собеседование')" class="cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border border-slate-200 dark:border-slate-800 hover:border-purple-400 transition shadow-sm">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Собеседование</div>
+                        <div id="applicantStatInterview" class="text-2xl font-black text-purple-500 mt-1">0</div>
+                    </div>
+                    <div onclick="setFilterStatus('Одобрено')" class="cursor-pointer p-4 rounded-2xl bg-white dark:bg-[#112240] border border-slate-200 dark:border-slate-800 hover:border-emerald-400 transition shadow-sm">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Приняты в штат</div>
+                        <div id="applicantStatApproved" class="text-2xl font-black text-emerald-500 mt-1">0</div>
                     </div>
                 </div>
 
@@ -2166,6 +2193,7 @@
         // =========================================================================
 
         function switchTab(tabName) {
+            if (tabName === 'survey') tabName = 'survey16';
             const staffTabs = ['vacancies', 'applicants', 'questions', 'security', 'tech', 'admins'];
             if (staffTabs.includes(tabName)) {
                 if (!['hr', 'tech', 'superadmin', 'depot'].includes(state.role)) {
@@ -3225,13 +3253,46 @@
             const tbody = document.getElementById('applicantsTableBody');
             if (!tbody) return;
             const list = filteredList || state.applicants;
+
+            // Живой расчет счетчиков воронки
+            const total = state.applicants ? state.applicants.length : 0;
+            const newCount = state.applicants ? state.applicants.filter(a => (a.step || '').includes('Новая')).length : 0;
+            const interviewCount = state.applicants ? state.applicants.filter(a => (a.step || '').includes('Приглашен') || (a.step || '').includes('Собеседование')).length : 0;
+            const approvedCount = state.applicants ? state.applicants.filter(a => (a.step || '').includes('Принят') || (a.step || '').includes('Одобрено')).length : 0;
+
+            const elTotal = document.getElementById('applicantStatTotal');
+            const elNew = document.getElementById('applicantStatNew');
+            const elInterview = document.getElementById('applicantStatInterview');
+            const elApproved = document.getElementById('applicantStatApproved');
+            if (elTotal) elTotal.innerText = total;
+            if (elNew) elNew.innerText = newCount;
+            if (elInterview) elInterview.innerText = interviewCount;
+            if (elApproved) elApproved.innerText = approvedCount;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-slate-400">
+                            <div class="text-2xl mb-1">📭</div>
+                            Анкет соискателей в выбранной категории не обнаружено
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
             tbody.innerHTML = list.map(app => `
                 <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
                     <td class="py-3.5 px-4 font-mono text-xs font-bold text-[#1371B9] dark:text-blue-400">#${app.rawId || app.id}</td>
                     <td class="py-3.5 px-4 font-semibold cursor-pointer hover:underline" onclick="openCandidateModal(${app.rawId || 0})">${escapeHtml(app.name)}</td>
                     <td class="py-3.5 px-4 text-xs">${escapeHtml(app.vacancy)}</td>
                     <td class="py-3.5 px-4">
-                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-300">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                            (app.step || '').includes('Приглашен') ? 'bg-purple-500/10 text-purple-600 dark:text-purple-300' :
+                            (app.step || '').includes('Принят') ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                            (app.step || '').includes('Отказ') ? 'bg-red-500/10 text-red-500' :
+                            'bg-blue-500/10 text-blue-600 dark:text-blue-300'
+                        }">
                             ${escapeHtml(app.step)}
                         </span>
                     </td>
@@ -3246,12 +3307,45 @@
                         </span>
                     </td>
                     <td class="py-3.5 px-4 text-right">
-                        <button onclick="openCandidateModal(${app.rawId || 0})" class="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-[#1371B9] dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-bold text-xs inline-flex items-center gap-1 transition">
-                            <span>👁️ Анкета</span>
-                        </button>
+                        <div class="flex items-center justify-end gap-1.5">
+                            <button onclick="quickInviteCandidate(${app.rawId || 0})" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white font-bold text-xs inline-flex items-center gap-1 transition shadow-sm" title="Пригласить соискателя на очное собеседование в депо">
+                                <span>🟢 Пригласить</span>
+                            </button>
+                            <button onclick="openCandidateModal(${app.rawId || 0})" class="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-[#1371B9] dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-bold text-xs inline-flex items-center gap-1 transition">
+                                <span>👁️ Анкета</span>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `).join('');
+        }
+
+        async function quickInviteCandidate(ticketId) {
+            if (!ticketId) return;
+            if (!confirm(`Пригласить соискателя #${ticketId} на очное собеседование в депо?\n\nКандидат получит моментальное уведомление с адресом и временем собеседования.`)) return;
+            try {
+                const res = await fetch(`/api/candidate/${ticketId}/status`, {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ status: 'Приглашен' })
+                });
+                if (res.ok) {
+                    alert(`✓ Соискатель #${ticketId} успешно приглашен на очное собеседование!`);
+                    loadRealCandidates();
+                } else {
+                    alert('Ошибка обновления статуса');
+                }
+            } catch (e) {
+                alert('Сетевая ошибка при приглашении соискателя');
+            }
+        }
+
+        function setFilterStatus(status) {
+            const filterEl = document.getElementById('applicantStatusFilter');
+            if (filterEl) {
+                filterEl.value = status;
+                filterApplicants();
+            }
         }
 
         function filterApplicants() {

@@ -2030,8 +2030,7 @@ class WebPanel:
         if saved:
             try:
                 qs = json.loads(saved)
-                # Если в сохраненных меньше 16 шагов, объединяем для гарантии 16 шагов
-                if isinstance(qs, list) and len(qs) >= 16:
+                if isinstance(qs, list) and len(qs) >= 2:
                     return web.json_response(qs)
             except Exception:
                 pass
@@ -2044,8 +2043,14 @@ class WebPanel:
         try:
             data = await request.json()
             if isinstance(data, list):
+                if len(data) < 2:
+                    return web.json_response({"error": "В анкете должно оставаться минимум 2 шага (например, ФИО и телефон)."}, status=400)
+                for i, q in enumerate(data, start=1):
+                    q["step"] = i
+                    if "id" not in q:
+                        q["id"] = i
                 self.db.set_setting("survey_questions_json", json.dumps(data, ensure_ascii=False))
-                return web.json_response({"ok": True, "count": len(data)})
+                return web.json_response({"ok": True, "count": len(data), "questions": data})
             return web.json_response({"error": "Ожидался массив вопросов"}, status=400)
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
@@ -2138,20 +2143,33 @@ class WebPanel:
             caller_uid = int(session.get("uid") or 0)
             caller_role = str(session.get("role", "")).lower()
             target_uid = int(data.get("user_id") or caller_uid)
+            new_pwd = str(data.get("new_password") or data.get("password") or "").strip()
+            if len(new_pwd) < 3:
+                return web.json_response({"ok": False, "error": "Пароль должен содержать минимум 3 символа"}, status=400)
 
-            # Кандидаты/соискатели не могут менять пароли администраторов
+            # Если соискатель меняет свой пароль от личного кабинета
             if caller_role in {"candidate", "applicant"}:
-                return web.json_response({"ok": False, "error": "Соискателям недоступно изменение служебных паролей"}, status=403)
+                cand = self.db.get_candidate(caller_uid)
+                if not cand:
+                    return web.json_response({"ok": False, "error": "Анкета соискателя не найдена"}, status=404)
+                meta = {}
+                try:
+                    meta = json.loads(cand[4] or "{}")
+                except Exception:
+                    pass
+                meta["web_password"] = new_pwd
+                with self.db.connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute("UPDATE candidates SET raw_data_json = ? WHERE ticket_id = ?", (json.dumps(meta, ensure_ascii=False), caller_uid))
+                    conn.commit()
+                return web.json_response({"ok": True, "message": "Пароль для личного кабинета соискателя успешно сохранён!"})
 
-            # Менять чужой пароль разрешено только супер-администратору
+            # Менять чужой пароль сотрудника разрешено только супер-администратору
             if target_uid != caller_uid and caller_role not in {"superadmin", "super"}:
                 return web.json_response({"ok": False, "error": "Недостаточно прав для смены чужого пароля"}, status=403)
 
-            new_pwd = str(data.get("new_password") or data.get("password") or "").strip()
-            if len(new_pwd) < 4:
-                return web.json_response({"ok": False, "error": "Пароль должен содержать минимум 4 символа"}, status=400)
             self.db.set_admin_password(target_uid, new_pwd)
-            return web.json_response({"ok": True, "message": "Пароль успешно сохранён"})
+            return web.json_response({"ok": True, "message": "Пароль сотрудника успешно сохранён!"})
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=500)
 

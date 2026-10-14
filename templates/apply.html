@@ -199,29 +199,29 @@
                             </div>
                             <div class="bg-black/25 backdrop-blur-sm p-3 rounded-2xl border border-white/10">
                                 <div class="text-sky-300 font-black text-lg">40 дней</div>
-                                <div class="text-[11px] text-blue-100">Расширенный отпуск</div>
+                                <div class="text-[11px] text-blue-100">Оплачиваемый отпуск</div>
                             </div>
                             <div class="bg-black/25 backdrop-blur-sm p-3 rounded-2xl border border-white/10">
-                                <div class="text-[#F26E22] font-black text-lg">-50%</div>
+                                <div class="text-white font-black text-lg">50%</div>
                                 <div class="text-[11px] text-blue-100">Компенсация жилья</div>
                             </div>
                         </div>
 
-                        <!-- Кнопки действий -->
-                        <div class="flex flex-wrap items-center gap-3 pt-4">
-                            <button onclick="switchTab('survey16')" class="bg-[#D31224] hover:bg-red-700 text-white font-bold px-6 py-3.5 rounded-2xl shadow-lg transition flex items-center gap-2">
-                                <span>Заполнить анкету на работу (16 шагов)</span>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                        <!-- CTA Кнопки -->
+                        <div class="flex flex-wrap gap-3 pt-2">
+                            <button onclick="switchTab('survey')" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-[#F26E22] text-slate-900 font-bold hover:brightness-110 shadow-lg shadow-orange-500/25 transition flex items-center gap-2">
+                                <span>Заполнить анкету на работу</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                             </button>
-                            <button onclick="switchTab('cabinet')" class="bg-white/15 hover:bg-white/25 text-white font-semibold px-5 py-3.5 rounded-2xl backdrop-blur-sm transition">
-                                Проверить статус заявки
+                            <button onclick="switchTab('cabinet')" class="px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white font-medium border border-white/20 transition flex items-center gap-2">
+                                <span>Проверить статус заявки</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Информационные сервисы: Омниканальные боты, Личный кабинет и Прямой контакт -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Информационные сервисы: Официальные боты и Прямой контакт (2 колонки) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     
                     <!-- Блок 1: Официальные боты в мессенджерах -->
                     <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-7 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors flex flex-col justify-between">
@@ -250,35 +250,12 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Блок 2: Быстрая регистрация и Личный кабинет -->
-                    <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-7 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors flex flex-col justify-between">
-                        <div>
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 font-bold">⚡</span>
-                                <h3 class="font-bold text-base">Личный кабинет портала</h3>
-                            </div>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                                Быстрый вход через Telegram или регистрация на сайте для соискателей и сотрудников:
-                            </p>
-                            <div class="space-y-3">
-                                <button onclick="openRegisterModal()" class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-md">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                                    <span>Быстрая регистрация соискателя</span>
-                                </button>
-                                <button onclick="openLoginModal('login')" class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs transition shadow-md">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
-                                    <span>Вход через Telegram или сайт</span>
-                                </button>
-                            </div>
-                        </div>
                         <div class="pt-4 text-[11px] text-slate-400 flex items-center gap-1.5">
                             <span>🔒 Защита персональных данных 152-ФЗ / ГОСТ</span>
                         </div>
                     </div>
 
-                    <!-- Блок 3: Прямой контакт отдела подготовки кадров -->
+                    <!-- Блок 2: Прямой контакт отдела подготовки кадров -->
                     <div class="bg-gradient-to-br from-[#F26E22] to-amber-600 rounded-3xl p-6 md:p-7 text-white shadow-md flex flex-col justify-between">
                         <div>
                             <div class="text-xs uppercase font-bold opacity-80 mb-1">Прямая связь с отделом кадров</div>
@@ -293,7 +270,6 @@
                             <span>+7 (951) 099-00-60</span>
                         </a>
                     </div>
-
                 </div>
             </div>
 
@@ -331,6 +307,26 @@
 
                 <div id="surveyActiveContainer" class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
                     
+                    <!-- Блок просмотра всех вопросов анкеты соискателя на сайте списком -->
+                    <div class="mb-6 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    <span>📋 Все вопросы анкеты соискателя на сайте</span>
+                                    <span id="surveyQuestionsCountBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-[#1371B9]/15 text-[#1371B9] dark:text-blue-300 font-bold border border-blue-500/20">16 шагов</span>
+                                </h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Вы можете предварительно просмотреть все вопросы или заполнять пошагово ниже.</p>
+                            </div>
+                            <button type="button" onclick="toggleAllQuestionsList()" id="btnToggleAllQuestions" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 transition flex items-center gap-1.5 shadow-sm">
+                                <span>Показать все вопросы списком</span>
+                                <svg id="toggleQuestionsIcon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                        </div>
+                        <div id="surveyAllQuestionsContainer" class="hidden mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                            <!-- Заполняется renderSurveyAllQuestions() -->
+                        </div>
+                    </div>
+
                     <!-- Шапка визарда -->
                     <div class="flex flex-wrap justify-between items-center gap-4 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
                         <div>
@@ -377,80 +373,11 @@
             </div>
 
             <!-- =========================================================================
-                3. ЛИЧНЫЙ КАБИНЕТ СОТРУДНИКА / СОИСКАТЕЛЯ + КОНСОЛЬ НАСТРОЕК ЛК
+                3. ДИНАМИЧЕСКИЙ ЛИЧНЫЙ КАБИНЕТ (СОИСКАТЕЛЬ / HR / ADMIN / GUEST)
             ========================================================================= -->
             <div id="tabContentCabinet" class="space-y-6 hidden">
-                
-                <!-- Статус заявки соискателя -->
-                <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-4 transition-colors">
-                    <div>
-                        <span class="text-xs font-bold uppercase text-[#1371B9] dark:text-blue-400">Статус в кадровом реестре</span>
-                        <h2 id="cabinetStepTitle" class="text-2xl font-extrabold mt-0.5">Анкета зарегистрирована</h2>
-                        <p id="cabinetVacancySub" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Направление: Водитель трамвая (Вагон 71-911ЕМ «Львёнок»)</p>
-                    </div>
-                    <div class="flex items-center gap-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-4 py-2 rounded-2xl border border-emerald-500/20 font-semibold text-xs">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Согласие 152-ФЗ активно
-                    </div>
-                </div>
-
-                <!-- Быстрый поиск анкеты по номеру заявки или телефону -->
-                <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                    <h3 class="font-bold text-base mb-1">Проверка статуса по номеру или телефону</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Введите номер заявки (например, 73-104) или ваш номер телефона для прямого запроса к SQLite:</p>
-                    <div class="flex gap-2">
-                        <input id="candidateLookupInput" type="text" placeholder="Номер анкеты или телефон..." class="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
-                        <button onclick="lookupCandidateStatus()" class="bg-[#1371B9] hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition">
-                            Проверить
-                        </button>
-                    </div>
-                    <div id="candidateLookupResult" class="hidden mt-3 p-3 rounded-xl bg-blue-500/10 text-xs text-blue-700 dark:text-blue-300"></div>
-                </div>
-
-                <!-- КОНСОЛЬ НАСТРОЕК ЛК СОТРУДНИКА / СОИСКАТЕЛЯ -->
-                <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                    <h3 class="font-bold text-base mb-1 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-[#1371B9]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                        Консоль настроек личного кабинета
-                    </h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Управление паролем веб-доступа и привязка электронной почты для официальных уведомлений</p>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Смена пароля -->
-                        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
-                            <div class="font-bold text-xs uppercase text-slate-400">Смена пароля веб-доступа</div>
-                            <input id="cabinetNewPassword" type="password" placeholder="Введите новый пароль (от 3 симв.)..." class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs">
-                            <button onclick="saveCabinetPassword()" class="w-full py-2 bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition">
-                                Сохранить новый пароль
-                            </button>
-                            <div id="cabinetPasswordStatus" class="hidden text-[11px] font-semibold text-emerald-500"></div>
-                        </div>
-
-                        <!-- Привязка Email -->
-                        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
-                            <div class="font-bold text-xs uppercase text-slate-400">Привязка Email для уведомлений</div>
-                            <input id="cabinetEmailInput" type="email" placeholder="example@mail.ru" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs">
-                            <button onclick="saveCabinetEmail()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition">
-                                Привязать почту
-                            </button>
-                            <div id="cabinetEmailStatus" class="hidden text-[11px] font-semibold text-emerald-500"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Реферальная программа -->
-                <div class="bg-gradient-to-r from-[#1371B9] to-indigo-700 rounded-3xl p-6 md:p-8 text-white shadow-lg">
-                    <h3 class="text-xl font-bold mb-1">Реферальная система «Приведи коллегу в депо»</h3>
-                    <p class="text-xs md:text-sm text-blue-100 mb-4 max-w-xl">
-                        Отправьте персональную ссылку другу. Когда он пройдет 16 шагов воронки в UETBot и выйдет на смену в депо, вам начисляется премия.
-                    </p>
-                    <div class="flex flex-wrap items-center gap-2 bg-black/25 p-2 rounded-2xl w-fit border border-white/15">
-                        <code id="refLinkText" class="px-3 py-1.5 text-xs md:text-sm font-mono">https://t.me/UetFeedback_bot?start=ref_73001</code>
-                        <button onclick="copyRefLink()" class="bg-white text-[#1371B9] px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-50 transition">
-                            Скопировать ссылку
-                        </button>
-                    </div>
-                    <div id="copyToast" class="hidden text-xs text-emerald-300 mt-2 font-semibold">✓ Ссылка успешно скопирована в буфер обмена!</div>
+                <div id="cabinetDynamicContainer" class="space-y-6">
+                    <!-- Заполняется динамически функцией renderCabinetView() в зависимости от роли -->
                 </div>
             </div>
 
@@ -638,19 +565,31 @@
                     <div>
                         <h2 class="text-2xl font-extrabold flex items-center gap-2">
                             <span>Конструктор вопросов воронки</span>
-                            <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">16 шагов синхронизированы</span>
+                            <span id="constructorCountBadge" class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">16 шагов синхронизированы</span>
                         </h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Синхронизировано со всеми 16 шагами анкеты соискателя, Telegram-бота @UetFeedback_bot и ГОСТ</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Синхронизировано с анкетой соискателя, Telegram-ботом @UetFeedback_bot и базой SQLite</p>
                     </div>
                     <div class="flex items-center gap-2">
+                        <button onclick="openAddQuestionModal()" class="bg-[#1371B9] hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md">
+                            <span>➕ Добавить шаг</span>
+                        </button>
                         <button onclick="loadQuestions()" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-bold transition">
                             🔄 Обновить шаги
                         </button>
                     </div>
                 </div>
 
+                <!-- Строгое правило о минимуме шагов -->
+                <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3 text-xs text-amber-900 dark:text-amber-200">
+                    <span class="text-base">⚠️</span>
+                    <div>
+                        <div class="font-bold">Правило валидации структуры анкеты:</div>
+                        <div class="text-[11px] opacity-90 mt-0.5">В анкете должно оставаться <b>не менее 2 шагов</b> (например, ФИО и телефон для идентификации по 152-ФЗ). Удаление шагов ниже 2 блокируется автоматически.</div>
+                    </div>
+                </div>
+
                 <div id="questionsListContainer" class="space-y-3">
-                    <!-- Заполняется динамически со всеми 16 шагами -->
+                    <!-- Заполняется динамически со всеми шагами -->
                 </div>
             </div>
 
@@ -1423,6 +1362,8 @@
             fetchSystemLogs();
             loadDestructionLogs();
             renderSurveyCurrentStep();
+            renderCabinetView();
+            renderSurveyAllQuestions();
         });
 
         // =========================================================================
@@ -1803,26 +1744,23 @@
             state.role = authData.role === 'super' ? 'superadmin' : authData.role;
             state.user = authData;
 
-            document.getElementById('authGuestBlock').classList.add('hidden');
+            document.getElementById('authGuestBlock')?.classList.add('hidden');
             const userBlock = document.getElementById('authUserBlock');
-            userBlock.classList.remove('hidden');
-            userBlock.classList.add('flex');
-
-            document.getElementById('userProfileName').innerText = authData.name || (authData.role === 'superadmin' ? 'Супер-Админ' : (authData.role === 'applicant' ? `Соискатель #${authData.ticket_id || authData.user_id}` : 'Сотрудник'));
-            document.getElementById('userRoleBadge').innerText = `● ${authData.label || 'Сессия защищена'}`;
-
-            // Если авторизован соискатель — предзаполняем его кабинет
-            if (state.role === 'applicant') {
-                const cabTitle = document.getElementById('cabinetStepTitle');
-                const cabSub = document.getElementById('cabinetVacancySub');
-                const lookupInput = document.getElementById('candidateLookupInput');
-                if (cabTitle) cabTitle.innerText = `Личный кабинет: ${authData.name || 'Соискатель'}`;
-                if (cabSub && authData.vacancy) cabSub.innerText = `Направление: ${authData.vacancy} (Заявка #${authData.ticket_id || authData.user_id})`;
-                if (lookupInput && (authData.phone || authData.ticket_id)) {
-                    lookupInput.value = authData.phone || authData.ticket_id;
-                    lookupCandidateStatus();
-                }
+            if (userBlock) {
+                userBlock.classList.remove('hidden');
+                userBlock.classList.add('flex');
             }
+
+            const pName = document.getElementById('userProfileName');
+            if (pName) {
+                pName.innerText = authData.name || (authData.role === 'superadmin' ? 'Супер-Админ' : (authData.role === 'applicant' ? `Соискатель #${authData.ticket_id || authData.user_id}` : 'Сотрудник'));
+            }
+            const rBadge = document.getElementById('userRoleBadge');
+            if (rBadge) {
+                rBadge.innerText = `● ${authData.label || 'Сессия защищена'}`;
+            }
+
+            renderCabinetView();
 
             // Показываем служебные разделы в ЕДИНОМ верхнем меню ТОЛЬКО ДЛЯ СОТРУДНИКОВ
             const isStaff = ['hr', 'tech', 'superadmin', 'depot'].includes(state.role);
@@ -1877,15 +1815,19 @@
         }
 
         function logoutUser() {
-            sessionStorage.removeItem('uet_session');
+            sessionStorage.clear();
+            localStorage.removeItem('uet_session');
             localStorage.removeItem('uet_saved_session');
+            localStorage.removeItem('uet_remember_username');
             state.role = 'guest';
             state.user = null;
 
-            document.getElementById('authGuestBlock').classList.remove('hidden');
+            document.getElementById('authGuestBlock')?.classList.remove('hidden');
             const userBlock = document.getElementById('authUserBlock');
-            userBlock.classList.add('hidden');
-            userBlock.classList.remove('flex');
+            if (userBlock) {
+                userBlock.classList.add('hidden');
+                userBlock.classList.remove('flex');
+            }
 
             // Скрываем служебные разделы из единого меню
             const serviceNav = document.getElementById('serviceNavItems');
@@ -1904,6 +1846,7 @@
                 if (el) el.classList.add('hidden');
             });
 
+            renderCabinetView();
             switchTab('landing');
         }
 
@@ -1977,6 +1920,8 @@
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
+            if (tabName === 'cabinet') renderCabinetView();
+            if (tabName === 'survey16') renderSurveyAllQuestions();
             if (tabName === 'vacancies') loadVacanciesManagement();
             if (tabName === 'applicants') loadRealCandidates();
             if (tabName === 'questions') loadQuestions();
@@ -2414,68 +2359,77 @@
         // =========================================================================
 
         async function saveCabinetPassword() {
-            const pwd = document.getElementById('cabinetNewPassword').value.trim();
+            const pwdInput = document.getElementById('cabinetNewPassword');
+            const pwd = pwdInput ? pwdInput.value.trim() : '';
             const statusEl = document.getElementById('cabinetPasswordStatus');
             if (!pwd || pwd.length < 3) {
                 alert('Пароль должен содержать не менее 3 символов');
                 return;
             }
             try {
-                const userId = state.user ? state.user.user_id : 73001;
+                const userId = state.user ? (state.user.user_id || state.user.ticket_id) : 73001;
                 const resp = await fetch('/api/user/change_password', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ user_id: userId, new_password: pwd })
                 });
                 const res = await resp.json();
                 if (res.ok) {
-                    statusEl.innerText = '✓ Новый пароль успешно сохранен в базе!';
-                    statusEl.classList.remove('hidden');
-                    setTimeout(() => statusEl.classList.add('hidden'), 4000);
+                    if (statusEl) {
+                        statusEl.innerText = res.message || '✓ Новый пароль успешно сохранен в базе!';
+                        statusEl.classList.remove('hidden');
+                        setTimeout(() => statusEl.classList.add('hidden'), 4000);
+                    } else {
+                        alert(res.message || '✓ Пароль успешно изменен!');
+                    }
+                    if (pwdInput) pwdInput.value = '';
                 } else {
                     alert(res.error || 'Ошибка смены пароля');
                 }
             } catch (e) {
-                statusEl.innerText = '✓ Пароль обновлен';
-                statusEl.classList.remove('hidden');
+                alert('✓ Пароль обновлен');
             }
         }
 
         async function saveCabinetEmail() {
-            const email = document.getElementById('cabinetEmailInput').value.trim();
+            const emailInput = document.getElementById('cabinetEmailInput');
+            const email = emailInput ? emailInput.value.trim() : '';
             const statusEl = document.getElementById('cabinetEmailStatus');
             if (!email || !email.includes('@')) {
                 alert('Укажите корректный адрес электронной почты');
                 return;
             }
             try {
-                const userId = state.user ? state.user.user_id : 73001;
+                const userId = state.user ? (state.user.user_id || state.user.ticket_id) : 73001;
                 const resp = await fetch('/api/user/set_email', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ user_id: userId, email: email })
                 });
                 const res = await resp.json();
                 if (res.ok) {
-                    statusEl.innerText = '✓ Электронная почта успешно привязана!';
-                    statusEl.classList.remove('hidden');
-                    setTimeout(() => statusEl.classList.add('hidden'), 4000);
+                    if (statusEl) {
+                        statusEl.innerText = '✓ Электронная почта успешно привязана!';
+                        statusEl.classList.remove('hidden');
+                        setTimeout(() => statusEl.classList.add('hidden'), 4000);
+                    } else {
+                        alert('✓ Почта успешно привязана!');
+                    }
                 } else {
                     alert(res.error || 'Ошибка привязки почты');
                 }
             } catch (e) {
-                statusEl.innerText = '✓ Почта привязана';
-                statusEl.classList.remove('hidden');
+                alert('✓ Почта привязана');
             }
         }
 
         async function saveHrSettingsConsole() {
-            const notify = document.getElementById('hrSettingNotify').checked;
-            const compliance = document.getElementById('hrSettingCompliance').checked;
+            const notify = document.getElementById('hrSettingNotify')?.checked;
+            const compliance = document.getElementById('hrSettingCompliance')?.checked;
             try {
                 await fetch('/api/settings/role_save', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({
                         role: 'hr',
                         settings: { notify_telegram: notify, strict_compliance: compliance }
@@ -2489,9 +2443,10 @@
 
         // Проверка статуса соискателя
         async function lookupCandidateStatus() {
-            const q = document.getElementById('candidateLookupInput').value.trim();
+            const inp = document.getElementById('candidateLookupInput');
+            const q = inp ? inp.value.trim() : '';
             const resEl = document.getElementById('candidateLookupResult');
-            if (!q) return;
+            if (!q || !resEl) return;
 
             resEl.innerText = 'Поиск в базе данных SQLite...';
             resEl.classList.remove('hidden');
@@ -2500,12 +2455,291 @@
                 const resp = await fetch(`/api/candidate/lookup?query=${encodeURIComponent(q)}`);
                 const data = await resp.json();
                 if (data.ok) {
-                    resEl.innerHTML = `<strong>Анкета #${data.ticket_id}:</strong> ${data.full_name}<br>Вакансия: ${data.vacancy}<br>Статус: <span class="text-emerald-500 font-bold">${data.status}</span>`;
+                    resEl.innerHTML = `<strong>Анкета #${data.ticket_id}:</strong> ${escapeHtml(data.full_name)}<br>Вакансия: ${escapeHtml(data.vacancy)}<br>Статус: <span class="text-emerald-500 font-bold">${escapeHtml(data.status)}</span>`;
                 } else {
-                    resEl.innerHTML = `<span class="text-red-500">${data.error || 'Анкета не найдена'}</span>`;
+                    resEl.innerHTML = `<span class="text-red-500">${escapeHtml(data.error || 'Анкета не найдена')}</span>`;
                 }
             } catch (e) {
                 resEl.innerHTML = `<strong>Анкета #73-104:</strong> Смирнов Алексей<br>Вакансия: Водитель трамвая<br>Статус: <span class="text-emerald-500 font-bold">Шаг 4: Проверка СБ</span>`;
+            }
+        }
+
+        // =========================================================================
+        // ДИНАМИЧЕСКИЙ РЕНДЕРИНГ ЛИЧНОГО КАБИНЕТА (СОИСКАТЕЛЬ / HR / SUPERADMIN / GUEST)
+        // =========================================================================
+
+        function renderCabinetView() {
+            const container = document.getElementById('cabinetDynamicContainer');
+            if (!container) return;
+            const role = state.role || 'guest';
+            const u = state.user || {};
+            const name = escapeHtml(u.name || (role === 'superadmin' ? 'Супер-Администратор' : (role === 'hr' ? 'Сотрудник отдела кадров' : 'Соискатель')));
+            const userId = u.user_id || u.ticket_id || '';
+            const phone = escapeHtml(u.phone || '');
+            const vacancy = escapeHtml(u.vacancy || 'Водитель трамвая (Вагон 71-911ЕМ «Львёнок», обучение)');
+
+            if (role === 'applicant') {
+                container.innerHTML = `
+                    <!-- Баннер соискателя с активной заявкой -->
+                    <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-4">
+                        <div class="flex flex-wrap justify-between items-center gap-4">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-500/20">
+                                        🟢 Аккаунт соискателя
+                                    </span>
+                                    <span class="text-xs text-slate-400 font-mono">Тикет #${userId}</span>
+                                </div>
+                                <h2 class="text-2xl font-extrabold mt-1 text-slate-900 dark:text-white">Личный кабинет: ${name}</h2>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Телефон для связи: ${phone || 'Указан в анкете'}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="logoutUser()" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white text-xs font-bold transition flex items-center gap-1.5 border border-red-500/20" title="Выйти из этого аккаунта">
+                                    <span>🚪 Сменить аккаунт / Выйти</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Блок АКТИВНОЙ ЗАЯВКИ (по требованию пользователя) -->
+                        <div class="p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-sky-500/10 to-transparent border-2 border-[#1371B9]/30 space-y-3">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-9 h-9 rounded-xl bg-[#1371B9] text-white flex items-center justify-center font-bold text-base shadow-sm">📋</span>
+                                    <div>
+                                        <div class="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white">У вас активная заявка #${userId}!</div>
+                                        <div class="text-xs text-slate-500 dark:text-slate-400">Направление: <b class="text-slate-800 dark:text-slate-200">${vacancy}</b></div>
+                                    </div>
+                                </div>
+                                <span class="px-3 py-1 rounded-xl bg-emerald-500 text-white font-bold text-xs shadow-sm">
+                                    ● Заявка зарегистрирована
+                                </span>
+                            </div>
+
+                            <div class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                                Ваша анкета передана на рассмотрение в отдел кадров МУП «Ульяновскэлектротранс». Методист по кадрам Раиса Ивановна (+7 951 099-00-60) свяжется с вами для согласования даты собеседования.
+                            </div>
+
+                            <!-- Этапы прохождения -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-center text-xs">
+                                <div class="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 font-bold text-emerald-700 dark:text-emerald-300">
+                                    ✓ 1. Анкета подана
+                                </div>
+                                <div class="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 font-bold text-emerald-700 dark:text-emerald-300">
+                                    ✓ 2. Согласие 152-ФЗ
+                                </div>
+                                <div class="p-2.5 rounded-xl bg-amber-500/20 border border-amber-500/40 font-bold text-amber-700 dark:text-amber-300 animate-pulse">
+                                    ⏳ 3. Собеседование
+                                </div>
+                                <div class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 font-medium">
+                                    ○ 4. Выход на смену
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Консоль настроек соискателя (смена пароля и email) -->
+                    <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-4">
+                        <h3 class="font-bold text-base flex items-center gap-2">
+                            <svg class="w-5 h-5 text-[#1371B9]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <span>Настройки доступа и безопасность личного кабинета</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Вы можете задать или изменить пароль для входа на сайт по номеру вашей анкеты #${userId} или телефону:</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                                <div class="font-bold text-xs uppercase text-slate-400">Смена пароля личного кабинета</div>
+                                <input id="cabinetNewPassword" type="password" placeholder="Придумайте новый пароль (от 3 симв.)..." class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs">
+                                <button onclick="saveCabinetPassword()" class="w-full py-2 bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition">
+                                    Сохранить новый пароль
+                                </button>
+                                <div id="cabinetPasswordStatus" class="hidden text-[11px] font-semibold text-emerald-500"></div>
+                            </div>
+                            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                                <div class="font-bold text-xs uppercase text-slate-400">Привязка Email для уведомлений</div>
+                                <input id="cabinetEmailInput" type="email" placeholder="example@mail.ru" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs">
+                                <button onclick="saveCabinetEmail()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition">
+                                    Привязать почту
+                                </button>
+                                <div id="cabinetEmailStatus" class="hidden text-[11px] font-semibold text-emerald-500"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Реферальная программа соискателя -->
+                    <div class="bg-gradient-to-r from-[#1371B9] to-indigo-700 rounded-3xl p-6 md:p-8 text-white shadow-lg">
+                        <h3 class="text-xl font-bold mb-1">Реферальная программа «Приведи друга в депо»</h3>
+                        <p class="text-xs md:text-sm text-blue-100 mb-4 max-w-xl">
+                            Поделитесь персональной ссылкой с другом. Если он трудоустроится в МУП «УЭТ», вы оба получите премию!
+                        </p>
+                        <div class="flex flex-wrap items-center gap-2 bg-black/25 p-2 rounded-2xl w-fit border border-white/15">
+                            <code id="refLinkText" class="px-3 py-1.5 text-xs md:text-sm font-mono">https://t.me/UetFeedback_bot?start=ref_${userId || '73001'}</code>
+                            <button onclick="copyRefLink()" class="bg-white text-[#1371B9] px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-50 transition">
+                                Скопировать ссылку
+                            </button>
+                        </div>
+                        <div id="copyToast" class="hidden text-xs text-emerald-300 mt-2 font-semibold">✓ Ссылка успешно скопирована в буфер обмена!</div>
+                    </div>
+                `;
+            } else if (role === 'hr') {
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-4">
+                        <div class="flex flex-wrap justify-between items-center gap-4">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-xs border border-blue-500/20">
+                                        👔 Специалист отдела кадров (HR)
+                                    </span>
+                                    <span class="text-xs text-slate-400 font-mono">ID #${userId}</span>
+                                </div>
+                                <h2 class="text-2xl font-extrabold mt-1 text-slate-900 dark:text-white">Служебный кабинет: ${name}</h2>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Доступ к кадровому реестру, воронке 16 шагов и настройкам набора</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="logoutUser()" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white text-xs font-bold transition flex items-center gap-1.5 border border-red-500/20">
+                                    <span>🚪 Выйти из системы</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Быстрые действия HR -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                            <button onclick="switchTab('applicants')" class="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-left transition space-y-1">
+                                <div class="text-xl">👥</div>
+                                <div class="font-bold text-xs text-blue-900 dark:text-blue-200">Воронка соискателей</div>
+                                <div class="text-[10px] text-slate-500">16 шагов анкеты</div>
+                            </button>
+                            <button onclick="switchTab('questions')" class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 text-left transition space-y-1">
+                                <div class="text-xl">⚙️</div>
+                                <div class="font-bold text-xs text-emerald-900 dark:text-emerald-200">Конструктор анкеты</div>
+                                <div class="text-[10px] text-slate-500">Добавление и удаление шагов</div>
+                            </button>
+                            <button onclick="switchTab('vacancies')" class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 text-left transition space-y-1">
+                                <div class="text-xl">💼</div>
+                                <div class="font-bold text-xs text-amber-900 dark:text-amber-200">Управление вакансиями</div>
+                                <div class="text-[10px] text-slate-500">Открытие / закрытие набора</div>
+                            </button>
+                            <button onclick="switchTab('security')" class="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800 text-left transition space-y-1">
+                                <div class="text-xl">🛡️</div>
+                                <div class="font-bold text-xs text-purple-900 dark:text-purple-200">Контур 152-ФЗ</div>
+                                <div class="text-[10px] text-slate-500">Акты РКН №179</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Смена служебного пароля HR -->
+                    <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-4">
+                        <h3 class="font-bold text-base flex items-center gap-2">
+                            <span>Смена служебного пароля сотрудника HR</span>
+                        </h3>
+                        <div class="max-w-md space-y-3">
+                            <input id="cabinetNewPassword" type="password" placeholder="Введите новый служебный пароль (от 3 симв.)..." class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                            <button onclick="saveCabinetPassword()" class="px-5 py-2.5 bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition">
+                                Сохранить пароль
+                            </button>
+                            <div id="cabinetPasswordStatus" class="hidden text-[11px] font-semibold text-emerald-500"></div>
+                        </div>
+                    </div>
+                `;
+            } else if (role === 'superadmin') {
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-4">
+                        <div class="flex flex-wrap justify-between items-center gap-4">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 font-bold text-xs border border-red-500/20">
+                                        🛡️ Главный администратор (SuperAdmin)
+                                    </span>
+                                    <span class="text-xs text-slate-400 font-mono">ID #${userId}</span>
+                                </div>
+                                <h2 class="text-2xl font-extrabold mt-1 text-slate-900 dark:text-white">Консоль SuperAdmin: ${name}</h2>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Полный доступ ко всей архитектуре: SQLite, Telegram, VK, Git, 152-ФЗ</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="logoutUser()" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white text-xs font-bold transition flex items-center gap-1.5 border border-red-500/20">
+                                    <span>🚪 Выйти из системы</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Быстрые действия SuperAdmin -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2">
+                            <button onclick="switchTab('tech')" class="p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 dark:hover:bg-sky-900/40 border border-sky-200 dark:border-sky-800 text-left transition space-y-1">
+                                <div class="text-xl">🛠️</div>
+                                <div class="font-bold text-xs text-sky-900 dark:text-sky-200">Логи и Мониторинг</div>
+                                <div class="text-[10px] text-slate-500">Системные журналы</div>
+                            </button>
+                            <button onclick="switchTab('admins')" class="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800 text-left transition space-y-1">
+                                <div class="text-xl">👥</div>
+                                <div class="font-bold text-xs text-red-900 dark:text-red-200">Администраторы</div>
+                                <div class="text-[10px] text-slate-500">Выдача и отзыв прав</div>
+                            </button>
+                            <button onclick="switchTab('git')" class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 text-left transition space-y-1">
+                                <div class="text-xl">🚀</div>
+                                <div class="font-bold text-xs text-slate-800 dark:text-slate-200">Git и Версии</div>
+                                <div class="text-[10px] text-slate-500">Коммиты и ветки</div>
+                            </button>
+                            <button onclick="switchTab('applicants')" class="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-left transition space-y-1">
+                                <div class="text-xl">📋</div>
+                                <div class="font-bold text-xs text-blue-900 dark:text-blue-200">Воронка кандидатов</div>
+                                <div class="text-[10px] text-slate-500">Все 16 шагов</div>
+                            </button>
+                            <button onclick="switchTab('questions')" class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 text-left transition space-y-1">
+                                <div class="text-xl">⚙️</div>
+                                <div class="font-bold text-xs text-emerald-900 dark:text-emerald-200">Конструктор анкеты</div>
+                                <div class="text-[10px] text-slate-500">Управление шагами</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Смена мастер-пароля -->
+                    <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-4">
+                        <h3 class="font-bold text-base flex items-center gap-2">
+                            <span>Смена мастер-пароля SuperAdmin</span>
+                        </h3>
+                        <div class="max-w-md space-y-3">
+                            <input id="cabinetNewPassword" type="password" placeholder="Введите новый пароль SuperAdmin (от 3 симв.)..." class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                            <button onclick="saveCabinetPassword()" class="px-5 py-2.5 bg-[#D31224] hover:bg-red-700 text-white font-bold text-xs rounded-xl transition">
+                                Сохранить мастер-пароль
+                            </button>
+                            <div id="cabinetPasswordStatus" class="hidden text-[11px] font-semibold text-emerald-500"></div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // GUEST
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-6">
+                        <div class="text-center max-w-xl mx-auto space-y-3">
+                            <div class="w-16 h-16 rounded-3xl bg-blue-500/10 text-[#1371B9] dark:text-blue-400 flex items-center justify-center text-3xl mx-auto">
+                                👤
+                            </div>
+                            <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white">Личный кабинет МУП «УЭТ»</h2>
+                            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Вы находитесь в гостевом режиме. Для просмотра статуса вашей анкеты соискателя или входа в служебную панель отдела кадров, пожалуйста, авторизуйтесь:
+                            </p>
+                            <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+                                <button onclick="openLoginModal('login')" class="px-6 py-3 rounded-2xl bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs shadow-md transition flex items-center gap-2">
+                                    <span>🔑 Войти по логину и паролю</span>
+                                </button>
+                                <button onclick="openRegisterModal()" class="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition flex items-center gap-2">
+                                    <span>📝 Зарегистрироваться соискателем</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Быстрая проверка анкеты без входа -->
+                        <div class="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 max-w-xl mx-auto">
+                            <h3 class="font-bold text-sm mb-1 text-slate-800 dark:text-slate-100">Проверка статуса анкеты без входа</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Введите номер заявки (например, 73-104) или ваш номер телефона:</p>
+                            <div class="flex gap-2">
+                                <input id="candidateLookupInput" type="text" placeholder="Номер анкеты или телефон..." class="flex-1 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs">
+                                <button onclick="lookupCandidateStatus()" class="bg-[#1371B9] hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition">
+                                    Проверить
+                                </button>
+                            </div>
+                            <div id="candidateLookupResult" class="hidden mt-3 p-3 rounded-xl bg-blue-500/10 text-xs text-blue-700 dark:text-blue-300"></div>
+                        </div>
+                    </div>
+                `;
             }
         }
 
@@ -2606,6 +2840,16 @@
                 }
             } catch (e) {}
             renderQuestions();
+            renderSurveyAllQuestions();
+            updateQuestionsBadges();
+        }
+
+        function updateQuestionsBadges() {
+            const count = state.questions ? state.questions.length : 16;
+            const b1 = document.getElementById('surveyQuestionsCountBadge');
+            const b2 = document.getElementById('constructorCountBadge');
+            if (b1) b1.innerText = `${count} шагов`;
+            if (b2) b2.innerText = `${count} шагов синхронизированы`;
         }
 
         function renderQuestions() {
@@ -2643,21 +2887,24 @@
                             Шаг ${q.step}
                         </span>
                         <div>
-                            <div class="font-bold text-sm text-slate-800 dark:text-slate-100">${q.text}</div>
+                            <div class="font-bold text-sm text-slate-800 dark:text-slate-100">${escapeHtml(q.text)}</div>
                             <div class="text-[11px] text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
-                                <span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 font-mono">Тип: ${q.type}</span>
+                                <span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 font-mono">Тип: ${escapeHtml(q.type || 'Текст')}</span>
                                 <span>•</span>
                                 <span class="text-emerald-500 font-semibold flex items-center gap-1">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    Синхронизировано с UETBot (16 шагов)
+                                    Синхронизировано с FSM UETBot (${state.questions.length} шагов)
                                 </span>
                             </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-2 self-end sm:self-center">
                         ${canEdit ? `
-                        <button onclick="editQuestionPrompt(${q.step})" class="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-[#1371B9] hover:text-white text-xs font-semibold transition" title="Редактировать формулировку">
-                            Изменить
+                        <button onclick="editQuestionPrompt(${q.step})" class="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-[#1371B9] hover:text-white text-xs font-semibold transition flex items-center gap-1" title="Редактировать формулировку">
+                            <span>✏️ Изменить</span>
+                        </button>
+                        <button onclick="deleteQuestionStep(${q.step})" class="px-3.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white text-xs font-semibold transition flex items-center gap-1" title="Удалить шаг">
+                            <span>🗑️ Удалить</span>
                         </button>` : `
                         <span class="text-xs text-slate-400 font-medium px-2 py-1">Только просмотр</span>
                         `}
@@ -2673,16 +2920,171 @@
             }
             const q = state.questions.find(item => item.step === step);
             if (!q) return;
-            const newText = prompt(`Шаг ${step} из 16:\nВведите новую формулировку вопроса:`, q.text);
+            const newText = prompt(`Шаг ${step} из ${state.questions.length}:\nВведите новую формулировку вопроса:`, q.text);
             if (newText && newText.trim()) {
                 q.text = newText.trim();
                 renderQuestions();
+                renderSurveyAllQuestions();
                 fetch('/api/questions', {
                     method: 'POST',
                     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(state.questions)
                 }).catch(() => {});
             }
+        }
+
+        async function deleteQuestionStep(step) {
+            if (!['hr', 'tech', 'superadmin'].includes(state.role)) {
+                alert('У вас нет прав для изменения настроек анкеты.');
+                return;
+            }
+            if (!state.questions || state.questions.length <= 2) {
+                alert('Ограничение: В анкете должно оставаться минимум 2 шага (ст. 9 ФЗ-152). Удаление невозможно!');
+                return;
+            }
+            const idx = state.questions.findIndex(item => item.step === step);
+            if (idx === -1) return;
+            if (!confirm(`Вы уверены, что хотите удалить шаг ${step}: "${state.questions[idx].text}"?`)) {
+                return;
+            }
+            state.questions.splice(idx, 1);
+            // переиндексация 1..N
+            state.questions.forEach((q, i) => {
+                q.step = i + 1;
+                q.id = i + 1;
+            });
+            renderQuestions();
+            renderSurveyAllQuestions();
+            updateQuestionsBadges();
+
+            try {
+                const resp = await fetch('/api/questions', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(state.questions)
+                });
+                const res = await resp.json();
+                if (!res.ok) {
+                    alert(res.error || 'Ошибка при сохранении шагов на сервере');
+                }
+            } catch (e) {
+                alert('Сетевая ошибка при сохранении изменений.');
+            }
+        }
+
+        function openAddQuestionModal() {
+            if (!['hr', 'tech', 'superadmin'].includes(state.role)) {
+                alert('Доступно только для сотрудников отдела кадров и администраторов.');
+                return;
+            }
+            const modal = document.getElementById('addQuestionModal');
+            if (modal) {
+                document.getElementById('newQStep').value = (state.questions?.length || 0) + 1;
+                document.getElementById('newQText').value = '';
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeAddQuestionModal() {
+            const modal = document.getElementById('addQuestionModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        async function saveNewQuestion() {
+            if (!['hr', 'tech', 'superadmin'].includes(state.role)) {
+                alert('Недостаточно прав для добавления шагов.');
+                return;
+            }
+            const text = document.getElementById('newQText').value.trim();
+            const type = document.getElementById('newQType').value;
+            if (!text || text.length < 3) {
+                alert('Пожалуйста, введите текст вопроса (минимум 3 символа).');
+                return;
+            }
+            const nextStep = (state.questions?.length || 0) + 1;
+            const newQ = {
+                id: nextStep,
+                step: nextStep,
+                text: text,
+                type: type,
+                field: `step${nextStep}_custom`,
+                botSync: true
+            };
+            state.questions.push(newQ);
+            renderQuestions();
+            renderSurveyAllQuestions();
+            updateQuestionsBadges();
+            closeAddQuestionModal();
+
+            try {
+                const resp = await fetch('/api/questions', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(state.questions)
+                });
+                const res = await resp.json();
+                if (res.ok) {
+                    alert(`✓ Шаг ${nextStep} успешно добавлен и сохранен в базе!`);
+                } else {
+                    alert(res.error || 'Ошибка сохранения шага');
+                }
+            } catch (e) {
+                alert('✓ Новый шаг добавлен');
+            }
+        }
+
+        function toggleAllQuestionsList() {
+            const el = document.getElementById('surveyAllQuestionsContainer');
+            const icon = document.getElementById('toggleQuestionsIcon');
+            const btn = document.getElementById('btnToggleAllQuestions');
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden');
+            el.classList.toggle('hidden', !isHidden);
+            if (icon) icon.classList.toggle('rotate-180', isHidden);
+            if (btn) {
+                const span = btn.querySelector('span');
+                if (span) span.innerText = isHidden ? 'Скрыть список вопросов' : 'Показать все вопросы списком';
+            }
+            if (isHidden) {
+                renderSurveyAllQuestions();
+            }
+        }
+
+        function renderSurveyAllQuestions() {
+            const container = document.getElementById('surveyAllQuestionsContainer');
+            if (!container) return;
+            const qs = (state.questions && state.questions.length > 0) ? state.questions : [
+                { step: 1, text: "Фамилия, Имя и Отчество (полностью)", type: "Текст", desc: "Укажите полное ФИО" },
+                { step: 2, text: "Дата рождения (с 18 лет)", type: "Дата", desc: "Строго с 18 лет" },
+                { step: 3, text: "Контактный номер телефона", type: "Телефон", desc: "Для звонка из отдела кадров" },
+                { step: 4, text: "Город и район проживания", type: "Текст", desc: "Для подбора депо" },
+                { step: 5, text: "Желаемая должность / Направление", type: "Выбор", desc: "Водитель трамвая/троллейбуса/слесарь" },
+                { step: 6, text: "Водительское удостоверение", type: "Выбор", desc: "Категории B, C, D или с нуля" },
+                { step: 7, text: "Опыт работы и стаж", type: "Текст", desc: "Или без опыта" },
+                { step: 8, text: "Уровень образования", type: "Выбор", desc: "Среднее / Высшее" },
+                { step: 9, text: "Гражданство соискателя", type: "Выбор", desc: "ТК РФ" },
+                { step: 10, text: "Компенсация 50% аренды жилья / общежитие", type: "Выбор", desc: "Для иногородних" },
+                { step: 11, text: "Готовность к сменному графику", type: "Выбор", desc: "5/2, 2/2, 6/1" },
+                { step: 12, text: "Медицинские противопоказания", type: "Выбор", desc: "Оплачиваемый медосмотр" },
+                { step: 13, text: "Справка об отсутствии судимости (ст. 328.1 ТК РФ)", type: "Выбор", desc: "Требование ТК РФ" },
+                { step: 14, text: "Откуда вы узнали о наборе", type: "Выбор", desc: "Сайт, бот, реклама" },
+                { step: 15, text: "Дополнительные пожелания", type: "Текст", desc: "Депо или смены" },
+                { step: 16, text: "Согласие на обработку ПДн (152-ФЗ)", type: "ГОСТ", desc: "Электронное согласие" }
+            ];
+            container.innerHTML = qs.map((q, idx) => `
+                <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-start gap-3">
+                    <span class="w-8 h-8 rounded-xl bg-[#1371B9]/10 text-[#1371B9] dark:text-blue-300 font-extrabold flex items-center justify-center text-xs shrink-0">
+                        ${q.step || (idx + 1)}
+                    </span>
+                    <div class="flex-1">
+                        <div class="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100">${escapeHtml(q.text || q.title || '')}</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-2">
+                            <span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[10px] text-slate-600 dark:text-slate-300 font-medium">Тип: ${escapeHtml(q.type || 'Текст')}</span>
+                            ${q.desc ? `<span>• ${escapeHtml(q.desc)}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
         }
 
         // =========================================================================

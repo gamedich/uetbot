@@ -1,0 +1,60 @@
+classDiagram
+    class DatabaseManager {
+        -str db_path
+        -int timeout
+        +connection() ContextManager
+        +init_schema() void
+        +save_candidate(data: dict) int
+        +get_candidate(ticket_id: int) dict
+        +record_destruction_act(act: dict) void
+        +save_feedback(item: dict) int
+        +get_schedule(route: str) list
+        +list_backups() list
+    }
+
+    class CandidateService {
+        -DatabaseManager db
+        +validate_name(fio: str) bool
+        +validate_phone(phone: str) str
+        +check_age_compliance(birthdate: str) bool
+        +check_driver_license(categories: list) bool
+        +register_applicant(data: dict) int
+    }
+
+    class ComplianceService {
+        -DatabaseManager db
+        +check_criminal_record_restrictions(cand_id: int) bool
+        +generate_pd_destruction_act(ticket_id: int) str
+        +export_audit_registry() str
+    }
+
+    class ScheduleService {
+        -DatabaseManager db
+        +get_tram_routes() list
+        +get_trolley_routes() list
+        +get_stop_timetable(route_id: str, stop: str) dict
+        +get_active_alerts() list
+    }
+
+    class WebAppServer {
+        -Application app
+        -DatabaseManager db
+        +handle_api_health(request) Response
+        +handle_api_candidates(request) Response
+        +handle_api_system(request) Response
+        +handle_api_vacancies(request) Response
+        +start_server(host: str, port: int) void
+    }
+
+    class DispatcherAlertManager {
+        -Bot bot
+        -DatabaseManager db
+        +create_route_alert(route: str, message: str) int
+        +broadcast_alert(alert_id: int) void
+    }
+
+    DatabaseManager <-- CandidateService : uses
+    DatabaseManager <-- ComplianceService : uses
+    DatabaseManager <-- ScheduleService : uses
+    DatabaseManager <-- WebAppServer : queries
+    DatabaseManager <-- DispatcherAlertManager : persists

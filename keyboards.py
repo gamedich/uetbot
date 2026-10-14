@@ -318,21 +318,6 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder.adjust(1)
     return builder.as_markup()
 
-def make_git_menu_keyboard(current_branch: str = "main") -> types.InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    other_branch = "beta" if current_branch == "main" else "main"
-    builder.button(text="🔄 Обновить и перезапустить (pull + restart)", callback_data="git_action_pull_restart")
-    builder.button(text=f"🔀 Переключить на ветку «{other_branch}»", callback_data=f"git_action_switch_{other_branch}")
-    builder.button(text="⏪ Откат на 1 коммит (HEAD~1)", callback_data="git_action_rollback_ask")
-    builder.button(text="⏩ Вернуть актуальный коммит", callback_data="git_action_forward_ask")
-    builder.button(text="⚡ Быстрый рестарт", callback_data="git_action_restart_only")
-    builder.button(text="🔄 Обновить статус Git", callback_data="tech_git_menu")
-    builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
-    builder.adjust(1, 1, 2, 2, 1)
-    return builder.as_markup()
-
-make_tech_git_keyboard = make_git_menu_keyboard
-
 def make_tests_menu_keyboard() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="🧪 Отправить анкету из TG", callback_data="test_send_tg")

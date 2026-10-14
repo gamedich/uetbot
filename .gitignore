@@ -59,8 +59,11 @@ docs/generated/
 .DS_Store
 Thumbs.db
 
-# --- Временные файлы ---
+# --- Временные и локальные админ-скрипты сервера ---
 tmp/
 temp/
 path/to/web-switcher/
 switch_script.sh
+deploy/server_switch_branch.sh
+scripts/local_admin_*
+private/

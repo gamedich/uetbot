@@ -97,10 +97,6 @@
                         <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         <span>Права и Доступ</span>
                     </button>
-                    <button onclick="switchTab('git')" id="topBtnGit" class="hidden px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-                        <span>Git & Обновления</span>
-                    </button>
                     <button onclick="switchTab('tech')" id="topBtnTech" class="hidden px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                         <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                         <span>Root</span>
@@ -158,7 +154,6 @@
                 <button onclick="switchTab('questions'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold">⚙️ Конструктор вопросов</button>
                 <button onclick="switchTab('security'); toggleMobileNav();" class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-sky-600 dark:text-sky-400 font-bold">🛡️ 152-ФЗ / ГОСТ</button>
                 <button onclick="switchTab('admins'); toggleMobileNav();" id="mAdminsBtn" class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-purple-600 dark:text-purple-400 font-bold">👥 Права и Доступ</button>
-                <button onclick="switchTab('git'); toggleMobileNav();" id="mGitBtn" class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-orange-500 font-bold">🚀 Git & Обновления</button>
                 <button onclick="switchTab('tech'); toggleMobileNav();" id="mTechBtn" class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-red-500 font-bold">⚡ Тех. панель Root</button>
             </div>
         </div>
@@ -808,96 +803,6 @@
                             </thead>
                             <tbody id="adminsTbody" class="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm">
                                 <tr><td colspan="6" class="text-center text-slate-400 py-6">Загрузка списка сотрудников...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- =========================================================================
-                9. ПАНЕЛЬ GIT, ОБНОВЛЕНИЙ И 152-ФЗ (SUPERADMIN ONLY)
-            ========================================================================= -->
-            <div id="tabContentGit" class="space-y-6 hidden">
-                <div class="flex flex-wrap justify-between items-center gap-4">
-                    <div>
-                        <h2 class="text-2xl font-extrabold flex items-center gap-2">
-                            <span>🚀 Панель Git, обновлений и службы бота</span>
-                        </h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Синхронизация с GitHub, перезапуск systemd службы, таймауты и акты уничтожения ПДн</p>
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="loadGitPanelInfo()" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition flex items-center gap-1.5">
-                            <span>🔄 Обновить статус</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Метрики Git и таймауты -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-white dark:bg-[#112240] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-                        <span class="text-xs font-bold uppercase text-slate-400">Текущая ветка Git</span>
-                        <div id="gitBranchVal" class="text-xl font-extrabold text-[#1371B9] dark:text-blue-400 font-mono">beta</div>
-                        <div class="text-[11px] text-slate-400">Официальный репозиторий UET</div>
-                    </div>
-                    <div class="bg-white dark:bg-[#112240] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-                        <span class="text-xs font-bold uppercase text-slate-400">Последний коммит</span>
-                        <div id="gitCommitVal" class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono break-all">Загрузка...</div>
-                        <div class="text-[11px] text-slate-400">HEAD коммит на сервере</div>
-                    </div>
-                    <div class="bg-white dark:bg-[#112240] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-                        <span class="text-xs font-bold uppercase text-slate-400">Таймаут защиты от спама (Cooldown)</span>
-                        <select id="cooldownSelectVal" onchange="updateCooldownValue()" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
-                            <option value="300">5 минут</option>
-                            <option value="900">15 минут</option>
-                            <option value="1200" selected>20 минут</option>
-                            <option value="1800">30 минут</option>
-                            <option value="3600">60 минут</option>
-                            <option value="0">Отключен (0)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Действия службы и Git -->
-                <div class="bg-white dark:bg-[#112240] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-                    <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Управление обновлениями и службой</h3>
-                    <div class="flex flex-wrap gap-3">
-                        <button onclick="triggerGitPull()" class="px-4 py-2.5 rounded-xl bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5">
-                            <span>📥 Git Pull (Стянуть обновления)</span>
-                        </button>
-                        <button onclick="triggerRestartBotService()" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5">
-                            <span>⚡ Быстрый рестарт бота</span>
-                        </button>
-                        <button onclick="triggerClearAllTestData()" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 font-bold text-xs transition flex items-center gap-1.5">
-                            <span>🧪 Удалить тестовые заявки (#900000+)</span>
-                        </button>
-                        <button onclick="triggerToggleGlobalNotifications(false)" class="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition">
-                            <span>🔕 Отключить уведомления всем</span>
-                        </button>
-                        <button onclick="triggerToggleGlobalNotifications(true)" class="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition">
-                            <span>🔔 Включить уведомления всем</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Реестр актов уничтожения ПДн -->
-                <div class="bg-white dark:bg-[#112240] rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
-                    <div class="p-5 border-b border-slate-200 dark:border-slate-800">
-                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">📜 Реестр уничтожения ПДн (152-ФЗ / ГОСТ)</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Электронные акты безвозвратного уничтожения персональных данных отказных кандидатов</p>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase text-slate-400 bg-slate-50/50 dark:bg-slate-800/40">
-                                    <th class="py-3.5 px-4">№ Акта</th>
-                                    <th class="py-3.5 px-4">ID кандидата</th>
-                                    <th class="py-3.5 px-4">Платформа</th>
-                                    <th class="py-3.5 px-4">Причина</th>
-                                    <th class="py-3.5 px-4">Дата уничтожения</th>
-                                </tr>
-                            </thead>
-                            <tbody id="destructionLogsTbody" class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                                <tr><td colspan="5" class="text-center text-slate-400 py-6">Загрузка реестра...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1789,23 +1694,17 @@
             const mTechBtn = document.getElementById('mTechBtn');
             const adminsBtn = document.getElementById('topBtnAdmins');
             const mAdminsBtn = document.getElementById('mAdminsBtn');
-            const gitBtn = document.getElementById('topBtnGit');
-            const mGitBtn = document.getElementById('mGitBtn');
 
             if (state.role === 'superadmin') {
                 if (techBtn) techBtn.classList.remove('hidden');
                 if (mTechBtn) mTechBtn.classList.remove('hidden');
                 if (adminsBtn) adminsBtn.classList.remove('hidden');
                 if (mAdminsBtn) mAdminsBtn.classList.remove('hidden');
-                if (gitBtn) gitBtn.classList.remove('hidden');
-                if (mGitBtn) mGitBtn.classList.remove('hidden');
             } else {
                 if (techBtn) techBtn.classList.add('hidden');
                 if (mTechBtn) mTechBtn.classList.add('hidden');
                 if (adminsBtn) adminsBtn.classList.add('hidden');
                 if (mAdminsBtn) mAdminsBtn.classList.add('hidden');
-                if (gitBtn) gitBtn.classList.add('hidden');
-                if (mGitBtn) mGitBtn.classList.add('hidden');
             }
 
             if (isStaff) {
@@ -1841,7 +1740,7 @@
                 mServiceNav.classList.remove('flex');
             }
 
-            ['topBtnTech', 'mTechBtn', 'topBtnAdmins', 'mAdminsBtn', 'topBtnGit', 'mGitBtn'].forEach(id => {
+            ['topBtnTech', 'mTechBtn', 'topBtnAdmins', 'mAdminsBtn'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
             });
@@ -1860,14 +1759,14 @@
         // =========================================================================
 
         function switchTab(tabName) {
-            const staffTabs = ['vacancies', 'applicants', 'questions', 'security', 'tech', 'admins', 'git'];
+            const staffTabs = ['vacancies', 'applicants', 'questions', 'security', 'tech', 'admins'];
             if (staffTabs.includes(tabName)) {
                 if (!['hr', 'tech', 'superadmin', 'depot'].includes(state.role)) {
                     alert('Доступ ограничен. Данный раздел предназначен только для уполномоченных сотрудников отдела кадров и администраторов МУП «УЭТ».');
                     openLoginModal('login');
                     return;
                 }
-                if (['tech', 'admins', 'git'].includes(tabName) && state.role !== 'superadmin') {
+                if (['tech', 'admins'].includes(tabName) && state.role !== 'superadmin') {
                     alert('Доступ запрещен. Требуются права Главного администратора (SuperAdmin).');
                     return;
                 }
@@ -1885,7 +1784,6 @@
                 'security': document.getElementById('tabContentSecurity'),
                 'tech': document.getElementById('tabContentTech'),
                 'admins': document.getElementById('tabContentAdmins'),
-                'git': document.getElementById('tabContentGit'),
             };
 
             Object.keys(tabs).forEach(k => {
@@ -1904,7 +1802,6 @@
                 { id: 'topBtnQuestions', tab: 'questions' },
                 { id: 'topBtnSecurity', tab: 'security' },
                 { id: 'topBtnAdmins', tab: 'admins' },
-                { id: 'topBtnGit', tab: 'git' },
                 { id: 'topBtnTech', tab: 'tech' }
             ];
             topBtns.forEach(b => {
@@ -1927,7 +1824,6 @@
             if (tabName === 'questions') loadQuestions();
             if (tabName === 'tech') fetchSystemLogs();
             if (tabName === 'admins') loadAdminsList();
-            if (tabName === 'git') loadGitPanelInfo();
         }
 
         // =========================================================================
@@ -2651,7 +2547,7 @@
                                     <span class="text-xs text-slate-400 font-mono">ID #${userId}</span>
                                 </div>
                                 <h2 class="text-2xl font-extrabold mt-1 text-slate-900 dark:text-white">Консоль SuperAdmin: ${name}</h2>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Полный доступ ко всей архитектуре: SQLite, Telegram, VK, Git, 152-ФЗ</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Полный доступ ко всей архитектуре: SQLite, Telegram, VK, 152-ФЗ</p>
                             </div>
                             <div class="flex items-center gap-2">
                                 <button onclick="logoutUser()" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white text-xs font-bold transition flex items-center gap-1.5 border border-red-500/20">
@@ -2672,10 +2568,10 @@
                                 <div class="font-bold text-xs text-red-900 dark:text-red-200">Администраторы</div>
                                 <div class="text-[10px] text-slate-500">Выдача и отзыв прав</div>
                             </button>
-                            <button onclick="switchTab('git')" class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 text-left transition space-y-1">
-                                <div class="text-xl">🚀</div>
-                                <div class="font-bold text-xs text-slate-800 dark:text-slate-200">Git и Версии</div>
-                                <div class="text-[10px] text-slate-500">Коммиты и ветки</div>
+                            <button onclick="switchTab('security')" class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 text-left transition space-y-1">
+                                <div class="text-xl">🛡️</div>
+                                <div class="font-bold text-xs text-slate-800 dark:text-slate-200">152-ФЗ и Аудит</div>
+                                <div class="text-[10px] text-slate-500">Акты уничтожения ПДн</div>
                             </button>
                             <button onclick="switchTab('applicants')" class="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-left transition space-y-1">
                                 <div class="text-xl">📋</div>
@@ -3634,55 +3530,8 @@
         }
 
         // =========================================================================
-        // ПАНЕЛЬ GIT, ОБНОВЛЕНИЯ И 152-ФЗ
+        // УПРАВЛЕНИЕ СЛУЖБОЙ БОТА И ОЧИСТКА
         // =========================================================================
-
-        async function loadGitPanelInfo() {
-            try {
-                const res = await fetch('/api/super/git_info', { headers: getAuthHeaders() });
-                if (res.ok) {
-                    const d = await res.json();
-                    const bEl = document.getElementById('gitBranchVal');
-                    const cEl = document.getElementById('gitCommitVal');
-                    if (bEl) bEl.innerText = d.branch || 'beta';
-                    if (cEl) cEl.innerText = d.last_commit || '—';
-                }
-
-                // Загрузка актов уничтожения ПДн
-                const logsRes = await fetch('/api/super/destruction_logs', { headers: getAuthHeaders() });
-                const tbody = document.getElementById('destructionLogsTbody');
-                if (logsRes.ok && tbody) {
-                    const logs = await logsRes.json();
-                    if (!logs || logs.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 py-6">Записей об уничтожении ПДн нет</td></tr>';
-                    } else {
-                        tbody.innerHTML = logs.map(l => `
-                            <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                                <td class="py-3 px-4 font-bold font-mono text-[#1371B9] dark:text-blue-400">${escapeHtml(l.act_number || '—')}</td>
-                                <td class="py-3 px-4 font-mono font-semibold">#${l.candidate_id}</td>
-                                <td class="py-3 px-4 uppercase text-xs">${escapeHtml(l.platform || 'tg')}</td>
-                                <td class="py-3 px-4 text-xs">${escapeHtml(l.reason || 'Отказ')}</td>
-                                <td class="py-3 px-4 text-xs text-slate-400">${escapeHtml(l.destroyed_at || '—')}</td>
-                            </tr>
-                        `).join('');
-                    }
-                }
-            } catch (e) {
-                console.error('Ошибка loadGitPanelInfo:', e);
-            }
-        }
-
-        async function triggerGitPull() {
-            if (!confirm('Выполнить git pull для получения последних обновлений с GitHub?')) return;
-            try {
-                const res = await fetch('/api/super/git_pull', { method: 'POST', headers: getAuthHeaders() });
-                const d = await res.json();
-                alert(`Git Pull результат:\n${d.output || 'Успешно'}`);
-                loadGitPanelInfo();
-            } catch (e) {
-                alert('Ошибка выполнения git pull');
-            }
-        }
 
         async function triggerRestartBotService() {
             if (!confirm('Перезапустить фоновый сервис uetbot?')) return;

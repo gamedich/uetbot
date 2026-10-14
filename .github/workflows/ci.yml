@@ -1,18 +1,17 @@
-name: CI & Security Checks
+name: CI & Security Checks (MDK 03.03 Track B)
 
 on:
   push:
     branches:
       - 'main'
       - 'beta'
-      - 'master'
-      - 'dev*'
-      - 'feature*'
+      - 'release/**'
+      - 'feature/**'
+      - 'hotfix/**'
   pull_request:
     branches:
       - 'main'
       - 'beta'
-      - 'master'
 
 jobs:
   lint:
@@ -31,7 +30,7 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
-      - name: Check for forbidden files (.db, .env)
+      - name: Stage 1 - Check for forbidden files (.db, .env)
         run: |
           echo "=== Проверка наличия запрещенных файлов (.db, .env) ==="
           FORBIDDEN=$(git ls-files | grep -E '\.(db|sqlite|sqlite3)$|^\.env$|\.env\.(local|production|dev|stage)' || true)
@@ -40,9 +39,9 @@ jobs:
             echo "$FORBIDDEN"
             exit 1
           fi
-          echo "OK: Запрещенные файлы отсутствуют."
+          echo "OK: Запрещенные файлы (.db, .env) отсутствуют."
 
-      - name: Check for exposed Telegram Bot Tokens
+      - name: Stage 2 - Check for exposed Telegram Bot Tokens
         run: |
           echo "=== Проверка на утечку Telegram Bot Tokens ==="
           LEAKS=$(git grep -EI '[0-9]{8,10}:[a-zA-Z0-9_-]{35}' -- ':!.github' ':!.env.example' ':!README.md' || true)
@@ -53,7 +52,7 @@ jobs:
           fi
           echo "OK: Утечек токенов не обнаружено."
 
-      - name: Syntax Check (compileall)
+      - name: Stage 3 - Syntax Check (compileall)
         run: |
           echo "=== Проверка синтаксиса Python 3.12 (compileall) ==="
           python -m compileall -q -f -x '(venv|\.venv)/' .
@@ -64,12 +63,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff flake8
 
-      - name: Lint with Ruff
+      - name: Stage 4 - Lint with Ruff
         run: |
           echo "=== Анализ кода с помощью Ruff ==="
           ruff check . --select=E9,F63,F7,F82
 
-      - name: Lint with Flake8
+      - name: Stage 5 - Lint with Flake8
         run: |
           echo "=== Анализ кода с помощью Flake8 ==="
           flake8 . --count --select=E9,F63,F7,F82 --exclude=venv,.venv --show-source --statistics
@@ -79,24 +78,28 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
       - name: Install mypy
         run: pip install mypy
-      - name: Run mypy
+      - name: Run mypy static analysis
         run: |
           mypy . --ignore-missing-imports || true
 
   test:
-    name: 03. Run Unit Tests
+    name: 03. Run Unit Tests (41 scenarios)
     needs: typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
@@ -106,34 +109,38 @@ jobs:
           pip install -r requirements.txt
       - name: Run Unit Tests
         run: |
-          echo "=== Запуск набора тестов бота ==="
+          echo "=== Запуск полного набора автотестов uetbot ==="
           python run_tests.py
 
   security:
-    name: 06. Security Audit (pip-audit)
+    name: 04. Security Audit (pip-audit)
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
-      - name: Run pip-audit
+      - name: Run pip-audit for dependencies
         run: |
           pip install pip-audit
           pip-audit || true
 
   docs:
-    name: 05. Docs Build Check
+    name: 05. Docs Build Check (MkDocs)
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install MkDocs
+      - name: Install MkDocs & Material Theme
         run: pip install mkdocs mkdocs-material
       - name: Verify Docs Build
         run: |

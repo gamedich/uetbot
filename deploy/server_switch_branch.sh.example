@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# deploy/server_switch_branch.sh.example
+# Скрипт безопасного переключения веток и обновления бота МУП «УЭТ» (UETBot).
+# ВНИМАНИЕ: Данный скрипт предназначен ИСКЛЮЧИТЕЛЬНО для локального запуска
+# системным администратором по SSH на боевом сервере.
+# Права доступа к рабочей копии: chmod 700 /root/uetbot/deploy/server_switch_branch.sh
+# ==============================================================================
+
+set -euo pipefail
+
+# Конфигурация путей
+PROJECT_DIR="/root/uetbot"
+SERVICE_NAME="uet_bot.service"
+VENV_PYTHON="${PROJECT_DIR}/venv/bin/python"
+LOG_FILE="${PROJECT_DIR}/logs/deploy_branch_switch.log"
+
+# Проверка запуска от пользователя root или через sudo
+if [[ $EUID -ne 0 ]]; then
+   echo "[ERROR] Этот скрипт должен выполняться с правами root (или sudo)." >&2
+   exit 1
+fi
+
+TARGET_BRANCH="${1:-main}"
+
+echo "=========================================================="
+echo " [UETBot DevOps] Безопасное переключение ветки / деплой"
+echo " Время: $(date '+%Y-%m-%d %H:%M:%S')"
+echo " Целевая ветка: ${TARGET_BRANCH}"
+echo " Директория проекта: ${PROJECT_DIR}"
+echo "=========================================================="
+
+mkdir -p "$(dirname "$LOG_FILE")"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+cd "$PROJECT_DIR"
+
+# 1. Проверка состояния локального Git-репозитория
+echo "[1/6] Проверка чистоты рабочей директории..."
+if [[ -n $(git status --porcelain) ]]; then
+    echo "[WARN] Обнаружены локальные изменения. Создание временного stash..."
+    git stash push -m "Auto-stash before branch switch $(date +%s)"
+fi
+
+# 2. Получение актуальных веток из удаленного репозитория
+echo "[2/6] Синхронизация с origin (git fetch)..."
+git fetch origin --prune --tags
+
+# 3. Проверка существования ветки
+if ! git rev-parse --verify "origin/${TARGET_BRANCH}" >/dev/null 2>&1; then
+    echo "[ERROR] Ветка 'origin/${TARGET_BRANCH}' не найдена в репозитории!" >&2
+    exit 2
+fi
+
+# 4. Переключение и подтягивание коммитов
+echo "[3/6] Переключение на ветку ${TARGET_BRANCH}..."
+git checkout "${TARGET_BRANCH}"
+git pull origin "${TARGET_BRANCH}"
+
+echo "[INFO] Текущий HEAD: $(git log -1 --oneline)"
+
+# 5. Синтаксическая валидация Python
+echo "[4/6] Валидация байткода и зависимостей..."
+if [[ -x "$VENV_PYTHON" ]]; then
+    "$VENV_PYTHON" -m compileall -q .
+    echo "[OK] Байткод скомпилирован успешно."
+else
+    python3 -m compileall -q .
+fi
+
+# 6. Перезапуск системного сервиса systemd
+echo "[5/6] Перезапуск службы ${SERVICE_NAME}..."
+systemctl restart "${SERVICE_NAME}"
+sleep 2
+
+# 7. Проверка статуса
+echo "[6/6] Проверка работоспособности службы..."
+if systemctl is-active --quiet "${SERVICE_NAME}"; then
+    echo "=========================================================="
+    echo " [SUCCESS] Служба ${SERVICE_NAME} активна (RUNNING)!"
+    echo " Текущая ветка: $(git rev-parse --abbrev-ref HEAD)"
+    echo " Версия коммита: $(git rev-parse --short HEAD)"
+    echo "=========================================================="
+else
+    echo "=========================================================="
+    echo " [FATAL] Ошибка запуска службы! Статус:"
+    systemctl status "${SERVICE_NAME}" --no-pager -l || true
+    echo "=========================================================="
+    exit 3
+fi

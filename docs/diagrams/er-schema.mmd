@@ -1,0 +1,79 @@
+erDiagram
+    CANDIDATES ||--o{ DESTRUCTION_ACTS : "triggers_152fz"
+    VACANCIES ||--o{ CANDIDATES : "selected_for"
+    SYSTEM_ADMINS ||--o{ ROUTE_ALERTS : "publishes"
+    SYSTEM_ADMINS ||--o{ CANDIDATES : "reviews"
+    PASSENGERS ||--o{ PASSENGER_FEEDBACK : "submits"
+
+    CANDIDATES {
+        int id PK
+        int ticket_id UK
+        string full_name
+        string phone
+        string birthdate
+        int vacancy_id FK
+        string experience
+        string driver_license
+        string status
+        boolean is_test
+        boolean pd_consent
+        datetime created_at
+        datetime updated_at
+    }
+
+    VACANCIES {
+        int id PK
+        string title
+        string salary
+        string schedule
+        boolean is_active
+        datetime updated_at
+    }
+
+    DESTRUCTION_ACTS {
+        int id PK
+        string act_number UK
+        int candidate_id FK
+        string reason
+        string operator_name
+        datetime destroyed_at
+    }
+
+    ROUTE_ALERTS {
+        int id PK
+        string route_number
+        string alert_type
+        string message_text
+        int published_by FK
+        boolean is_active
+        datetime created_at
+        datetime expires_at
+    }
+
+    PASSENGER_FEEDBACK {
+        int id PK
+        string category
+        string route_number
+        string vehicle_board_number
+        string details_text
+        int passenger_user_id
+        string status
+        datetime created_at
+    }
+
+    SYSTEM_ADMINS {
+        int id PK
+        int telegram_id UK
+        string username
+        string role
+        string password_hash
+        boolean is_active
+        datetime last_login
+    }
+
+    PASSENGERS {
+        int id PK
+        int telegram_id UK
+        string first_name
+        datetime joined_at
+    }

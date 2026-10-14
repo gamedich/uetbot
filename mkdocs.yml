@@ -1,0 +1,29 @@
+site_name: Документация UETBot — МУП «Ульяновскэлектротранс»
+site_url: https://gamedich.github.io/uetbot/
+site_description: Официальная документация пассажирского и кадрового сервиса МУП «УЭТ».
+docs_dir: docs
+site_dir: site
+
+nav:
+  - Главная: index.md
+  - PRD (Требования): prd.md
+  - Глоссарий: glossary.md
+  - Руководство по стилю (PEP 8): style-guide.md
+  - Архитектурные решения (ADR):
+      - 001. Выбор платформы бэкенда: adr/001-choice-of-backend-platform.md
+      - 002. Архитектура базы данных SQLite: adr/002-database-and-orm-architecture.md
+      - 003. Архитектурный стиль приложения: adr/003-architecture-style.md
+      - 004. Стратегия ветвления Git: adr/004-git-branching-strategy.md
+  - Безопасность: security.md
+  - История изменений: CHANGELOG.md
+
+theme:
+  name: material
+  language: ru
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: red
+
+plugins:
+  - search

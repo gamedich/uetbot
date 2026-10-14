@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    actor Passenger as Пассажир
+    participant TG as Telegram Bot (@UetFeedback_bot)
+    participant Mid as Middleware (Latency & Throttling)
+    participant Handler as RouteScheduleHandler
+    participant Service as ScheduleService
+    participant DB as SQLite WAL (resumes.db)
+
+    Passenger->>TG: Нажатие кнопки "🚋 Трамвайные маршруты"
+    TG->>Mid: Передача CallbackQuery(route_tram)
+    Mid->>Handler: Проверка троттлинга & замер latency
+    Handler->>Service: get_tram_routes()
+    Service->>DB: SELECT id, name, endpoints FROM transit_routes WHERE type='tram'
+    DB-->>Service: Список активных маршрутов (№4, №22, №9...)
+    Service-->>Handler: Форматированный список кнопок
+    Handler-->>TG: InlineKeyboard со списком маршрутов
+    TG-->>Passenger: Отображение клавиатуры маршрутов (< 150 мс)
+
+    Passenger->>TG: Выбор маршрута "№22 (Парк Победы - УКСМ)"
+    TG->>Handler: CallbackQuery(route_22_select)
+    Handler->>Service: get_stop_timetable("22")
+    Service->>DB: SELECT stop_name, interval_peak, first_run, last_run FROM route_stops
+    DB-->>Service: Расписание рейсов и интервалы
+    Service-->>Handler: HTML-карточка маршрута
+    Handler-->>TG: Сообщение с расписанием и картой пересадок
+    TG-->>Passenger: Отображение карточки расписания

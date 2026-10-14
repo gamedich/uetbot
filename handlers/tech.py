@@ -66,7 +66,6 @@ from common import (
 from keyboards import (
     get_tech_screen_data,
     make_admins_menu_keyboard,
-    make_git_menu_keyboard,
     make_inquiry_admin_keyboard,
     make_remove_admin_keyboard,
     make_tech_menu_keyboard,
@@ -1692,163 +1691,17 @@ async def cb_vac_del_execute(callback: types.CallbackQuery) -> None:
 
 
 # ==============================================================================
-# 5. ПАНЕЛЬ GITHUB, ДЕПЛОЙ И ПЕРЕЗАПУСК (/restart)
+# 5. ПЕРЕЗАПУСК СЛУЖБЫ (/restart)
 # ==============================================================================
 
-@tech_router.callback_query(F.data == "tech_git_menu")
-async def cb_tech_git_menu(event: Union[types.Message, types.CallbackQuery]) -> None:
-    user_id = event.from_user.id
-    if user_id != CONFIG.get("SUPER_ADMIN_ID"):
-        if isinstance(event, types.CallbackQuery):
-            await event.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
-            return
-        await safe_answer(
-            event,
-            "🚫 <b>Доступ ограничен.</b>\nУправление Git и версиями доступно исключительно Главному администратору в веб-панели управления.",
-            parse_mode="HTML",
-        )
-        return
-
-    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
-    text = (
-        "🚀 <b>УПРАВЛЕНИЕ GIT И ВЕРСИЯМИ ПЕРЕНЕСЕНО НА САЙТ</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "Для безопасности и надежности полный контроль версий, переключение веток (main/beta), "
-        "получение обновлений (git pull) и история коммитов перенесены во вкладку <b>👑 SuperAdmin & Git</b> веб-панели управления.\n\n"
-        f"🌐 <b>Открыть веб-панель:</b> <a href='{web_url}'>{web_url}</a>"
-    )
-    builder = InlineKeyboardBuilder()
-    builder.button(text="🌐 Открыть веб-панель", web_app=types.WebAppInfo(url=web_url))
-    builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
-    builder.adjust(1)
-    kb = builder.as_markup()
-
-    if isinstance(event, types.CallbackQuery):
-        try:
-            await event.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-        except Exception:
-            pass
-        await event.answer()
-    else:
-        await safe_answer(event, text, reply_markup=kb, parse_mode="HTML")
-
-
-@tech_router.callback_query(F.data == "git_action_pull_restart")
-async def cb_git_pull_restart(callback: types.CallbackQuery) -> None:
-    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
-        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
-        return
-
-    await callback.message.edit_text(
-        "⏳ <b>Стягиваем обновления из GitHub...</b>\nВыполняется <code>git pull</code>...",
-        parse_mode="HTML",
-    )
-
-    code, out = await run_shell_cmd("git pull")
-    if code != 0:
-        await callback.message.edit_text(
-            f"❌ <b>Ошибка выполнения git pull:</b>\n<code>{out[:500]}</code>",
-            reply_markup=make_git_menu_keyboard(),
-            parse_mode="HTML",
-        )
-        return
-
-    await callback.message.edit_text(
-        f"✅ <b>Обновления получены:</b>\n<code>{out[:300]}</code>\n\n"
-        "🔄 <b>Перезапуск службы uet_bot выполняется...</b>\nБот поднимется через 2-3 секунды.",
-        parse_mode="HTML",
-    )
-
-    async def _do_restart():
-        await asyncio.sleep(1.0)
-        await run_shell_cmd("systemctl restart uet_bot")
-
-    asyncio.create_task(_do_restart())
-
-
-@tech_router.callback_query(F.data.startswith("git_action_switch_"))
-async def cb_git_switch_branch(callback: types.CallbackQuery) -> None:
-    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
-        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
-        return
-
-    target_branch = callback.data.replace("git_action_switch_", "")
-    await callback.message.edit_text(
-        f"⏳ <b>Переключение на ветку «{target_branch}»...</b>\n"
-        f"Выполняется <code>git checkout {target_branch} && git pull</code>...",
-        parse_mode="HTML",
-    )
-
-    code, out = await run_shell_cmd(f"git checkout {target_branch} && git pull origin {target_branch}")
-    if code != 0:
-        await callback.message.edit_text(
-            f"❌ <b>Ошибка переключения ветки:</b>\n<code>{out[:500]}</code>",
-            reply_markup=make_git_menu_keyboard(target_branch),
-            parse_mode="HTML",
-        )
-        return
-
-    await callback.message.edit_text(
-        f"✅ Ветка переключена на <b>«{target_branch}»</b>!\n\n🔄 <b>Перезапуск службы uet_bot...</b>",
-        parse_mode="HTML",
-    )
-
-    async def _do_restart():
-        await asyncio.sleep(1.0)
-        await run_shell_cmd("systemctl restart uet_bot")
-
-    asyncio.create_task(_do_restart())
-
-
-@tech_router.callback_query(F.data == "git_action_rollback_ask")
-async def cb_git_rollback_ask(callback: types.CallbackQuery) -> None:
-    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
-        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
-        return
-
-    builder = InlineKeyboardBuilder()
-    builder.button(text="⚠️ ДА, ОТКАТИТЬ НА 1 КОММИТ", callback_data="git_action_rollback_confirm")
-    builder.button(text="❌ Отмена", callback_data="tech_git_menu")
-    builder.adjust(1, 1)
-
-    await callback.message.edit_text(
-        "⚠️ <b>ПОДТВЕРЖДЕНИЕ ОТКАТА (ROLLBACK)</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "Будет выполнен жесткий откат кода на 1 коммит назад: <code>git reset --hard HEAD~1</code>.\n"
-        "Все незакоммиченные локальные правки будут сброшены, а бот перезапущен.\n\n"
-        "<b>Вы уверены?</b>",
-        reply_markup=builder.as_markup(),
-        parse_mode="HTML",
-    )
-
-
-@tech_router.callback_query(F.data == "git_action_rollback_confirm")
-async def cb_git_rollback_confirm(callback: types.CallbackQuery) -> None:
-    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
-        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
-        return
-
-    code, out = await run_shell_cmd("git reset --hard HEAD~1")
-    await callback.message.edit_text(
-        f"⏪ <b>Откат выполнен:</b>\n<code>{out[:300]}</code>\n\n🔄 Перезапуск службы...",
-        parse_mode="HTML",
-    )
-
-    async def _do_restart():
-        await asyncio.sleep(1.0)
-        await run_shell_cmd("systemctl restart uet_bot")
-
-    asyncio.create_task(_do_restart())
-
-
-@tech_router.callback_query(F.data == "git_action_restart_only")
-async def cb_git_restart_only(callback: types.CallbackQuery) -> None:
+@tech_router.callback_query(F.data == "tech_action_restart_only")
+async def cb_tech_restart_only(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
         await callback.answer("🚫 Нет прав!", show_alert=True)
         return
 
     await callback.message.edit_text(
-        "🔄 <b>Перезапуск службы uet_bot выполняется...</b>\n\nБот поднимется через 2-3 секунды.",
+        "🔄 <b>Перезапуск службы uet_bot выполняется...</b>\n\nБот перезагрузится через 2-3 секунды.",
         parse_mode="HTML",
     )
     await callback.answer()
@@ -1866,66 +1719,19 @@ async def cmd_restart(message: types.Message) -> None:
         await safe_answer(message, "🚫 Доступ ограничен администраторами.")
         return
     builder = InlineKeyboardBuilder()
-    builder.button(text="✅ ДА, ПЕРЕЗАПУСТИТЬ", callback_data="git_action_restart_only")
-    builder.button(text="❌ Отмена", callback_data="tech_git_menu")
+    builder.button(text="✅ ДА, ПЕРЕЗАПУСТИТЬ", callback_data="tech_action_restart_only")
+    builder.button(text="❌ Отмена", callback_data="tech_refresh")
     builder.adjust(1, 1)
     await safe_answer(
         message,
         "⚠️ <b>ПОДТВЕРЖДЕНИЕ ПЕРЕЗАПУСКА СЛУЖБЫ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "Вы собираетесь перезапустить системную службу <code>uet_bot</code>.\n"
-        "Процесс перезагрузится за 2–3 секунды и применит все изменения в коде.\n\n"
+        "Процесс перезагрузится за 2–3 секунды и применит изменения.\n\n"
         "<b>Перезапустить сейчас?</b>",
         reply_markup=builder.as_markup(),
         parse_mode="HTML",
     )
-
-
-@tech_router.callback_query(F.data == "git_action_forward_ask")
-async def cb_git_forward_ask(callback: types.CallbackQuery) -> None:
-    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
-        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
-        return
-
-    _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
-    branch = branch or "main"
-
-    builder = InlineKeyboardBuilder()
-    builder.button(text="⏩ ДА, ВЕРНУТЬ АКТУАЛЬНЫЙ КОММИТ", callback_data="git_action_forward_confirm")
-    builder.button(text="❌ Отмена", callback_data="tech_git_menu")
-    builder.adjust(1, 1)
-
-    await callback.message.edit_text(
-        "⏩ <b>ВОЗВРАТ НА АКТУАЛЬНЫЙ КОММИТ (FORWARD)</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"Будет выполнена синхронизация с GitHub: <code>git fetch origin && git reset --hard origin/{branch}</code>.\n"
-        "Все откаты будут отменены, код вернётся к последней версии из GitHub, а бот перезапустится.\n\n"
-        "<b>Вернуть актуальную версию?</b>",
-        reply_markup=builder.as_markup(),
-        parse_mode="HTML",
-    )
-
-
-@tech_router.callback_query(F.data == "git_action_forward_confirm")
-async def cb_git_forward_confirm(callback: types.CallbackQuery) -> None:
-    if callback.from_user.id != CONFIG.get("SUPER_ADMIN_ID"):
-        await callback.answer("🚫 Управление Git доступно только Главному администратору в веб-панели!", show_alert=True)
-        return
-
-    _, branch = await run_shell_cmd("git rev-parse --abbrev-ref HEAD")
-    branch = branch or "main"
-
-    code, out = await run_shell_cmd(f"git fetch origin && git reset --hard origin/{branch}")
-    await callback.message.edit_text(
-        f"⏩ <b>Возврат выполнен:</b>\n<code>{out[:300]}</code>\n\n🔄 Перезапуск службы uet_bot...",
-        parse_mode="HTML",
-    )
-
-    async def _do_restart():
-        await asyncio.sleep(1.0)
-        await run_shell_cmd("systemctl restart uet_bot")
-
-    asyncio.create_task(_do_restart())
 
 
 # ==============================================================================

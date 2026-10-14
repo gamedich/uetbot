@@ -5,7 +5,7 @@
 - Ролевую модель: SuperAdmin, HR-специалисты, Инженеры (Tech)
 - Управление соискателями, смена статусов, заметки, удаление анкет и блокировка (ЧС)
 - Отдельный кабинет инженера (системные метрики, бэкапы, оптимизация)
-- Отдельную панель SuperAdmin (Git/GitHub, перезапуск сервиса, 152-ФЗ, кулдауны)
+- Отдельную панель SuperAdmin (перезапуск сервиса, 152-ФЗ, кулдауны)
 - Вход по паролю / фразе, по номеру телефона / Telegram ID, бесшовный вход в TMA.
 """
 
@@ -259,12 +259,7 @@ class WebPanel:
         self.app.router.add_post("/api/system/optimize_db", self.handle_api_optimize_db)
         self.app.router.add_get("/api/system/export_csv", self.handle_api_export_csv)
 
-        # SuperAdmin API (Git, Reboots, 152-ФЗ, Cooldowns)
-        self.app.router.add_get("/api/super/git_info", self.handle_api_super_git_info)
-        self.app.router.add_get("/api/super/git_status", self.handle_api_super_git_status)
-        self.app.router.add_post("/api/super/git_pull", self.handle_api_super_git_pull)
-        self.app.router.add_post("/api/super/git_commit", self.handle_api_super_git_commit)
-        self.app.router.add_get("/api/super/git_commit", self.handle_api_super_git_commit)
+        # SuperAdmin API (Reboots, 152-ФЗ, Cooldowns)
         self.app.router.add_post("/api/super/restart_bot", self.handle_api_super_restart_bot)
         self.app.router.add_get("/api/super/restart_bot", self.handle_api_super_restart_bot)
         self.app.router.add_post("/api/super/clear_tests", self.handle_api_super_clear_tests)
@@ -1679,70 +1674,7 @@ class WebPanel:
         }
         return web.Response(text=csv_content, headers=headers)
 
-    # SUPERADMIN & GIT API (Неблокирующий асинхронный вызов)
-    async def _run_git_command(self, *args: str) -> Tuple[int, str]:
-        proc = await asyncio.create_subprocess_exec(
-            "git", *args,
-            cwd=str(CONFIG.BASE_DIR),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT
-        )
-        stdout, _ = await proc.communicate()
-        return proc.returncode or 0, (stdout.decode("utf-8", errors="replace") if stdout else "").strip()
-
-    async def handle_api_super_git_info(self, request: web.Request) -> web.Response:
-        _, err = self.require_roles(request, {"superadmin", "super"})
-        if err:
-            return err
-        branch = "beta"
-        last_commit = "—"
-        try:
-            rc1, b_out = await self._run_git_command("rev-parse", "--abbrev-ref", "HEAD")
-            if rc1 == 0 and b_out:
-                branch = b_out
-            rc2, c_out = await self._run_git_command("log", "-1", "--pretty=format:%h - %s (%cd)", "--date=short")
-            if rc2 == 0 and c_out:
-                last_commit = c_out
-        except Exception as e:
-            logger.warning("Git info error: %s", e)
-
-        return web.json_response({
-            "branch": branch,
-            "last_commit": last_commit,
-        })
-
-    async def handle_api_super_git_pull(self, request: web.Request) -> web.Response:
-        _, err = self.require_roles(request, {"superadmin", "super"})
-        if err:
-            return err
-        try:
-            rc, output = await self._run_git_command("pull")
-            return web.json_response({"ok": (rc == 0), "output": output})
-        except Exception as e:
-            return web.json_response({"ok": False, "output": str(e)}, status=500)
-
-    async def handle_api_super_git_status(self, request: web.Request) -> web.Response:
-        _, err = self.require_roles(request, {"superadmin", "super"})
-        if err:
-            return err
-        try:
-            rc, output = await self._run_git_command("status", "--short")
-            return web.json_response({"ok": (rc == 0), "status": output})
-        except Exception as e:
-            return web.json_response({"ok": False, "error": str(e)}, status=500)
-
-    async def handle_api_super_git_commit(self, request: web.Request) -> web.Response:
-        _, err = self.require_roles(request, {"superadmin", "super"})
-        if err:
-            return err
-        try:
-            body = await request.json() if request.can_read_body else {}
-            msg = body.get("message", "feat: update portal UI and restore git/admins/candidate panels")
-            await self._run_git_command("add", ".")
-            rc, output = await self._run_git_command("commit", "-m", msg)
-            return web.json_response({"ok": (rc == 0), "output": output})
-        except Exception as e:
-            return web.json_response({"ok": False, "error": str(e)}, status=500)
+    # SUPERADMIN SERVICE & 152-ФЗ API
 
     async def handle_api_super_restart_bot(self, request: web.Request) -> web.Response:
         _, err = self.require_roles(request, {"superadmin", "super"})

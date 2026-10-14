@@ -1,0 +1,53 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+
+node "Сервер МУП «Ульяновскэлектротранс» (Ubuntu 24.04 LTS)" as Server {
+    
+    artifact "SSH Демон (Port 22)\nEd25519 Keys Only" as SSHD
+    
+    node "Nginx Reverse Proxy (Port 80/443)" as NginxNode {
+        artifact "SSL/TLS Сертификаты Let's Encrypt" as SSL
+        artifact "Rate Limiter (req_limit_zone)" as RateLimit
+    }
+
+    node "Systemd Service Manager" as SystemdNode {
+        artifact "uet_bot.service\n(User: root / non-root daemon)" as BotService
+    }
+
+    node "Python 3.12 Runtime Virtualenv" as PyNode {
+        artifact "Aiogram 3.x Telegram Bot Daemon" as BotApp
+        artifact "Aiohttp Web App (127.0.0.1:8080)" as WebApp
+    }
+
+    node "Защищенная файловая система (0700 / 0600)" as StorageNode {
+        database "SQLite WAL DB\n(resumes.db)" as DB
+        file "WAL & Shared Memory\n(resumes.db-wal / -shm)" as WAL
+        folder "Каталог бэкапов\n(/root/uetbot/backups/)" as Backups
+        file "deploy/server_switch_branch.sh\n(chmod 700)" as SwitchScript
+    }
+}
+
+cloud "Telegram Cloud Infrastructure" as TGCloud
+cloud "VKontakte LongPoll API" as VKCloud
+actor "Пассажиры и Кандидаты" as Users
+actor "DevOps / Админ (SSH)" as AdminUser
+
+Users --> TGCloud : HTTPS / MTProto
+Users --> NginxNode : HTTPS (Web / TMA)
+TGCloud <--> BotApp : Outbound LongPoll (No Open Ports)
+VKCloud <--> BotApp : LongPoll Events
+
+AdminUser --> SSHD : SSH Auth (Key)
+SSHD --> SwitchScript : Ручной запуск обновления
+
+NginxNode --> WebApp : HTTP (127.0.0.1:8080)
+BotService --> BotApp : Supervises & Restarts
+BotService --> WebApp : Supervises & Restarts
+
+BotApp --> DB : Режим WAL (Connection Pool)
+WebApp --> DB : Чтение / Запись
+DB ..> WAL : PRAGMA synchronous=NORMAL
+DB ..> Backups : cron / backup trigger
+
+@enduml

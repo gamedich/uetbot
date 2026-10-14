@@ -152,6 +152,8 @@ CONFIG: AppConfig = AppConfig({
     # --- Права доступа и маршрутизация ---
     "SUPER_ADMIN_ID": _get_int("SUPER_ADMIN_ID", 0),
     "TECH_ADMIN_ID": _get_int("TECH_ADMIN_ID", 0),
+    "SUPER_ADMIN_PASSWORD": _get_str("SUPER_ADMIN_PASSWORD", "uet2026super"),
+    "HR_ADMIN_PASSWORD": _get_str("HR_ADMIN_PASSWORD", "uet2026hr"),
     "HR_GROUP_ID": _get_int("HR_GROUP_ID", 0),
     "TARGET_CHATS": initial_target_chats,
 

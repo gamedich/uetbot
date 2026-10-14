@@ -271,6 +271,31 @@ saved_env = db.get_setting("environment", "")
 if saved_env:
     CONFIG["ENVIRONMENT"] = saved_env
 
+saved_maint = db.get_setting("maintenance_mode", "")
+if saved_maint:
+    CONFIG["MAINTENANCE_MODE"] = str(saved_maint).strip() in ("1", "true", "True")
+
+
+def is_maintenance_active() -> bool:
+    """Проверяет глобальный режим ТО предприятия (из CONFIG или из БД)."""
+    if CONFIG.get("MAINTENANCE_MODE", False):
+        return True
+    try:
+        val = db.get_setting("maintenance_mode", "0")
+        return str(val).strip() in ("1", "true", "True")
+    except Exception:
+        return False
+
+
+def set_maintenance_active(active: bool) -> bool:
+    """Устанавливает глобальный режим ТО и синхронизирует CONFIG и БД."""
+    CONFIG["MAINTENANCE_MODE"] = bool(active)
+    try:
+        db.set_setting("maintenance_mode", "1" if active else "0")
+    except Exception as e:
+        logger.error(f"Не удалось сохранить режим ТО в БД: {e}")
+    return CONFIG["MAINTENANCE_MODE"]
+
 saved_group = db.get_setting("hr_group_id", "")
 if saved_group and saved_group.lstrip("-").isdigit():
     CONFIG["HR_GROUP_ID"] = int(saved_group)

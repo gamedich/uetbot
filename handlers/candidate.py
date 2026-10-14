@@ -43,6 +43,7 @@ from common import (
     route_new_inquiry_ticket,
     safe_answer,
     safe_send,
+    is_maintenance_active,
 )
 from keyboards import (
     make_candidate_main_keyboard,
@@ -198,7 +199,7 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         )
         return
 
-    if CONFIG.get("MAINTENANCE_MODE") and not is_admin:
+    if is_maintenance_active() and not is_admin:
         await safe_answer(message, texts.MAINTENANCE_ACTIVE, parse_mode="HTML")
         return
 
@@ -787,7 +788,7 @@ async def run_candidate_survey(
         user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
     )
 
-    if CONFIG.get("MAINTENANCE_MODE") and not is_admin:
+    if is_maintenance_active() and not is_admin:
         await send_or_edit(texts.MAINTENANCE_ACTIVE)
         return
 

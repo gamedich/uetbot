@@ -60,6 +60,8 @@ from common import (
     set_closed_vacancies,
     sync_user_commands,
     update_env_mode,
+    is_maintenance_active,
+    set_maintenance_active,
 )
 from keyboards import (
     get_tech_screen_data,
@@ -227,10 +229,10 @@ async def cb_tech_toggle_maint(callback: types.CallbackQuery) -> None:
         await callback.answer("🚫 Нет прав доступа!", show_alert=True)
         return
 
-    CONFIG["MAINTENANCE_MODE"] = not CONFIG.get("MAINTENANCE_MODE", False)
-    db.set_setting("maintenance_mode", "1" if CONFIG["MAINTENANCE_MODE"] else "0")
+    new_state = not is_maintenance_active()
+    set_maintenance_active(new_state)
 
-    status_str = "ВКЛЮЧЕН (прием анкет на паузе)" if CONFIG["MAINTENANCE_MODE"] else "ВЫКЛЮЧЕН (штатная работа)"
+    status_str = "ВКЛЮЧЕН (прием анкет на паузе)" if new_state else "ВЫКЛЮЧЕН (штатная работа)"
     await callback.answer(f"Режим ТО: {status_str}", show_alert=True)
     screen_text, kb = get_tech_screen_data(callback.from_user.id)
     try:

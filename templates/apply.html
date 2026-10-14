@@ -36,7 +36,12 @@
 </head>
 <body class="min-h-screen bg-[#F3F6FA] dark:bg-[#0A192F] text-slate-800 dark:text-slate-100 transition-colors duration-300 pb-20 md:pb-0">
 
-    <!-- ВЕРХНЯЯ ПАНЕЛЬ (ШАПКА И АВТОРИЗОВАННАЯ НАВИГАЦИЯ) -->
+    <!-- ГЛОБАЛЬНЫЙ БАННЕР РЕЖИМА ТЕХНИЧЕСКОГО ОБСЛУЖИВАНИЯ (ТО) -->
+    <div id="topMaintenanceBanner" class="hidden bg-amber-500 text-slate-950 font-bold px-4 py-2.5 text-center text-xs flex items-center justify-center gap-2 shadow-md sticky top-0 z-[60]">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
+        <span>⚠️ ВНИМАНИЕ: На платформе МУП «УЭТ» включен <b>РЕЖИМ ТЕХНИЧЕСКОГО ОБСЛУЖИВАНИЯ (ТО)</b>. Прием новых анкет временно приостановлен во всех каналах (сайт, Telegram, VK). Авторизация администраторов работает в штатном режиме.</span>
+    </div>
+
     <!-- ВЕРХНЯЯ ПАНЕЛЬ: ЕДИНОЕ УДОБНОЕ МЕНЮ И НАВИГАЦИЯ -->
     <header class="sticky top-0 z-50 backdrop-blur-md bg-white/95 dark:bg-[#112240]/95 border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-3 transition-colors shadow-sm">
         <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3">
@@ -291,7 +296,35 @@
                 2. ОТДЕЛЬНЫЙ ЭКРАН: ВСЕ 16 ШАГОВ АНКЕТЫ СОИСКАТЕЛЯ (КАК В ТГ И ВК)
             ========================================================================= -->
             <div id="tabContentSurvey16" class="space-y-6 hidden">
-                <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+                <!-- Заглушка в режиме технического обслуживания -->
+                <div id="surveyMaintenanceStub" class="hidden bg-white dark:bg-[#112240] rounded-3xl p-8 sm:p-12 text-center border-2 border-amber-500/50 shadow-2xl max-w-2xl mx-auto my-8">
+                    <div class="w-20 h-20 bg-amber-500/10 text-amber-500 rounded-3xl flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner">
+                        🛠️
+                    </div>
+                    <div class="inline-block px-3 py-1 bg-amber-500/20 text-amber-800 dark:text-amber-400 rounded-full font-bold text-xs uppercase tracking-wider mb-3">
+                        Режим планового ТО
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mb-4">
+                        Прием анкет временно приостановлен
+                    </h2>
+                    <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-6">
+                        На серверах МУП «Ульяновскэлектротранс» ведутся регламентные технические работы и синхронизация баз данных. Заполнение анкет на сайте, а также в ботах Telegram и ВКонтакте временно недоступно.
+                    </p>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 mb-6 flex flex-wrap items-center justify-center gap-2">
+                        <span>Телефон кадровой службы для срочных обращений:</span>
+                        <a href="tel:+78422584660" class="font-bold text-[#1371B9] dark:text-blue-400 hover:underline">+7 (8422) 58-46-60</a>
+                    </div>
+                    <div class="flex items-center justify-center gap-3">
+                        <button onclick="switchTab('landing')" class="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-700 dark:text-slate-200 text-xs font-bold transition">
+                            ← На главную
+                        </button>
+                        <button onclick="openLoginModal('login')" class="px-5 py-2.5 rounded-xl bg-[#1371B9] hover:bg-blue-700 text-white text-xs font-bold shadow-md transition">
+                            Вход для сотрудников и админов →
+                        </button>
+                    </div>
+                </div>
+
+                <div id="surveyActiveContainer" class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
                     
                     <!-- Шапка визарда -->
                     <div class="flex flex-wrap justify-between items-center gap-4 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
@@ -671,7 +704,14 @@
                 <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
                     <h3 class="font-bold text-base mb-1">Консоль настроек Root & Инфраструктуры</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Администрирование базы данных, резервных копий и перезапуска сервисов</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <button id="btnToggleMaintenance" onclick="triggerToggleMaintenance()" class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-left hover:bg-amber-500/20 transition text-amber-600 dark:text-amber-400">
+                            <div class="flex items-center justify-between">
+                                <div class="font-bold text-xs">Режим ТО (Шлюзы & Сайт)</div>
+                                <span id="badgeMaintenanceStatus" class="text-[10px] px-2 py-0.5 rounded font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">ВЫКЛ</span>
+                            </div>
+                            <div class="text-[11px] opacity-80 mt-1">Блокировка приема анкет (Бот/ВК/Сайт)</div>
+                        </button>
                         <button onclick="triggerSystemBackup()" class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left hover:border-[#1371B9] transition">
                             <div class="font-bold text-xs">Создать бэкап SQLite</div>
                             <div class="text-[11px] text-slate-400 mt-1">Копия в /root/uetbot/backups</div>
@@ -1196,7 +1236,8 @@
         const state = {
             darkMode: false,
             role: 'guest', // 'guest' | 'applicant' | 'hr' | 'superadmin'
-            user: null,    // { user_id, name, email, label }
+            user: null,    // { user_id, name, email, label, token }
+            isMaintenance: false,
             activeTab: 'landing',
             currentSurveyStep: 1,
             // 16 шагов анкеты (в строгом соответствии с texts.py и ботами TG/VK)
@@ -1231,6 +1272,9 @@
             } else {
                 enableDarkMode(false);
             }
+
+            // Проверка режима технического обслуживания (ТО)
+            checkMaintenanceMode();
 
             // Восстановление авторизованной сессии
             const savedSession = sessionStorage.getItem('uet_session');
@@ -1267,6 +1311,87 @@
             loadDestructionLogs();
             renderSurveyCurrentStep();
         });
+
+        // =========================================================================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ БЕЗОПАСНОСТИ И ТОКЕНОВ СЕССИИ
+        // =========================================================================
+
+        function getAuthToken() {
+            try {
+                const sess = JSON.parse(sessionStorage.getItem('uet_session') || '{}');
+                return sess.token || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function getAuthHeaders(headers = {}) {
+            const h = { ...headers };
+            const token = getAuthToken();
+            if (token) {
+                h['Authorization'] = `Bearer ${token}`;
+                h['X-Auth-Token'] = token;
+            }
+            return h;
+        }
+
+        async function checkMaintenanceMode() {
+            try {
+                const resp = await fetch('/api/system/maintenance');
+                const data = await resp.json();
+                state.isMaintenance = !!data.maintenance_mode;
+                updateMaintenanceUI();
+            } catch (e) {}
+        }
+
+        function updateMaintenanceUI() {
+            const banner = document.getElementById('topMaintenanceBanner');
+            const stub = document.getElementById('surveyMaintenanceStub');
+            const container = document.getElementById('surveyActiveContainer');
+            const badge = document.getElementById('badgeMaintenanceStatus');
+
+            if (banner) banner.classList.toggle('hidden', !state.isMaintenance);
+            if (stub && container) {
+                stub.classList.toggle('hidden', !state.isMaintenance);
+                container.classList.toggle('hidden', state.isMaintenance);
+            }
+            if (badge) {
+                badge.innerText = state.isMaintenance ? 'АКТИВЕН' : 'ВЫКЛ';
+                badge.className = state.isMaintenance 
+                    ? 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500 text-slate-950 animate-pulse' 
+                    : 'text-[10px] px-2 py-0.5 rounded font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
+            }
+        }
+
+        async function triggerToggleMaintenance() {
+            if (state.role !== 'superadmin') {
+                alert('Управление режимом ТО доступно только Супер-Администратору.');
+                return;
+            }
+            const targetState = !state.isMaintenance;
+            const confirmMsg = targetState
+                ? 'Включить РЕЖИМ ТЕХНИЧЕСКОГО ОБСЛУЖИВАНИЯ (ТО)?\n\n• Прием анкет будет заблокирован во всех каналах (сайт, Telegram, VK).\n• На сайте включится заглушка.\n• Доступ к админ-панелям сохранится.'
+                : 'Выключить режим ТО и возобновить прием анкет во всех каналах?';
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const resp = await fetch('/api/system/maintenance', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ active: targetState })
+                });
+                const res = await resp.json();
+                if (res.ok) {
+                    state.isMaintenance = !!res.maintenance_mode;
+                    updateMaintenanceUI();
+                    alert(res.message || 'Статус режима ТО успешно изменен.');
+                } else {
+                    alert(res.error || 'Ошибка изменения режима ТО');
+                }
+            } catch (e) {
+                alert('Ошибка связи с сервером');
+            }
+        }
 
         // Темы оформления
         function toggleDarkMode() {
@@ -1393,36 +1518,8 @@
 
             if (silent) return;
 
-            // 2. Если в обычном браузере
-            const tgPrompt = prompt('Введите ваш Telegram ID или номер телефона, привязанный к боту @uet_hr_bot:');
-            if (!tgPrompt) return;
-
-            try {
-                const resp = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ method: 'telegram', telegram_id: tgPrompt.trim(), username: tgPrompt.trim() })
-                });
-                const res = await resp.json();
-                if (res.ok) {
-                    sessionStorage.setItem('uet_session', JSON.stringify(res));
-                    applyAuthSuccess(res);
-                    closeLoginModal();
-                    if (res.role === 'superadmin' || res.role === 'super') switchTab('tech');
-                    else if (res.role === 'hr') switchTab('applicants');
-                    else switchTab('cabinet');
-                } else {
-                    if (errEl) {
-                        errEl.innerText = res.error || 'Пользователь не найден. Запустите бота @uet_hr_bot или зарегистрируйтесь во вкладке «Регистрация».';
-                        errEl.classList.remove('hidden');
-                    }
-                }
-            } catch (err) {
-                if (errEl) {
-                    errEl.innerText = 'Ошибка связи с сервером при входе через Telegram.';
-                    errEl.classList.remove('hidden');
-                }
-            }
+            // 2. Если в обычном браузере — требуем логин и пароль для безопасности
+            alert('Для входа через Telegram откройте WebApp напрямую в боте @uet_hr_bot по кнопке «Кабинет» или «Сайт».\n\nНа сайте используйте форму авторизации по логину/телефону и паролю.');
         }
 
         async function handleRegisterSubmit(e) {
@@ -1574,16 +1671,27 @@
                 }
             }
 
-            // Показываем служебные разделы в ЕДИНОМ верхнем меню
+            // Показываем служебные разделы в ЕДИНОМ верхнем меню ТОЛЬКО ДЛЯ СОТРУДНИКОВ
+            const isStaff = ['hr', 'tech', 'superadmin', 'depot'].includes(state.role);
             const serviceNav = document.getElementById('serviceNavItems');
             const mServiceNav = document.getElementById('mServiceNav');
             if (serviceNav) {
-                serviceNav.classList.remove('hidden');
-                serviceNav.classList.add('flex');
+                if (isStaff) {
+                    serviceNav.classList.remove('hidden');
+                    serviceNav.classList.add('flex');
+                } else {
+                    serviceNav.classList.add('hidden');
+                    serviceNav.classList.remove('flex');
+                }
             }
             if (mServiceNav) {
-                mServiceNav.classList.remove('hidden');
-                mServiceNav.classList.add('flex');
+                if (isStaff) {
+                    mServiceNav.classList.remove('hidden');
+                    mServiceNav.classList.add('flex');
+                } else {
+                    mServiceNav.classList.add('hidden');
+                    mServiceNav.classList.remove('flex');
+                }
             }
 
             const techBtn = document.getElementById('topBtnTech');
@@ -1609,7 +1717,10 @@
                 if (mGitBtn) mGitBtn.classList.add('hidden');
             }
 
-            loadRecruitmentConfig();
+            if (isStaff) {
+                loadRecruitmentConfig();
+                loadRealCandidates();
+            }
         }
 
         function logoutUser() {
@@ -1652,6 +1763,19 @@
         // =========================================================================
 
         function switchTab(tabName) {
+            const staffTabs = ['applicants', 'questions', 'security', 'tech', 'admins', 'git'];
+            if (staffTabs.includes(tabName)) {
+                if (!['hr', 'tech', 'superadmin', 'depot'].includes(state.role)) {
+                    alert('Доступ ограничен. Данный раздел предназначен только для уполномоченных сотрудников отдела кадров и администраторов МУП «УЭТ».');
+                    openLoginModal('login');
+                    return;
+                }
+                if (['tech', 'admins', 'git'].includes(tabName) && state.role !== 'superadmin') {
+                    alert('Доступ запрещен. Требуются права Главного администратора (SuperAdmin).');
+                    return;
+                }
+            }
+
             state.activeTab = tabName;
 
             const tabs = {
@@ -1925,6 +2049,12 @@
         async function submitFinalSurvey() {
             const nextBtn = document.getElementById('btnSurveyNext');
             const errEl = document.getElementById('surveyErrorAlert');
+
+            if (state.isMaintenance) {
+                alert('Внимание: включен режим технического обслуживания (ТО). Прием новых анкет временно приостановлен. Пожалуйста, повторите попытку позже или обратитесь в отдел кадров: +7 (8422) 58-46-60.');
+                return;
+            }
+
             nextBtn.disabled = true;
             nextBtn.innerText = 'Регистрация анкеты по ГОСТ...';
 
@@ -2086,8 +2216,15 @@
 
         // Загрузка реальных кандидатов
         async function loadRealCandidates() {
+            if (!['hr', 'tech', 'superadmin', 'depot'].includes(state.role)) {
+                state.applicants = [];
+                renderApplicantsTable();
+                return;
+            }
             try {
-                const resp = await fetch('/api/candidates?page=1&limit=50&status=all&db_scope=both');
+                const resp = await fetch('/api/candidates?page=1&limit=50&status=all&db_scope=both', {
+                    headers: getAuthHeaders()
+                });
                 const data = await resp.json();
                 if (data.candidates && data.candidates.length > 0) {
                     state.applicants = data.candidates.map(c => ({
@@ -2193,6 +2330,8 @@
                 ];
             }
 
+            const canEdit = ['hr', 'tech', 'superadmin'].includes(state.role);
+
             container.innerHTML = state.questions.map(q => `
                 <div class="bg-white dark:bg-[#112240] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors hover:border-[#1371B9]">
                     <div class="flex items-center gap-3.5">
@@ -2212,15 +2351,22 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2 self-end sm:self-center">
+                        ${canEdit ? `
                         <button onclick="editQuestionPrompt(${q.step})" class="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-[#1371B9] hover:text-white text-xs font-semibold transition" title="Редактировать формулировку">
                             Изменить
-                        </button>
+                        </button>` : `
+                        <span class="text-xs text-slate-400 font-medium px-2 py-1">Только просмотр</span>
+                        `}
                     </div>
                 </div>
             `).join('');
         }
 
         function editQuestionPrompt(step) {
+            if (!['hr', 'tech', 'superadmin'].includes(state.role)) {
+                alert('У вас нет прав для изменения настроек анкеты. Доступно только сотрудникам отдела кадров.');
+                return;
+            }
             const q = state.questions.find(item => item.step === step);
             if (!q) return;
             const newText = prompt(`Шаг ${step} из 16:\nВведите новую формулировку вопроса:`, q.text);
@@ -2229,7 +2375,7 @@
                 renderQuestions();
                 fetch('/api/questions', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(state.questions)
                 }).catch(() => {});
             }
@@ -2265,6 +2411,10 @@
         }
 
         async function saveRecruitmentConfig() {
+            if (!['hr', 'tech', 'superadmin'].includes(state.role)) {
+                alert('У вас нет прав для изменения настроек набора.');
+                return;
+            }
             const chk = document.getElementById('hrCfgGroupTraining');
             const seats = document.getElementById('hrCfgSeatsLeft');
             const note = document.getElementById('hrCfgTaskNote');
@@ -2278,23 +2428,24 @@
             try {
                 const resp = await fetch('/api/hr/recruitment_config', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(payload)
                 });
                 const res = await resp.json();
                 if (res.ok) {
                     alert('✓ Конфигурация кадровых задач и набора успешно сохранена!');
                     loadRecruitmentConfig();
+                } else {
+                    alert(res.error || 'Ошибка сохранения конфигурации');
                 }
             } catch (e) {
                 alert('Ошибка сохранения конфигурации');
             }
         }
 
-        // Журнал уничтожения ПДн
         async function loadDestructionLogs() {
             try {
-                const resp = await fetch('/api/super/destruction_logs');
+                const resp = await fetch('/api/super/destruction_logs', { headers: getAuthHeaders() });
                 const logs = await resp.json();
                 const tbody = document.getElementById('destructionLogsBody');
                 if (tbody && Array.isArray(logs) && logs.length > 0) {
@@ -2326,7 +2477,7 @@
         // Супер-Админ: метрики и live terminal
         async function loadSystemStats() {
             try {
-                const resp = await fetch('/api/system');
+                const resp = await fetch('/api/system', { headers: getAuthHeaders() });
                 const data = await resp.json();
                 if (data.uptime) document.getElementById('techServerUptime').innerText = `Active (${data.uptime})`;
                 if (data.db_prod_kb) document.getElementById('techDbSize').innerText = `WAL Mode • ${(data.db_prod_kb / 1024).toFixed(1)} MB`;
@@ -2338,7 +2489,7 @@
             const container = document.getElementById('liveLogsContainer');
             if (!container) return;
             try {
-                const resp = await fetch('/api/system/logs');
+                const resp = await fetch('/api/system/logs', { headers: getAuthHeaders() });
                 const data = await resp.json();
                 if (data.logs && data.logs.length > 0) {
                     container.innerHTML = data.logs.map(line => {
@@ -2361,7 +2512,7 @@
             btn.innerHTML = `<span class="animate-spin inline-block mr-1">↻</span> Запуск Pytest...`;
 
             try {
-                const resp = await fetch('/api/system/run_tests', { method: 'POST' });
+                const resp = await fetch('/api/system/run_tests', { method: 'POST', headers: getAuthHeaders() });
                 const data = await resp.json();
                 document.getElementById('techTestsSummary').innerText = data.summary || '41 / 41 Passed';
                 document.getElementById('techTestsTime').innerText = `Последний прогон: ${data.executed_at || 'только что'}`;
@@ -2377,7 +2528,7 @@
         // Действия ROOT консоли
         async function triggerSystemBackup() {
             try {
-                const resp = await fetch('/api/system/backup', { method: 'POST' });
+                const resp = await fetch('/api/system/backup', { method: 'POST', headers: getAuthHeaders() });
                 const data = await resp.json();
                 alert(data.ok ? `✓ Резервная копия базы создана: ${data.filename}` : 'Ошибка создания бэкапа');
             } catch (e) { alert('Бэкап создан'); }
@@ -2385,7 +2536,7 @@
 
         async function triggerSystemOptimize() {
             try {
-                const resp = await fetch('/api/system/optimize_db', { method: 'POST' });
+                const resp = await fetch('/api/system/optimize_db', { method: 'POST', headers: getAuthHeaders() });
                 const data = await resp.json();
                 alert(data.ok ? '✓ База данных SQLite оптимизирована (WAL checkpoint OK)' : 'Ошибка оптимизации');
             } catch (e) { alert('Оптимизация завершена'); }
@@ -2393,7 +2544,7 @@
 
         async function triggerToggleDb() {
             try {
-                const resp = await fetch('/api/system/toggle_db', { method: 'POST' });
+                const resp = await fetch('/api/system/toggle_db', { method: 'POST', headers: getAuthHeaders() });
                 const data = await resp.json();
                 alert(`Активная база переключена на: ${data.active_db}`);
                 loadSystemStats();
@@ -2403,7 +2554,7 @@
         async function triggerRestartBot() {
             if (!confirm('Перезагрузить службу uet_bot.service?')) return;
             try {
-                await fetch('/api/super/restart_bot', { method: 'POST' });
+                await fetch('/api/super/restart_bot', { method: 'POST', headers: getAuthHeaders() });
                 alert('Команда перезапуска отправлена в systemd.');
             } catch (e) { alert('Перезапуск отправлен'); }
         }
@@ -2421,7 +2572,9 @@
             if (modal) modal.classList.remove('hidden');
 
             try {
-                const res = await fetch(`/api/candidate/${ticketId}`);
+                const res = await fetch(`/api/candidate/${ticketId}`, {
+                    headers: getAuthHeaders()
+                });
                 if (!res.ok) {
                     alert(`Не удалось загрузить данные анкеты #${ticketId}`);
                     return;
@@ -2493,7 +2646,7 @@
             try {
                 const res = await fetch(`/api/candidate/${currentModalTicketId}/note`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ note })
                 });
                 if (res.ok) {
@@ -2511,7 +2664,7 @@
             try {
                 const res = await fetch(`/api/candidate/${currentModalTicketId}/status`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ status: newStatus })
                 });
                 if (res.ok) {
@@ -2533,7 +2686,10 @@
             if (!confirm(`Вы действительно хотите ${actionLabel} данного соискателя?`)) return;
 
             try {
-                const res = await fetch(`/api/candidate/${currentModalTicketId}/${action}`, { method: 'POST' });
+                const res = await fetch(`/api/candidate/${currentModalTicketId}/${action}`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
                     alert(currentModalIsBlocked ? 'Соискатель разблокирован!' : 'Соискатель внесен в ЧС!');
                     closeCandidateModal();
@@ -2549,7 +2705,10 @@
             if (!confirm(`ВНИМАНИЕ: Безвозвратно удалить анкету #${currentModalTicketId} с фиксацией акта уничтожения ПДн (152-ФЗ)?`)) return;
 
             try {
-                const res = await fetch(`/api/candidate/${currentModalTicketId}/delete`, { method: 'POST' });
+                const res = await fetch(`/api/candidate/${currentModalTicketId}/delete`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
                     alert(`Анкета #${currentModalTicketId} успешно удалена!`);
                     closeCandidateModal();
@@ -2571,7 +2730,7 @@
             if (!tbody) return;
 
             try {
-                const res = await fetch('/api/admins');
+                const res = await fetch('/api/admins', { headers: getAuthHeaders() });
                 if (!res.ok) {
                     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red-400 py-6">Ошибка загрузки администраторов</td></tr>';
                     return;
@@ -2634,7 +2793,7 @@
             try {
                 const res = await fetch('/api/admins/add', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ user_id: uid, role, password: pwd })
                 });
                 const d = await res.json();
@@ -2655,7 +2814,7 @@
             try {
                 const res = await fetch('/api/admins/set_role', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ user_id: userId, role: newRole })
                 });
                 if (res.ok) {
@@ -2678,7 +2837,7 @@
             try {
                 const res = await fetch('/api/admins/set_password', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ user_id: userId, password: pwd.trim() })
                 });
                 if (res.ok) {
@@ -2696,7 +2855,7 @@
             try {
                 const res = await fetch('/api/admins/toggle_notify', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ user_id: userId })
                 });
                 if (res.ok) {
@@ -2713,7 +2872,7 @@
             try {
                 const res = await fetch('/api/admins/notify_panel', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ user_id: userId })
                 });
                 if (res.ok) {
@@ -2729,7 +2888,7 @@
             try {
                 const res = await fetch('/api/admins/notify_panel', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ user_id: 0 })
                 });
                 const d = await res.json();
@@ -2741,7 +2900,7 @@
 
         async function syncAdminsFromEnv() {
             try {
-                const res = await fetch('/api/admins/sync', { method: 'POST' });
+                const res = await fetch('/api/admins/sync', { method: 'POST', headers: getAuthHeaders() });
                 if (res.ok) {
                     alert('Синхронизация администраторов с конфигурацией .env завершена!');
                     loadAdminsList();
@@ -2756,7 +2915,7 @@
             try {
                 const res = await fetch('/api/admins/remove', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ user_id: userId })
                 });
                 if (res.ok) {
@@ -2774,7 +2933,7 @@
 
         async function loadGitPanelInfo() {
             try {
-                const res = await fetch('/api/super/git_info');
+                const res = await fetch('/api/super/git_info', { headers: getAuthHeaders() });
                 if (res.ok) {
                     const d = await res.json();
                     const bEl = document.getElementById('gitBranchVal');
@@ -2784,7 +2943,7 @@
                 }
 
                 // Загрузка актов уничтожения ПДн
-                const logsRes = await fetch('/api/super/destruction_logs');
+                const logsRes = await fetch('/api/super/destruction_logs', { headers: getAuthHeaders() });
                 const tbody = document.getElementById('destructionLogsTbody');
                 if (logsRes.ok && tbody) {
                     const logs = await logsRes.json();
@@ -2810,7 +2969,7 @@
         async function triggerGitPull() {
             if (!confirm('Выполнить git pull для получения последних обновлений с GitHub?')) return;
             try {
-                const res = await fetch('/api/super/git_pull', { method: 'POST' });
+                const res = await fetch('/api/super/git_pull', { method: 'POST', headers: getAuthHeaders() });
                 const d = await res.json();
                 alert(`Git Pull результат:\n${d.output || 'Успешно'}`);
                 loadGitPanelInfo();
@@ -2822,7 +2981,7 @@
         async function triggerRestartBotService() {
             if (!confirm('Перезапустить фоновый сервис uetbot?')) return;
             try {
-                const res = await fetch('/api/super/restart_bot', { method: 'POST' });
+                const res = await fetch('/api/super/restart_bot', { method: 'POST', headers: getAuthHeaders() });
                 if (res.ok) alert('Команда перезапуска службы отправлена в systemd!');
             } catch (e) {
                 alert('Ошибка перезапуска службы');
@@ -2832,7 +2991,7 @@
         async function triggerClearAllTestData() {
             if (!confirm('ВНИМАНИЕ: Удалить все тестовые заявки (#900000+)? Боевые анкеты не будут затронуты.')) return;
             try {
-                const res = await fetch('/api/super/clear_tests', { method: 'POST' });
+                const res = await fetch('/api/super/clear_tests', { method: 'POST', headers: getAuthHeaders() });
                 if (res.ok) {
                     const d = await res.json();
                     alert(`Успешно удалено тестовых анкет: ${d.deleted_candidates}`);
@@ -2848,7 +3007,7 @@
             try {
                 const res = await fetch('/api/super/set_cooldown', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ seconds: parseInt(sec) })
                 });
                 if (res.ok) alert('Таймаут Cooldown успешно обновлен!');
@@ -2861,7 +3020,7 @@
             try {
                 const res = await fetch('/api/settings/toggle_notifications', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ enabled: enable })
                 });
                 if (res.ok) {

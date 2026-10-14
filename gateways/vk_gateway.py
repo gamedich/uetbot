@@ -48,6 +48,7 @@ from common import (
     route_new_candidate_ticket,
     route_new_inquiry_ticket,
     safe_send,
+    is_maintenance_active,
 )
 from database import ResumeDB
 from keyboards import make_inquiry_admin_keyboard, make_ticket_keyboard
@@ -518,10 +519,13 @@ async def handle_vk_message(
 
         # 3. Режим техобслуживания — блокирует только приём новых анкет
         is_apply_attempt = (
-            cmd_from_payload in ["apply", "start_survey"]
-            or clean_lower in ["подать анкету", "заполнить анкету", "анкета", "работа", "/apply"]
+            cmd_from_payload in ["apply", "start_survey", "consent_yes"]
+            or any(w in clean_lower for w in [
+                "подать анкету", "заполнить анкету", "анкета", "работа", "/apply",
+                "вакансии", "трудоустройство", "📝 заполнить анкету", "согласен"
+            ])
         )
-        if CONFIG.get("MAINTENANCE_MODE") and is_apply_attempt:
+        if is_maintenance_active() and is_apply_attempt:
             maint_msg = clean_html(texts.MAINTENANCE_ACTIVE) + f"\n\n📞 Отдел кадров: {CONFIG['HR_PHONE']}"
             await send_vk_message(session, token, int(user_id), maint_msg, keyboard=make_vk_main_keyboard())
             return
@@ -951,6 +955,10 @@ async def handle_vk_message(
                 cand_data = session_data["data"]
                 cand_data["user_id"] = str(user_id)
                 del EXTERNAL_SESSIONS[key]
+
+                if is_maintenance_active():
+                    maint_msg = clean_html(texts.MAINTENANCE_ACTIVE) + f"\n\n📞 Отдел кадров: {CONFIG['HR_PHONE']}"
+                    return await send_vk_message(session, token, int(user_id), maint_msg, keyboard=make_vk_main_keyboard())
 
                 # 1. Регистрация через сервисный слой
                 ticket_id, meta = candidate_service.register_candidate(cand_data, platform="vk")

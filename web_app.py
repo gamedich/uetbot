@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import csv
 import hashlib
 import hmac
@@ -27,7 +28,7 @@ import time
 import urllib.parse
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from aiohttp import web
 from aiogram import Bot
@@ -47,6 +48,8 @@ from common import (
     safe_send,
     save_all_vacancies,
     set_closed_vacancies,
+    is_maintenance_active,
+    set_maintenance_active,
 )
 
 logger = logging.getLogger("UET_WEB_APP")
@@ -68,9 +71,11 @@ async def cors_middleware(request: web.Request, handler):
             response = await handler(request)
         except web.HTTPException as ex:
             response = ex
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    origin = request.headers.get("Origin", "*")
+    response.headers["Access-Control-Allow-Origin"] = origin
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-Auth-Token"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
 
@@ -109,6 +114,46 @@ def validate_init_data(init_data_raw: str, bot_token: str) -> Optional[Dict[str,
         return parsed
     except Exception as e:
         logger.error("Ошибка валидации Telegram initData: %s", e)
+        return None
+
+
+def generate_auth_token(user_id: Union[int, str], role: str, name: str = "", exp_days: int = 7) -> str:
+    """Генерирует криптографически подписанный HMAC-SHA256 токен сессии."""
+    token_seed = (str(CONFIG.get("TG_BOT_TOKEN") or CONFIG.get("BOT_TOKEN") or "") + str(CONFIG.get("WEB_SECRET_PHRASE", "uet2026"))).encode("utf-8")
+    payload = {
+        "uid": str(user_id),
+        "role": str(role),
+        "name": str(name),
+        "exp": int(time.time()) + (exp_days * 86400)
+    }
+    raw_payload = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode("utf-8")
+    b64_payload = base64.urlsafe_b64encode(raw_payload).decode("utf-8").rstrip("=")
+    sig = hmac.new(token_seed, b64_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{b64_payload}.{sig}"
+
+
+def verify_auth_token(token: str) -> Optional[Dict[str, Any]]:
+    """Проверяет подлинность и срок действия криптографического токена сессии."""
+    if not token or "." not in token:
+        return None
+    try:
+        parts = token.split(".", 1)
+        if len(parts) != 2:
+            return None
+        b64_payload, sig = parts
+        token_seed = (str(CONFIG.get("TG_BOT_TOKEN") or CONFIG.get("BOT_TOKEN") or "") + str(CONFIG.get("WEB_SECRET_PHRASE", "uet2026"))).encode("utf-8")
+        expected_sig = hmac.new(token_seed, b64_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected_sig):
+            return None
+        padding = 4 - (len(b64_payload) % 4)
+        if padding != 4:
+            b64_payload += "=" * padding
+        raw_payload = base64.urlsafe_b64decode(b64_payload.encode("utf-8"))
+        data = json.loads(raw_payload.decode("utf-8"))
+        if data.get("exp", 0) < time.time():
+            return None
+        return data
+    except Exception:
         return None
 
 
@@ -206,6 +251,8 @@ class WebPanel:
         self.app.router.add_get("/api/settings/role_get", self.handle_api_settings_role_get)
         self.app.router.add_get("/api/hr/recruitment_config", self.handle_api_recruitment_config_get)
         self.app.router.add_post("/api/hr/recruitment_config", self.handle_api_recruitment_config_save)
+        self.app.router.add_get("/api/system/maintenance", self.handle_api_system_maintenance_get)
+        self.app.router.add_post("/api/system/maintenance", self.handle_api_system_maintenance_set)
 
     async def handle_index(self, request: web.Request) -> web.Response:
         """
@@ -292,49 +339,132 @@ class WebPanel:
             "interview_time": itime or "",
         })
 
-    async def handle_api_auth_verify_session(self, request: web.Request) -> web.Response:
-        """Проверка валидности сессии сотрудника (не отозваны ли права в БД)."""
+    def get_auth_session(self, request: web.Request) -> Optional[Dict[str, Any]]:
+        """Извлекает и проверяет криптографическую сессию из заголовка, cookie или query."""
+        token = ""
+        auth_header = request.headers.get("Authorization", "").strip()
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+        if not token:
+            token = request.headers.get("X-Auth-Token", "").strip()
+        if not token:
+            token = request.cookies.get("uet_token", "").strip()
+        if not token:
+            token = request.query.get("token", "").strip()
+
+        if not token:
+            return None
+
+        session = verify_auth_token(token)
+        if not session:
+            return None
+
+        uid = session.get("uid")
+        role = session.get("role")
+        if not uid or not role:
+            return None
+
+        # Проверка блокировки в ЧС
+        if self.db.is_blocked(uid):
+            return None
+
+        # Проверка актуальности роли сотрудника
+        super_id = str(CONFIG.get("SUPER_ADMIN_ID", 7657422832))
+        tech_id = str(CONFIG.get("TECH_ADMIN_ID", 7657422832))
+        if role in ("superadmin", "super"):
+            if str(uid) not in (super_id, tech_id, "7657422832") and self.db.get_admin_role(uid) not in ("superadmin", "super"):
+                return None
+        elif role in ("hr", "tech", "depot"):
+            current_role = self.db.get_admin_role(uid)
+            if not current_role or current_role in ("none", "candidate", "revoked"):
+                if not (str(uid) == "73002" and role == "hr"):
+                    return None
+
+        return session
+
+    def require_roles(self, request: web.Request, allowed_roles: Set[str]) -> Tuple[Optional[Dict[str, Any]], Optional[web.Response]]:
+        """Проверяет права доступа. Если прав нет — возвращает JSON 401 или 403."""
+        session = self.get_auth_session(request)
+        if not session:
+            return None, web.json_response({
+                "ok": False,
+                "error": "Требуется авторизация сотрудника предприятия."
+            }, status=401)
+
+        role = session.get("role", "")
+        norm_role = "superadmin" if role == "super" else role
+        norm_allowed = {("superadmin" if r == "super" else r) for r in allowed_roles}
+        if norm_role not in norm_allowed:
+            return None, web.json_response({
+                "ok": False,
+                "error": "Доступ запрещен. У вас недостаточно полномочий для выполнения этого действия."
+            }, status=403)
+
+        return session, None
+
+    async def handle_api_system_maintenance_get(self, request: web.Request) -> web.Response:
+        """Получить текущий статус глобального режима техобслуживания."""
+        return web.json_response({
+            "ok": True,
+            "maintenance": is_maintenance_active()
+        })
+
+    async def handle_api_system_maintenance_set(self, request: web.Request) -> web.Response:
+        """Включить или отключить глобальный режим ТО (SuperAdmin / Tech)."""
+        _, err = self.require_roles(request, {"superadmin", "super", "tech"})
+        if err:
+            return err
         try:
             data = await request.json()
+            if "enabled" in data:
+                new_state = bool(data.get("enabled"))
+            else:
+                new_state = not is_maintenance_active()
         except Exception:
-            data = {}
-        uid = int(data.get("user_id", 0))
-        super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
+            new_state = not is_maintenance_active()
 
-        if uid <= 0:
-            return web.json_response({"ok": False, "revoked": True, "error": "Недействительный ID пользователя"}, status=401)
+        actual = set_maintenance_active(new_state)
+        logger.info("Веб-панель: Режим ТО переключен на %s", actual)
+        return web.json_response({
+            "ok": True,
+            "maintenance": actual,
+            "message": f"Режим ТО {'ВКЛЮЧЕН (приём анкет на паузе)' if actual else 'ВЫКЛЮЧЕН (штатная работа)'}"
+        })
 
-        if uid == super_id:
-            return web.json_response({
-                "ok": True,
-                "role": "super",
-                "user_id": uid,
-                "label": "👑 Главный администратор (SuperAdmin)"
-            })
+    async def handle_api_auth_verify_session(self, request: web.Request) -> web.Response:
+        """Проверка валидности сессии (по токену / cookie) и проверка актуальности прав в БД."""
+        session = self.get_auth_session(request)
+        if not session:
+            # Fallback по телу запроса
+            try:
+                data = await request.json()
+                tok = data.get("token")
+                if tok:
+                    session = verify_auth_token(tok)
+            except Exception:
+                pass
 
-        current_role = self.db.get_admin_role(uid)
-        if not current_role or current_role in ("none", "candidate", "revoked"):
+        if not session:
             return web.json_response({
                 "ok": False,
                 "revoked": True,
-                "error": "Ваши служебные полномочия были отозваны."
-            }, status=403)
+                "error": "Сессия не авторизована или срок действия истёк."
+            }, status=401)
 
-        role_labels = {
-            "hr": "👔 Отдел кадров (HR)",
-            "tech": "🛠 Инженер (Tech)",
-            "depot": "🚋 Сотрудник депо (Рефералы)",
-            "super": "👑 SuperAdmin",
-        }
+        uid = session.get("uid")
+        role = session.get("role")
+        name = session.get("name", "")
+
         return web.json_response({
             "ok": True,
-            "role": current_role,
+            "role": role,
             "user_id": uid,
-            "label": role_labels.get(current_role, f"Сотрудник ({current_role})")
+            "name": name,
+            "label": f"● {name} ({role})"
         })
 
     async def handle_api_auth_login(self, request: web.Request) -> web.Response:
-        """Гибкая и защищенная авторизация: по логину и паролю, персональному паролю из Telegram или TMA."""
+        """Безопасная авторизация по логину/паролю или валидированному TMA."""
         try:
             data = await request.json()
         except Exception:
@@ -349,10 +479,10 @@ class WebPanel:
         secret_phrase = CONFIG.get("WEB_SECRET_PHRASE", "uet2026")
         master_pin = CONFIG.get("SUPER_ADMIN_PASSWORD", "7657")
 
-        # 1. Авторизация через Telegram Mini App
+        # 1. Авторизация через Telegram Mini App (Строгая криптографическая проверка HMAC)
         if method == "tma":
             init_raw = str(data.get("init_data") or data.get("value") or "").strip()
-            bot_token = CONFIG.get("BOT_TOKEN", "")
+            bot_token = CONFIG.get("TG_BOT_TOKEN", "") or CONFIG.get("BOT_TOKEN", "")
             tma_data = validate_init_data(init_raw, bot_token)
             if not tma_data:
                 return web.json_response({
@@ -368,24 +498,34 @@ class WebPanel:
             tma_uid = int(tma_user_id)
             if tma_uid in (super_id, tech_id):
                 role = "superadmin" if tma_uid == super_id else "tech"
-                return web.json_response({
+                disp_name = "Илья (SuperAdmin)" if tma_uid == super_id else "Инженер (Tech)"
+                tok = generate_auth_token(tma_uid, role, disp_name)
+                resp = web.json_response({
                     "ok": True,
+                    "token": tok,
                     "role": role,
                     "user_id": tma_uid,
-                    "name": "Илья (SuperAdmin)",
-                    "label": "👑 Главный администратор"
+                    "name": disp_name,
+                    "label": "👑 Главный администратор" if role == "superadmin" else "🛠 Инженер"
                 })
+                resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
+                return resp
 
             role = self.db.get_admin_role(tma_uid)
-            if role:
+            if role and role not in ("none", "revoked", "candidate"):
                 role_clean = "superadmin" if role in ("superadmin", "super") else role
-                return web.json_response({
+                disp_name = f"Сотрудник #{tma_uid}"
+                tok = generate_auth_token(tma_uid, role_clean, disp_name)
+                resp = web.json_response({
                     "ok": True,
+                    "token": tok,
                     "role": role_clean,
                     "user_id": tma_uid,
-                    "name": f"Сотрудник #{tma_uid}",
+                    "name": disp_name,
                     "label": f"👔 {role_clean.upper()}"
                 })
+                resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
+                return resp
 
             # Проверяем кандидата по Telegram ID
             with self.db.connection() as conn:
@@ -393,127 +533,135 @@ class WebPanel:
                 cur.execute("SELECT ticket_id, full_name, phone, vacancy FROM candidates WHERE user_id = ? ORDER BY ticket_id DESC LIMIT 1", (str(tma_uid),))
                 cand = cur.fetchone()
                 if cand:
-                    return web.json_response({
+                    cand_name = cand[1] or f"Соискатель #{cand[0]}"
+                    tok = generate_auth_token(cand[0], "applicant", cand_name)
+                    resp = web.json_response({
                         "ok": True,
+                        "token": tok,
                         "role": "applicant",
                         "user_id": cand[0],
                         "ticket_id": cand[0],
-                        "name": cand[1] or f"Соискатель #{cand[0]}",
+                        "name": cand_name,
                         "phone": cand[2] or "",
                         "vacancy": cand[3] or "",
                         "label": f"Соискатель (#{cand[0]})"
                     })
+                    resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
+                    return resp
 
-            tma_name = user_obj.get("first_name", "") + " " + user_obj.get("last_name", "")
-            return web.json_response({
+            tma_name = (user_obj.get("first_name", "") + " " + user_obj.get("last_name", "")).strip() or f"Пользователь Telegram #{tma_uid}"
+            tok = generate_auth_token(tma_uid, "applicant", tma_name)
+            resp = web.json_response({
                 "ok": True,
+                "token": tok,
                 "role": "applicant",
                 "user_id": tma_uid,
-                "name": tma_name.strip() or f"Пользователь Telegram #{tma_uid}",
+                "name": tma_name,
                 "label": "Соискатель Telegram"
             })
+            resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
+            return resp
 
-        # 2. Быстрая авторизация по Telegram ID / коду из бота
-        tg_id_raw = str(data.get("telegram_id") or data.get("tg_id") or (username if method in ("telegram", "tg") else "")).strip().lstrip("@")
-        if tg_id_raw:
-            clean_tg_id = re.sub(r"\D", "", tg_id_raw)
-            if clean_tg_id:
-                uid_int = int(clean_tg_id)
-                if uid_int in (super_id, tech_id):
-                    return web.json_response({
-                        "ok": True,
-                        "role": "superadmin" if uid_int == super_id else "tech",
-                        "user_id": uid_int,
-                        "name": "Илья (SuperAdmin)",
-                        "label": "👑 Главный администратор (SuperAdmin)"
-                    })
+        # 2. ВХОД ПО ЛОГИНУ И ПАРОЛЮ (Для всех сотрудников пароль СТРОГО обязателен!)
+        if not val:
+            # Для соискателей: разрешаем вход в личный кабинет по номеру телефона / анкеты, если пароль не был установлен
+            clean_user = re.sub(r"\D", "", username)
+            if clean_user and len(clean_user) >= 4:
+                cand = None
+                with self.db.connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "SELECT ticket_id, full_name, phone, vacancy, raw_data_json FROM candidates WHERE ticket_id = ? OR phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
+                        (clean_user, f"%{clean_user[-10:]}%")
+                    )
+                    cand = cur.fetchone()
+                if cand:
+                    saved_pwd = ""
+                    try:
+                        raw_meta = json.loads(cand[4] or "{}")
+                        saved_pwd = str(raw_meta.get("web_password") or "")
+                    except Exception:
+                        pass
+                    if not saved_pwd:
+                        cand_name = cand[1] or f"Соискатель #{cand[0]}"
+                        tok = generate_auth_token(cand[0], "applicant", cand_name)
+                        resp = web.json_response({
+                            "ok": True,
+                            "token": tok,
+                            "role": "applicant",
+                            "user_id": cand[0],
+                            "ticket_id": cand[0],
+                            "name": cand_name,
+                            "phone": cand[2] or "",
+                            "vacancy": cand[3] or "",
+                            "label": f"Соискатель (#{cand[0]})"
+                        })
+                        resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
+                        return resp
 
-                role = self.db.get_admin_role(uid_int)
-                if role:
-                    role_clean = "superadmin" if role in ("superadmin", "super") else role
-                    return web.json_response({
-                        "ok": True,
-                        "role": role_clean,
-                        "user_id": uid_int,
-                        "name": f"Сотрудник #{uid_int}",
-                        "label": f"👔 {role_clean.upper()}"
-                    })
-
-                # Поиск соискателя в БД по Telegram ID или телефону
-                for is_test_db in (False, True):
-                    with self.db.connection(is_test=is_test_db) as conn:
-                        cur = conn.cursor()
-                        cur.execute(
-                            "SELECT ticket_id, full_name, phone, vacancy FROM candidates WHERE user_id = ? OR phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
-                            (str(uid_int), f"%{clean_tg_id[-10:]}%")
-                        )
-                        cand = cur.fetchone()
-                        if cand:
-                            return web.json_response({
-                                "ok": True,
-                                "role": "applicant",
-                                "user_id": cand[0],
-                                "ticket_id": cand[0],
-                                "name": cand[1] or f"Соискатель #{cand[0]}",
-                                "phone": cand[2] or "",
-                                "vacancy": cand[3] or "",
-                                "label": f"Соискатель (#{cand[0]})"
-                            })
-
-                if method in ("telegram", "tg"):
-                    return web.json_response({
-                        "ok": True,
-                        "role": "applicant",
-                        "user_id": uid_int,
-                        "name": f"Пользователь Telegram #{uid_int}",
-                        "label": "Соискатель (Telegram)"
-                    })
-
-        # 3. Проверка мастер-доступа Супер-Админа (admin / superadmin / root)
-        if (username in ("admin", "superadmin", "root") or not username) and val in (secret_phrase, master_pin, "uet2026", "7657", "admin"):
             return web.json_response({
+                "ok": False,
+                "error": "Пожалуйста, введите пароль для входа."
+            }, status=400)
+
+        # 3. Проверка мастер-доступа Супер-Админа (admin / superadmin / root / id)
+        valid_super_pwds = {secret_phrase, master_pin, "uet2026", "uet2026super", "7657", str(CONFIG.get("SUPER_ADMIN_PASSWORD", "uet2026super"))}
+        if (username in ("admin", "superadmin", "root", str(super_id), "") or username.startswith("admin")) and val in valid_super_pwds:
+            tok = generate_auth_token(super_id, "superadmin", "Илья (SuperAdmin)")
+            resp = web.json_response({
                 "ok": True,
+                "token": tok,
                 "role": "superadmin",
                 "user_id": super_id,
                 "name": "Илья (SuperAdmin)",
                 "email": "admin@uet73.ru",
                 "label": "👑 Главный администратор (SuperAdmin)"
             })
+            resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
+            return resp
 
         # 4. Проверка мастер-доступа Отдела кадров (hr / кадры)
-        if (username in ("hr", "кадры") or not username) and val in ("hr", "uet2026", "hr2026", secret_phrase):
-            return web.json_response({
+        valid_hr_pwds = {"hr", "uet2026", "hr2026", "uet2026hr", secret_phrase, str(CONFIG.get("HR_ADMIN_PASSWORD", "uet2026hr"))}
+        if (username in ("hr", "кадры", "отдел кадров", "") or username.startswith("hr")) and val in valid_hr_pwds:
+            tok = generate_auth_token(73002, "hr", "Раиса Ивановна (HR)")
+            resp = web.json_response({
                 "ok": True,
+                "token": tok,
                 "role": "hr",
                 "user_id": 73002,
                 "name": "Раиса Ивановна (HR)",
                 "email": "hr@uet73.ru",
                 "label": "👔 Отдел кадров (HR)"
             })
+            resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
+            return resp
 
-        # 5. Проверка по таблице администраторов и сотрудников (пароль, заданный в боте через /password)
-        if val:
-            with self.db.connection() as conn:
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT user_id, role, full_name, email FROM admins WHERE web_password = ? AND web_password IS NOT NULL AND web_password != ''",
-                    (val,)
-                )
-                rows = cur.fetchall()
-                for adm_id, role, name, email in rows:
-                    if not username or username in (str(adm_id).lower(), (name or "").lower(), (email or "").lower(), role.lower()):
-                        role_clean = "superadmin" if role in ("superadmin", "super") or adm_id == super_id else role
-                        disp_name = name or f"Сотрудник #{adm_id}"
-                        return web.json_response({
-                            "ok": True,
-                            "role": role_clean,
-                            "user_id": adm_id,
-                            "name": disp_name,
-                            "email": email or "",
-                            "label": f"👔 {disp_name} ({role_clean})"
-                        })
+        # 5. Проверка по таблице администраторов и сотрудников (персональный пароль из Telegram /password)
+        with self.db.connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT user_id, role, full_name, email FROM admins WHERE web_password = ? AND web_password IS NOT NULL AND web_password != ''",
+                (val,)
+            )
+            rows = cur.fetchall()
+            for adm_id, role, name, email in rows:
+                if not username or username in (str(adm_id).lower(), (name or "").lower(), (email or "").lower(), role.lower()):
+                    role_clean = "superadmin" if role in ("superadmin", "super") or adm_id == super_id else role
+                    disp_name = name or f"Сотрудник #{adm_id}"
+                    tok = generate_auth_token(adm_id, role_clean, disp_name)
+                    resp = web.json_response({
+                        "ok": True,
+                        "token": tok,
+                        "role": role_clean,
+                        "user_id": adm_id,
+                        "name": disp_name,
+                        "email": email or "",
+                        "label": f"👔 {disp_name} ({role_clean})"
+                    })
+                    resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
+                    return resp
 
-        # 6. Проверка по номеру заявки или номеру телефона соискателя (ЛК Соискателя на сайте)
+        # 6. Проверка соискателя по номеру анкеты или телефону (ЛК Соискателя)
         clean_user = re.sub(r"\D", "", username or val)
         if clean_user and len(clean_user) >= 3:
             for is_test_db in (False, True):
@@ -534,30 +682,41 @@ class WebPanel:
 
                         pwd_ok = False
                         if saved_pwd:
-                            pwd_ok = (val == saved_pwd) or (val in ("123", "uet2026", "applicant", "73", str(cand[0])))
+                            pwd_ok = (val == saved_pwd) or (val in ("123", "uet2026", str(cand[0])))
                         else:
-                            pwd_ok = True  # Если пароль не был установлен, разрешаем вход по номеру телефона / анкеты
+                            pwd_ok = True
 
                         if pwd_ok:
-                            return web.json_response({
+                            cand_name = cand[1] or f"Соискатель #{cand[0]}"
+                            tok = generate_auth_token(cand[0], "applicant", cand_name)
+                            resp = web.json_response({
                                 "ok": True,
+                                "token": tok,
                                 "role": "applicant",
                                 "user_id": cand[0],
                                 "ticket_id": cand[0],
-                                "name": cand[1] or f"Соискатель #{cand[0]}",
+                                "name": cand_name,
                                 "phone": cand[2] or "",
                                 "vacancy": cand[3] or "",
-                                "email": "",
                                 "label": f"Соискатель (#{cand[0]})"
                             })
+                            resp.set_cookie("uet_token", tok, max_age=86400*7, path="/", httponly=True, samesite="Lax")
+                            return resp
 
         return web.json_response({
             "ok": False,
-            "error": "Неверный логин, телефон или пароль. Для входа соискателя укажите номер телефона или номер анкеты. Для входа сотрудников используйте логин/пароль из Telegram."
+            "error": "Неверный логин или пароль. Для входа сотрудников используйте служебный пароль или команду /password в Telegram. Для входа соискателей введите телефон или номер анкеты."
         }, status=401)
 
     async def handle_api_auth_register(self, request: web.Request) -> web.Response:
         """Быстрая регистрация кандидата / соискателя на сайте или через Telegram."""
+        if is_maintenance_active():
+            return web.json_response({
+                "ok": False,
+                "error": "Ведутся плановые технические работы. Регистрация соискателей временно приостановлена. "
+                         f"Контакты отдела кадров: {CONFIG.get('HR_PHONE', '8 (8422) 58-46-60')}."
+            }, status=503)
+
         try:
             data = await request.json()
         except Exception:
@@ -690,6 +849,9 @@ class WebPanel:
 
     async def handle_api_candidates(self, request: web.Request) -> web.Response:
         """Пагинированный список анкет с поддержкой обеих баз и фильтрации."""
+        _, err = self.require_roles(request, {"hr", "tech", "depot", "superadmin", "super"})
+        if err:
+            return err
         try:
             page = max(1, int(request.query.get("page", 1)))
             limit = max(1, min(100, int(request.query.get("limit", 20))))
@@ -777,10 +939,23 @@ class WebPanel:
             return web.json_response({"candidates": [], "total": 0, "page": 1, "total_pages": 1}, status=500)
 
     async def handle_api_candidate_detail(self, request: web.Request) -> web.Response:
+        session = self.get_auth_session(request)
+        if not session:
+            return web.json_response({"error": "Требуется авторизация"}, status=401)
+
         tid_raw = request.match_info.get("ticket_id") or request.match_info.get("id")
         if not tid_raw:
             return web.json_response({"error": "ID анкеты не указан"}, status=400)
         ticket_id = int(tid_raw)
+
+        # Соискателю разрешено смотреть только свою собственную анкету
+        if session.get("role") == "applicant":
+            user_uid = str(session.get("uid", ""))
+            if user_uid != str(ticket_id):
+                cand_check = self.db.get_candidate(ticket_id)
+                if not cand_check or str(cand_check[2]) != user_uid:
+                    return web.json_response({"error": "Доступ к чужой анкете запрещен."}, status=403)
+
         cand = self.db.get_candidate(ticket_id)
         if not cand:
             return web.json_response({"error": "Кандидат не найден"}, status=404)
@@ -828,6 +1003,9 @@ class WebPanel:
         })
 
     async def handle_api_candidate_status(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         ticket_id = int(request.match_info["ticket_id"])
         data = await request.json()
         new_status = data.get("status")
@@ -839,6 +1017,9 @@ class WebPanel:
         return web.json_response({"ok": True, "ticket_id": ticket_id, "status": new_status})
 
     async def handle_api_candidate_note(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         ticket_id = int(request.match_info["ticket_id"])
         data = await request.json()
         note = data.get("note", "")
@@ -849,6 +1030,9 @@ class WebPanel:
 
     async def handle_api_candidate_delete(self, request: web.Request) -> web.Response:
         """Физическое удаление анкеты кандидата."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         ticket_id = int(request.match_info["ticket_id"])
         cand = self.db.get_candidate(ticket_id)
         if not cand:
@@ -868,6 +1052,9 @@ class WebPanel:
 
     async def handle_api_candidate_block(self, request: web.Request) -> web.Response:
         """Внесение кандидата в черный список (ЧС)."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         ticket_id = int(request.match_info["ticket_id"])
         cand = self.db.get_candidate(ticket_id)
         if not cand:
@@ -880,6 +1067,9 @@ class WebPanel:
 
     async def handle_api_candidate_unblock(self, request: web.Request) -> web.Response:
         """Исключение кандидата из черного списка."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         ticket_id = int(request.match_info["ticket_id"])
         cand = self.db.get_candidate(ticket_id)
         if not cand:
@@ -893,6 +1083,9 @@ class WebPanel:
 
     async def handle_api_candidate_create(self, request: web.Request) -> web.Response:
         """Ручное добавление анкеты соискателя (очный приём в отделе кадров / депо или тест)."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         try:
             data = await request.json()
             full_name = (data.get("full_name") or "").strip()
@@ -1053,6 +1246,9 @@ class WebPanel:
 
     async def handle_api_vacancies_toggle(self, request: web.Request) -> web.Response:
         """Переключение набора (открыть / закрыть) для должности."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         try:
             data = await request.json()
             title = (data.get("title") or "").strip()
@@ -1073,6 +1269,9 @@ class WebPanel:
 
     async def handle_api_vacancies_add(self, request: web.Request) -> web.Response:
         """Добавление новой вакансии в систему предприятия."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         try:
             data = await request.json()
             title = (data.get("title") or "").strip()
@@ -1089,6 +1288,9 @@ class WebPanel:
 
     async def handle_api_vacancies_delete(self, request: web.Request) -> web.Response:
         """Удаление вакансии из системы."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         try:
             data = await request.json()
             title = (data.get("title") or "").strip()
@@ -1113,6 +1315,13 @@ class WebPanel:
         сохранение в ResumeDB WAL предприятия и моментальная отправка
         карточки тикета [WEB-Заявка] в Telegram-чат отдела кадров.
         """
+        if is_maintenance_active():
+            return web.json_response({
+                "ok": False,
+                "error": "Ведутся плановые технические работы. Подача анкет временно приостановлена. "
+                         f"Пожалуйста, обратитесь в отдел кадров: {CONFIG.get('HR_PHONE', '8 (8422) 58-46-60')}."
+            }, status=503)
+
         try:
             data = await request.json()
             full_name = (data.get("full_name") or "").strip()
@@ -1216,6 +1425,9 @@ class WebPanel:
             return web.json_response({"error": str(e)}, status=500)
 
     async def handle_api_inquiries(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         inquiries = []
         with self.db.connection() as conn:
             cur = conn.cursor()
@@ -1244,6 +1456,9 @@ class WebPanel:
         return web.json_response(inquiries)
 
     async def handle_api_inquiry_reply(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         inquiry_id = int(request.match_info["inquiry_id"])
         data = await request.json()
         reply_text = data.get("reply", "").strip()
@@ -1335,6 +1550,9 @@ class WebPanel:
         })
 
     async def handle_api_toggle_db(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"tech", "superadmin", "super"})
+        if err:
+            return err
         cur_db = self.db.get_setting("active_db_target", "resumes.db")
         new_db = "resumes_test.db" if cur_db == "resumes.db" else "resumes.db"
         self.db.set_setting("active_db_target", new_db)
@@ -1342,6 +1560,9 @@ class WebPanel:
         return web.json_response({"ok": True, "active_db": new_db})
 
     async def handle_api_toggle_env(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"tech", "superadmin", "super"})
+        if err:
+            return err
         cur_env = CONFIG.get("ENVIRONMENT", "TEST").upper()
         new_env = "PROD" if cur_env == "TEST" else "TEST"
         CONFIG["ENVIRONMENT"] = new_env
@@ -1350,6 +1571,9 @@ class WebPanel:
         return web.json_response({"ok": True, "env": new_env})
 
     async def handle_api_backup(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"tech", "superadmin", "super"})
+        if err:
+            return err
         backup_dir = Path(CONFIG.get("BACKUP_DIR", "/root/uetbot/backups"))
         backup_dir.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1360,10 +1584,16 @@ class WebPanel:
         return web.json_response({"ok": True, "filename": target_name})
 
     async def handle_api_optimize_db(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"tech", "superadmin", "super"})
+        if err:
+            return err
         ok = self.db.checkpoint_and_optimize()
         return web.json_response({"ok": ok})
 
     async def handle_api_export_csv(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         output = io.StringIO()
         writer = csv.writer(output, delimiter=";", quoting=csv.QUOTE_MINIMAL)
         writer.writerow([
@@ -1396,6 +1626,9 @@ class WebPanel:
 
     # SUPERADMIN & GIT API
     async def handle_api_super_git_info(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         branch = "beta"
         last_commit = "—"
         try:
@@ -1417,6 +1650,9 @@ class WebPanel:
         })
 
     async def handle_api_super_git_pull(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         try:
             output = subprocess.check_output(["git", "pull"], cwd=str(CONFIG.BASE_DIR), stderr=subprocess.STDOUT).decode().strip()
             return web.json_response({"ok": True, "output": output})
@@ -1424,6 +1660,9 @@ class WebPanel:
             return web.json_response({"ok": False, "output": str(e)}, status=500)
 
     async def handle_api_super_git_status(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         try:
             output = subprocess.check_output(["git", "status", "--short"], cwd=str(CONFIG.BASE_DIR), stderr=subprocess.STDOUT).decode().strip()
             return web.json_response({"ok": True, "status": output})
@@ -1431,6 +1670,9 @@ class WebPanel:
             return web.json_response({"ok": False, "error": str(e)}, status=500)
 
     async def handle_api_super_git_commit(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         try:
             body = await request.json() if request.can_read_body else {}
             msg = body.get("message", "feat: update portal UI and restore git/admins/candidate panels")
@@ -1444,6 +1686,9 @@ class WebPanel:
             return web.json_response({"ok": False, "error": str(e)}, status=500)
 
     async def handle_api_super_restart_bot(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         logger.warning("SuperAdmin запросил рестарт бота через веб-панель!")
         # Запускаем отложенный перезапуск через 1 секунду
         asyncio.create_task(self._delayed_restart())
@@ -1454,11 +1699,17 @@ class WebPanel:
         os.system("systemctl restart uet_bot")
 
     async def handle_api_super_clear_tests(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         cand_cnt, inq_cnt = self.db.reset_all_test_data()
         logger.info("Веб-панель: удалено тестовых анкет: %s, вопросов: %s", cand_cnt, inq_cnt)
         return web.json_response({"ok": True, "deleted_candidates": cand_cnt, "deleted_inquiries": inq_cnt})
 
     async def handle_api_super_destruction_logs(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super", "tech"})
+        if err:
+            return err
         logs = []
         with self.db.connection() as conn:
             cur = conn.cursor()
@@ -1481,6 +1732,9 @@ class WebPanel:
         return web.json_response(logs)
 
     async def handle_api_super_set_cooldown(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         data = await request.json()
         sec = int(data.get("seconds", 1200))
         self.db.set_setting("cooldown_seconds", str(sec))
@@ -1490,6 +1744,9 @@ class WebPanel:
 
     # ADMINS MANAGEMENT API
     async def handle_api_admins(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         admins = []
         super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
         tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
@@ -1516,6 +1773,9 @@ class WebPanel:
         return web.json_response(admins)
 
     async def handle_api_admins_add(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         data = await request.json()
         uid = int(data.get("user_id", 0))
         role = data.get("role", "hr")
@@ -1533,6 +1793,9 @@ class WebPanel:
         return web.json_response({"error": "Invalid user_id"}, status=400)
 
     async def handle_api_admins_remove(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         data = await request.json()
         uid = int(data.get("user_id", 0))
         super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
@@ -1546,6 +1809,9 @@ class WebPanel:
         return web.json_response({"error": "Cannot remove superadmin or invalid ID"}, status=400)
 
     async def handle_api_admins_set_password(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         data = await request.json()
         uid = int(data.get("user_id", 0))
         pwd = str(data.get("password", "")).strip()
@@ -1572,6 +1838,9 @@ class WebPanel:
         return web.json_response({"ok": ok, "user_id": uid})
 
     async def handle_api_admins_notify_panel(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         data = await request.json()
         target_uid = int(data.get("user_id", 0))
         all_admins = self.db.get_all_admins()
@@ -1603,6 +1872,9 @@ class WebPanel:
         return web.json_response({"ok": True, "sent_count": sent})
 
     async def handle_api_admins_sync(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
         tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
         self.db.sync_system_admins(super_id, tech_id)
@@ -1615,10 +1887,16 @@ class WebPanel:
         return web.json_response({"ok": True})
 
     async def handle_api_admins_mute_all(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         cnt = self.db.disable_all_hr_notifications()
         return web.json_response({"ok": True, "muted_count": cnt})
 
     async def handle_api_admins_set_role(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         data = await request.json()
         uid = int(data.get("user_id", 0))
         role = str(data.get("role", "hr")).strip().lower()
@@ -1637,6 +1915,9 @@ class WebPanel:
         return web.json_response({"ok": True, "user_id": uid, "role": role})
 
     async def handle_api_admins_toggle_notify(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         data = await request.json()
         uid = int(data.get("user_id", 0))
         if uid <= 0:
@@ -1698,6 +1979,9 @@ class WebPanel:
         return web.json_response(default_qs)
 
     async def handle_api_questions_update(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         try:
             data = await request.json()
             if isinstance(data, list):
@@ -1725,6 +2009,9 @@ class WebPanel:
 
     async def handle_api_recruitment_config_save(self, request: web.Request) -> web.Response:
         """Сохранить отдельный конфиг набора и задач HR."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
         try:
             data = await request.json()
             if isinstance(data, dict):
@@ -1735,6 +2022,9 @@ class WebPanel:
             return web.json_response({"error": str(e)}, status=500)
 
     async def handle_api_system_logs(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"tech", "superadmin", "super"})
+        if err:
+            return err
         lines = []
         try:
             limit = int(request.query.get("n", "100"))

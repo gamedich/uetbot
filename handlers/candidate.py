@@ -340,24 +340,16 @@ async def cmd_depot_referral_entry(message: types.Message) -> None:
     bonus = ref_info.get("bonus_total", 0)
 
     text = (
-        "🚋 <b>ПРОГРАММА «ПРИВЕДИ ДРУГА В ДЕПО»</b>\n"
+        "🚋 <b>ПРОГРАММА «ПРИВЕДИ ДРУГА В ДЕПО» (В ПЛАНАХ / ROADMAP)</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🔗 <b>Ваша личная ссылка для кандидатов:</b>\n"
-        f"<code>{ref_link}</code>\n\n"
-        f"📊 <b>Ваша статистика:</b>\n"
-        f"• Всего переходов по ссылке: <b>{total}</b>\n"
-        f"• На рассмотрении кадров: <b>{in_progress}</b>\n"
-        f"• Принято на работу в депо: <b>{hired}</b>\n"
-        f"💰 <b>Начислено премий:</b> <b>{bonus:,} ₽</b> <i>(10 000 ₽ за каждого принятого)</i>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "💡 <i>Отправляйте ссылку друзьям или запустите Mini App для просмотра списка ваших кандидатов!</i>"
+        "ℹ️ <i>Функционал реферальных премий и персональных ссылок депо перенесен в планы разработки "
+        "и запланирован к официальному запуску в следующем обновлении.</i>\n\n"
+        "Следите за объявлениями отдела кадров и новостями МУП «Ульяновскэлектротранс»!"
     )
 
     kb = InlineKeyboardBuilder()
-    kb.button(text="🌐 Открыть кабинет депо (Mini App)", web_app=types.WebAppInfo(url=web_url))
-    share_url = f"https://t.me/share/url?url={ref_link}&text=Работа+в+МУП+«Ульяновскэлектротранс»"
-    kb.button(text="📲 Поделиться ссылкой", url=share_url)
-    kb.adjust(1, 1)
+    kb.button(text="🌐 Открыть сайт МУП «УЭТ»", web_app=types.WebAppInfo(url=web_url))
+    kb.adjust(1)
 
     await safe_answer(message, text, reply_markup=kb.as_markup(), parse_mode="HTML")
 

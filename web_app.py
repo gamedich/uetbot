@@ -354,6 +354,17 @@ class WebPanel:
                 )
                 cand = cur.fetchone()
 
+        if not cand and clean_q:
+            with self.db.connection() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT ticket_id, full_name, phone, vacancy, status, created_at, interview_depot, interview_time FROM candidates WHERE ticket_id = ? OR phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
+                    (clean_q, f"%{clean_q[-10:]}%")
+                )
+                row = cur.fetchone()
+                if row:
+                    cand = (row[0], "web", "", row[1], row[2], row[3], "", row[4], "", row[5], "", "", "", "", "", "", "", "", "", "", "", "", "", row[6] or "", row[7] or "")
+
         if not cand:
             return web.json_response({
                 "ok": False,

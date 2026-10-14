@@ -1,89 +1,89 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="dark">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>КАДРЫ — Цифровая HR-платформа</title>
-    
-    <!-- Google Fonts: Inter -->
+    <title>МУП «Ульяновскэлектротранс» — Кабинет управления</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* ==========================================================================
-           1. DESIGN SYSTEM TOKENS (CSS VARIABLES)
-           ========================================================================== */
-        :root {
-            /* Базовые радиусы и переходы */
+        :root, [data-theme="dark"] {
+            --bg-color: #0b0f19;              /* Темный глубокий фон */
+            --sidebar-bg: #0f172a;          /* Slate-900 боковая панель как в шаблоне */
+            --navbar-bg: rgba(15, 23, 42, 0.88); /* Navbar с backdrop-blur-md */
+            --sidebar-active: #2563eb;      /* Акцентный синий активного пункта */
+            --sidebar-active-glow: rgba(37, 99, 235, 0.45);
+            --navbar-active: #2563eb;
+            --text-main: #f8fafc;           /* Четкий светлый текст */
+            --text-muted: #94a3b8;          /* Вторичный серый */
+            --surface-color: #1e293b;       /* Карточки контента: slate-800 */
+            --surface-card: #151e2e;
+            --surface-hover: #28374d;
+            --surface-border: rgba(255, 255, 255, 0.14); /* Видимые границы */
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-glow: rgba(37, 99, 235, 0.3);
+            --accent-orange: #f59e0b;
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.15);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.15);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.15);
+            --purple: #8b5cf6;
+            --radius-xl: 14px;
+            --radius-lg: 10px;
+            --radius-md: 8px;
             --radius-sm: 6px;
-            --radius-md: 10px;
-            --radius-lg: 14px;
-            --radius-xl: 20px;
-            --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
-        }
-
-        /* 🌙 DARK MODE (По умолчанию) */
-        [data-theme="dark"] {
-            --bg-main: #1c2329;              /* Глубокий сланцевый / речной серо-синий */
-            --sidebar-bg: #2b1417;          /* Темный благородный каштан / бордо */
-            --navbar-bg: rgba(33, 44, 52, 0.75); /* Navbar с backdrop-blur-md */
-            --sidebar-active: #8b3a35;      /* Терракотово-кирпичный (активный сайдбар) */
-            --sidebar-active-glow: rgba(139, 58, 53, 0.45);
-            --navbar-active: #c66f48;       /* Приглушенная теплая охра (активный навбар) */
-            --text-main: #f5ede2;           /* Песочно-молочный */
-            --text-secondary: #9aa5ad;      /* Вторичный приглушенный */
-            --card-bg: #242d34;             /* Карточки контента: темно-серый с речным отливом */
-            --card-border: rgba(245, 237, 226, 0.08);
-            --card-hover: #2a353d;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
-            --input-bg: rgba(18, 23, 28, 0.7);
-            --input-border: rgba(245, 237, 226, 0.12);
-            --input-focus: #c66f48;
-            --badge-bg: rgba(198, 111, 72, 0.2);
-            --badge-text: #f5ede2;
-            --divider: rgba(245, 237, 226, 0.08);
-            --theme-toggle-bg: rgba(245, 237, 226, 0.1);
+            --theme-toggle-bg: rgba(255, 255, 255, 0.1);
+            --input-bg: rgba(15, 23, 42, 0.85);
+            --input-border: rgba(255, 255, 255, 0.22);
+            --divider: rgba(255, 255, 255, 0.12);
+            --badge-bg: rgba(37, 99, 235, 0.2);
+            --badge-text: #93c5fd;
         }
 
-        /* ☀️ LIGHT MODE */
         [data-theme="light"] {
-            --bg-main: #f4ede4;              /* Мягкий песочно-бежевый */
-            --sidebar-bg: #d8b4a2;          /* Пастельная терракота / теплая глина */
-            --navbar-bg: rgba(235, 240, 243, 0.82); /* Navbar светлый с blur */
-            --sidebar-active: #a84b42;      /* Приглушенный кирпичный */
-            --sidebar-active-glow: rgba(168, 75, 66, 0.25);
-            --navbar-active: #d97d52;       /* Пастельный оранжево-терракотовый */
-            --text-main: #22262a;           /* Графитовый */
-            --text-secondary: #6c737a;      /* Вторичный серый */
-            --card-bg: #ffffff;             /* Карточки: чистый белый */
-            --card-border: rgba(34, 38, 42, 0.08);
-            --card-hover: #faf7f2;
-            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            --input-bg: rgba(255, 255, 255, 0.9);
-            --input-border: rgba(34, 38, 42, 0.15);
-            --input-focus: #d97d52;
-            --badge-bg: rgba(168, 75, 66, 0.18);
-            --badge-text: #22262a;
-            --divider: rgba(34, 38, 42, 0.08);
-            --theme-toggle-bg: rgba(34, 38, 42, 0.08);
+            --bg-color: #f1f5f9;              /* Светлый slate-100 фон */
+            --sidebar-bg: #0f172a;          /* Slate-900 солидный sidebar с белым текстом */
+            --navbar-bg: rgba(255, 255, 255, 0.95); /* Чистый белый navbar */
+            --sidebar-active: #2563eb;      /* Яркий активный синий */
+            --sidebar-active-glow: rgba(37, 99, 235, 0.35);
+            --navbar-active: #2563eb;
+            --text-main: #0f172a;           /* Высококонтрастный slate-900 */
+            --text-muted: #475569;          /* Четкий вторичный slate-600 */
+            --surface-color: #ffffff;       /* Белые чистые карточки */
+            --surface-card: #f8fafc;        /* Светлый фон внутри карточек */
+            --surface-hover: #e2e8f0;       /* Заметный hover */
+            --surface-border: #cbd5e1;       /* ЧЕТКАЯ видимая граница slate-300 */
+            --primary: #2563eb;             /* Яркий синий акцент */
+            --primary-hover: #1d4ed8;
+            --primary-glow: rgba(37, 99, 235, 0.25);
+            --accent-orange: #d97706;
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            --theme-toggle-bg: #e2e8f0;
+            --input-bg: #ffffff;
+            --input-border: #94a3b8;        /* Четкие границы полей ввода */
+            --divider: #cbd5e1;
+            --badge-bg: rgba(37, 99, 235, 0.12);
+            --badge-text: #1d4ed8;
         }
 
-        /* ==========================================================================
-           2. RESET & BASE STYLES
-           ========================================================================== */
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            font-family: var(--font-family);
             -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: var(--font-sans);
-            background-color: var(--bg-main);
+            background-color: var(--bg-color);
             color: var(--text-main);
             min-height: 100vh;
             display: flex;
@@ -92,21 +92,7 @@
             transition: background-color 0.25s ease, color 0.25s ease;
         }
 
-        a {
-            text-decoration: none;
-            color: inherit;
-        }
-
-        button {
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            background: none;
-        }
-
-        /* ==========================================================================
-           3. NAVBAR COMPONENT (GLASSMORPHISM + ADAPTIVE)
-           ========================================================================== */
+        /* NAVBAR (GLASSMORPHISM) */
         .navbar-wrap {
             position: sticky;
             top: 0;
@@ -116,7 +102,7 @@
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
             border-bottom: 1px solid var(--divider);
-            transition: var(--transition-smooth);
+            transition: var(--transition);
         }
 
         .navbar-container {
@@ -130,109 +116,106 @@
             gap: 16px;
         }
 
-        /* Логотип */
-        .brand-link {
+        /* HEADER SECTION HEADING (LEFT SIDE OF TOP HEADER) */
+        .header-title-block {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-shrink: 0;
-            user-select: none;
+            flex-direction: column;
+            gap: 2px;
+            text-align: left;
         }
 
-        .brand-icon-box {
-            width: 40px;
-            height: 40px;
-            border-radius: var(--radius-md);
-            background: linear-gradient(135deg, var(--sidebar-active), var(--navbar-active));
+        .header-page-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+        }
+
+        .header-page-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* USER PROFILE WIDGET IN HEADER */
+        .user-profile-widget {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 14px 4px 6px;
+            border-radius: 999px;
+            background: var(--surface-card);
+            border: 1.5px solid var(--surface-border);
+            transition: var(--transition);
+        }
+        [data-theme="light"] .user-profile-widget {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .user-avatar-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s ease;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
         }
-
-        .brand-link:hover .brand-icon-box {
-            transform: scale(1.04);
-        }
-
-        .brand-glyph {
-            font-size: 22px;
-            font-weight: 800;
-            color: #ffffff;
-            line-height: 1;
-            letter-spacing: -0.5px;
-        }
-
-        .brand-text-block {
+        .user-profile-meta {
             display: flex;
             flex-direction: column;
+            line-height: 1.2;
+            text-align: left;
         }
-
-        .brand-name {
-            font-size: 16px;
-            font-weight: 800;
-            letter-spacing: 0.8px;
+        .user-profile-name {
+            font-size: 13px;
+            font-weight: 700;
             color: var(--text-main);
-            text-transform: uppercase;
         }
-
-        .brand-desc {
+        .user-profile-role {
             font-size: 11px;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-weight: 500;
-            letter-spacing: 0.2px;
         }
 
-        /* Центральные ссылки навбара */
-        .nav-links-center {
+        .sidebar-brand-box {
+            padding: 2px 4px 14px;
+            border-bottom: 1px solid var(--divider);
             display: flex;
-            align-items: center;
-            gap: 6px;
+            flex-direction: column;
+            gap: 2px;
         }
-
-        .nav-link {
-            padding: 8px 14px;
-            border-radius: var(--radius-md);
-            font-size: 13.5px;
+        .sidebar-brand-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #38bdf8;
+            letter-spacing: 0.8px;
+            line-height: 1.2;
+        }
+        .sidebar-brand-sub {
+            font-size: 11px;
+            color: #94a3b8;
             font-weight: 500;
-            color: var(--text-secondary);
-            transition: var(--transition-smooth);
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            position: relative;
         }
 
-        .nav-link:hover {
-            color: var(--text-main);
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        [data-theme="light"] .nav-link:hover {
-            background: rgba(0, 0, 0, 0.04);
-        }
-
-        /* Активная ссылка навбара: приглушенная охра / пастельный оранжево-терракотовый */
-        .nav-link.active {
-            color: #ffffff;
-            background: var(--navbar-active);
-            font-weight: 600;
-            box-shadow: 0 2px 10px rgba(198, 111, 72, 0.35);
-        }
-
-        [data-theme="light"] .nav-link.active {
-            color: #ffffff;
-        }
-
-        /* Правый блок контролов */
+        /* RIGHT CONTROLS IN NAVBAR */
         .nav-controls-right {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             flex-shrink: 0;
         }
 
-        /* Переключатель тем */
         .theme-toggle-btn {
             width: 38px;
             height: 38px;
@@ -243,7 +226,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: var(--transition-smooth);
+            transition: var(--transition);
+            cursor: pointer;
         }
 
         .theme-toggle-btn:hover {
@@ -260,84 +244,38 @@
             stroke-linejoin: round;
         }
 
-        /* Колокольчик уведомлений */
-        .notify-btn {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            background: var(--theme-toggle-bg);
-            border: 1px solid var(--divider);
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            transition: var(--transition-smooth);
-        }
-
-        .notify-btn:hover {
-            transform: scale(1.05);
-        }
-
-        .notify-dot {
-            position: absolute;
-            top: 7px;
-            right: 7px;
-            width: 8px;
-            height: 8px;
-            background: var(--navbar-active);
-            border-radius: 50%;
-            border: 2px solid var(--bg-main);
-        }
-
-        /* Блок профиля */
-        .profile-badge {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 5px 12px 5px 6px;
-            border-radius: var(--radius-xl);
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            transition: var(--transition-smooth);
-            cursor: pointer;
-        }
-
-        .profile-badge:hover {
-            border-color: var(--navbar-active);
-        }
-
-        .profile-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--sidebar-active), var(--navbar-active));
-            color: #ffffff;
-            font-size: 13px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .profile-info {
-            display: flex;
-            flex-direction: column;
-            line-height: 1.2;
-        }
-
-        .profile-name {
-            font-size: 13px;
+        .badge-btn {
+            font-size: 12px;
             font-weight: 600;
-            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+            user-select: none;
         }
 
-        .profile-role {
-            font-size: 10.5px;
-            color: var(--text-secondary);
+        .badge-btn:hover { transform: scale(1.03); }
+        .badge-db-prod { background: var(--success-bg); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+        .badge-db-test { background: var(--warning-bg); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+        .badge-env-prod { background: rgba(197, 34, 45, 0.15); color: #f87171; border-color: rgba(197, 34, 45, 0.35); }
+        .badge-env-test { background: var(--warning-bg); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+
+        .user-tag {
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        /* Мобильный бургер */
         .mobile-menu-btn {
             display: none;
             width: 38px;
@@ -348,11 +286,10 @@
             color: var(--text-main);
             align-items: center;
             justify-content: center;
+            cursor: pointer;
         }
 
-        /* ==========================================================================
-           4. LAYOUT: SIDEBAR + MAIN CONTENT
-           ========================================================================== */
+        /* APP LAYOUT: SIDEBAR + MAIN CONTENT */
         .app-layout {
             display: flex;
             flex: 1;
@@ -362,9 +299,7 @@
             position: relative;
         }
 
-        /* ==========================================================================
-           5. SIDEBAR COMPONENT (FLAT DESIGN + COLOR ROLES)
-           ========================================================================== */
+        /* SIDEBAR */
         .sidebar {
             width: 280px;
             flex-shrink: 0;
@@ -374,14 +309,13 @@
             flex-direction: column;
             gap: 20px;
             padding: 24px 18px;
-            transition: var(--transition-smooth);
+            transition: var(--transition);
             position: sticky;
             top: 68px;
             height: calc(100vh - 68px);
             overflow-y: auto;
         }
 
-        /* Поле поиска в сайдбаре */
         .sidebar-search-box {
             position: relative;
             width: 100%;
@@ -396,17 +330,11 @@
             font-size: 13.5px;
             color: var(--text-main);
             outline: none;
-            transition: var(--transition-smooth);
-            font-family: inherit;
-        }
-
-        .sidebar-search-input::placeholder {
-            color: var(--text-secondary);
-            opacity: 0.8;
+            transition: var(--transition);
         }
 
         .sidebar-search-input:focus {
-            border-color: var(--input-focus);
+            border-color: var(--navbar-active);
             box-shadow: 0 0 0 3px rgba(198, 111, 72, 0.2);
         }
 
@@ -417,7 +345,7 @@
             transform: translateY(-50%);
             width: 16px;
             height: 16px;
-            stroke: var(--text-secondary);
+            stroke: var(--text-muted);
             pointer-events: none;
         }
 
@@ -427,27 +355,25 @@
             top: 50%;
             transform: translateY(-50%);
             background: rgba(255, 255, 255, 0.1);
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-size: 10px;
-            font-family: var(--font-mono);
+            font-family: monospace;
             padding: 2px 5px;
             border-radius: 4px;
             pointer-events: none;
         }
 
-        /* Заголовок группы меню */
         .sidebar-section-title {
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             padding: 0 10px;
             margin-bottom: 6px;
             opacity: 0.85;
         }
 
-        /* Навигационный список */
         .sidebar-nav-list {
             list-style: none;
             display: flex;
@@ -455,22 +381,20 @@
             gap: 6px;
         }
 
-        .sidebar-nav-item {
-            width: 100%;
-        }
+        .sidebar-nav-item { width: 100%; }
 
         .sidebar-nav-link {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 11px 14px;
+            padding: 10px 14px;
             border-radius: var(--radius-md);
             font-size: 14px;
             font-weight: 500;
             color: var(--text-main);
-            transition: var(--transition-smooth);
-            position: relative;
+            transition: var(--transition);
+            text-decoration: none;
         }
 
         .sidebar-nav-left {
@@ -485,7 +409,7 @@
             stroke: currentColor;
             flex-shrink: 0;
             opacity: 0.85;
-            transition: var(--transition-smooth);
+            transition: var(--transition);
         }
 
         .sidebar-nav-link:hover {
@@ -497,10 +421,6 @@
             background: rgba(0, 0, 0, 0.06);
         }
 
-        /* Активный пункт сайдбара:
-           Темная: #8b3a35 (терракотово-кирпичный) с легким свечением
-           Светлая: #a84b42 (приглушенный кирпичный)
-        */
         .sidebar-nav-link.active {
             background: var(--sidebar-active);
             color: #ffffff;
@@ -513,7 +433,6 @@
             stroke: #ffffff;
         }
 
-        /* Бейджи счетчиков */
         .sidebar-badge {
             font-size: 11px;
             font-weight: 700;
@@ -521,8 +440,8 @@
             border-radius: 999px;
             background: var(--badge-bg);
             color: var(--badge-text);
-            font-family: var(--font-mono);
-            transition: var(--transition-smooth);
+            font-family: monospace;
+            transition: var(--transition);
         }
 
         .sidebar-nav-link.active .sidebar-badge {
@@ -530,7 +449,29 @@
             color: #ffffff;
         }
 
-        /* Сайдбар футер */
+        .status-quick-btn {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            padding: 7px 12px;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-main);
+            font-size: 12.5px;
+            font-weight: 500;
+            transition: var(--transition);
+            border: 1px solid transparent;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
+
+        .status-quick-btn:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--divider);
+        }
+
         .sidebar-footer {
             margin-top: auto;
             padding-top: 16px;
@@ -545,10 +486,11 @@
             align-items: center;
             gap: 8px;
             font-size: 12px;
-            color: var(--text-secondary);
-            padding: 6px 10px;
+            color: var(--text-muted);
+            padding: 8px 12px;
             border-radius: var(--radius-sm);
-            background: rgba(0, 0, 0, 0.15);
+            background: rgba(0, 0, 0, 0.18);
+            border: 1px solid var(--divider);
         }
 
         .status-dot-pulse {
@@ -557,741 +499,2569 @@
             border-radius: 50%;
             background: #10b981;
             box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+            flex-shrink: 0;
         }
 
-        /* ==========================================================================
-           6. MAIN CONTENT AREA (SHOWCASE & CARDS)
-           ========================================================================== */
+        .sidebar-tram-card {
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--surface-border);
+            background: var(--surface-card);
+            margin-top: 10px;
+            transition: var(--transition);
+        }
+
+        .sidebar-tram-img {
+            width: 100%;
+            height: 115px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .sidebar-tram-caption {
+            padding: 8px 10px;
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+
+        .sidebar-tram-title {
+            font-weight: 700;
+            color: var(--text-main);
+            font-size: 11.5px;
+            margin-bottom: 2px;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            top: 68px;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            z-index: 98;
+            display: none;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
+        /* MAIN CONTENT CONTAINER */
         .main-content {
             flex: 1;
-            padding: 28px 32px 60px;
+            padding: 24px 28px 60px;
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 20px;
             min-width: 0;
         }
 
-        /* Заголовок страницы */
-        .page-header-block {
+        /* CARDS */
+        .main-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-xl);
+            padding: 20px;
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
+            flex-direction: column;
             gap: 16px;
-            flex-wrap: wrap;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
         }
 
-        .page-title {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--text-main);
-            letter-spacing: -0.3px;
-        }
-
-        .page-subtitle {
-            font-size: 13.5px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        /* Сетка метрик */
-        .metrics-grid {
+        /* STATS GRID */
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
         }
 
-        .metric-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
+        .stat-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--surface-border);
             border-radius: var(--radius-lg);
-            padding: 18px 20px;
-            box-shadow: var(--card-shadow);
-            transition: var(--transition-smooth);
+            padding: 12px 14px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
+            cursor: pointer;
+            transition: var(--transition);
         }
+        .stat-card:hover { transform: translateY(-1px); border-color: var(--primary); background-color: var(--surface-card); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); }
+        .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+        .stat-value { font-size: 22px; font-weight: 800; color: var(--text-main); }
 
-        .metric-card:hover {
-            transform: translateY(-2px);
-            border-color: var(--navbar-active);
-        }
-
-        .metric-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .metric-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .metric-value {
-            font-size: 28px;
-            font-weight: 800;
-            color: var(--text-main);
-            font-family: var(--font-mono);
-        }
-
-        .metric-footer {
-            font-size: 12px;
-            color: #10b981;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        /* Карточка медиа и реального фотоархива трамваев */
-        .media-showcase-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            box-shadow: var(--card-shadow);
+        /* TOOLBAR */
+        .toolbar {
             display: flex;
             flex-direction: column;
-            gap: 18px;
-        }
-
-        .section-headline {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
             gap: 10px;
         }
 
-        .section-desc {
-            font-size: 13.5px;
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        /* Фотогалерея с указанием авторов */
-        .tram-photos-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 20px;
-        }
-
-        .photo-card {
-            background: rgba(0, 0, 0, 0.12);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius-md);
-            overflow: hidden;
+        .toolbar-search-row {
             display: flex;
-            flex-direction: column;
-            transition: var(--transition-smooth);
-        }
-
-        .photo-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-            border-color: var(--navbar-active);
-        }
-
-        .photo-img-wrap {
-            position: relative;
+            gap: 10px;
+            align-items: center;
             width: 100%;
-            height: 220px;
-            overflow: hidden;
-            background: #111;
         }
 
-        .photo-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.4s ease;
+        .toolbar-search-row .search-input {
+            flex: 1;
         }
 
-        .photo-card:hover .photo-img {
-            transform: scale(1.04);
-        }
-
-        .photo-tag {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            background: var(--sidebar-active);
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-        }
-
-        .photo-caption-block {
-            padding: 16px;
+        .toolbar-filter-grid {
             display: flex;
-            flex-direction: column;
+            align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
+            width: 100%;
         }
 
-        .photo-title {
-            font-size: 14.5px;
+        .toolbar-filter-grid select {
+            flex: 1 1 160px;
+            min-width: 140px;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .input-box, .select-box {
+            padding: 8px 12px;
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-md);
+            color: var(--text-main);
+            font-size: 13px;
+            outline: none;
+            transition: var(--transition);
+        }
+        .input-box:focus, .select-box:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-glow); }
+        .search-input { flex: 1; min-width: 200px; }
+
+        .btn {
+            background-color: var(--primary);
+            color: #ffffff !important;
+            border: 1px solid transparent;
+            padding: 9px 16px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
             font-weight: 700;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition);
+            text-decoration: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+        .btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+        }
+        .btn-secondary {
+            background-color: var(--surface-card);
+            color: var(--text-main);
+            border: 1.5px solid var(--surface-border) !important;
+            font-weight: 700;
+            box-shadow: none;
+        }
+        .btn-secondary:hover {
+            background-color: var(--surface-hover);
+            border-color: var(--primary) !important;
+        }
+        [data-theme="light"] .btn-secondary {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            border: 1.5px solid #94a3b8 !important;
+        }
+        [data-theme="light"] .btn-secondary:hover {
+            background-color: #e2e8f0 !important;
+            border-color: #475569 !important;
+            color: #0f172a !important;
+        }
+        .btn-success { background-color: var(--success); color: #ffffff !important; }
+        .btn-danger { background-color: var(--danger); color: #ffffff !important; }
+        .btn-warning { background-color: var(--warning); color: #000; }
+        .btn-danger-soft {
+            background-color: rgba(239, 68, 68, 0.12) !important;
+            color: #dc2626 !important;
+            border: 1.5px solid rgba(239, 68, 68, 0.4) !important;
+            font-weight: 700;
+            box-shadow: none;
+        }
+        .btn-danger-soft:hover {
+            background-color: #dc2626 !important;
+            color: #ffffff !important;
+        }
+
+        /* TABLE */
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--surface-border);
+            background: var(--surface-color);
+        }
+
+        table {
+            width: 100%;
+            min-width: 620px;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #151e2e;
+            color: var(--text-muted);
+            font-weight: 700;
+            padding: 12px 14px;
+            border-bottom: 2px solid var(--surface-border);
+            white-space: nowrap;
+        }
+
+        [data-theme="light"] th {
+            background-color: #f1f5f9;
+            color: #0f172a;
+            border-bottom: 2px solid #cbd5e1;
+        }
+
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--surface-border);
+            vertical-align: middle;
             color: var(--text-main);
         }
 
-        .photo-desc {
-            font-size: 12.5px;
-            color: var(--text-secondary);
-            line-height: 1.5;
+        [data-theme="light"] td {
+            border-bottom: 1px solid #e2e8f0;
+            color: #0f172a;
         }
 
-        /* Блок метаданных об авторе и лицензии */
-        .photo-meta-box {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--divider);
-            border-radius: var(--radius-sm);
-            padding: 8px 12px;
-            font-size: 11.5px;
-            color: var(--text-secondary);
+        tbody tr:hover { background-color: var(--surface-hover); }
+
+        .badge-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .st-new { background: rgba(197, 34, 45, 0.15); color: #f87171; }
+        .st-work { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .st-invite { background: rgba(139, 92, 246, 0.2); color: #c084fc; }
+        .st-hired { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .st-refused { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .st-archive { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+
+        .db-tag {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .db-tag-prod { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .db-tag-test { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+        /* PAGINATION */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-top: 8px;
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .modal-content {
+            background-color: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-xl);
+            max-width: 780px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            animation: modalFadeIn 0.2s ease;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--surface-border);
+            padding-bottom: 12px;
+        }
+        .modal-title { font-size: 18px; font-weight: 700; }
+        .close-btn { background: transparent; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; }
+        .close-btn:hover { color: var(--text-main); }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .detail-item {
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-md);
+            padding: 10px 12px;
             display: flex;
             flex-direction: column;
             gap: 4px;
-            margin-top: 4px;
         }
+        .detail-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .detail-val { font-size: 13px; font-weight: 600; color: var(--text-main); word-break: break-word; }
 
-        [data-theme="light"] .photo-meta-box {
-            background: rgba(0, 0, 0, 0.03);
-        }
-
-        .meta-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-        }
-
-        .meta-author {
-            color: var(--text-main);
-            font-weight: 600;
-        }
-
-        /* Совет для иллюстратора / векторизации */
-        .drawing-guide-box {
-            background: rgba(198, 111, 72, 0.08);
-            border: 1px solid rgba(198, 111, 72, 0.25);
+        .compliance-box {
             border-radius: var(--radius-md);
-            padding: 16px 20px;
-            display: flex;
-            gap: 14px;
-            align-items: flex-start;
-        }
-
-        .guide-icon {
-            font-size: 24px;
-            line-height: 1;
-            flex-shrink: 0;
-            padding-top: 2px;
-        }
-
-        .guide-text {
+            padding: 12px;
             font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .compliance-safe { background: var(--success-bg); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; }
+        .compliance-risk { background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; }
+
+        .note-textarea {
+            width: 100%;
+            height: 70px;
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-md);
             color: var(--text-main);
-            line-height: 1.6;
+            padding: 10px;
+            font-size: 13px;
+            outline: none;
+            resize: vertical;
         }
 
-        .guide-text strong {
-            color: var(--navbar-active);
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            border-top: 1px solid var(--surface-border);
+            padding-top: 14px;
+            justify-content: flex-end;
         }
 
-        /* ==========================================================================
-           7. RESPONSIVE MEDIA QUERIES
-           ========================================================================== */
+        /* SYSTEM & GIT GRID */
+        .system-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .card-metric {
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background-color: #1e293b;
+            color: #ffffff;
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-md);
+            padding: 12px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 2000;
+        }
+
+        /* LOGIN MODAL */
+        .auth-card {
+            background-color: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        html, body {
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+
         @media (max-width: 1024px) {
             .nav-links-center {
-                display: none;
+                display: none !important;
             }
             .mobile-menu-btn {
-                display: flex;
+                display: flex !important;
             }
             .sidebar {
-                position: fixed;
-                left: -300px;
-                top: 68px;
-                bottom: 0;
-                z-index: 99;
-                height: calc(100vh - 68px);
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+                position: fixed !important;
+                left: -320px !important;
+                top: 68px !important;
+                bottom: 0 !important;
+                z-index: 99 !important;
+                width: 290px !important;
+                height: calc(100vh - 68px) !important;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
             }
             .sidebar.mobile-open {
-                left: 0;
+                left: 0 !important;
             }
             .main-content {
-                padding: 20px 16px 40px;
+                padding: 16px 12px 60px !important;
             }
         }
 
-        @media (max-width: 640px) {
-            .profile-info {
-                display: none;
+        @media (max-width: 768px) {
+            body {
+                padding: 0 0 calc(24px + env(safe-area-inset-bottom, 0px)) 0;
+            }
+            .navbar-container {
+                height: 58px;
+                padding: 0 12px;
             }
             .brand-desc {
                 display: none;
             }
-            .tram-photos-grid {
-                grid-template-columns: 1fr;
+            .brand-name {
+                font-size: 14px;
+            }
+            .sidebar {
+                top: 58px !important;
+                height: calc(100vh - 58px) !important;
+            }
+            .sidebar-overlay {
+                top: 58px !important;
+            }
+            .badge-btn, .user-tag {
+                font-size: 11px;
+                padding: 4px 8px;
+            }
+            .main-card {
+                padding: 12px;
+                border-radius: var(--radius-lg);
+            }
+            .stats-grid {
+                display: flex !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                scrollbar-width: none !important;
+                gap: 8px !important;
+                padding-bottom: 6px !important;
+                margin-bottom: 2px !important;
+            }
+            .stats-grid::-webkit-scrollbar {
+                display: none;
+            }
+            .stat-card {
+                flex: 0 0 auto !important;
+                min-width: 105px !important;
+                padding: 8px 10px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+                border-radius: var(--radius-md) !important;
+            }
+            .stat-label {
+                font-size: 10px !important;
+                white-space: nowrap !important;
+                margin-bottom: 2px;
+            }
+            .stat-value {
+                font-size: 18px !important;
+                font-weight: 700;
+            }
+            .toolbar {
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .toolbar-search-row {
+                display: flex;
+                gap: 8px;
+                width: 100%;
+            }
+            .toolbar-search-row .search-input {
+                flex: 1;
+            }
+            .toolbar-filter-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                width: 100%;
+            }
+            .toolbar-filter-grid select {
+                width: 100% !important;
+                min-width: 0 !important;
+                flex: none;
+            }
+            .toolbar-actions {
+                grid-column: 2 / 3;
+                display: flex;
+                gap: 6px;
+                margin-left: 0;
+            }
+            .toolbar-actions .btn {
+                flex: 1;
+                padding: 6px 4px;
+                font-size: 12px;
+                justify-content: center;
+            }
+            .search-input, .select-box, .input-box {
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+            .modal-content {
+                width: 95% !important;
+                max-height: 90vh !important;
+                padding: 14px !important;
+            }
+            .details-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .modal-actions {
+                justify-content: stretch;
+                gap: 6px;
+            }
+            .modal-actions .btn {
+                flex: 1 1 calc(50% - 6px);
+                font-size: 12px;
+                padding: 8px 4px;
+                text-align: center;
+                justify-content: center;
+            }
+            .btn {
+                min-height: 36px;
+                justify-content: center;
+            }
+
+            /* Вертикальный список в столбик (карточки) для телефонов */
+            .mobile-cards {
+                background: transparent !important;
+                border: none !important;
+                overflow-x: visible !important;
+            }
+            .mobile-cards table {
+                min-width: 100% !important;
+                display: block !important;
+                width: 100% !important;
+                border: none !important;
+            }
+            .mobile-cards thead {
+                display: none !important;
+            }
+            .mobile-cards tbody {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 12px !important;
+                width: 100% !important;
+            }
+            .mobile-cards tr {
+                display: flex !important;
+                flex-direction: column !important;
+                background-color: var(--surface-card) !important;
+                border: 1px solid var(--surface-border) !important;
+                border-radius: var(--radius-lg) !important;
+                padding: 14px 16px !important;
+                gap: 8px !important;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+            }
+            .mobile-cards tr:hover {
+                background-color: var(--surface-hover) !important;
+            }
+            .mobile-cards td {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                padding: 5px 0 !important;
+                border-bottom: 1px dashed rgba(255, 255, 255, 0.08) !important;
+                font-size: 13px !important;
+                width: 100% !important;
+                text-align: right !important;
+            }
+            .mobile-cards td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: var(--text-muted);
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                flex-shrink: 0;
+                margin-right: 12px;
+                text-align: left;
+            }
+            .mobile-cards td[data-label="Действия"] {
+                border-bottom: none !important;
+                margin-top: 4px;
+                padding-top: 10px !important;
+                border-top: 1px solid var(--surface-border) !important;
+                display: flex !important;
+                justify-content: stretch !important;
+            }
+            .mobile-cards td[data-label="Действия"]::before {
+                display: none !important;
+            }
+            .mobile-cards td[data-label="Действия"] > div {
+                width: 100% !important;
+                display: flex !important;
+                gap: 8px !important;
+            }
+            .mobile-cards td[data-label="Действия"] > div .btn {
+                flex: 1 !important;
+                justify-content: center !important;
+                padding: 8px 10px !important;
             }
         }
     </style>
 </head>
 <body>
-
-    <!-- ==========================================================================
-         1. NAVBAR
-         ========================================================================== -->
+    <!-- TOP HEADER -->
     <header class="navbar-wrap">
         <div class="navbar-container">
-            
-            <!-- Левая часть: Логотип -->
-            <a href="/kadry" class="brand-link">
-                <div class="brand-icon-box">
-                    <span class="brand-glyph">К</span>
-                </div>
-                <div class="brand-text-block">
-                    <span class="brand-name">КАДРЫ</span>
-                    <span class="brand-desc">Цифровая HR-платформа</span>
-                </div>
-            </a>
+            <!-- CURRENT SECTION TITLE -->
+            <div class="header-title-block">
+                <h1 id="pageHeading" class="header-page-title">📋 Реестр соискателей</h1>
+                <div id="pageSubtitle" class="header-page-sub">Управление кандидатами и кадровый учет предприятия</div>
+            </div>
 
-            <!-- Центральная часть: Навигационные ссылки -->
-            <nav class="nav-links-center" aria-label="Основная навигация">
-                <a href="#home" class="nav-link" onclick="setActiveNav(this)">Главная</a>
-                <a href="#about" class="nav-link" onclick="setActiveNav(this)">О проекте</a>
-                <a href="#services" class="nav-link active" onclick="setActiveNav(this)">
-                    <span>Сервисы</span>
-                    <span style="font-size: 9px; padding: 1px 5px; border-radius: 4px; background: rgba(255,255,255,0.25);">PRO</span>
-                </a>
-                <a href="#events" class="nav-link" onclick="setActiveNav(this)">События</a>
-                <a href="#contacts" class="nav-link" onclick="setActiveNav(this)">Контакты</a>
-            </nav>
-
-            <!-- Правая часть: Контролы -->
+            <!-- RIGHT CONTROLS -->
             <div class="nav-controls-right">
+                <span id="badgeDb" class="badge-btn badge-db-prod" onclick="toggleActiveDatabase()" title="Кликните для переключения базы">БД: resumes.db ⇄</span>
+                <span id="badgeEnv" class="badge-btn badge-env-test" onclick="toggleEnvironment()" title="Кликните для переключения среды">Среда: TEST ⇄</span>
+                <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()" title="Переключить тему">🌙</button>
                 
-                <!-- Переключатель тем (Dark / Light) -->
-                <button id="themeToggleBtn" class="theme-toggle-btn" title="Переключить тему оформления" onclick="toggleTheme()">
-                    <!-- SVG Солнце (видно в темной теме) -->
-                    <svg id="sunIcon" class="theme-icon-svg" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                    <!-- SVG Луна (видно в светлой теме, скрыта по умолчанию) -->
-                    <svg id="moonIcon" class="theme-icon-svg" style="display: none;" viewBox="0 0 24 24">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                </button>
-
-                <!-- Колокольчик уведомлений -->
-                <button class="notify-btn" title="Уведомления">
-                    <svg class="theme-icon-svg" viewBox="0 0 24 24">
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                    </svg>
-                    <span class="notify-dot"></span>
-                </button>
-
-                <!-- Профиль сотрудника -->
-                <div class="profile-badge" title="Служебный профиль">
-                    <div class="profile-avatar">ИИ</div>
-                    <div class="profile-info">
-                        <span class="profile-name">И. И. Иванов</span>
-                        <span class="profile-role">Старший HR-инспектор</span>
+                <div class="user-profile-widget" id="userProfileWidget">
+                    <div class="user-avatar-circle" id="userAvatarCircle">👤</div>
+                    <div class="user-profile-meta">
+                        <div class="user-profile-name" id="userBadgeName">Сотрудник</div>
+                        <div class="user-profile-role" id="userBadgeRole">Не авторизован</div>
                     </div>
                 </div>
 
-                <!-- Мобильный бургер -->
-                <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()" aria-label="Открыть меню">
-                    <svg class="theme-icon-svg" viewBox="0 0 24 24">
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
-
+                <button id="btnAuthOpen" class="btn btn-secondary" style="padding: 7px 14px; font-size: 12.5px;" onclick="openAuthModal()">🔑 Вход</button>
+                <button id="btnLogout" class="btn btn-danger-soft" style="padding: 7px 14px; font-size: 12.5px; display: none;" onclick="logout()">🚪 Выйти</button>
+                <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Открыть меню">☰</button>
             </div>
         </div>
     </header>
 
-    <!-- ==========================================================================
-         2. APP LAYOUT: SIDEBAR + CONTENT
-         ========================================================================== -->
+    <!-- MOBILE SIDEBAR OVERLAY -->
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+    <!-- MAIN APPLICATION LAYOUT -->
     <div class="app-layout">
-
-        <!-- ======================================================================
-             SIDEBAR
-             ====================================================================== -->
+        <!-- SIDEBAR -->
         <aside class="sidebar" id="appSidebar">
-            
-            <!-- 1. Поле «Поиск» вверху -->
+            <div class="sidebar-brand-box">
+                <div class="sidebar-brand-title">МУП УЭТ</div>
+                <div class="sidebar-brand-sub">Личный кабинет управления</div>
+            </div>
+
             <div class="sidebar-search-box">
-                <svg class="search-icon-left" viewBox="0 0 24 24" fill="none" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input type="text" id="sidebarSearch" class="sidebar-search-input" placeholder="Поиск по реестру..." />
-                <span class="search-shortcut-badge">⌘K</span>
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: 0.7; font-size: 13px; pointer-events: none;">🔍</span>
+                <input type="text" id="sidebarSearch" class="sidebar-search-input" placeholder="Поиск (ФИО, телефон)..." oninput="syncSidebarSearch(this.value)">
             </div>
 
-            <!-- 2. Меню навигации -->
-            <div>
-                <div class="sidebar-section-title">Разделы системы</div>
-                <ul class="sidebar-nav-list">
-                    
-                    <!-- Личный кабинет -->
-                    <li class="sidebar-nav-item">
-                        <a href="#cabinet" class="sidebar-nav-link" onclick="setActiveSidebar(this)">
-                            <div class="sidebar-nav-left">
-                                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="12" cy="7" r="4"></circle>
-                                </svg>
-                                <span>Личный кабинет</span>
-                            </div>
-                        </a>
-                    </li>
+            <div class="sidebar-section-title">ОСНОВНЫЕ РАЗДЕЛЫ</div>
+            <ul class="sidebar-nav-list">
+                <li class="sidebar-nav-item">
+                    <button class="sidebar-nav-link active" id="sideNavCandidates" onclick="switchTab('candidates'); closeMobileSidebar();">
+                        <div class="sidebar-nav-left">
+                            <span style="font-size: 16px;">📋</span>
+                            <span>Соискатели</span>
+                        </div>
+                        <span id="sideCountCand" class="sidebar-badge">0</span>
+                    </button>
+                </li>
+                <li class="sidebar-nav-item">
+                    <button class="sidebar-nav-link" id="sideNavInquiries" onclick="switchTab('inquiries'); closeMobileSidebar();">
+                        <div class="sidebar-nav-left">
+                            <span style="font-size: 16px;">💬</span>
+                            <span>Вопросы (/ask)</span>
+                        </div>
+                        <span id="sideCountInq" class="sidebar-badge">0</span>
+                    </button>
+                </li>
+                <li class="sidebar-nav-item">
+                    <button class="sidebar-nav-link" id="sideNavDepot" onclick="switchTab('depot'); closeMobileSidebar();">
+                        <div class="sidebar-nav-left">
+                            <span style="font-size: 16px;">🚋</span>
+                            <span>Депо & Рефералы</span>
+                        </div>
+                    </button>
+                </li>
+                <li class="sidebar-nav-item">
+                    <button class="sidebar-nav-link" id="sideNavTech" onclick="switchTab('tech'); closeMobileSidebar();">
+                        <div class="sidebar-nav-left">
+                            <span style="font-size: 16px;">🛠</span>
+                            <span>Панель инженера</span>
+                        </div>
+                    </button>
+                </li>
+                <li class="sidebar-nav-item">
+                    <button class="sidebar-nav-link" id="sideNavSuper" onclick="switchTab('super'); closeMobileSidebar();">
+                        <div class="sidebar-nav-left">
+                            <span style="font-size: 16px;">👑</span>
+                            <span>SuperAdmin & Git</span>
+                        </div>
+                    </button>
+                </li>
+                <li class="sidebar-nav-item">
+                    <button class="sidebar-nav-link" id="sideNavAdmins" onclick="switchTab('admins'); closeMobileSidebar();">
+                        <div class="sidebar-nav-left">
+                            <span style="font-size: 16px;">👥</span>
+                            <span>Администраторы</span>
+                        </div>
+                    </button>
+                </li>
+            </ul>
 
-                    <!-- Реестр заявок (АКТИВНЫЙ БЛОК с бейджем «12») -->
-                    <li class="sidebar-nav-item">
-                        <a href="#registry" class="sidebar-nav-link active" onclick="setActiveSidebar(this)">
-                            <div class="sidebar-nav-left">
-                                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                                    <polyline points="10 9 9 9 8 9"></polyline>
-                                </svg>
-                                <span>Реестр заявок</span>
-                            </div>
-                            <span class="sidebar-badge">12</span>
-                        </a>
-                    </li>
-
-                    <!-- Кадры и Аналитика (бейдж «3») -->
-                    <li class="sidebar-nav-item">
-                        <a href="#analytics" class="sidebar-nav-link" onclick="setActiveSidebar(this)">
-                            <div class="sidebar-nav-left">
-                                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
-                                    <line x1="18" y1="20" x2="18" y2="10"></line>
-                                    <line x1="12" y1="20" x2="12" y2="4"></line>
-                                    <line x1="6" y1="20" x2="6" y2="14"></line>
-                                </svg>
-                                <span>Кадры и Аналитика</span>
-                            </div>
-                            <span class="sidebar-badge">3</span>
-                        </a>
-                    </li>
-
-                    <!-- Настройки -->
-                    <li class="sidebar-nav-item">
-                        <a href="#settings" class="sidebar-nav-link" onclick="setActiveSidebar(this)">
-                            <div class="sidebar-nav-left">
-                                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                                </svg>
-                                <span>Настройки</span>
-                            </div>
-                        </a>
-                    </li>
-
-                </ul>
+            <div class="sidebar-section-title" style="margin-top: 10px;">БЫСТРЫЕ ФИЛЬТРЫ</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <button class="status-quick-btn" data-status="all" onclick="filterByStatus('all'); closeMobileSidebar();">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>
+                    <span>Все статусы</span>
+                </button>
+                <button class="status-quick-btn" data-status="Новая" onclick="filterByStatus('Новая'); closeMobileSidebar();">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; display: inline-block;"></span>
+                    <span>Новые анкеты</span>
+                </button>
+                <button class="status-quick-btn" data-status="В работе" onclick="filterByStatus('В работе'); closeMobileSidebar();">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+                    <span>В работе</span>
+                </button>
+                <button class="status-quick-btn" data-status="Приглашен" onclick="filterByStatus('Приглашен'); closeMobileSidebar();">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #a855f7; display: inline-block;"></span>
+                    <span>Собеседование</span>
+                </button>
+                <button class="status-quick-btn" data-status="Принят" onclick="filterByStatus('Принят'); closeMobileSidebar();">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                    <span>Приняты в штат</span>
+                </button>
+                <button class="status-quick-btn" data-status="Отказ" onclick="filterByStatus('Отказ'); closeMobileSidebar();">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
+                    <span>Отказ / ЧС</span>
+                </button>
+                <button class="status-quick-btn" data-status="Архив" onclick="filterByStatus('Архив'); closeMobileSidebar();">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #64748b; display: inline-block;"></span>
+                    <span>Архив</span>
+                </button>
             </div>
 
-            <!-- Сайдбар Футер: Статус сервисов -->
-            <div class="sidebar-footer">
-                <div class="system-status-pill">
-                    <span class="status-dot-pulse"></span>
-                    <span>152-ФЗ Шлюз активен</span>
+            <!-- TRAM CARD WIDGET -->
+            <div class="sidebar-tram-card">
+                <img src="/static/images/tram_lvenok.jpg" onerror="this.onerror=null; this.src='images/tram_lvenok.jpg'" alt="Вагон 71-911ЕМ Львенок" class="sidebar-tram-img">
+                <div class="sidebar-tram-caption">
+                    <div class="sidebar-tram-title">Вагон 71-911ЕМ «Львёнок»</div>
+                    Северное трамвайное депо МУП «УЭТ»
                 </div>
             </div>
 
+            <!-- SIDEBAR FOOTER -->
+            <div class="sidebar-footer">
+                <a href="/" class="btn btn-secondary" style="width: 100%; justify-content: center; font-size: 12px; padding: 8px 10px;" title="Перейти на сайт для соискателей">🌐 Портал соискателей</a>
+                <div class="system-status-pill">
+                    <div class="status-dot-pulse"></div>
+                    <span>152-ФЗ: Защита ПДн активна</span>
+                </div>
+            </div>
         </aside>
 
-        <!-- ======================================================================
-             MAIN CONTENT
-             ====================================================================== -->
-        <main class="main-content">
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content" id="mainContent">
+
+        <!-- TAB: CANDIDATES -->
+        <section id="tabCandidates" class="main-card">
+            <!-- FUNNEL STATS -->
+            <div class="stats-grid">
+                <div class="stat-card" onclick="filterByStatus('all')">
+                    <span class="stat-label">Всего анкет</span>
+                    <span id="statTotal" class="stat-value">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('Новая')">
+                    <span class="stat-label">Новые</span>
+                    <span id="statNew" class="stat-value" style="color: #60a5fa;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('В работе')">
+                    <span class="stat-label">В работе</span>
+                    <span id="statInProgress" class="stat-value" style="color: #fbbf24;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('Приглашен')">
+                    <span class="stat-label">Собеседование</span>
+                    <span id="statInvited" class="stat-value" style="color: #c084fc;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('Принят')">
+                    <span class="stat-label">Приняты в штат</span>
+                    <span id="statHired" class="stat-value" style="color: #34d399;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('Отказ')">
+                    <span class="stat-label">Отказ / ЧС</span>
+                    <span id="statRejected" class="stat-value" style="color: #f87171;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByStatus('Архив')">
+                    <span class="stat-label">В архиве</span>
+                    <span id="statArchive" class="stat-value" style="color: #94a3b8;">...</span>
+                </div>
+                <div class="stat-card" onclick="filterByTestOnly()" title="Показать только тестовые анкеты">
+                    <span class="stat-label">🧪 Тестовые</span>
+                    <span id="statTest" class="stat-value" style="color: #f59e0b;">...</span>
+                </div>
+            </div>
+
+            <!-- TOOLBAR -->
+            <div class="toolbar">
+                <div class="toolbar-search-row">
+                    <input type="text" id="searchInput" class="input-box search-input" placeholder="🔍 Поиск по ФИО, телефону, вакансии или #ID...">
+                    <button class="btn btn-primary" onclick="openNewCandidateModal()" title="Очный приём в депо / новая анкета" style="white-space: nowrap; font-weight: 700; background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">
+                        ➕ Анкета
+                    </button>
+                </div>
+                <div class="toolbar-filter-grid">
+                    <select id="dbScopeSelect" class="select-box" onchange="loadCandidates(1); loadStats();">
+                        <option value="both">🌐 Все базы (Боевая + Тест)</option>
+                        <option value="prod">📁 Боевая (resumes.db)</option>
+                        <option value="test">🧪 Тестовая (resumes_test.db)</option>
+                    </select>
+                    <select id="statusFilterSelect" class="select-box" onchange="loadCandidates(1)">
+                        <option value="all">Все статусы</option>
+                        <option value="test_only">🧪 Только тестовые</option>
+                        <option value="Новая">Новая</option>
+                        <option value="В работе">В работе</option>
+                        <option value="Приглашен">Приглашен</option>
+                        <option value="Принят">Принят</option>
+                        <option value="Отказ">Отказ / ЧС</option>
+                        <option value="Архив">Архив</option>
+                    </select>
+                    <select id="sortSelect" class="select-box" onchange="loadCandidates(1)">
+                        <option value="desc">Сначала новые (#)</option>
+                        <option value="asc">Сначала старые (#)</option>
+                    </select>
+                    <div class="toolbar-actions">
+                        <a href="/api/system/export_csv" class="btn btn-secondary" title="Экспорт в Excel">📥 CSV</a>
+                        <button class="btn" onclick="loadCandidates(1)" title="Обновить список">🔄</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLE -->
+            <div class="table-wrap mobile-cards">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>№ ID</th>
+                            <th>База</th>
+                            <th>Дата подачи</th>
+                            <th>ФИО соискателя</th>
+                            <th>Вакансия</th>
+                            <th>Телефон</th>
+                            <th>Права</th>
+                            <th>Статус</th>
+                            <th>Депо / Время</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="candidatesTbody">
+                        <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">Загрузка данных...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PAGINATION -->
+            <div class="pagination">
+                <div id="pageInfo" class="page-info">Показано 0 из 0 анкет</div>
+                <div style="display: flex; gap: 6px;">
+                    <button id="btnPrevPage" class="btn btn-secondary" onclick="changePage(-1)">← Назад</button>
+                    <button id="btnNextPage" class="btn btn-secondary" onclick="changePage(1)">Вперед →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: INQUIRIES -->
+        <section id="tabInquiries" class="main-card" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>💬 Вопросы соискателей (/ask)</h3>
+                <button class="btn" onclick="loadInquiries()">🔄 Обновить</button>
+            </div>
+            <div id="inquiriesList" style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="text-align: center; color: var(--text-muted); padding: 24px;">Загрузка вопросов...</div>
+            </div>
+        </section>
+
+        <!-- TAB: TECH -->
+        <section id="tabTech" class="main-card" style="display: none;">
+            <h3>🛠 Панель инженера и системный мониторинг</h3>
+            <div class="system-grid">
+                <div class="card-metric">
+                    <span class="detail-label">Потребление ОЗУ (Процесс)</span>
+                    <span id="metricRam" class="stat-value">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Системная память</span>
+                    <span id="metricSysRam" class="stat-value">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Аптайм сервиса</span>
+                    <span id="metricUptime" class="stat-value">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Размер боевой БД</span>
+                    <span id="metricDbProd" class="stat-value">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Размер тестовой БД</span>
+                    <span id="metricDbTest" class="stat-value">...</span>
+                </div>
+                <div class="card-metric">
+                    <span class="detail-label">Шлюзы</span>
+                    <span style="font-size: 14px; font-weight: 600; color: #34d399;">TG (OK) | VK (OK) | WEB (OK)</span>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 14px;">⚡ Действия технического обслуживания</h4>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; padding-top: 10px;">
+                <button class="btn btn-secondary" onclick="toggleActiveDatabase()">🔄 Переключить БД (Боевая ⇄ Тест)</button>
+                <button class="btn btn-secondary" onclick="toggleEnvironment()">⚙️ Сменить режим (TEST ⇄ PROD)</button>
+                <button class="btn btn-secondary" onclick="createBackup()">💾 Создать резервную копию (Бэкап)</button>
+                <button class="btn btn-secondary" onclick="optimizeDatabase()">🧹 Оптимизировать БД (VACUUM & Checkpoint)</button>
+            </div>
+        </section>
+
+        <!-- TAB: SUPERADMIN & GIT -->
+        <section id="tabSuper" class="main-card" style="display: none;">
+            <h3>👑 Панель SuperAdmin & GitHub</h3>
             
-            <!-- Заголовок страницы -->
-            <div class="page-header-block">
-                <div>
-                    <h1 class="page-title">Реестр входящих анкет кандидатов</h1>
-                    <p class="page-subtitle">Государственная информационная система кадрового обеспечения пассажирского транспорта г. Ульяновска</p>
+            <div class="system-grid">
+                <div class="card-metric">
+                    <span class="detail-label">Текущая ветка Git</span>
+                    <span id="gitBranch" class="stat-value" style="color: #60a5fa;">beta</span>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    <a href="/dashboard" style="display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: var(--radius-md); background: var(--sidebar-active); color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px var(--sidebar-active-glow);">
-                        <span>📊 Кабинет УЭТ</span>
-                    </a>
+                <div class="card-metric">
+                    <span class="detail-label">Последний коммит</span>
+                    <span id="gitCommit" style="font-size: 13px; font-weight: 600;">...</span>
                 </div>
-            </div>
-
-            <!-- Сетка метрик с применением токенов дизайна -->
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <span class="metric-label">Новые анкеты</span>
-                        <span style="font-size: 18px;">📋</span>
-                    </div>
-                    <div class="metric-value">12</div>
-                    <div class="metric-footer">
-                        <span>↑ +4 за сегодня</span>
-                    </div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <span class="metric-label">В Учебном Центре</span>
-                        <span style="font-size: 18px;">🎓</span>
-                    </div>
-                    <div class="metric-value">18</div>
-                    <div class="metric-footer">
-                        <span>Стипендия 25 000 ₽</span>
-                    </div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <span class="metric-label">Прошли медосмотр</span>
-                        <span style="font-size: 18px;">🩺</span>
-                    </div>
-                    <div class="metric-value">28</div>
-                    <div class="metric-footer">
-                        <span>Ст. 328.1 ТК РФ OK</span>
-                    </div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <span class="metric-label">Подвижной состав</span>
-                        <span style="font-size: 18px;">🚋</span>
-                    </div>
-                    <div class="metric-value">71-911ЕМ</div>
-                    <div class="metric-footer">
-                        <span>Депо № 1, 2, 3</span>
+                <div class="card-metric">
+                    <span class="detail-label">Кулдаун между анкетами</span>
+                    <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
+                        <select id="cooldownSelect" class="select-box" onchange="updateCooldown()">
+                            <option value="300">5 минут</option>
+                            <option value="900">15 минут</option>
+                            <option value="1200" selected>20 минут</option>
+                            <option value="1800">30 минут</option>
+                            <option value="3600">60 минут</option>
+                            <option value="0">Отключен (0)</option>
+                        </select>
                     </div>
                 </div>
             </div>
 
-            <!-- КАРТОЧКА: АВТОРСКИЕ ФОТОМАТЕРИАЛЫ И ПОДВИЖНОЙ СОСТАВ УЛЬЯНОВСКА -->
-            <section class="media-showcase-card">
+            <h4 style="margin-top: 14px;">🚀 Git & Служба бота</h4>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; padding-top: 6px;">
+                <button class="btn" onclick="gitPull()">📥 Git Pull (Стянуть обновления)</button>
+                <button class="btn btn-warning" onclick="restartBotService()">⚡ Быстрый рестарт бота</button>
+                <button class="btn btn-danger" onclick="clearAllTestData()">🧪 Удалить все тестовые заявки (#900000+)</button>
+                <button class="btn btn-secondary" onclick="toggleGlobalNotifications(false)">🔕 Отключить уведомления всем</button>
+                <button class="btn btn-secondary" onclick="toggleGlobalNotifications(true)">🔔 Включить уведомления всем</button>
+            </div>
+
+            <h4 style="margin-top: 14px;">📜 Реестр уничтожения ПДн (152-ФЗ)</h4>
+            <div class="table-wrap mobile-cards">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>№ Акта</th>
+                            <th>ID кандидата</th>
+                            <th>Платформа</th>
+                            <th>Причина</th>
+                            <th>Дата уничтожения</th>
+                        </tr>
+                    </thead>
+                    <tbody id="destructionLogsTbody">
+                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 12px;">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB: ADMINS (SUPERADMIN ONLY) -->
+        <!-- TAB ADMINS -->
+        <section id="tabAdmins" class="main-card" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div>
-                    <h2 class="section-headline">
-                        <span>🚋 Подвижной состав предприятия и условия труда</span>
-                    </h2>
-                    <p class="section-desc">
-                        В соответствии с запросом, в системе используются качественные фотоматериалы реального ульяновского электротранспорта. Ниже представлены снимки с указанием первоисточников, авторов и рекомендациями для дальнейшей стилизации/отрисовки в брендбуке.
-                    </p>
+                    <h3 style="margin: 0;">👥 Команда и управление доступом</h3>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Назначение ролей и синхронизация паролей веб-панели (Только SuperAdmin)</div>
                 </div>
-
-                <!-- Фотосет -->
-                <div class="tram-photos-grid">
-                    
-                    <!-- Карточка 1: Экстерьер Львёнка у Депо №1 -->
-                    <div class="photo-card">
-                        <div class="photo-img-wrap">
-                            <span class="photo-tag">Вагон № 2108</span>
-                            <img src="/static/images/tram_lvenok.jpg" onerror="this.onerror=null; this.src='images/tram_lvenok.jpg'" alt="Ульяновский трамвай 71-911ЕМ Львенок" class="photo-img" />
-                        </div>
-                        <div class="photo-caption-block">
-                            <div class="photo-title">Трамвай 71-911ЕМ «Львёнок» у Засвияжского депо № 1</div>
-                            <div class="photo-desc">
-                                Низкопольный одиночный вагон нового поколения с фирменной рубиново-бордовой ливреей МУП «УЭТ» и гербом города Ульяновска.
-                            </div>
-                            <div class="photo-meta-box">
-                                <div class="meta-row">
-                                    <span>Источник:</span>
-                                    <span class="meta-author">Пресс-служба МУП «УЭТ» / Администрация г. Ульяновска</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span>Локация:</span>
-                                    <span>Московское шоссе, 1Б (Депо № 1)</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span>Использование:</span>
-                                    <span>Официальные промо-материалы найма</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Карточка 2: Кабина водителя -->
-                    <div class="photo-card">
-                        <div class="photo-img-wrap">
-                            <span class="photo-tag" style="background: var(--navbar-active);">Эргономика</span>
-                            <img src="/static/images/tram_cockpit.jpg" onerror="this.onerror=null; this.src='images/tram_cockpit.jpg'" alt="Кабина водителя трамвая" class="photo-img" />
-                        </div>
-                        <div class="photo-caption-block">
-                            <div class="photo-title">Рабочее место водителя: кабина с климат-контролем</div>
-                            <div class="photo-desc">
-                                Анатомическое кресло с вибропоглощением, приборная панель с CAN-телеметрией, мониторы внешнего и салонного видеонаблюдения.
-                            </div>
-                            <div class="photo-meta-box">
-                                <div class="meta-row">
-                                    <span>Источник:</span>
-                                    <span class="meta-author">ПК «Транспортные системы» (ПК ТС)</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span>Автор фотосессии:</span>
-                                    <span>Технический архив разработчика</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span>Использование:</span>
-                                    <span>Карточки вакансии «Водитель трамвая»</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Карточка 3: Историческая база TransPhoto (СТТС) -->
-                    <div class="photo-card">
-                        <div class="photo-img-wrap">
-                            <span class="photo-tag" style="background: #0284c7;">TransPhoto.org</span>
-                            <img src="/static/images/tram_lvenok.jpg" onerror="this.onerror=null; this.src='images/tram_lvenok.jpg'" alt="Трамвай на улице Гончарова" class="photo-img" style="filter: contrast(1.05);" />
-                        </div>
-                        <div class="photo-caption-block">
-                            <div class="photo-title">Архивные и линейные фото: база TransPhoto</div>
-                            <div class="photo-desc">
-                                Фотохроника работы трамвайной сети Ульяновска: маршруты № 22, № 4, № 15 по центральным улицам Гончарова, Ленина и через волжские мосты.
-                            </div>
-                            <div class="photo-meta-box">
-                                <div class="meta-row">
-                                    <span>Архив:</span>
-                                    <span class="meta-author">TransPhoto.org (Ульяновск)</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span>Ведущие авторы:</span>
-                                    <span>А. Сорокин, Илья Ковалёв, Д. Михайлов</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span>Лицензия:</span>
-                                    <span>СТТС / Репортажная документалистика</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="syncAdminsFromEnv()">🔄 Синхронизировать (.env)</button>
+                    <button class="btn btn-secondary" onclick="notifyAllAdminsPanel()">📲 Разослать доступ всем</button>
+                    <button class="btn" onclick="loadAdmins()">🔄 Обновить</button>
                 </div>
+            </div>
 
-                <!-- Рекомендация по векторизации и «срисовке» -->
-                <div class="drawing-guide-box">
-                    <div class="guide-icon">🎨</div>
-                    <div class="guide-text">
-                        <strong>Рекомендация по графике и срисовке для интерфейса:</strong><br>
-                        С реальных фотографий «Львёнка» взяты характерные ключевые линии: характерная аэродинамическая маска с LED-фарами в форме клыков, скошенная линия окон кабины и двухцветная окраска (рубиновый низ + кремовый верх). Для векторных иконок и пиктограмм статусов рекомендуется использовать чистый контурный вектор (SVG 24x24 и 48x48) на базе этих реальных обводов кузова.
+            <div style="background-color: var(--surface-card); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--surface-border); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <input type="text" id="newAdminId" class="input-box" placeholder="Telegram ID сотрудника (цифры)..." style="flex: 2; min-width: 180px;">
+                <select id="newAdminRole" class="select-box" style="flex: 2; min-width: 180px;">
+                    <option value="hr">👔 Отдел кадров (HR)</option>
+                    <option value="tech">🛠 Инженер систем (Tech)</option>
+                    <option value="depot">🚋 Сотрудник депо (Рефералы)</option>
+                </select>
+                <input type="text" id="newAdminPassword" class="input-box" placeholder="Пароль для сайта (необязательно)..." style="flex: 2; min-width: 180px;">
+                <button class="btn btn-primary" onclick="addNewAdmin()" style="flex: 1; min-width: 150px;">➕ Выдать доступ</button>
+            </div>
+
+            <div class="table-wrap mobile-cards">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Сотрудник / ID</th>
+                            <th>Роль</th>
+                            <th>Пароль на сайте</th>
+                            <th>ЛС-уведомления</th>
+                            <th>Дата назначения</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminsTbody">
+                        <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Загрузка списка сотрудников...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB: DEPOT REFERRALS -->
+        <section id="tabDepot" class="main-card" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div>
+                    <h3 style="margin: 0;">🚋 Кабинет сотрудника депо & Реферальная программа</h3>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                        Приглашайте соискателей в МУП «УЭТ» и получайте 10 000 ₽ за каждого трудоустроенного
                     </div>
                 </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn" onclick="loadDepotReferrals()">🔄 Обновить</button>
+                </div>
+            </div>
 
-            </section>
+            <!-- REFERRAL LINK BANNER -->
+            <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(19, 27, 46, 0.95)); border: 1px solid var(--primary); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                <span class="detail-label" style="color: #60a5fa; font-weight: 700; font-size: 13px;">🔗 Ваша персональная реферальная ссылка:</span>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <input type="text" id="depotRefLinkInput" class="input-box" readonly style="flex: 1; min-width: 220px; font-weight: 600; color: #93c5fd; background: rgba(0,0,0,0.4);" value="...">
+                    <button class="btn btn-secondary" onclick="copyDepotRefLink()">📋 Скопировать</button>
+                    <button class="btn" onclick="shareDepotRefLink()">📲 Отправить в TG</button>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+                    Отправляйте ссылку друзьям и знакомым. После успешного трудоустройства кандидата по вашей ссылке начисляется премия <b>10 000 ₽</b>!
+                </div>
+            </div>
 
+            <!-- DEPOT STATS COUNTERS -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Всего переходов</span>
+                    <span id="statDepotTotal" class="stat-value">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">В обработке HR</span>
+                    <span id="statDepotInProgress" class="stat-value" style="color: #fbbf24;">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Трудоустроено</span>
+                    <span id="statDepotHired" class="stat-value" style="color: #34d399;">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Премия к выплате</span>
+                    <span id="statDepotBonus" class="stat-value" style="color: #60a5fa;">0 ₽</span>
+                </div>
+            </div>
+
+            <!-- REFERRALS TABLE -->
+            <h4 style="margin-top: 10px;">📋 Список кандидатов по вашей ссылке</h4>
+            <div class="table-wrap mobile-cards">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>№ Заявки</th>
+                            <th>ФИО соискателя</th>
+                            <th>Вакансия</th>
+                            <th>Статус рассмотрения</th>
+                            <th>Дата подачи</th>
+                            <th>Выплата</th>
+                        </tr>
+                    </thead>
+                    <tbody id="depotReferralsTbody">
+                        <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">Загрузка кандидатов...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
         </main>
+    </div> <!-- /.app-layout -->
+
+    <!-- CANDIDATE DETAIL MODAL -->
+    <div id="candidateModal" class="modal-overlay" onclick="onModalOverlayClick(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modalCandTitle" class="modal-title">Анкета соискателя #...</h3>
+                    <div id="modalCandSub" style="font-size: 12px; color: var(--text-muted);">...</div>
+                </div>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+
+            <!-- COMPLIANCE ALERT -->
+            <div id="modalComplianceBox" class="compliance-box compliance-safe">
+                <b>🛡 Проверка безопасности:</b>
+                <span id="modalComplianceText">...</span>
+            </div>
+
+            <!-- DETAILS GRID -->
+            <div class="detail-grid">
+                <div class="detail-item"><span class="detail-label">ФИО</span><span id="mFio" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Телефон</span><span id="mPhone" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Вакансия</span><span id="mVacancy" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Опыт работы</span><span id="mExp" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Водительские категории</span><span id="mLicense" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Дата рождения</span><span id="mBirth" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Город</span><span id="mCity" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Образование</span><span id="mEdu" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Условия</span><span id="mConditions" class="detail-val">...</span></div>
+                <div class="detail-item"><span class="detail-label">Собеседование</span><span id="mInterview" class="detail-val">...</span></div>
+            </div>
+
+            <!-- NOTE EDITOR -->
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <span class="detail-label">Заметка кадровой службы:</span>
+                <textarea id="mAdminNote" class="note-textarea" placeholder="Введите внутренний комментарий..."></textarea>
+                <div style="display: flex; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="saveCandidateNote()">💾 Сохранить заметку</button>
+                </div>
+            </div>
+
+            <!-- STATUS & ACTION BUTTONS -->
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="changeCandidateStatus('В работе')">🟡 В работу</button>
+                <button class="btn btn-secondary" onclick="changeCandidateStatus('Приглашен')">📅 Собеседование</button>
+                <button class="btn btn-success" onclick="changeCandidateStatus('Принят')">🟢 Принят в депо</button>
+                <button class="btn btn-secondary" onclick="changeCandidateStatus('Архив')">📦 В архив</button>
+                <button id="btnModalBlacklist" class="btn btn-warning" onclick="toggleBlacklistCandidate()">⛔ В черный список (ЧС)</button>
+                <button class="btn btn-danger" onclick="deleteCurrentCandidate()">🗑 Удалить анкету</button>
+            </div>
+        </div>
     </div>
 
-    <!-- ==========================================================================
-         8. JAVASCRIPT: THEME TOGGLING & INTERACTIVE STATES
-         ========================================================================== */
-    -->
-    <script>
-        // Инициализация темы из localStorage или системных предпочтений
-        function initTheme() {
-            const savedTheme = localStorage.getItem('kadry-theme');
-            const html = document.documentElement;
-            const sunIcon = document.getElementById('sunIcon');
-            const moonIcon = document.getElementById('moonIcon');
+    <!-- NEW CANDIDATE MODAL (ОЧНЫЙ ПРИЁМ В ДЕПО / ТЕСТОВАЯ АНКЕТА) -->
+    <div id="modalNewCandidate" class="modal-overlay" onclick="onNewCandidateOverlayClick(event)">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" style="font-size: 18px; display: flex; align-items: center; gap: 8px;">
+                        📝 Очный приём соискателя в депо
+                    </h3>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                        Заполнение анкеты при личном обращении кандидата в отдел кадров / депо
+                    </div>
+                </div>
+                <button class="close-btn" onclick="closeNewCandidateModal()">×</button>
+            </div>
 
-            if (savedTheme) {
-                html.setAttribute('data-theme', savedTheme);
-            } else {
-                // По умолчанию темная тема согласно ТЗ
-                html.setAttribute('data-theme', 'dark');
-            }
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 6px;">
+                <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="fillTestCandidateData()">
+                    ✨ Заполнить тестовыми данными
+                </button>
+            </div>
 
-            const current = html.getAttribute('data-theme');
-            if (current === 'light') {
-                sunIcon.style.display = 'none';
-                moonIcon.style.display = 'block';
-            } else {
-                sunIcon.style.display = 'block';
-                moonIcon.style.display = 'none';
-            }
-        }
+            <form id="newCandidateForm" onsubmit="submitNewCandidate(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">ФИО соискателя <span style="color: #f87171;">*</span></label>
+                    <input type="text" id="newCandFio" class="input-box" placeholder="Иванов Иван Иванович" required style="width: 100%;">
+                </div>
 
-        // Переключение Dark / Light
-        function toggleTheme() {
-            const html = document.documentElement;
-            const current = html.getAttribute('data-theme');
-            const next = current === 'dark' ? 'light' : 'dark';
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Телефон <span style="color: #f87171;">*</span></label>
+                        <input type="tel" id="newCandPhone" class="input-box" placeholder="+7 900 123-45-67" required style="width: 100%;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Дата рождения</label>
+                        <input type="text" id="newCandBirth" class="input-box" placeholder="15.05.1992" style="width: 100%;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Вакансия <span style="color: #f87171;">*</span></label>
+                        <select id="newCandVacancy" class="select-box" style="width: 100%;">
+                            <option value="Водитель трамвая">🚋 Водитель трамвая</option>
+                            <option value="Водитель троллейбуса">🚎 Водитель троллейбуса</option>
+                            <option value="Кондуктор">🎫 Кондуктор</option>
+                            <option value="Слесарь-ремонтник">🔧 Слесарь по ремонту ПС</option>
+                            <option value="Электромонтёр">⚡ Электромонтёр</option>
+                            <option value="Монтёр пути">🛤 Монтёр пути</option>
+                            <option value="Маляр / Кузовщик">🎨 Маляр / Кузовщик</option>
+                            <option value="Рабочий депо">🧹 Рабочий депо</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Подразделение / Депо</label>
+                        <select id="newCandDepot" class="select-box" style="width: 100%;">
+                            <option value="Северное трамвайное депо">Северное депо (Радищева)</option>
+                            <option value="Засвияжское трамвайное депо">Засвияжское депо (Московское ш.)</option>
+                            <option value="Заволжский троллейбусный парк">Заволжский парк (Брестская)</option>
+                            <option value="Центральное управление">Центральное управление</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Опыт работы</label>
+                        <select id="newCandExp" class="select-box" style="width: 100%;">
+                            <option value="Без опыта (требуется обучение)">Без опыта (требуется обучение)</option>
+                            <option value="Есть опыт по специальности">Есть опыт по специальности</option>
+                            <option value="Водительский стаж от 1 года">Водительский стаж от 1 года</option>
+                            <option value="Водительский стаж от 3 лет">Водительский стаж от 3 лет</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Водительские права</label>
+                        <select id="newCandLicense" class="select-box" style="width: 100%;">
+                            <option value="Нет прав">Нет прав</option>
+                            <option value="Категория B">Категория B</option>
+                            <option value="Категории B, C">Категории B, C</option>
+                            <option value="Категория D (автобус)">Категория D (автобус)</option>
+                            <option value="Категория Tm (трамвай)">Категория Tm (трамвай)</option>
+                            <option value="Категория Tb (троллейбус)">Категория Tb (троллейбус)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Образование</label>
+                        <select id="newCandEdu" class="select-box" style="width: 100%;">
+                            <option value="Среднее общее">Среднее общее (11 кл.)</option>
+                            <option value="Среднее профессиональное">Среднее проф. (колледж)</option>
+                            <option value="Высшее образование">Высшее образование</option>
+                            <option value="Основное общее">Основное общее (9 кл.)</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Целевая база</label>
+                        <select id="newCandTargetDb" class="select-box" style="width: 100%;">
+                            <option value="auto">Авто (текущая активная)</option>
+                            <option value="test">🧪 Тестовая (resumes_test.db)</option>
+                            <option value="prod">📁 Боевая (resumes.db)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Заметка кадровика / комментарий</label>
+                    <textarea id="newCandNote" class="note-textarea" rows="2" placeholder="Например: обратился лично в отдел кадров, медосмотр..."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeNewCandidateModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="btnSubmitNewCand" style="font-weight: 700;">💾 Сохранить анкету</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AUTH MODAL -->
+    <div id="authModal" class="modal-overlay" style="background: rgba(5, 8, 16, 0.94); backdrop-filter: blur(10px); z-index: 9999;">
+        <div class="modal-content" style="max-width: 440px; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 20px 45px rgba(0,0,0,0.6);">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" style="font-size: 18px;">🔐 Вход в панель управления</h3>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">МУП «Ульяновскэлектротранс»</div>
+                </div>
+                <button class="close-btn" id="btnAuthClose" onclick="closeAuthModal()" style="display: none;">×</button>
+            </div>
             
-            html.setAttribute('data-theme', next);
-            localStorage.setItem('kadry-theme', next);
+            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.45;">
+                Для вхождения в служебную панель введите ваш пароль сотрудника или Telegram ID / номер телефона.
+            </div>
 
-            const sunIcon = document.getElementById('sunIcon');
-            const moonIcon = document.getElementById('moonIcon');
+            <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--surface-border); padding-bottom: 8px;">
+                <button class="btn btn-secondary" id="btnAuthTabPhrase" style="flex: 1;" onclick="switchAuthTab('phrase')">🔑 По паролю</button>
+                <button class="btn btn-secondary" id="btnAuthTabId" style="flex: 1;" onclick="switchAuthTab('id')">📱 По ID / Телефону</button>
+            </div>
 
-            if (next === 'light') {
-                sunIcon.style.display = 'none';
-                moonIcon.style.display = 'block';
-            } else {
-                sunIcon.style.display = 'block';
-                moonIcon.style.display = 'none';
+            <!-- PHRASE AUTH -->
+            <div id="authFormPhrase" class="auth-card" style="margin-top: 12px;">
+                <span class="detail-label">Пароль сотрудника:</span>
+                <input type="password" id="authPasswordInput" class="input-box" placeholder="Введите ваш служебный пароль..." autocomplete="current-password">
+                <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="submitAuth('phrase')">Войти в панель</button>
+            </div>
+
+            <!-- ID / PHONE AUTH -->
+            <div id="authFormId" class="auth-card" style="display: none; margin-top: 12px;">
+                <span class="detail-label">Telegram ID или номер телефона:</span>
+                <input type="text" id="authIdInput" class="input-box" placeholder="Например: 7657422832 или +7927..." autocomplete="username">
+                <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="submitAuth('id')">Войти в панель</button>
+            </div>
+
+            <!-- FOOTER INFO -->
+            <div style="margin-top: 16px; padding: 12px; border-radius: 8px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                💡 <b>Действующим сотрудникам:</b><br>
+                Если у вас ещё нет пароля или вы хотите его сменить, отправьте в Telegram-боте команду:<br>
+                <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #60a5fa; font-weight: 600;">/password ВАШ_ПАРОЛЬ</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="toast">Уведомление</div>
+
+    <script>
+        // Telegram Mini App native configuration
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
+            if (tg.setHeaderColor) tg.setHeaderColor('#0b0f19');
+            if (tg.setBackgroundColor) tg.setBackgroundColor('#0b0f19');
+        }
+
+        let currentPage = 1;
+        let totalPages = 1;
+        let activeTicketId = null;
+        let activeCandidateUserId = null;
+        let activeCandidateIsBlocked = false;
+        let currentUserRole = 'super'; // 'super', 'hr', 'tech'
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3200);
+        }
+
+        // THEME MANAGEMENT (Dark / Light)
+        function initTheme() {
+            const saved = localStorage.getItem('uet_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+            updateThemeButton(saved);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('uet_theme', next);
+            updateThemeButton(next);
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                const headerColor = next === 'dark' ? '#1c2329' : '#f4ede4';
+                if (tg.setHeaderColor) tg.setHeaderColor(headerColor);
+                if (tg.setBackgroundColor) tg.setBackgroundColor(headerColor);
             }
         }
 
-        // Навигация по центру Navbar
-        function setActiveNav(element) {
-            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-            element.classList.add('active');
-        }
-
-        // Навигация по Sidebar
-        function setActiveSidebar(element) {
-            document.querySelectorAll('.sidebar-nav-link').forEach(link => link.classList.remove('active'));
-            element.classList.add('active');
-
-            // На мобильных закрываем сайдбар после выбора
-            if (window.innerWidth <= 1024) {
-                document.getElementById('appSidebar').classList.remove('mobile-open');
+        function updateThemeButton(theme) {
+            const btn = document.getElementById('themeToggleBtn');
+            if (btn) {
+                btn.innerHTML = theme === 'dark' ? '☀️' : '🌙';
+                btn.title = theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему';
             }
         }
 
-        // Мобильный переключатель сайдбара
+        // MOBILE SIDEBAR DRAWER
         function toggleMobileSidebar() {
             const sidebar = document.getElementById('appSidebar');
-            sidebar.classList.toggle('mobile-open');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar) sidebar.classList.toggle('mobile-open');
+            if (overlay) overlay.classList.toggle('active');
         }
 
-        // Горячая клавиша ⌘K / Ctrl+K для поиска
-        document.addEventListener('keydown', (e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-                e.preventDefault();
-                const search = document.getElementById('sidebarSearch');
-                if (search) search.focus();
+        function closeMobileSidebar() {
+            const sidebar = document.getElementById('appSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
+        }
+
+        // SIDEBAR QUICK SEARCH SYNC
+        function syncSidebarSearch(val) {
+            const mainSearch = document.getElementById('searchInput');
+            if (mainSearch) {
+                mainSearch.value = val;
+                switchTab('candidates');
+                handleSearchInput();
             }
+        }
+
+        // Apply role permissions to UI
+        function applyRolePermissions() {
+            const sideCand = document.getElementById('sideNavCandidates');
+            const sideInq = document.getElementById('sideNavInquiries');
+            const sideDepot = document.getElementById('sideNavDepot');
+            const sideTech = document.getElementById('sideNavTech');
+            const sideSuper = document.getElementById('sideNavSuper');
+            const sideAdm = document.getElementById('sideNavAdmins');
+
+            const userAvatar = document.getElementById('userAvatarCircle');
+            const userName = document.getElementById('userBadgeName');
+            const userRole = document.getElementById('userBadgeRole');
+            const btnLogout = document.getElementById('btnLogout');
+            const btnAuthOpen = document.getElementById('btnAuthOpen');
+
+            const setVis = (el, show) => {
+                if (!el) return;
+                el.style.display = show ? 'flex' : 'none';
+            };
+
+            if (btnLogout) btnLogout.style.display = 'inline-flex';
+            if (btnAuthOpen) btnAuthOpen.style.display = 'none';
+
+            if (currentUserRole === 'depot') {
+                setVis(sideCand, false);
+                setVis(sideInq, false);
+                setVis(sideTech, false);
+                setVis(sideSuper, false);
+                setVis(sideAdm, false);
+                setVis(sideDepot, true);
+
+                if (userAvatar) userAvatar.innerText = '🚋';
+                if (userName) userName.innerText = 'Сотрудник депо';
+                if (userRole) userRole.innerText = 'Реферальная программа';
+                switchTab('depot');
+            } else if (currentUserRole === 'tech') {
+                setVis(sideCand, false);
+                setVis(sideInq, false);
+                setVis(sideDepot, false);
+                setVis(sideSuper, false);
+                setVis(sideAdm, false);
+                setVis(sideTech, true);
+
+                if (userAvatar) userAvatar.innerText = '🛠';
+                if (userName) userName.innerText = 'Инженер';
+                if (userRole) userRole.innerText = 'Технический мониторинг';
+                switchTab('tech');
+            } else if (currentUserRole === 'hr') {
+                setVis(sideCand, true);
+                setVis(sideInq, true);
+                setVis(sideDepot, true);
+                setVis(sideTech, false);
+                setVis(sideSuper, false);
+                setVis(sideAdm, false);
+
+                if (userAvatar) userAvatar.innerText = '👔';
+                if (userName) userName.innerText = 'Отдел кадров';
+                if (userRole) userRole.innerText = 'Менеджер по подбору';
+                switchTab('candidates');
+            } else {
+                // SuperAdmin
+                setVis(sideCand, true);
+                setVis(sideInq, true);
+                setVis(sideDepot, true);
+                setVis(sideTech, true);
+                setVis(sideSuper, true);
+                setVis(sideAdm, true);
+
+                if (userAvatar) userAvatar.innerText = '👑';
+                if (userName) userName.innerText = 'SuperAdmin';
+                if (userRole) userRole.innerText = 'Полный доступ (Root)';
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.sidebar-nav-link').forEach(b => b.classList.remove('active'));
+
+            ['tabCandidates', 'tabInquiries', 'tabDepot', 'tabTech', 'tabSuper', 'tabAdmins'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            const sideMap = {
+                'candidates': 'sideNavCandidates',
+                'inquiries': 'sideNavInquiries',
+                'depot': 'sideNavDepot',
+                'tech': 'sideNavTech',
+                'super': 'sideNavSuper',
+                'admins': 'sideNavAdmins'
+            };
+
+            const metaMap = {
+                'candidates': {
+                    title: '📋 Реестр соискателей',
+                    sub: 'Управление кандидатами, фильтры и кадровый учет предприятия'
+                },
+                'inquiries': {
+                    title: '💬 Вопросы и обращения (/ask)',
+                    sub: 'Входящие вопросы от соискателей и подготовка ответов'
+                },
+                'depot': {
+                    title: '🚋 Депо и реферальная программа',
+                    sub: 'Статистика наставников, реферальные ссылки и выплаты'
+                },
+                'tech': {
+                    title: '🛠 Панель системного инженера',
+                    sub: 'Мониторинг ресурсов, диагностика и логи сервера'
+                },
+                'super': {
+                    title: '👑 SuperAdmin & Управление версиями',
+                    sub: 'Git-синхронизация, переключение веток и управление сервисом'
+                },
+                'admins': {
+                    title: '👥 Администраторы и доступы',
+                    sub: 'Ролевая модель доступа: SuperAdmin, HR, Tech, Депо'
+                }
+            };
+
+            const meta = metaMap[tab];
+            if (meta) {
+                const headingEl = document.getElementById('pageHeading');
+                const subEl = document.getElementById('pageSubtitle');
+                if (headingEl) headingEl.innerText = meta.title;
+                if (subEl) subEl.innerText = meta.sub;
+            }
+
+            const activeSide = document.getElementById(sideMap[tab]);
+            if (activeSide) activeSide.classList.add('active');
+
+            if (tab === 'candidates') {
+                document.getElementById('tabCandidates').style.display = 'flex';
+                loadCandidates(currentPage);
+            } else if (tab === 'inquiries') {
+                document.getElementById('tabInquiries').style.display = 'flex';
+                loadInquiries();
+            } else if (tab === 'depot') {
+                document.getElementById('tabDepot').style.display = 'flex';
+                loadDepotReferrals();
+            } else if (tab === 'tech') {
+                document.getElementById('tabTech').style.display = 'flex';
+                loadTechMetrics();
+            } else if (tab === 'super') {
+                document.getElementById('tabSuper').style.display = 'flex';
+                loadSuperAdminInfo();
+            } else if (tab === 'admins') {
+                document.getElementById('tabAdmins').style.display = 'flex';
+                loadAdmins();
+            }
+        }
+
+        // AUTH FUNCTIONS
+        function openAuthModal(allowClose = true) {
+            document.getElementById('authModal').classList.add('active');
+            const closeBtn = document.getElementById('btnAuthClose');
+            if (closeBtn) closeBtn.style.display = allowClose ? 'block' : 'none';
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+
+        function switchAuthTab(type) {
+            if (type === 'phrase') {
+                document.getElementById('authFormPhrase').style.display = 'flex';
+                document.getElementById('authFormId').style.display = 'none';
+                document.getElementById('btnAuthTabPhrase').classList.remove('btn-secondary');
+                document.getElementById('btnAuthTabId').classList.add('btn-secondary');
+            } else {
+                document.getElementById('authFormPhrase').style.display = 'none';
+                document.getElementById('authFormId').style.display = 'flex';
+                document.getElementById('btnAuthTabPhrase').classList.add('btn-secondary');
+                document.getElementById('btnAuthTabId').classList.remove('btn-secondary');
+            }
+        }
+
+        async function submitAuth(type) {
+            const val = type === 'phrase'
+                ? document.getElementById('authPasswordInput').value.trim()
+                : document.getElementById('authIdInput').value.trim();
+
+            if (!val) {
+                alert("Пожалуйста, введите пароль или ID");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ method: type, value: val })
+                });
+                const d = await res.json();
+                if (d.ok) {
+                    currentUserRole = d.role;
+                    localStorage.setItem('uet_role', d.role);
+                    localStorage.setItem('uet_user_id', d.user_id);
+                    applyRolePermissions();
+                    closeAuthModal();
+                    loadStats();
+                    loadCandidates(1);
+                    showToast("Успешный вход: " + d.label);
+                } else {
+                    alert(d.error || "Ошибка авторизации");
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('uet_role');
+            localStorage.removeItem('uet_user_id');
+            document.getElementById('userBadge').innerText = '👤 Не авторизован';
+            document.getElementById('btnLogout').style.display = 'none';
+            const btnAuthOpen = document.getElementById('btnAuthOpen');
+            if (btnAuthOpen) btnAuthOpen.style.display = 'inline-block';
+            openAuthModal(false);
+        }
+
+        // CANDIDATES DATA
+        async function loadStats() {
+            try {
+                const dbScope = (document.getElementById('dbScopeSelect') ? document.getElementById('dbScopeSelect').value : 'both') || 'both';
+                const res = await fetch('/api/stats?db_scope=' + encodeURIComponent(dbScope));
+                if (!res.ok) return;
+                const d = await res.json();
+                document.getElementById('statTotal').innerText = d.total || 0;
+                document.getElementById('statNew').innerText = d.new || 0;
+                document.getElementById('statInProgress').innerText = d.in_progress || 0;
+                document.getElementById('statInvited').innerText = d.invited || 0;
+                document.getElementById('statHired').innerText = d.hired || 0;
+                document.getElementById('statRejected').innerText = d.rejected || 0;
+                document.getElementById('statArchive').innerText = d.archive || 0;
+                const elTest = document.getElementById('statTest');
+                const elCand = document.getElementById('countCandidates');
+                if (elCand) elCand.innerText = d.total || 0;
+                const elInq = document.getElementById('countInquiries');
+                if (elInq) elInq.innerText = d.inquiries || 0;
+                const sideCand = document.getElementById('sideCountCand');
+                if (sideCand) sideCand.innerText = d.total || 0;
+                const sideInq = document.getElementById('sideCountInq');
+                if (sideInq) sideInq.innerText = d.inquiries || 0;
+                const optCand = document.getElementById('optCand');
+                if (optCand) optCand.innerText = '📋 Соискатели (' + (d.total || 0) + ')';
+                const optInq = document.getElementById('optInq');
+                if (optInq) optInq.innerText = '💬 Вопросы (/ask) (' + (d.inquiries || 0) + ')';
+
+                const bDb = document.getElementById('badgeDb');
+                bDb.innerText = 'БД: ' + (d.active_db || 'resumes.db') + ' ⇄';
+                bDb.className = (d.active_db === 'resumes_test.db') ? 'badge-btn badge-db-test' : 'badge-btn badge-db-prod';
+
+                const bEnv = document.getElementById('badgeEnv');
+                bEnv.innerText = 'Среда: ' + (d.env || 'TEST') + ' ⇄';
+                bEnv.className = (d.env === 'PROD') ? 'badge-btn badge-env-prod' : 'badge-btn badge-env-test';
+            } catch (e) { console.error(e); }
+        }
+
+        function filterByTestOnly() {
+            const sel = document.getElementById('statusFilterSelect');
+            if (sel) sel.value = 'test_only';
+            loadCandidates(1);
+        }
+
+        async function loadCandidates(page = 1) {
+            currentPage = page;
+            const query = document.getElementById('searchInput').value.trim();
+            const dbScope = document.getElementById('dbScopeSelect').value;
+            const sort = document.getElementById('sortSelect').value;
+            const status = document.getElementById('statusFilterSelect').value;
+
+            const url = `/api/candidates?page=${page}&limit=20&status=${encodeURIComponent(status)}&db_scope=${dbScope}&search=${encodeURIComponent(query)}&sort=${sort}`;
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+                totalPages = data.total_pages || 1;
+
+                document.getElementById('pageInfo').innerText = `Показано ${data.candidates.length} из ${data.total} анкет (Стр. ${data.page} из ${totalPages})`;
+                document.getElementById('btnPrevPage').disabled = (data.page <= 1);
+                document.getElementById('btnNextPage').disabled = (data.page >= totalPages);
+
+                renderCandidatesTable(data.candidates);
+                loadStats();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderCandidatesTable(list) {
+            const tbody = document.getElementById('candidatesTbody');
+            if (!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">Анкеты не найдены</td></tr>';
+                return;
+            }
+
+            let html = '';
+            list.forEach(c => {
+                let stBadge = 'st-new';
+                const st = (c.status || '').toLowerCase();
+                if (st.includes('работ')) stBadge = 'st-work';
+                else if (st.includes('приглаш')) stBadge = 'st-invite';
+                else if (st.includes('принят')) stBadge = 'st-hired';
+                else if (st.includes('отказ')) stBadge = 'st-refused';
+                else if (st.includes('архив')) stBadge = 'st-archive';
+
+                const dbBadge = (c.is_test || c.ticket_id >= 900000)
+                    ? '<span class="db-tag db-tag-test">TEST</span>'
+                    : '<span class="db-tag db-tag-prod">PROD</span>';
+
+                const depotStr = (c.interview_depot || '') + (c.interview_time ? ' (' + c.interview_time + ')' : '');
+
+                html += `<tr>
+                    <td data-label="№ ID"><b>#${c.ticket_id}</b></td>
+                    <td data-label="База">${dbBadge}</td>
+                    <td data-label="Дата подачи" style="color: var(--text-muted);">${c.created_at || '—'}</td>
+                    <td data-label="ФИО соискателя"><b>${escapeHtml(c.full_name || 'Не указано')}</b></td>
+                    <td data-label="Вакансия">${escapeHtml(c.vacancy || '—')}</td>
+                    <td data-label="Телефон"><code>${escapeHtml(c.phone || '—')}</code></td>
+                    <td data-label="Категория прав"><span style="font-size: 11px;">${escapeHtml(c.driver_license || '—')}</span></td>
+                    <td data-label="Статус"><span class="badge-status ${stBadge}">${escapeHtml(c.status || 'Новая')}</span></td>
+                    <td data-label="Депо / Время" style="color: var(--text-muted); font-size: 12px;">${escapeHtml(depotStr || '—')}</td>
+                    <td data-label="Действия">
+                        <div style="display: flex; gap: 4px;">
+                            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openCandidateModal(${c.ticket_id})">Карточка</button>
+                            <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" title="Удалить" onclick="quickDeleteCandidate(${c.ticket_id})">🗑</button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function openCandidateModal(ticketId) {
+            activeTicketId = ticketId;
+            try {
+                const res = await fetch(`/api/candidate/${ticketId}`);
+                if (!res.ok) return;
+                const c = await res.json();
+                activeCandidateUserId = c.user_id;
+                activeCandidateIsBlocked = c.is_blocked;
+
+                document.getElementById('modalCandTitle').innerText = `Анкета #${c.ticket_id} — ${c.full_name || 'Соискатель'}`;
+                document.getElementById('modalCandSub').innerText = `Статус: ${c.status} | Подано: ${c.created_at} [${(c.platform || 'tg').toUpperCase()}]`;
+
+                document.getElementById('mFio').innerText = c.full_name || '—';
+                document.getElementById('mPhone').innerHTML = `<a href="tel:${c.phone}" style="color: #60a5fa; text-decoration: none;">${c.phone}</a>`;
+                document.getElementById('mVacancy').innerText = c.vacancy || '—';
+                document.getElementById('mExp').innerText = c.experience || '—';
+                document.getElementById('mLicense').innerText = c.driver_license || 'Отсутствует';
+                document.getElementById('mBirth').innerText = c.birth_date || '—';
+                document.getElementById('mCity').innerText = c.city || '—';
+                document.getElementById('mEdu').innerText = c.education || '—';
+                document.getElementById('mConditions').innerText = `Смены: ${c.shift_work || '—'} | Общежитие: ${c.dormitory || '—'}`;
+                document.getElementById('mInterview').innerText = (c.interview_depot || '—') + (c.interview_time ? ' (' + c.interview_time + ')' : '');
+                document.getElementById('mAdminNote').value = c.admin_note || '';
+
+                const compBox = document.getElementById('modalComplianceBox');
+                const compText = document.getElementById('modalComplianceText');
+                if (c.compliance && c.compliance.has_risk) {
+                    compBox.className = 'compliance-box compliance-risk';
+                    compText.innerHTML = c.compliance.text;
+                } else {
+                    compBox.className = 'compliance-box compliance-safe';
+                    compText.innerHTML = 'Соответствует требованиям законодательства (ст. 328.1 ТК РФ и ст. 86 УК РФ).';
+                }
+
+                // Update blacklist button text
+                const btnBl = document.getElementById('btnModalBlacklist');
+                btnBl.innerText = c.is_blocked ? "✅ Снять из ЧС" : "⛔ В черный список (ЧС)";
+
+                document.getElementById('candidateModal').classList.add('active');
+            } catch (e) { console.error(e); }
+        }
+
+        function closeModal() {
+            document.getElementById('candidateModal').classList.remove('active');
+            activeTicketId = null;
+        }
+
+        function onModalOverlayClick(e) {
+            if (e.target.id === 'candidateModal') closeModal();
+        }
+
+        // NEW CANDIDATE MODAL (ОЧНЫЙ ПРИЁМ / ТЕСТОВАЯ АНКЕТА)
+        function openNewCandidateModal() {
+            document.getElementById('modalNewCandidate').classList.add('active');
+            loadDashboardVacancies();
+            const scope = document.getElementById('dbScopeSelect').value;
+            if (scope === 'test') {
+                document.getElementById('newCandTargetDb').value = 'test';
+            } else if (scope === 'prod') {
+                document.getElementById('newCandTargetDb').value = 'prod';
+            } else {
+                document.getElementById('newCandTargetDb').value = 'auto';
+            }
+        }
+
+        function closeNewCandidateModal() {
+            document.getElementById('modalNewCandidate').classList.remove('active');
+        }
+
+        function onNewCandidateOverlayClick(e) {
+            if (e.target.id === 'modalNewCandidate') closeNewCandidateModal();
+        }
+
+        function fillTestCandidateData() {
+            const testNames = [
+                "Петров Дмитрий Александрович",
+                "Иванов Сергей Михайлович",
+                "Кузнецова Анна Павловна",
+                "Смирнов Алексей Викторович",
+                "Васильев Игорь Олегович",
+                "Морозов Роман Денисович"
+            ];
+            const testPhones = [
+                "+7 902 123-45-67",
+                "+7 927 800-11-22",
+                "+7 937 456-78-90",
+                "+7 908 475-33-44",
+                "+7 917 654-32-10"
+            ];
+            const rand = Math.floor(Math.random() * testNames.length);
+            document.getElementById('newCandFio').value = testNames[rand];
+            document.getElementById('newCandPhone').value = testPhones[rand % testPhones.length];
+            document.getElementById('newCandBirth').value = "12.08.1994";
+            document.getElementById('newCandVacancy').value = "Водитель трамвая";
+            document.getElementById('newCandDepot').value = "Северное трамвайное депо";
+            document.getElementById('newCandExp').value = "Без опыта (требуется обучение)";
+            document.getElementById('newCandLicense').value = "Категория B";
+            document.getElementById('newCandEdu').value = "Среднее профессиональное";
+            document.getElementById('newCandTargetDb').value = "test";
+            document.getElementById('newCandNote').value = "Тестовая анкета: очный приём в депо. Назначен медосмотр.";
+            showToast("✨ Заполнено тестовыми данными!");
+        }
+
+        async function submitNewCandidate(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitNewCand');
+            btn.disabled = true;
+            btn.innerText = "Сохранение...";
+
+            const payload = {
+                full_name: document.getElementById('newCandFio').value.trim(),
+                phone: document.getElementById('newCandPhone').value.trim(),
+                birth_date: document.getElementById('newCandBirth').value.trim(),
+                vacancy: document.getElementById('newCandVacancy').value,
+                depot: document.getElementById('newCandDepot').value,
+                experience: document.getElementById('newCandExp').value,
+                driver_license: document.getElementById('newCandLicense').value,
+                education: document.getElementById('newCandEdu').value,
+                target_db: document.getElementById('newCandTargetDb').value,
+                admin_note: document.getElementById('newCandNote').value.trim(),
+                shift_work: "Да",
+                dormitory: "Нет",
+                is_test: (document.getElementById('newCandTargetDb').value === 'test')
+            };
+
+            try {
+                const res = await fetch('/api/candidate/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok && data.ok) {
+                    showToast(`✅ Анкета #${data.ticket_id} (${data.full_name}) сохранена!`);
+                    closeNewCandidateModal();
+                    document.getElementById('newCandidateForm').reset();
+                    loadCandidates(1);
+                    loadStats();
+                } else {
+                    showToast(`Ошибка: ${data.error || 'Не удалось сохранить анкету'}`);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Сетевая ошибка при создании анкеты");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "💾 Сохранить анкету";
+            }
+        }
+
+        async function saveCandidateNote() {
+            if (!activeTicketId) return;
+            const note = document.getElementById('mAdminNote').value;
+            const res = await fetch(`/api/candidate/${activeTicketId}/note`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note })
+            });
+            if (res.ok) showToast("Заметка успешно сохранена!");
+        }
+
+        async function changeCandidateStatus(newStatus) {
+            if (!activeTicketId) return;
+            const res = await fetch(`/api/candidate/${activeTicketId}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (res.ok) {
+                showToast(`Статус изменен на: ${newStatus}`);
+                closeModal();
+                loadCandidates(currentPage);
+            }
+        }
+
+        // DELETE CANDIDATE
+        async function deleteCurrentCandidate() {
+            if (!activeTicketId) return;
+            if (!confirm(`Вы действительно хотите удалить анкету #${activeTicketId}?`)) return;
+            const res = await fetch(`/api/candidate/${activeTicketId}/delete`, { method: 'POST' });
+            if (res.ok) {
+                showToast(`Анкета #${activeTicketId} удалена!`);
+                closeModal();
+                loadCandidates(currentPage);
+            }
+        }
+
+        async function quickDeleteCandidate(ticketId) {
+            if (!confirm(`Удалить анкету #${ticketId}?`)) return;
+            const res = await fetch(`/api/candidate/${ticketId}/delete`, { method: 'POST' });
+            if (res.ok) {
+                showToast(`Анкета #${ticketId} удалена!`);
+                loadCandidates(currentPage);
+            }
+        }
+
+        // BLACKLIST CANDIDATE
+        async function toggleBlacklistCandidate() {
+            if (!activeTicketId) return;
+            const endpoint = activeCandidateIsBlocked ? 'unblock' : 'block';
+            const actionText = activeCandidateIsBlocked ? 'разблокировать соискателя' : 'внести соискателя в ЧС';
+            if (!confirm(`Вы хотите ${actionText}?`)) return;
+
+            const res = await fetch(`/api/candidate/${activeTicketId}/${endpoint}`, { method: 'POST' });
+            if (res.ok) {
+                showToast(activeCandidateIsBlocked ? "Пользователь разблокирован!" : "Пользователь заблокирован в ЧС!");
+                closeModal();
+                loadCandidates(currentPage);
+            }
+        }
+
+        function filterByStatus(st) {
+            switchTab('candidates');
+            const sel = document.getElementById('statusFilterSelect');
+            if (sel) sel.value = st;
+            document.querySelectorAll('.status-quick-btn').forEach(b => {
+                if (b.getAttribute('data-status') === st) {
+                    b.style.fontWeight = '700';
+                    b.style.background = 'rgba(255, 255, 255, 0.12)';
+                    b.style.borderColor = 'var(--navbar-active)';
+                } else {
+                    b.style.fontWeight = '500';
+                    b.style.background = 'transparent';
+                    b.style.borderColor = 'transparent';
+                }
+            });
+            loadCandidates(1);
+        }
+
+        function changePage(delta) {
+            const next = currentPage + delta;
+            if (next >= 1 && next <= totalPages) loadCandidates(next);
+        }
+
+        // SYSTEM & TECH
+        async function toggleActiveDatabase() {
+            if (!confirm("Переключить активную базу данных предприятия?")) return;
+            const res = await fetch('/api/system/toggle_db', { method: 'POST' });
+            if (res.ok) {
+                const d = await res.json();
+                showToast("Активная БД: " + d.active_db);
+                loadCandidates(1);
+            }
+        }
+
+        async function toggleEnvironment() {
+            if (!confirm("Сменить режим окружения (TEST / PROD)?")) return;
+            const res = await fetch('/api/system/toggle_env', { method: 'POST' });
+            if (res.ok) {
+                const d = await res.json();
+                showToast("Окружение: " + d.env);
+                loadCandidates(1);
+            }
+        }
+
+        async function createBackup() {
+            showToast("Создание бэкапа...");
+            const res = await fetch('/api/system/backup', { method: 'POST' });
+            if (res.ok) {
+                const d = await res.json();
+                showToast("Бэкап создан: " + d.filename);
+            }
+        }
+
+        async function optimizeDatabase() {
+            showToast("Оптимизация БД...");
+            const res = await fetch('/api/system/optimize_db', { method: 'POST' });
+            if (res.ok) showToast("Базы данных успешно оптимизированы!");
+        }
+
+        async function muteAllHr() {
+            if (!confirm("Отключить уведомления в ЛС всем сотрудникам отдела кадров?")) return;
+            const res = await fetch('/api/admins/mute_all', { method: 'POST' });
+            if (res.ok) showToast("Уведомления в ЛС выключены для всех HR!");
+        }
+
+        async function loadTechMetrics() {
+            try {
+                const res = await fetch('/api/system');
+                if (!res.ok) return;
+                const d = await res.json();
+                document.getElementById('metricRam').innerText = `${d.process_rss_mb} МБ (${d.process_ram_pct}%)`;
+                document.getElementById('metricSysRam').innerText = `${d.system_ram_used_gb} / ${d.system_ram_total_gb} ГБ`;
+                document.getElementById('metricUptime').innerText = d.uptime || '—';
+                document.getElementById('metricDbProd').innerText = `${d.db_prod_kb} КБ (${d.db_prod_rows} анкет)`;
+                document.getElementById('metricDbTest').innerText = `${d.db_test_kb} КБ (${d.db_test_rows} анкет)`;
+            } catch (e) { console.error(e); }
+        }
+
+        // SUPERADMIN PANEL & GIT
+        async function loadSuperAdminInfo() {
+            try {
+                const res = await fetch('/api/super/git_info');
+                if (res.ok) {
+                    const d = await res.json();
+                    document.getElementById('gitBranch').innerText = d.branch || 'beta';
+                    document.getElementById('gitCommit').innerText = d.last_commit || '—';
+                }
+
+                // Load destruction logs
+                const logsRes = await fetch('/api/super/destruction_logs');
+                if (logsRes.ok) {
+                    const logs = await logsRes.json();
+                    const tbody = document.getElementById('destructionLogsTbody');
+                    if (!logs || logs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 12px;">Записей уничтожения нет</td></tr>';
+                    } else {
+                        let html = '';
+                        logs.forEach(l => {
+                            html += `<tr>
+                                <td data-label="№ Акта"><b>${escapeHtml(l.act_number || '—')}</b></td>
+                                <td data-label="ID кандидата">#${l.candidate_id}</td>
+                                <td data-label="Платформа">${escapeHtml(l.platform || 'tg')}</td>
+                                <td data-label="Причина">${escapeHtml(l.reason || '—')}</td>
+                                <td data-label="Дата уничтожения" style="color: var(--text-muted);">${escapeHtml(l.destroyed_at || '—')}</td>
+                            </tr>`;
+                        });
+                        tbody.innerHTML = html;
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function gitPull() {
+            showToast("Выполняется git pull...");
+            const res = await fetch('/api/super/git_pull', { method: 'POST' });
+            if (res.ok) {
+                const d = await res.json();
+                showToast("Git Pull: " + (d.output || "Успешно"));
+                loadSuperAdminInfo();
+            }
+        }
+
+        async function restartBotService() {
+            if (!confirm("Перезапустить фоновый сервис бота?")) return;
+            showToast("Перезапуск службы...");
+            const res = await fetch('/api/super/restart_bot', { method: 'POST' });
+            if (res.ok) showToast("Команда перезапуска отправлена!");
+        }
+
+        async function clearAllTestData() {
+            if (!confirm("ВНИМАНИЕ: Удалить все тестовые заявки (#900000+)? Боевые анкеты не будут затронуты.")) return;
+            const res = await fetch('/api/super/clear_tests', { method: 'POST' });
+            if (res.ok) {
+                const d = await res.json();
+                showToast(`Удалено тестовых анкет: ${d.deleted_candidates}`);
+                loadCandidates(1);
+            }
+        }
+
+        async function updateCooldown() {
+            const sec = document.getElementById('cooldownSelect').value;
+            const res = await fetch('/api/super/set_cooldown', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seconds: parseInt(sec) })
+            });
+            if (res.ok) showToast("Таймаут сохранен!");
+        }
+
+        // INQUIRIES
+        async function loadInquiries() {
+            const listEl = document.getElementById('inquiriesList');
+            try {
+                const res = await fetch('/api/inquiries');
+                if (!res.ok) return;
+                const items = await res.json();
+                if (!items || items.length === 0) {
+                    listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 24px;">Нет открытых обращений</div>';
+                    return;
+                }
+                let html = '';
+                items.forEach(inq => {
+                    html += `<div style="background-color: var(--surface-card); border: 1px solid var(--surface-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <b>#${inq.inquiry_id} | ${escapeHtml(inq.full_name || 'Соискатель')} (${escapeHtml(inq.phone || '—')})</b>
+                            <span class="badge-status st-work">${escapeHtml(inq.status || 'Новое')}</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-main); background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px;">
+                            ${escapeHtml(inq.question_text || '')}
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 4px;">
+                            <input type="text" id="replyInq_${inq.inquiry_id}" class="input-box" style="flex: 1;" placeholder="Ответ соискателю в бот...">
+                            <button class="btn" onclick="sendInquiryReply(${inq.inquiry_id})">Отправить ответ</button>
+                        </div>
+                    </div>`;
+                });
+                listEl.innerHTML = html;
+            } catch (e) { console.error(e); }
+        }
+
+        async function sendInquiryReply(inquiryId) {
+            const inp = document.getElementById(`replyInq_${inquiryId}`);
+            const text = (inp.value || '').trim();
+            if (!text) return;
+            const res = await fetch(`/api/inquiries/${inquiryId}/reply`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reply: text })
+            });
+            if (res.ok) {
+                showToast("Ответ успешно отправлен соискателю!");
+                loadInquiries();
+            }
+        }
+
+        // ADMINS
+        async function loadAdmins() {
+            try {
+                const res = await fetch('/api/admins');
+                if (!res.ok) return;
+                const admins = await res.json();
+                const tbody = document.getElementById('adminsTbody');
+                if (!admins || admins.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Список пуст</td></tr>';
+                    return;
+                }
+                let html = '';
+                admins.forEach(a => {
+                    const notifyBtn = `<button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; cursor: pointer;" onclick="toggleAdminNotify(${a.user_id})" title="Включить / отключить уведомления в ЛС">
+                        ${a.notify_dm ? '<span style="color: #34d399; font-weight: 700;">🔔 Вкл</span>' : '<span style="color: #f87171; font-weight: 700;">🔕 Выкл</span>'}
+                    </button>`;
+                    const pwdBadge = a.has_password
+                        ? '<span style="color: #34d399; font-size: 11px;">✅ Задан</span>'
+                        : '<span style="color: #f59e0b; font-size: 11px;">⚠️ Не задан</span>';
+                    const nameLabel = a.full_name ? `${escapeHtml(a.full_name)} <span style="color:var(--text-muted); font-size:11px;">(${a.user_id})</span>` : `<code>${a.user_id}</code>`;
+                    const isSuper = a.role === 'super' || a.role === 'superadmin';
+                    const roleSelect = `<select class="select-box" style="padding: 2px 6px; font-size: 11px; font-weight: 600; background: var(--surface-card);" onchange="changeAdminRole(${a.user_id}, this.value)" ${isSuper ? 'disabled' : ''}>
+                        <option value="hr" ${a.role === 'hr' ? 'selected' : ''}>👔 HR (Кадры)</option>
+                        <option value="tech" ${a.role === 'tech' ? 'selected' : ''}>🛠 Tech (Инженер)</option>
+                        <option value="depot" ${a.role === 'depot' ? 'selected' : ''}>🚋 Депо (Рефералы)</option>
+                        ${isSuper ? '<option value="super" selected>👑 SuperAdmin</option>' : ''}
+                    </select>`;
+
+                    html += `<tr>
+                        <td data-label="Сотрудник"><b>${nameLabel}</b></td>
+                        <td data-label="Роль">${roleSelect}</td>
+                        <td data-label="Пароль">${pwdBadge}</td>
+                        <td data-label="Уведомления">${notifyBtn}</td>
+                        <td data-label="Назначен" style="color: var(--text-muted); font-size: 11px;">${a.added_at || '—'}</td>
+                        <td data-label="Действия">
+                            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                                <button class="btn btn-secondary" style="padding: 4px 6px; font-size: 11px;" onclick="setAdminPasswordPrompt(${a.user_id})">🔑 Пароль</button>
+                                <button class="btn btn-secondary" style="padding: 4px 6px; font-size: 11px;" onclick="notifyAdminPanel(${a.user_id})">📲 Доступ</button>
+                                ${!isSuper ? `<button class="btn btn-danger" style="padding: 4px 6px; font-size: 11px;" onclick="removeAdmin(${a.user_id})">Отозвать</button>` : ''}
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.error(e); }
+        }
+
+        async function toggleAdminNotify(userId) {
+            try {
+                const res = await fetch('/api/admins/toggle_notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                if (res.ok) {
+                    const d = await res.json();
+                    showToast(`Уведомления для ${userId}: ${d.notify_dm ? 'ВКЛЮЧЕНЫ 🔔' : 'ОТКЛЮЧЕНЫ 🔕'}`);
+                    loadAdmins();
+                } else {
+                    showToast("Ошибка переключения уведомлений");
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function changeAdminRole(userId, newRole) {
+            try {
+                const res = await fetch('/api/admins/set_role', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, role: newRole })
+                });
+                if (res.ok) {
+                    showToast(`Роль сотрудника ${userId} изменена на: ${newRole.toUpperCase()}`);
+                    loadAdmins();
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || "Ошибка смены роли");
+                    loadAdmins();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function toggleGlobalNotifications(enable) {
+            try {
+                const res = await fetch('/api/settings/toggle_notifications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enable })
+                });
+                if (res.ok) {
+                    showToast(enable ? "🔔 Все уведомления сотрудникам ВКЛЮЧЕНЫ" : "🔕 Все уведомления сотрудникам ОТКЛЮЧЕНЫ");
+                    loadAdmins();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // DEPOT REFERRALS
+        async function loadDepotReferrals() {
+            const userId = localStorage.getItem('uet_user_id') || '';
+            const tbody = document.getElementById('depotReferralsTbody');
+            const linkInput = document.getElementById('depotRefLinkInput');
+            const botUsername = 'UetFeedback_bot';
+            const refLink = userId ? `https://t.me/${botUsername}?start=ref_${userId}` : `https://t.me/${botUsername}?start=ref_depot`;
+            if (linkInput) linkInput.value = refLink;
+
+            try {
+                const url = (currentUserRole === 'depot' && userId)
+                    ? `/api/depot/referrals?user_id=${userId}`
+                    : `/api/depot/referrals`;
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const list = data.candidates || data.referrals || [];
+                const elTot = document.getElementById('statDepotTotal');
+                const elProg = document.getElementById('statDepotInProgress');
+                const elHired = document.getElementById('statDepotHired');
+                const elBonus = document.getElementById('statDepotBonus');
+                if (elTot) elTot.innerText = data.total_referred ?? list.length;
+                if (elProg) elProg.innerText = data.in_progress ?? 0;
+                if (elHired) elHired.innerText = data.hired ?? 0;
+                if (elBonus) elBonus.innerText = (data.bonus_total ?? ((data.hired || 0) * 10000)).toLocaleString('ru-RU') + ' ₽';
+
+                if (!tbody) return;
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">Пока нет кандидатов по вашей ссылке. Поделитесь ссылкой с кандидатами!</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                list.forEach(c => {
+                    const isHired = (c.status || '').toLowerCase().includes('принят') || (c.status || '').toLowerCase().includes('трудоустроен');
+                    const bonusLabel = isHired ? '<span style="color: #34d399; font-weight: 700;">+10 000 ₽</span>' : '<span style="color: var(--text-muted);">В обработке</span>';
+                    let stBadge = 'st-new';
+                    if ((c.status || '').toLowerCase().includes('работ')) stBadge = 'st-work';
+                    if (isHired) stBadge = 'st-hired';
+
+                    html += `<tr>
+                        <td data-label="№ Заявки"><b>#${c.ticket_id}</b></td>
+                        <td data-label="ФИО соискателя"><b>${escapeHtml(c.full_name || 'Соискатель')}</b></td>
+                        <td data-label="Вакансия">${escapeHtml(c.vacancy || '—')}</td>
+                        <td data-label="Статус"><span class="badge-status ${stBadge}">${escapeHtml(c.status || 'Новая')}</span></td>
+                        <td data-label="Дата подачи" style="color: var(--text-muted); font-size: 12px;">${c.created_at || '—'}</td>
+                        <td data-label="Вознаграждение">${bonusLabel}</td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function copyDepotRefLink() {
+            const input = document.getElementById('depotRefLinkInput');
+            if (!input) return;
+            input.select();
+            input.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(input.value);
+            showToast("Реферальная ссылка скопирована в буфер обмена!");
+        }
+
+        function shareDepotRefLink() {
+            const input = document.getElementById('depotRefLinkInput');
+            const link = input ? input.value : 'https://t.me/UetFeedback_bot';
+            const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Работа в МУП «Ульяновскэлектротранс»! Заполни анкету по ссылке: ")}`;
+            window.open(tgShareUrl, '_blank');
+        }
+
+        async function addNewAdmin() {
+            const uid = document.getElementById('newAdminId').value.trim();
+            const role = document.getElementById('newAdminRole').value;
+            const pwd = document.getElementById('newAdminPassword').value.trim();
+            if (!uid) return;
+            const res = await fetch('/api/admins/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid, role, password: pwd })
+            });
+            if (res.ok) {
+                showToast("Сотрудник назначен и оповещен!");
+                document.getElementById('newAdminId').value = '';
+                document.getElementById('newAdminPassword').value = '';
+                loadAdmins();
+            }
+        }
+
+        async function setAdminPasswordPrompt(uid) {
+            const pwd = prompt(`Введите новый пароль для сотрудника с ID ${uid}:`);
+            if (!pwd || !pwd.trim()) return;
+            const res = await fetch('/api/admins/set_password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid, password: pwd.trim() })
+            });
+            if (res.ok) {
+                showToast("Пароль установлен и отправлен в Telegram!");
+                loadAdmins();
+            } else {
+                alert("Ошибка установки пароля");
+            }
+        }
+
+        async function notifyAdminPanel(uid) {
+            const res = await fetch('/api/admins/notify_panel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid })
+            });
+            if (res.ok) {
+                showToast("Инструкция отправлена сотруднику в Telegram!");
+            }
+        }
+
+        async function notifyAllAdminsPanel() {
+            if (!confirm("Разослать инструкции по доступу к панели всем сотрудникам?")) return;
+            const res = await fetch('/api/admins/notify_panel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: 0 })
+            });
+            const d = await res.json();
+            showToast(`Уведомления отправлены (${d.sent_count || 0})`);
+        }
+
+        async function syncAdminsFromEnv() {
+            const res = await fetch('/api/admins/sync', { method: 'POST' });
+            if (res.ok) {
+                showToast("Синхронизация с .env завершена!");
+                loadAdmins();
+            }
+        }
+
+        async function removeAdmin(uid) {
+            if (!confirm(`Отозвать права администратора у ID ${uid}?`)) return;
+            const res = await fetch('/api/admins/remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid })
+            });
+            if (res.ok) {
+                showToast("Права отозваны!");
+                loadAdmins();
+            }
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') loadCandidates(1);
         });
 
-        // Запуск при загрузке DOM
-        document.addEventListener('DOMContentLoaded', initTheme);
+        document.getElementById('authPasswordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') submitAuth('phrase');
+        });
+        document.getElementById('authIdInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') submitAuth('id');
+        });
+
+        // Init Telegram Mini App environment
+        if (window.Telegram && window.Telegram.WebApp) {
+            try {
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
+            } catch (e) {
+                console.warn("TMA ready/expand error:", e);
+            }
+        }
+
+        // Init session or auto-login from Telegram WebApp
+        const savedRole = localStorage.getItem('uet_role');
+        const savedUserId = localStorage.getItem('uet_user_id');
+        const tmaInitData = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp.initData : null;
+
+        if (savedUserId) {
+            verifySessionAndInit(savedUserId, savedRole);
+        } else if (savedRole) {
+            currentUserRole = savedRole;
+            applyRolePermissions();
+            loadStats();
+            loadCandidates(1);
+        } else if (tmaInitData && tmaInitData.length > 0) {
+            submitAuthWithTelegram(tmaInitData);
+        } else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+            const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+            submitAuthWithTelegram(String(tgUser.id));
+        } else {
+            // Mandatory login screen
+            currentUserRole = null;
+            openAuthModal(false);
+        }
+
+        async function verifySessionAndInit(uid, role) {
+            try {
+                const res = await fetch('/api/auth/verify_session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: uid, role: role })
+                });
+                const d = await res.json();
+                if (d.ok) {
+                    currentUserRole = d.role;
+                    localStorage.setItem('uet_role', d.role);
+                    applyRolePermissions();
+                    loadStats();
+                    loadCandidates(1);
+                } else if (d.revoked) {
+                    localStorage.removeItem('uet_role');
+                    localStorage.removeItem('uet_user_id');
+                    alert('⚠️ Ваши служебные полномочия были отозваны администратором.');
+                    window.location.href = '/';
+                } else {
+                    currentUserRole = null;
+                    openAuthModal(false);
+                }
+            } catch (e) {
+                currentUserRole = role;
+                applyRolePermissions();
+                loadStats();
+                loadCandidates(1);
+            }
+        }
+
+        async function submitAuthWithTelegram(initDataOrId) {
+            try {
+                const isRawInitData = typeof initDataOrId === 'string' && (initDataOrId.includes('hash=') || initDataOrId.includes('&user='));
+                const payload = isRawInitData
+                    ? { method: 'tma', init_data: initDataOrId }
+                    : { method: 'tguid', value: String(initDataOrId) };
+
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const d = await res.json();
+                if (d.ok) {
+                    currentUserRole = d.role;
+                    localStorage.setItem('uet_role', d.role);
+                    localStorage.setItem('uet_user_id', d.user_id);
+                    applyRolePermissions();
+                    closeAuthModal();
+                    loadStats();
+                    loadCandidates(1);
+                    showToast("Вход выполнен: " + (d.label || d.role));
+                } else {
+                    openAuthModal(false);
+                    showToast(d.error || "Необходима авторизация");
+                }
+            } catch (e) {
+                console.error(e);
+                openAuthModal(false);
+            }
+        }
+
+        async function loadDashboardVacancies() {
+            try {
+                const res = await fetch('/api/vacancies?all=1');
+                const data = await res.json();
+                if (data.ok && Array.isArray(data.vacancies)) {
+                    const sel = document.getElementById('newCandVacancy');
+                    if (!sel) return;
+                    const curVal = sel.value;
+                    let html = '';
+                    data.vacancies.forEach(v => {
+                        const icon = v.icon || '💼';
+                        const statusBadge = v.is_open ? '' : ' (набор приостановлен)';
+                        html += `<option value="${escapeHtml(v.title)}">${icon} ${escapeHtml(v.title)}${statusBadge}</option>`;
+                    });
+                    sel.innerHTML = html;
+                    if (curVal) sel.value = curVal;
+                }
+            } catch (e) {
+                console.warn('loadDashboardVacancies error:', e);
+            }
+        }
+
+        initTheme();
+        loadStats();
+        loadCandidates(1);
+        loadDashboardVacancies();
     </script>
 </body>
 </html>

@@ -229,17 +229,8 @@ class WebPanel:
         )
 
     async def handle_kadry_page(self, request: web.Request) -> web.Response:
-        """Модульная дизайн-система и адаптивная навигация HR-платформы «КАДРЫ»."""
-        if KADRY_HTML_PATH.exists():
-            content = KADRY_HTML_PATH.read_text(encoding="utf-8")
-        else:
-            content = "<h1>Ошибка: Шаблон kadry.html не найден</h1>"
-        return web.Response(
-            text=content,
-            content_type="text/html",
-            charset="utf-8",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
-        )
+        """Модульная дизайн-система и адаптивная навигация HR-платформы «КАДРЫ» (служебный рабочий кабинет)."""
+        return await self.handle_dashboard_page(request)
 
     async def handle_api_candidate_lookup(self, request: web.Request) -> web.Response:
         """Поиск статуса анкеты соискателем по номеру заявки или номеру телефона."""

@@ -1339,7 +1339,7 @@
             try {
                 const resp = await fetch('/api/system/maintenance');
                 const data = await resp.json();
-                state.isMaintenance = !!data.maintenance_mode;
+                state.isMaintenance = !!(data.maintenance !== undefined ? data.maintenance : (data.maintenance_mode !== undefined ? data.maintenance_mode : data.active));
                 updateMaintenanceUI();
             } catch (e) {}
         }
@@ -1364,8 +1364,8 @@
         }
 
         async function triggerToggleMaintenance() {
-            if (state.role !== 'superadmin') {
-                alert('Управление режимом ТО доступно только Супер-Администратору.');
+            if (!['superadmin', 'super', 'tech', 'admin'].includes(state.role)) {
+                alert('Управление режимом ТО доступно только Администратору.');
                 return;
             }
             const targetState = !state.isMaintenance;
@@ -1378,11 +1378,11 @@
                 const resp = await fetch('/api/system/maintenance', {
                     method: 'POST',
                     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify({ active: targetState })
+                    body: JSON.stringify({ active: targetState, enabled: targetState, maintenance: targetState, maintenance_mode: targetState })
                 });
                 const res = await resp.json();
                 if (res.ok) {
-                    state.isMaintenance = !!res.maintenance_mode;
+                    state.isMaintenance = !!(res.maintenance !== undefined ? res.maintenance : (res.maintenance_mode !== undefined ? res.maintenance_mode : res.active));
                     updateMaintenanceUI();
                     alert(res.message || 'Статус режима ТО успешно изменен.');
                 } else {

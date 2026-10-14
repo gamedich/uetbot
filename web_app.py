@@ -62,20 +62,64 @@ KADRY_HTML_PATH = TEMPLATES_DIR / "kadry.html"
 
 
 @web.middleware
+async def security_headers_middleware(request: web.Request, handler):
+    """OWASP Security Headers: X-Content-Type-Options, Referrer-Policy, CSP frame-ancestors."""
+    response = await handler(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; "
+        "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org;"
+    )
+    return response
+
+
+@web.middleware
 async def cors_middleware(request: web.Request, handler):
-    """Глобальный CORS middleware для бесшовной работы WebApp в Telegram и обычных браузерах."""
+    """Глобальный CORS middleware с валидацией доверенных источников для защиты ПДн."""
     if request.method == "OPTIONS":
-        response = web.Response(status=200)
+        response = web.Response(status=204)
     else:
         try:
             response = await handler(request)
         except web.HTTPException as ex:
             response = ex
-    origin = request.headers.get("Origin", "*")
-    response.headers["Access-Control-Allow-Origin"] = origin
+
+    origin = request.headers.get("Origin")
+    host = request.headers.get("Host", "")
+
+    web_app_url = str(CONFIG.get("WEB_APP_URL", "")).rstrip("/")
+    allowed_domains = (
+        "web.telegram.org",
+        "webk.telegram.org",
+        "webz.telegram.org",
+        "sslip.io",
+    )
+
+    is_trusted = False
+    if not origin:
+        is_trusted = True
+    elif origin.startswith("http://localhost") or origin.startswith("http://127.0.0.1") or (host and host in origin):
+        is_trusted = True
+    elif web_app_url and origin.startswith(web_app_url):
+        is_trusted = True
+    else:
+        for dom in allowed_domains:
+            if origin.endswith(dom) or f".{dom}" in origin:
+                is_trusted = True
+                break
+
+    if is_trusted and origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Vary"] = "Origin"
+    elif not origin:
+        pass
+    else:
+        response.headers["Access-Control-Allow-Origin"] = "null"
+
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-Auth-Token"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
 
@@ -162,7 +206,7 @@ class WebPanel:
         self.db = db
         self.bot = bot
         self.start_time = datetime.now()
-        self.app = web.Application(middlewares=[cors_middleware])
+        self.app = web.Application(middlewares=[cors_middleware, security_headers_middleware])
         self._setup_routes()
 
     def _setup_routes(self) -> None:
@@ -404,20 +448,29 @@ class WebPanel:
 
     async def handle_api_system_maintenance_get(self, request: web.Request) -> web.Response:
         """Получить текущий статус глобального режима техобслуживания."""
+        active = is_maintenance_active()
         return web.json_response({
             "ok": True,
-            "maintenance": is_maintenance_active()
+            "maintenance": active,
+            "maintenance_mode": active,
+            "active": active
         })
 
     async def handle_api_system_maintenance_set(self, request: web.Request) -> web.Response:
-        """Включить или отключить глобальный режим ТО (SuperAdmin / Tech)."""
-        _, err = self.require_roles(request, {"superadmin", "super", "tech"})
+        """Включить или отключить глобальный режим ТО (SuperAdmin / Tech / Admin)."""
+        _, err = self.require_roles(request, {"superadmin", "super", "tech", "admin"})
         if err:
             return err
         try:
-            data = await request.json()
-            if "enabled" in data:
+            data = await request.json() if request.can_read_body else {}
+            if "active" in data:
+                new_state = bool(data.get("active"))
+            elif "enabled" in data:
                 new_state = bool(data.get("enabled"))
+            elif "maintenance" in data:
+                new_state = bool(data.get("maintenance"))
+            elif "maintenance_mode" in data:
+                new_state = bool(data.get("maintenance_mode"))
             else:
                 new_state = not is_maintenance_active()
         except Exception:
@@ -428,6 +481,8 @@ class WebPanel:
         return web.json_response({
             "ok": True,
             "maintenance": actual,
+            "maintenance_mode": actual,
+            "active": actual,
             "message": f"Режим ТО {'ВКЛЮЧЕН (приём анкет на паузе)' if actual else 'ВЫКЛЮЧЕН (штатная работа)'}"
         })
 
@@ -949,7 +1004,7 @@ class WebPanel:
         ticket_id = int(tid_raw)
 
         # Соискателю разрешено смотреть только свою собственную анкету
-        if session.get("role") == "applicant":
+        if session.get("role") in {"applicant", "candidate"}:
             user_uid = str(session.get("uid", ""))
             if user_uid != str(ticket_id):
                 cand_check = self.db.get_candidate(ticket_id)
@@ -1624,7 +1679,17 @@ class WebPanel:
         }
         return web.Response(text=csv_content, headers=headers)
 
-    # SUPERADMIN & GIT API
+    # SUPERADMIN & GIT API (Неблокирующий асинхронный вызов)
+    async def _run_git_command(self, *args: str) -> Tuple[int, str]:
+        proc = await asyncio.create_subprocess_exec(
+            "git", *args,
+            cwd=str(CONFIG.BASE_DIR),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
+        return proc.returncode or 0, (stdout.decode("utf-8", errors="replace") if stdout else "").strip()
+
     async def handle_api_super_git_info(self, request: web.Request) -> web.Response:
         _, err = self.require_roles(request, {"superadmin", "super"})
         if err:
@@ -1632,14 +1697,11 @@ class WebPanel:
         branch = "beta"
         last_commit = "—"
         try:
-            b_out = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=str(CONFIG.BASE_DIR)).decode().strip()
-            if b_out:
+            rc1, b_out = await self._run_git_command("rev-parse", "--abbrev-ref", "HEAD")
+            if rc1 == 0 and b_out:
                 branch = b_out
-            c_out = subprocess.check_output(
-                ["git", "log", "-1", "--pretty=format:%h - %s (%cd)", "--date=short"],
-                cwd=str(CONFIG.BASE_DIR)
-            ).decode().strip()
-            if c_out:
+            rc2, c_out = await self._run_git_command("log", "-1", "--pretty=format:%h - %s (%cd)", "--date=short")
+            if rc2 == 0 and c_out:
                 last_commit = c_out
         except Exception as e:
             logger.warning("Git info error: %s", e)
@@ -1654,8 +1716,8 @@ class WebPanel:
         if err:
             return err
         try:
-            output = subprocess.check_output(["git", "pull"], cwd=str(CONFIG.BASE_DIR), stderr=subprocess.STDOUT).decode().strip()
-            return web.json_response({"ok": True, "output": output})
+            rc, output = await self._run_git_command("pull")
+            return web.json_response({"ok": (rc == 0), "output": output})
         except Exception as e:
             return web.json_response({"ok": False, "output": str(e)}, status=500)
 
@@ -1664,8 +1726,8 @@ class WebPanel:
         if err:
             return err
         try:
-            output = subprocess.check_output(["git", "status", "--short"], cwd=str(CONFIG.BASE_DIR), stderr=subprocess.STDOUT).decode().strip()
-            return web.json_response({"ok": True, "status": output})
+            rc, output = await self._run_git_command("status", "--short")
+            return web.json_response({"ok": (rc == 0), "status": output})
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=500)
 
@@ -1676,12 +1738,9 @@ class WebPanel:
         try:
             body = await request.json() if request.can_read_body else {}
             msg = body.get("message", "feat: update portal UI and restore git/admins/candidate panels")
-            subprocess.check_output(["git", "add", "."], cwd=str(CONFIG.BASE_DIR), stderr=subprocess.STDOUT)
-            output = subprocess.check_output(["git", "commit", "-m", msg], cwd=str(CONFIG.BASE_DIR), stderr=subprocess.STDOUT).decode().strip()
-            return web.json_response({"ok": True, "output": output})
-        except subprocess.CalledProcessError as e:
-            err = e.output.decode() if e.output else str(e)
-            return web.json_response({"ok": False, "output": err}, status=400)
+            await self._run_git_command("add", ".")
+            rc, output = await self._run_git_command("commit", "-m", msg)
+            return web.json_response({"ok": (rc == 0), "output": output})
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=500)
 
@@ -2071,30 +2130,56 @@ class WebPanel:
             })
 
     async def handle_api_user_change_password(self, request: web.Request) -> web.Response:
+        session = self.get_auth_session(request)
+        if not session:
+            return web.json_response({"ok": False, "error": "Требуется авторизация"}, status=401)
         try:
             data = await request.json()
-            user_id = int(data.get("user_id") or CONFIG.get("SUPER_ADMIN_ID", 7657422832))
+            caller_uid = int(session.get("uid") or 0)
+            caller_role = str(session.get("role", "")).lower()
+            target_uid = int(data.get("user_id") or caller_uid)
+
+            # Кандидаты/соискатели не могут менять пароли администраторов
+            if caller_role in {"candidate", "applicant"}:
+                return web.json_response({"ok": False, "error": "Соискателям недоступно изменение служебных паролей"}, status=403)
+
+            # Менять чужой пароль разрешено только супер-администратору
+            if target_uid != caller_uid and caller_role not in {"superadmin", "super"}:
+                return web.json_response({"ok": False, "error": "Недостаточно прав для смены чужого пароля"}, status=403)
+
             new_pwd = str(data.get("new_password") or data.get("password") or "").strip()
-            if len(new_pwd) < 3:
-                return web.json_response({"ok": False, "error": "Пароль должен содержать минимум 3 символа"}, status=400)
-            self.db.set_admin_password(user_id, new_pwd)
+            if len(new_pwd) < 4:
+                return web.json_response({"ok": False, "error": "Пароль должен содержать минимум 4 символа"}, status=400)
+            self.db.set_admin_password(target_uid, new_pwd)
             return web.json_response({"ok": True, "message": "Пароль успешно сохранён"})
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=500)
 
     async def handle_api_user_set_email(self, request: web.Request) -> web.Response:
+        session = self.get_auth_session(request)
+        if not session:
+            return web.json_response({"ok": False, "error": "Требуется авторизация"}, status=401)
         try:
             data = await request.json()
-            user_id = int(data.get("user_id") or CONFIG.get("SUPER_ADMIN_ID", 7657422832))
+            caller_uid = int(session.get("uid") or 0)
+            caller_role = str(session.get("role", "")).lower()
+            target_uid = int(data.get("user_id") or caller_uid)
+
+            if target_uid != caller_uid and caller_role not in {"superadmin", "super"}:
+                return web.json_response({"ok": False, "error": "Недостаточно прав"}, status=403)
+
             email = str(data.get("email") or "").strip()
             if not email or "@" not in email:
                 return web.json_response({"ok": False, "error": "Некорректный адрес электронной почты"}, status=400)
-            self.db.set_admin_email(user_id, email)
+            self.db.set_admin_email(target_uid, email)
             return web.json_response({"ok": True, "message": f"Почта {email} успешно привязана"})
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=500)
 
     async def handle_api_settings_role_save(self, request: web.Request) -> web.Response:
+        _, err = self.require_roles(request, {"superadmin", "super"})
+        if err:
+            return err
         try:
             data = await request.json()
             role = str(data.get("role") or "general").strip().lower()

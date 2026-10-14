@@ -539,8 +539,14 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
             self.assertIn('ticket_id', data)
             t_id = data['ticket_id']
 
-            # Проверка детализации
-            req_detail = make_mocked_request('GET', f'/api/candidate/{t_id}', match_info={'id': str(t_id)})
+            # Проверка детализации (с правами HR / SuperAdmin)
+            from web_app import generate_auth_token
+            auth_token = generate_auth_token(7657422832, "superadmin", "Главный Администратор")
+            req_detail = make_mocked_request(
+                'GET', f'/api/candidate/{t_id}', 
+                match_info={'id': str(t_id)},
+                headers={'Authorization': f'Bearer {auth_token}'}
+            )
             resp_detail = await panel.handle_api_candidate_detail(req_detail)
             cand_json = json.loads(resp_detail.text)
             self.assertEqual(cand_json['full_name'], "Веб Кандидат Сергеевич")
@@ -602,8 +608,13 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
                 target_item = next(v for v in data_all['vacancies'] if v['title'] == target_vac)
                 self.assertFalse(target_item['is_open'])
 
-                # 4. Переключаем обратно через API
-                req_toggle = make_mocked_request('POST', '/api/vacancies/toggle')
+                # 4. Переключаем обратно через API (с правами HR / SuperAdmin)
+                from web_app import generate_auth_token
+                auth_token = generate_auth_token(7657422832, "superadmin", "Главный Администратор")
+                req_toggle = make_mocked_request(
+                    'POST', '/api/vacancies/toggle',
+                    headers={'Authorization': f'Bearer {auth_token}', 'Content-Type': 'application/json'}
+                )
                 req_toggle._read_bytes = json.dumps({"title": target_vac}).encode('utf-8')
                 resp_toggle = await panel.handle_api_vacancies_toggle(req_toggle)
                 toggle_data = json.loads(resp_toggle.text)

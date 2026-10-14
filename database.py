@@ -54,12 +54,8 @@ class ResumeDB:
         self._init_and_migrate_db(is_test=False)
         self._init_and_migrate_db(is_test=True)
 
-    def connection(self, is_test: bool = False) -> sqlite3.Connection:
-        """Алиас для вызовов self.connection()"""
-        return self._get_connection(is_test=is_test)
-
-    def _get_connection(self, is_test: bool = False) -> sqlite3.Connection:
-        """Создание соединения с оптимизациями для многопоточного доступа и WAL"""
+    def _raw_connect(self, is_test: bool = False) -> sqlite3.Connection:
+        """Создание низкоуровневого соединения к SQLite с параметрами WAL."""
         target = self.test_db_path if is_test else self.db_path
         conn = sqlite3.connect(target, timeout=30.0)
         conn.execute("PRAGMA journal_mode=WAL;")
@@ -68,6 +64,22 @@ class ResumeDB:
         conn.execute("PRAGMA cache_size=-64000;")
         conn.execute("PRAGMA temp_store=MEMORY;")
         return conn
+
+    @contextlib.contextmanager
+    def connection(self, is_test: bool = False) -> Generator[sqlite3.Connection, None, None]:
+        """Контекстный менеджер безопасного подключения к SQLite с транзакцией и закрытием соединения."""
+        conn = self._raw_connect(is_test=is_test)
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
+    @contextlib.contextmanager
+    def _get_connection(self, is_test: bool = False) -> Generator[sqlite3.Connection, None, None]:
+        """Совместимый контекстный менеджер _get_connection() с гарантированным закрытием соединения."""
+        with self.connection(is_test=is_test) as conn:
+            yield conn
 
     def disable_all_hr_notifications(self) -> int:
         

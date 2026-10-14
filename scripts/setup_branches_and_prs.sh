@@ -28,6 +28,20 @@ gh auth status || true
 git config user.name "UETBot Dev"
 git config user.email "bot@uetbot.local"
 
+run_with_retry() {
+    local max_attempts=5
+    local attempt=1
+    until "$@"; do
+        if [ "$attempt" -ge "$max_attempts" ]; then
+            echo "[ERROR] Command failed after $attempt attempts: $*" >&2
+            return 1
+        fi
+        echo "[WARN] Command failed (attempt $attempt/$max_attempts), retrying in 2 seconds..."
+        attempt=$((attempt + 1))
+        sleep 2
+    done
+}
+
 # Функция безопасного создания ветки, коммита, пуша и создания PR
 create_branch_and_pr() {
     local branch_name="$1"
@@ -38,11 +52,10 @@ create_branch_and_pr() {
     echo "--------------------------------------------------------"
     echo ">> Обработка ветки: ${branch_name}"
     
-    # Переключаемся на актуальный main
+    # Переключаемся на локальный main
     git checkout main
-    git pull origin main
 
-    # Создаем или пересоздаем локальную ветку
+    # Создаем или пересоздаем локальную ветку от main
     if git show-ref --verify --quiet "refs/heads/${branch_name}"; then
         git branch -D "${branch_name}"
     fi
@@ -56,13 +69,13 @@ create_branch_and_pr() {
     # Делаем коммит строго по Conventional Commits
     git commit -m "${commit_msg}"
 
-    # Пушим ветку в origin
+    # Пушим ветку в origin с повторными попытками при сбое прокси
     echo ">> Пуш ветки ${branch_name} в origin..."
-    git push origin "${branch_name}" --force
+    run_with_retry git push origin "${branch_name}" --force
 
     # Создаем Pull Request через gh
     echo ">> Создание Pull Request для ${branch_name}..."
-    gh pr create \
+    run_with_retry gh pr create \
         --base main \
         --head "${branch_name}" \
         --title "${pr_title}" \

@@ -2651,8 +2651,8 @@ class WebPanel:
     async def handle_api_system_run_tests(self, request: web.Request) -> web.Response:
         try:
             proc = await asyncio.create_subprocess_exec(
-                "/root/uetbot/venv/bin/python",
-                "/root/uetbot/run_tests.py",
+                "/root/uetbot/venv/bin/pytest",
+                "tests/",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )

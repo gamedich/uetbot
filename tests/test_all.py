@@ -2,11 +2,10 @@ import os
 import sys
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
-services_dir = os.path.join(current_dir, "services")
-if services_dir not in sys.path:
-    sys.path.insert(0, services_dir)
+project_root = os.path.dirname(current_dir)
+for p in [project_root, os.path.join(project_root, "services"), current_dir]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
 os.environ["DB_PATH"] = "/tmp/test_sec_suite.db"
 os.environ.setdefault("TG_BOT_TOKEN", f"{'1' * 9}:{'a' * 35}")
 import importlib.util
@@ -502,17 +501,7 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
         self.assertEqual(self.db.get_dynamic_text("test_key", "дефолт"), "Кастомный текст МУП УЭТ")
 
     def test_doc_generator_and_destruction_logs(self):
-        import importlib.util
-
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
-        spec = importlib.util.spec_from_file_location(
-            "doc_generator",
-            os.path.join(cur_dir, "services", "doc_generator.py")
-            if os.path.exists(os.path.join(cur_dir, "services", "doc_generator.py"))
-            else os.path.join(cur_dir, "doc_generator.py"),
-        )
-        doc_gen = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(doc_gen)
+        from services import doc_generator as doc_gen
 
         p1 = doc_gen.generate_destruction_act_docx(
             {

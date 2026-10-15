@@ -1047,14 +1047,19 @@ async def route_new_candidate_ticket(
     bot_instance: Bot,
     card_text: str,
     reply_markup: Optional[types.InlineKeyboardMarkup],
+    sender_info: Optional[str] = None,
 ) -> None:
     """
     Маршрутизация новой анкеты соискателя:
-    1. Гарантированная отправка в кадровый чат (HR_GROUP_ID).
-    2. Дублирование уполномоченным кадровикам с включенными уведомлениями в ЛС.
-    3. В режиме PROD разработчик изолирован от ПДн соискателей (ст. 6 152-ФЗ).
+    1. Добавление приписки об источнике/отправителе (sender_info).
+    2. Гарантированная отправка в кадровый чат (HR_GROUP_ID).
+    3. Дублирование уполномоченным кадровикам с включенными уведомлениями в ЛС.
+    4. В режиме PROD разработчик изолирован от ПДн соискателей (ст. 6 152-ФЗ).
     """
-    await _route_ticket_to_hr(bot_instance, card_text, reply_markup, include_pdn=True)
+    final_text = card_text
+    if sender_info:
+        final_text = f"{card_text}\n\n📨 <b>Отправлено через:</b> <i>{sender_info}</i>"
+    await _route_ticket_to_hr(bot_instance, final_text, reply_markup, include_pdn=True)
 
 
 async def route_new_inquiry_ticket(

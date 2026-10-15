@@ -1667,7 +1667,9 @@ async def cb_submit_final(callback: types.CallbackQuery, state: FSMContext, bot:
         hr_card = texts.format_hr_card_full(data)
 
     ticket_kb = make_ticket_keyboard(ticket_id)
-    await route_new_candidate_ticket(bot, hr_card, ticket_kb)
+    u_username = f"@{callback.from_user.username}" if callback.from_user.username else f"ID: {callback.from_user.id}"
+    sender_label = f"Telegram-бот соискателя ({callback.from_user.full_name}, {u_username})"
+    await route_new_candidate_ticket(bot, hr_card, ticket_kb, sender_info=sender_label)
 
 
 # ==============================================================================

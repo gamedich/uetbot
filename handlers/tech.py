@@ -777,7 +777,11 @@ async def cb_test_send_tg(event: Union[types.Message, types.CallbackQuery], bot:
     )
     cand = db.get_candidate(t_id)
     card = texts.format_hr_card_full(cand) if cand else f"🧪 ТЕСТОВАЯ АНКЕТА #{t_id}"
-    await route_new_candidate_ticket(bot, card, reply_markup=make_ticket_keyboard(t_id))
+    sender_user = event.from_user
+    u_role = "Главный администратор (SuperAdmin)" if sender_user.id == CONFIG.get("SUPER_ADMIN_ID") else "Инженер / HR"
+    u_username = f"@{sender_user.username}" if sender_user.username else f"ID: {sender_user.id}"
+    sender_label = f"{u_role} {sender_user.full_name} ({u_username}) [ручное тестирование]"
+    await route_new_candidate_ticket(bot, card, reply_markup=make_ticket_keyboard(t_id), sender_info=sender_label)
 
     if isinstance(event, types.CallbackQuery):
         await event.answer("Тестовая анкета TG отправлена!")
@@ -814,7 +818,11 @@ async def cb_test_send_vk(event: Union[types.Message, types.CallbackQuery], bot:
     )
     cand = db.get_candidate(t_id)
     card = texts.format_hr_card_full(cand) if cand else f"🧪 ТЕСТОВАЯ АНКЕТА VK #{t_id}"
-    await route_new_candidate_ticket(bot, card, reply_markup=make_ticket_keyboard(t_id))
+    sender_user = event.from_user
+    u_role = "Главный администратор (SuperAdmin)" if sender_user.id == CONFIG.get("SUPER_ADMIN_ID") else "Инженер / HR"
+    u_username = f"@{sender_user.username}" if sender_user.username else f"ID: {sender_user.id}"
+    sender_label = f"{u_role} {sender_user.full_name} ({u_username}) [тест шлюза VK]"
+    await route_new_candidate_ticket(bot, card, reply_markup=make_ticket_keyboard(t_id), sender_info=sender_label)
 
     if isinstance(event, types.CallbackQuery):
         await event.answer("Тестовая анкета VK отправлена!")

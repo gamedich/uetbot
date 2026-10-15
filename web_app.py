@@ -1806,7 +1806,8 @@ class WebPanel:
             # 4. Моментальная маршрутизация в кадровый чат (HR_GROUP_ID)
             if self.bot:
                 try:
-                    await route_new_candidate_ticket(self.bot, hr_card, ticket_kb)
+                    sender_label = "Официальный сайт / Портал соискателя (веб-форма)"
+                    await route_new_candidate_ticket(self.bot, hr_card, ticket_kb, sender_info=sender_label)
                 except Exception as e:
                     logger.error("Ошибка маршрутизации WEB-тикета #%s в HR-чат: %s", ticket_id, e)
 

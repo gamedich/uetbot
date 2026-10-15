@@ -801,7 +801,6 @@
                         <span>Выгрузить отчет по ГОСТ</span>
                     </button>
                 </div>
-            </div>
 
             <!-- Фильтры поиска -->
             <div
@@ -841,57 +840,7 @@
                     </table>
                 </div>
             </div>
-
-            <!-- КОНФИГУРАЦИЯ ЗАДАЧ И НАБОРА HR (ОТДЕЛЬНЫЙ КОНФИГ) -->
-            <div
-                class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors space-y-4">
-                <div class="flex flex-wrap justify-between items-center gap-3">
-                    <div>
-                        <h3 class="font-bold text-base flex items-center gap-2">
-                            <span>🎯 Кадровые задачи и режим набора предприятия</span>
-                            <span
-                                class="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">Отдельный
-                                конфиг</span>
-                        </h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Управление отображением набора в группу
-                            обучения со стипендией и текущими кадровыми задачами</p>
-                    </div>
-                    <button onclick="saveRecruitmentConfig()"
-                        class="px-4 py-2 bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition">
-                        Сохранить конфиг набора
-                    </button>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs pt-1">
-                    <div
-                        class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input id="hrCfgGroupTraining" type="checkbox" class="w-4 h-4 rounded accent-[#1371B9]">
-                            <span class="font-bold">Набор в новую группу обучения</span>
-                        </label>
-                        <p class="text-slate-400 text-[11px]">Показывает плашку спецнабора водителей на сайте (при
-                            выключении — обычный приём)</p>
-                    </div>
-                    <div
-                        class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
-                        <label class="block font-bold text-slate-600 dark:text-slate-300">Свободных мест в
-                            группе</label>
-                        <input id="hrCfgSeatsLeft" type="number" min="0" max="100" value="5"
-                            class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold">
-                        <p class="text-slate-400 text-[11px]">Динамический счетчик вакантных мест в группе</p>
-                    </div>
-                    <div
-                        class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
-                        <label class="block font-bold text-slate-600 dark:text-slate-300">Текущая задача для
-                            кадровиков</label>
-                        <input id="hrCfgTaskNote" type="text" placeholder="Штатный приём соискателей..."
-                            class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs">
-                        <p class="text-slate-400 text-[11px]">Внутренний приоритет для кадрового отдела</p>
-                    </div>
-                </div>
-            </div>
-
-    </div>
+        </div>
 
     <!-- =========================================================================
         4.0. ВОПРОСЫ И ОБРАЩЕНИЯ СОИСКАТЕЛЕЙ (INQUIRIES)

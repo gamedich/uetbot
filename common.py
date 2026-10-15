@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Общий модуль состояния, конфигурации, отказоустойчивости и служебных функций
 бота МУП «Ульяновскэлектротранс».
@@ -21,11 +20,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple, Union
 
-from aiohttp import ClientError, ClientSession, ClientTimeout
 from aiogram import BaseMiddleware, Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.exceptions import (
-    TelegramAPIError,
     TelegramBadRequest,
     TelegramForbiddenError,
     TelegramNetworkError,
@@ -33,7 +30,7 @@ from aiogram.exceptions import (
 )
 from aiogram.filters import BaseFilter
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.fsm.storage.base import BaseStorage, StorageKey, StateType
+from aiogram.fsm.storage.base import BaseStorage, StateType, StorageKey
 from aiogram.types import (
     BotCommand,
     BotCommandScopeAllGroupChats,
@@ -44,8 +41,9 @@ from aiogram.types import (
     MenuButtonWebApp,
     WebAppInfo,
 )
+from aiohttp import ClientError, ClientSession, ClientTimeout
 
-from config import CONFIG, update_env_variable, validate_config
+from config import CONFIG, update_env_variable
 from database import ResumeDB
 from texts import clean_html
 
@@ -68,6 +66,7 @@ logger = logging.getLogger("UET_HR_BOT")
 # ==============================================================================
 # ОПЕРАТИВНЫЙ БУФЕР ЛОГОВ (/logs)
 # ==============================================================================
+
 
 class MemoryLogHandler(logging.Handler):
     """Кольцевой буфер оперативных логов для удаленной диагностики через Telegram (/logs)."""
@@ -96,6 +95,7 @@ logging.getLogger().addHandler(memory_log_handler)
 # ==============================================================================
 # ПЕРСИСТЕНТНОЕ ХРАНИЛИЩЕ FSM НА БАЗЕ SQLITE WAL
 # ==============================================================================
+
 
 class SQLiteFSMStorage(BaseStorage):
     """
@@ -221,7 +221,9 @@ class NativeProxiedSession(AiohttpSession):
                         message=f"Proxy error: {proxy_err} | Direct error: {direct_err}",
                     ) from direct_err
             else:
-                raise TelegramNetworkError(method=method, message=f"{type(proxy_err).__name__}: {proxy_err}") from proxy_err
+                raise TelegramNetworkError(
+                    method=method, message=f"{type(proxy_err).__name__}: {proxy_err}"
+                ) from proxy_err
         response = self.check_response(
             bot=bot,
             method=method,
@@ -239,11 +241,7 @@ _db_path = CONFIG.get("DB_PATH", "data/resumes.db")
 db = ResumeDB(db_path=_db_path)
 
 _proxy_url = (
-    CONFIG.get("PROXY_URL")
-    or os.getenv("HTTPS_PROXY")
-    or os.getenv("https_proxy")
-    or os.getenv("HTTP_PROXY")
-    or None
+    CONFIG.get("PROXY_URL") or os.getenv("HTTPS_PROXY") or os.getenv("https_proxy") or os.getenv("HTTP_PROXY") or None
 )
 if _proxy_url:
     logger.info("Для Telegram Bot API активирован HTTP-прокси: %s", _proxy_url)
@@ -292,7 +290,6 @@ def is_maintenance_active() -> bool:
     except Exception:
         pass
     return bool(CONFIG.get("MAINTENANCE_MODE", False))
-
 
 
 def get_maintenance_info() -> Dict[str, Any]:
@@ -376,7 +373,11 @@ async def broadcast_maintenance_alert(
     hr_phone = CONFIG.get("HR_PHONE", "8 (8422) 58-46-60")
 
     if action == "planned":
-        time_hint = f"\n⏱ <b>Ориентировочное время:</b> {details}" if details else "\n⏱ <b>Ориентировочное время:</b> ~15-30 минут"
+        time_hint = (
+            f"\n⏱ <b>Ориентировочное время:</b> {details}"
+            if details
+            else "\n⏱ <b>Ориентировочное время:</b> ~15-30 минут"
+        )
         msg = (
             "⚙️ <b>ПЛАНОВОЕ ТЕХНИЧЕСКОЕ ОБСЛУЖИВАНИЕ</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
@@ -427,6 +428,7 @@ async def broadcast_maintenance_alert(
     logger.info(f"[MAINTENANCE_BROADCAST] Рассылка '{action}' завершена: доставлено {sent}, ошибок {failed}")
     return {"sent": sent, "failed": failed, "total": len(targets)}
 
+
 saved_group = db.get_setting("hr_group_id", "")
 if saved_group and saved_group.lstrip("-").isdigit():
     CONFIG["HR_GROUP_ID"] = int(saved_group)
@@ -448,6 +450,7 @@ EXTERNAL_SESSIONS = PersistentSessions(db)
 # ==============================================================================
 # МАШИНА СОСТОЯНИЙ (FSM STATES GROUPS)
 # ==============================================================================
+
 
 class AdminManageState(StatesGroup):
     waiting_hr_id = State()
@@ -540,7 +543,7 @@ def get_all_vacancies() -> List[str]:
         data_dir = BASE_DIR / "data"
         vac_file = data_dir / "vacancies.json"
         if vac_file.exists():
-            with open(vac_file, "r", encoding="utf-8") as f:
+            with open(vac_file, encoding="utf-8") as f:
                 loaded = json.load(f)
                 if isinstance(loaded, list) and loaded:
                     return loaded
@@ -627,6 +630,7 @@ def get_vacancy_icon(name: str) -> str:
 # ПРОВЕРКА ПРАВ И РОЛЕВАЯ МОДЕЛЬ
 # ==============================================================================
 
+
 def is_tech_admin(user_id: int) -> bool:
     """Проверка прав технического инженера."""
     if user_id == CONFIG.get("SUPER_ADMIN_ID") or user_id == CONFIG.get("TECH_ADMIN_ID"):
@@ -679,12 +683,16 @@ def check_hr_access_or_block(user_id: int, chat_id: int) -> Tuple[bool, Optional
     if hr_group and chat_id == hr_group:
         return True, None
 
-    return False, "🚫 <b>Доступ ограничен.</b> Кадровая панель доступна только сотрудникам отдела кадров МУП «Ульяновскэлектротранс»."
+    return (
+        False,
+        "🚫 <b>Доступ ограничен.</b> Кадровая панель доступна только сотрудникам отдела кадров МУП «Ульяновскэлектротранс».",
+    )
 
 
 # ==============================================================================
 # MIDDLEWARES И ФИЛЬТРЫ БЕЗОПАСНОСТИ
 # ==============================================================================
+
 
 class HRAccessMiddleware(BaseMiddleware):
     """
@@ -793,6 +801,7 @@ class IsHRFilter(BaseFilter):
 # СИСТЕМНЫЕ МЕТРИКИ И УПРАВЛЕНИЕ РЕЖИМАМИ
 # ==============================================================================
 
+
 def get_uptime() -> str:
     """Возвращает форматированный аптайм процесса."""
     elapsed = int(time.time() - START_TIME)
@@ -804,7 +813,7 @@ def get_uptime() -> str:
 def get_process_memory_mb() -> float:
     """Возвращает объем фактически занятой процессом оперативной памяти (RSS) в МБ."""
     try:
-        with open("/proc/self/status", "r", encoding="utf-8") as f:
+        with open("/proc/self/status", encoding="utf-8") as f:
             for line in f:
                 if line.startswith("VmRSS:"):
                     return round(int(line.split()[1]) / 1024.0, 2)
@@ -812,6 +821,7 @@ def get_process_memory_mb() -> float:
         pass
     try:
         import resource
+
         return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 2)
     except Exception:
         return 0.0
@@ -829,6 +839,7 @@ def update_env_mode(new_mode: str) -> bool:
 # ==============================================================================
 # ОТКАЗОУСТОЙЧИВАЯ ОТПРАВКА СООБЩЕНИЙ (SAFE_SEND / SAFE_ANSWER)
 # ==============================================================================
+
 
 async def safe_answer(
     event: Union[types.Message, types.CallbackQuery],
@@ -970,6 +981,7 @@ async def safe_send(
 # ОБЩАЯ ЛОГИКА МАРШРУТИЗАЦИИ ТИКЕТОВ В КАДРОВУЮ СЛУЖБУ
 # ==============================================================================
 
+
 async def _route_ticket_to_hr(
     bot_instance: Bot,
     card_text: str,
@@ -998,9 +1010,7 @@ async def _route_ticket_to_hr(
         logger.warning("Кадровый чат HR_GROUP_ID не привязан! Маршрутизация в ЛС сотрудникам.")
 
     # 2. Составляем список получателей (кадровики с DM-уведомлениями)
-    target_users: set[int] = {
-        adm for adm in db.get_hr_admins_with_dm_enabled() if adm > 0
-    }
+    target_users: set[int] = {adm for adm in db.get_hr_admins_with_dm_enabled() if adm > 0}
 
     env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
     is_prod = env_mode in ("PROD", "PRODUCTION")
@@ -1059,6 +1069,7 @@ async def route_new_inquiry_ticket(
 # ==============================================================================
 # МНОГОКАНАЛЬНАЯ ДОСТАВКА СООБЩЕНИЙ СОИСКАТЕЛЯМ (TG / VK / MAX)
 # ==============================================================================
+
 
 async def send_response_to_candidate(
     platform: str,
@@ -1175,6 +1186,7 @@ async def send_photo_to_candidate(user_id: str, photo_bytes: bytes, caption: str
 # СИНХРОНИЗАЦИЯ КОМАНД МЕНЮ TELEGRAM
 # ==============================================================================
 
+
 async def setup_bot_commands(bot_instance: Bot) -> None:
     """Установка контекстных выпадающих меню команд Telegram (по ролям и чатам)."""
     # 1. Меню по умолчанию для соискателей в личном диалоге (по ТЗ МУП «УЭТ»)
@@ -1270,7 +1282,6 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
                     pass
     except Exception as e:
         logger.warning("Ошибка установки команд HR-пользователей: %s", e)
-
 
     # 6. Установка нативной кнопки Telegram Mini App (Menu Button) рядом с полем ввода
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
@@ -1392,9 +1403,7 @@ async def sync_user_commands(
 
                 if target_commands:
                     try:
-                        await target_bot.set_my_commands(
-                            target_commands, scope=BotCommandScopeChat(chat_id=user_id)
-                        )
+                        await target_bot.set_my_commands(target_commands, scope=BotCommandScopeChat(chat_id=user_id))
                     except Exception as e:
                         logger.warning("set_my_commands for %s: %s", user_id, e)
 
@@ -1433,6 +1442,7 @@ async def revoke_admin_and_sync(bot_instance: Bot, user_id: int, reason: str = "
 
     try:
         from keyboards import make_candidate_main_keyboard
+
         await safe_send(
             bot_instance,
             user_id,
@@ -1466,7 +1476,11 @@ async def grant_admin_and_sync(bot_instance: Bot, user_id: int, role: str, passw
         "depot": "Сотрудник депо (Depot & Рефералы)",
     }
     role_label = role_names.get(role, role)
-    pwd_info = f"🔑 <b>Пароль для веб-панели:</b> <code>{password}</code>\n" if password else "🔑 Для веб-панели задайте пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
+    pwd_info = (
+        f"🔑 <b>Пароль для веб-панели:</b> <code>{password}</code>\n"
+        if password
+        else "🔑 Для веб-панели задайте пароль командой: <code>/password ВАШ_ПАРОЛЬ</code>\n"
+    )
 
     notice = (
         f"🎉 <b>Вам назначены права доступа в МУП «УЭТ»!</b>\n"
@@ -1480,6 +1494,7 @@ async def grant_admin_and_sync(bot_instance: Bot, user_id: int, role: str, passw
 
     try:
         from keyboards import make_candidate_main_keyboard
+
         await safe_send(
             bot_instance,
             user_id,

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Кадровая панель и воронка подбора персонала:
 - Команда /hr, /admin, /kadry
@@ -10,7 +9,6 @@ from __future__ import annotations
 
 import html
 import logging
-from typing import Any, Dict, List, Optional
 
 from aiogram import F, Router, types
 from aiogram.filters import Command
@@ -116,10 +114,7 @@ async def cb_admin_list(callback: types.CallbackQuery) -> None:
     for cand in candidates:
         t_id, name, vac, status, _, plat = cand
         icon = (
-            "🆕" if status == "Новая"
-            else ("🟡" if status == "В работе"
-            else ("🟢" if "Приглашен" in status
-            else "🔴"))
+            "🆕" if status == "Новая" else ("🟡" if status == "В работе" else ("🟢" if "Приглашен" in status else "🔴"))
         )
         text += (
             f"{icon} <b>#{t_id} [{plat.upper()}]</b> | {html.escape(name)}\n"
@@ -137,6 +132,7 @@ async def cb_admin_list(callback: types.CallbackQuery) -> None:
 async def cb_hr_web_panel_info(callback: types.CallbackQuery) -> None:
     """Информация о доступе к веб-панели управления."""
     from config import CONFIG
+
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
     text = (
@@ -158,4 +154,3 @@ async def cb_hr_web_panel_info(callback: types.CallbackQuery) -> None:
         text, reply_markup=builder.as_markup(), parse_mode="HTML", disable_web_page_preview=True
     )
     await callback.answer()
-

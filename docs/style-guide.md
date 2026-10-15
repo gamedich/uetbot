@@ -108,10 +108,7 @@ async def get_candidate_by_phone(phone: str) -> Optional[dict]:
 ❌ **НЕПРАВИЛЬНО (Пользовательский текст ломает парсер HTML Telegram):**
 ```python
 # ОПАСНО: Если пользователь укажет имя "<Иван & Ко>", Telegram выдаст ошибку Can't parse entities
-await message.answer(
-    f"Здравствуйте, <b>{user_input_name}</b>! Ваша заявка принята.",
-    parse_mode="HTML"
-)
+await message.answer(f"Здравствуйте, <b>{user_input_name}</b>! Ваша заявка принята.", parse_mode="HTML")
 ```
 
 ✅ **ПРАВИЛЬНО (Обязательная санитизация через `html.escape`):**
@@ -119,10 +116,7 @@ await message.answer(
 import html
 
 safe_name = html.escape(user_input_name.strip())
-await message.answer(
-    f"Здравствуйте, <b>{safe_name}</b>! Ваша заявка принята.",
-    parse_mode="HTML"
-)
+await message.answer(f"Здравствуйте, <b>{safe_name}</b>! Ваша заявка принята.", parse_mode="HTML")
 ```
 
 ---
@@ -141,6 +135,7 @@ async def broadcast_route_alert(user_ids: list[int], text: str):
 ```python
 import asyncio
 from aiogram.exceptions import TelegramRetryAfter, TelegramAPIError
+
 
 async def broadcast_route_alert(user_ids: list[int], text: str):
     for uid in user_ids:

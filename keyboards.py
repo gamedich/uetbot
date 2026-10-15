@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
 """
 Модуль разметки клавиатур и экранных меню для бота
 МУП «Ульяновскэлектротранс».
 """
-import re
+
 from datetime import datetime
-from typing import Tuple, List, Optional, Dict, Any
+from typing import List, Tuple
+
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -17,8 +17,8 @@ from common import (
     get_uptime,
     get_vacancy_icon,
     is_hr_admin,
-    is_tech_admin,
     is_maintenance_active,
+    is_tech_admin,
 )
 
 
@@ -31,18 +31,14 @@ def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
     return types.ReplyKeyboardMarkup(
         keyboard=[
             [
-                types.KeyboardButton(
-                    text="🌐 Заполнить анкету на сайте",
-                    web_app=types.WebAppInfo(url=web_url)
-                ),
-                types.KeyboardButton(
-                    text="📊 Мой статус"
-                )
+                types.KeyboardButton(text="🌐 Заполнить анкету на сайте", web_app=types.WebAppInfo(url=web_url)),
+                types.KeyboardButton(text="📊 Мой статус"),
             ]
         ],
         resize_keyboard=True,
-        is_persistent=True
+        is_persistent=True,
     )
+
 
 def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     """
@@ -89,14 +85,14 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
 
     return builder.as_markup()
 
+
 def make_phone_reply_keyboard() -> types.ReplyKeyboardMarkup:
     return types.ReplyKeyboardMarkup(
-        keyboard=[
-            [types.KeyboardButton(text="📱 Поделиться номером телефона", request_contact=True)]
-        ],
+        keyboard=[[types.KeyboardButton(text="📱 Поделиться номером телефона", request_contact=True)]],
         resize_keyboard=True,
-        one_time_keyboard=True
+        one_time_keyboard=True,
     )
+
 
 def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     """
@@ -108,7 +104,7 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     """
     builder = InlineKeyboardBuilder()
     cand = db.get_candidate(ticket_id)
-    platform = cand[1] if cand else "tg"
+    cand[1] if cand else "tg"
     user_id = str(cand[2]) if cand else ""
     status = cand[7] if cand and len(cand) > 7 else "Новая"
     is_cand_blocked = db.is_blocked(user_id) if user_id else False
@@ -157,15 +153,18 @@ def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     builder.adjust(3, 3, 3, 3)
     return builder.as_markup()
 
+
 def make_depot_selection_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     """Выбор филиала депо для проведения собеседования."""
     builder = InlineKeyboardBuilder()
     from texts import DEPOT_BRANCHES
+
     for code, info in DEPOT_BRANCHES.items():
         builder.button(text=f"🏢 {info['short_name']}", callback_data=f"int_depot_{ticket_id}_{code}")
     builder.button(text="⬅️ Назад к анкете", callback_data=f"view_{ticket_id}")
     builder.adjust(1)
     return builder.as_markup()
+
 
 def make_interview_slots_keyboard(ticket_id: int, depot_code: str, slots: List[str]) -> types.InlineKeyboardMarkup:
     """Выбор слота времени для собеседования в выбранном филиале."""
@@ -177,6 +176,7 @@ def make_interview_slots_keyboard(ticket_id: int, depot_code: str, slots: List[s
     builder.adjust(2, 2, 1, 1)
     return builder.as_markup()
 
+
 def make_interview_candidate_response_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     """Инлайн-кнопки подтверждения явки на собеседование для соискателя."""
     builder = InlineKeyboardBuilder()
@@ -185,11 +185,13 @@ def make_interview_candidate_response_keyboard(ticket_id: int) -> types.InlineKe
     builder.adjust(1)
     return builder.as_markup()
 
+
 def make_cand_reply_keyboard(ticket_id: int = 0) -> types.InlineKeyboardMarkup:
     """Инлайн-кнопка для соискателя в Telegram для ответа на сообщение отдела кадров."""
     builder = InlineKeyboardBuilder()
     builder.button(text="💬 Ответить кадровику", callback_data=f"cand_reply_hr_{ticket_id}")
     return builder.as_markup()
+
 
 def make_inquiry_admin_keyboard(inquiry_id: int) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -209,7 +211,7 @@ def make_inquiry_admin_keyboard(inquiry_id: int) -> types.InlineKeyboardMarkup:
 
     builder.button(text="💬 Ответить в чат", callback_data=f"inq_reply_{inquiry_id}")
     builder.button(text="⏹ Завершить обращение", callback_data=f"inq_close_{inquiry_id}")
-    
+
     if is_inq_blocked:
         builder.button(text="✅ Снять ЧС", callback_data=f"inq_unblock_{inquiry_id}")
     else:
@@ -218,23 +220,24 @@ def make_inquiry_admin_keyboard(inquiry_id: int) -> types.InlineKeyboardMarkup:
     builder.adjust(1, 2, 1, 1)
     return builder.as_markup()
 
+
 def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     is_super = bool(user_id and user_id == super_id)
-    
+
     # 1 ряд — фильтры заявок
     builder.button(text="📑 Все резюме", callback_data="admin_list_all")
     builder.button(text="📥 Новые", callback_data="admin_list_new")
-    
+
     # 2 ряд — статусы
     builder.button(text="🟡 В работе", callback_data="admin_list_in_progress")
     builder.button(text="📦 Архив", callback_data="admin_list_archive")
-    
+
     # 3 ряд — экспорт и обновление
     builder.button(text="📊 Скачать Excel (/export)", callback_data="hr_export_excel")
     builder.button(text="🔄 Обновить", callback_data="admin_stats")
-    
+
     # 4 ряд — таймаут и веб-панель
     cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
     cd_label = f"{cur_cd // 60} мин" if cur_cd > 0 else "0 (выкл)"
@@ -263,19 +266,21 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
 
     return builder.as_markup()
 
+
 def make_admins_menu_keyboard(all_admins: list) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="➕ Назначить кадровика (HR)", callback_data="adm_ui_add_hr")
     builder.button(text="➕ Назначить инженера (Tech)", callback_data="adm_ui_add_tech")
-    
+
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     removable = [adm for adm, role in all_admins if adm != super_id]
     if removable:
         builder.button(text="➖ Отозвать доступ (удалить)", callback_data="adm_ui_remove_list")
-    
+
     builder.button(text="🔄 Обновить список", callback_data="adm_ui_refresh")
     builder.adjust(1, 1, 1, 1)
     return builder.as_markup()
+
 
 def make_remove_admin_keyboard(admins_with_names: list) -> types.InlineKeyboardMarkup:
     """Генерирует кнопки отзыва прав с отображением ника и имени."""
@@ -293,6 +298,7 @@ def make_remove_admin_keyboard(admins_with_names: list) -> types.InlineKeyboardM
     builder.adjust(1)
     return builder.as_markup()
 
+
 def make_faq_keyboard() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="🎓 Обучение (водитель трамвая/троллейбуса)", callback_data="faq_item_faq_training")
@@ -304,9 +310,10 @@ def make_faq_keyboard() -> types.InlineKeyboardMarkup:
     builder.adjust(1)
     return builder.as_markup()
 
+
 def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    
+
     # 1. Режим проверок и ограничений (152-ФЗ, лимиты)
     env = CONFIG.get("ENVIRONMENT", "TEST")
     toggle_env_text = "🛡 Включить PROD (152-ФЗ, лимиты)" if env == "TEST" else "🧪 Включить TEST (без ограничений)"
@@ -331,6 +338,7 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder.adjust(1)
     return builder.as_markup()
 
+
 def make_tests_menu_keyboard() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="🧪 Отправить анкету из TG", callback_data="test_send_tg")
@@ -342,10 +350,19 @@ def make_tests_menu_keyboard() -> types.InlineKeyboardMarkup:
     builder.adjust(1, 1, 1, 1, 1, 1)
     return builder.as_markup()
 
+
 def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMarkup]:
     tg_status = "🟢 Онлайн"
-    vk_status = "🟢 Онлайн" if SYSTEM_METRICS["vk_online"] else ("🟡 Не настроен" if not CONFIG.get("VK_GROUP_TOKEN") else "🔴 Ошибка")
-    max_status = "🟢 Онлайн" if SYSTEM_METRICS["max_online"] else ("🟡 Не настроен" if not CONFIG.get("MAX_BOT_TOKEN") else "🔴 Ошибка")
+    vk_status = (
+        "🟢 Онлайн"
+        if SYSTEM_METRICS["vk_online"]
+        else ("🟡 Не настроен" if not CONFIG.get("VK_GROUP_TOKEN") else "🔴 Ошибка")
+    )
+    max_status = (
+        "🟢 Онлайн"
+        if SYSTEM_METRICS["max_online"]
+        else ("🟡 Не настроен" if not CONFIG.get("MAX_BOT_TOKEN") else "🔴 Ошибка")
+    )
     db_status = "🟢 Исправна" if db.check_health() else "🔴 Сбой целостности"
     maint_status = "🟡 Включен (прием на паузе)" if is_maintenance_active() else "🟢 Работа в штатном режиме"
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
@@ -357,8 +374,13 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
     text = (
         "🛠 <b>ТЕХНИЧЕСКИЙ МОНИТОРИНГ И ОБСЛУЖИВАНИЕ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🛡 <b>Режим работы:</b> <b>{env_mode}</b> " + ("(Законный режим: проверка анкет, 3 мес. отказ, антифлуд)\n" if env_mode == "PROD" else "(Режим отладки: все ограничения сняты)\n") +
-        f"💾 <b>Целевая БД:</b> <b>{active_db_label}</b>\n"
+        f"🛡 <b>Режим работы:</b> <b>{env_mode}</b> "
+        + (
+            "(Законный режим: проверка анкет, 3 мес. отказ, антифлуд)\n"
+            if env_mode == "PROD"
+            else "(Режим отладки: все ограничения сняты)\n"
+        )
+        + f"💾 <b>Целевая БД:</b> <b>{active_db_label}</b>\n"
         f"⏱ <b>Аптайм:</b> <code>{get_uptime()}</code>\n"
         f"🔄 <b>Проверено в:</b> <code>{check_time}</code>\n"
         f"⚙️ <b>Режим обслуживания:</b> <b>{maint_status}</b>\n"
@@ -373,9 +395,11 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
     )
     return text, make_tech_menu_keyboard(user_id)
 
+
 # ==============================================================================
 # КЛАВИАТУРЫ 16 ШАГОВ АНКЕТЫ СОИСКАТЕЛЯ И 152-ФЗ
 # ==============================================================================
+
 
 def make_consent_survey_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -385,6 +409,7 @@ def make_consent_survey_kb() -> types.InlineKeyboardMarkup:
     builder.adjust(2, 1)
     return builder.as_markup()
 
+
 def make_step_nav_kb(can_skip: bool = False) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if can_skip:
@@ -393,6 +418,7 @@ def make_step_nav_kb(can_skip: bool = False) -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
     builder.adjust(1 if can_skip else 2, 2 if can_skip else 0)
     return builder.as_markup()
+
 
 def make_step2_birthdate_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -407,6 +433,7 @@ def make_step2_birthdate_kb() -> types.InlineKeyboardMarkup:
     builder.adjust(2, 2, 2, 2)
     return builder.as_markup()
 
+
 def make_step4_city_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="🏙 Ульяновск", callback_data="city_Ульяновск")
@@ -419,6 +446,7 @@ def make_step4_city_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
     builder.adjust(2, 2, 2, 2)
     return builder.as_markup()
+
 
 def make_step5_vacancies_kb() -> types.InlineKeyboardMarkup:
     """
@@ -447,6 +475,7 @@ def make_step5_vacancies_kb() -> types.InlineKeyboardMarkup:
     builder.adjust(*layout)
     return builder.as_markup()
 
+
 def make_step6_license_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ Да", callback_data="lic_yes")
@@ -455,6 +484,7 @@ def make_step6_license_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
     builder.adjust(2, 2)
     return builder.as_markup()
+
 
 def make_step6_1_categories_kb(selected: list = None) -> types.InlineKeyboardMarkup:
     selected = selected or []
@@ -470,6 +500,7 @@ def make_step6_1_categories_kb(selected: list = None) -> types.InlineKeyboardMar
     builder.adjust(3, 2, 2, 2, 2)
     return builder.as_markup()
 
+
 def make_step7_experience_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ Да", callback_data="exp_yes")
@@ -478,6 +509,7 @@ def make_step7_experience_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
     builder.adjust(2, 2)
     return builder.as_markup()
+
 
 def make_step8_education_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -492,6 +524,7 @@ def make_step8_education_kb() -> types.InlineKeyboardMarkup:
     builder.adjust(2, 2, 2, 2)
     return builder.as_markup()
 
+
 def make_step9_relocation_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ Да", callback_data="reloc_yes")
@@ -501,6 +534,7 @@ def make_step9_relocation_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
     builder.adjust(2, 1, 2)
     return builder.as_markup()
+
 
 def make_step10_dormitory_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -512,6 +546,7 @@ def make_step10_dormitory_kb() -> types.InlineKeyboardMarkup:
     builder.adjust(2, 1, 2)
     return builder.as_markup()
 
+
 def make_step11_schedule_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ Да", callback_data="sched_yes")
@@ -521,6 +556,7 @@ def make_step11_schedule_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
     builder.adjust(2, 1, 2)
     return builder.as_markup()
+
 
 def make_step12_health_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -532,6 +568,7 @@ def make_step12_health_kb() -> types.InlineKeyboardMarkup:
     builder.adjust(2, 1, 2)
     return builder.as_markup()
 
+
 def make_step13_criminal_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="❌ Нет", callback_data="crim_no")
@@ -541,6 +578,7 @@ def make_step13_criminal_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
     builder.adjust(2, 1, 2)
     return builder.as_markup()
+
 
 def make_step14_source_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -557,6 +595,7 @@ def make_step14_source_kb() -> types.InlineKeyboardMarkup:
     builder.adjust(2, 2, 2, 2, 2)
     return builder.as_markup()
 
+
 def make_step16_confirm_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ Подтверждаю", callback_data="cand_submit_final")
@@ -564,6 +603,7 @@ def make_step16_confirm_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
     builder.adjust(1, 1, 1)
     return builder.as_markup()
+
 
 def make_step16_edit_menu_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -590,6 +630,7 @@ def make_step16_edit_menu_kb() -> types.InlineKeyboardMarkup:
     builder.adjust(2, 2, 2, 2, 2, 2, 2, 1, 1)
     return builder.as_markup()
 
+
 def make_mydata_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="💬 Запросить уточнение", callback_data="cand_ask_question")
@@ -597,6 +638,7 @@ def make_mydata_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="🏠 Главное меню", callback_data="cand_back_to_menu")
     builder.adjust(1, 1, 1)
     return builder.as_markup()
+
 
 def make_revoke_confirm_kb() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

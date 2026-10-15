@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Управление анкетами, тикетами и прямыми коммуникациями:
 - Просмотр карточки соискателя с комплаенс-скорингом (ст. 328.1 ТК РФ)
@@ -14,7 +13,7 @@ from __future__ import annotations
 
 import html
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 from aiogram import Bot, F, Router, types
 from aiogram.filters import Command, StateFilter
@@ -27,7 +26,6 @@ from common import (
     CandidateNoteForm,
     HRReplyForm,
     check_hr_access_or_block,
-    clean_html,
     db,
     safe_answer,
     send_photo_to_candidate,
@@ -36,7 +34,6 @@ from common import (
 from keyboards import (
     make_cand_reply_keyboard,
     make_candidate_main_keyboard,
-    make_inquiry_admin_keyboard,
     make_ticket_keyboard,
 )
 from services.compliance_service import ComplianceService
@@ -48,6 +45,7 @@ tickets_router = Router(name="hr_tickets")
 # ==============================================================================
 # 1. ПРОСМОТР КАРТОЧКИ И БЫСТРЫЙ ЗВОНОК
 # ==============================================================================
+
 
 @tickets_router.callback_query(F.data.startswith("view_"))
 async def cb_view_ticket(callback: types.CallbackQuery) -> None:
@@ -117,6 +115,7 @@ async def cb_cand_risk_check(callback: types.CallbackQuery) -> None:
 # 2. ИЗМЕНЕНИЕ СТАТУСОВ АНКЕТ
 # ==============================================================================
 
+
 @tickets_router.callback_query(F.data.startswith("status_"))
 async def cb_change_status(callback: types.CallbackQuery) -> None:
     """Оперативное переключение статуса анкеты в воронке."""
@@ -185,6 +184,7 @@ async def cb_change_status(callback: types.CallbackQuery) -> None:
 # 3. СЛУЖЕБНЫЕ ЗАМЕТКИ КАДРОВИКА
 # ==============================================================================
 
+
 @tickets_router.callback_query(F.data.startswith("cand_note_") | F.data.startswith("note_"))
 async def cb_cand_note_ask(callback: types.CallbackQuery, state: FSMContext) -> None:
     """Запрос на ввод служебной заметки к анкете соискателя."""
@@ -252,7 +252,9 @@ async def cmd_admin_note(message: types.Message) -> None:
 
     parts = message.text.split(maxsplit=2)
     if len(parts) < 3:
-        await safe_answer(message, "Использование: <code>/note &lt;номер_анкеты&gt; &lt;текст заметки&gt;</code>", parse_mode="HTML")
+        await safe_answer(
+            message, "Использование: <code>/note &lt;номер_анкеты&gt; &lt;текст заметки&gt;</code>", parse_mode="HTML"
+        )
         return
 
     try:
@@ -270,12 +272,18 @@ async def cmd_admin_note(message: types.Message) -> None:
     db.update_admin_note(t_id, note_text)
     builder = InlineKeyboardBuilder()
     builder.button(text=f"Открыть карточку #{t_id}", callback_data=f"view_{t_id}")
-    await safe_answer(message, f"✅ Заметка к анкете #{t_id} обновлена:\n<i>{html.escape(note_text)}</i>", reply_markup=builder.as_markup(), parse_mode="HTML")
+    await safe_answer(
+        message,
+        f"✅ Заметка к анкете #{t_id} обновлена:\n<i>{html.escape(note_text)}</i>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML",
+    )
 
 
 # ==============================================================================
 # 4. ПРЯМЫЕ СООБЩЕНИЯ КАНДИДАТУ
 # ==============================================================================
+
 
 @tickets_router.callback_query(F.data.startswith("cand_msg_"))
 async def cb_cand_direct_msg_ask(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -337,14 +345,24 @@ async def process_candidate_direct_msg(message: types.Message, state: FSMContext
     builder.button(text=f"Открыть карточку #{ticket_id}", callback_data=f"view_{ticket_id}")
 
     if ok:
-        await safe_answer(message, f"✅ Сообщение кандидату #{ticket_id} ({html.escape(full_name)}) успешно доставлено в {platform.upper()}.", reply_markup=builder.as_markup(), parse_mode="HTML")
+        await safe_answer(
+            message,
+            f"✅ Сообщение кандидату #{ticket_id} ({html.escape(full_name)}) успешно доставлено в {platform.upper()}.",
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML",
+        )
     else:
-        await safe_answer(message, f"⚠️ Не удалось доставить сообщение кандидату в {platform.upper()}.", reply_markup=builder.as_markup())
+        await safe_answer(
+            message,
+            f"⚠️ Не удалось доставить сообщение кандидату в {platform.upper()}.",
+            reply_markup=builder.as_markup(),
+        )
 
 
 # ==============================================================================
 # 5. КАСКАДНОЕ УДАЛЕНИЕ ДАННЫХ (ст. 21 152-ФЗ)
 # ==============================================================================
+
 
 @tickets_router.callback_query(F.data.startswith("del_ask_"))
 async def cb_delete_ask(callback: types.CallbackQuery) -> None:
@@ -394,6 +412,7 @@ async def cb_delete_confirm(callback: types.CallbackQuery) -> None:
 # ==============================================================================
 # 6. МОСТ ЖИВОГО ДИАЛОГА (Live-Chat)
 # ==============================================================================
+
 
 @tickets_router.callback_query(F.data.startswith("live_dlg_cand_"))
 async def cb_live_dlg_cand(callback: types.CallbackQuery) -> None:
@@ -586,7 +605,9 @@ async def process_live_dialog_photo(message: types.Message, state: FSMContext, b
             platform = cand[1]
 
     caption = message.caption or ""
-    relayed_caption = f"📷 [Отдел кадров МУП УЭТ]:\n{caption}" if caption else "📷 Фотография от сотрудника отдела кадров."
+    relayed_caption = (
+        f"📷 [Отдел кадров МУП УЭТ]:\n{caption}" if caption else "📷 Фотография от сотрудника отдела кадров."
+    )
 
     try:
         photo = message.photo[-1]
@@ -605,6 +626,7 @@ async def process_live_dialog_photo(message: types.Message, state: FSMContext, b
 # ==============================================================================
 # 7. ОБРАЩЕНИЯ СОИСКАТЕЛЕЙ (/ask)
 # ==============================================================================
+
 
 @tickets_router.callback_query(F.data.startswith("inq_call_"))
 async def cb_inq_call(callback: types.CallbackQuery) -> None:

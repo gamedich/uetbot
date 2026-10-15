@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
@@ -8,8 +10,9 @@ if services_dir not in sys.path:
 os.environ["DB_PATH"] = "/tmp/test_sec_suite.db"
 os.environ.setdefault("TG_BOT_TOKEN", f"{'1' * 9}:{'a' * 35}")
 import importlib.util
-for mod_name in ['assistant', 'web_app']:
-    mod_file = os.path.join(current_dir, f'{mod_name}.py')
+
+for mod_name in ["assistant", "web_app"]:
+    mod_file = os.path.join(current_dir, f"{mod_name}.py")
     if os.path.exists(mod_file) and mod_name not in sys.modules:
         spec = importlib.util.spec_from_file_location(mod_name, mod_file)
         if spec and spec.loader:
@@ -17,28 +20,43 @@ for mod_name in ['assistant', 'web_app']:
             sys.modules[mod_name] = mod
             try:
                 spec.loader.exec_module(mod)
-            except Exception as e:
+            except Exception:
                 pass
 
 # -*- coding: utf-8 -*-
-import io, os, re, sys, tempfile, unittest
+import io
+import os
+import re
+import sys
+import tempfile
+import unittest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 # Моки для окружений без aiogram / aiohttp
 try:
-    import aiohttp
-    import aiogram
+    import aiogram  # noqa: F401
+    import aiohttp  # noqa: F401
 except ImportError:
     if "aiohttp" not in sys.modules:
         sys.modules["aiohttp"] = MagicMock()
     if "aiogram" not in sys.modules:
         aiogram_mock = MagicMock()
-        class BaseMiddleware: pass
-        class BaseFilter: pass
-        class CallbackQuery: pass
-        class Message: pass
-        class TelegramObject: pass
+
+        class BaseMiddleware:
+            pass
+
+        class BaseFilter:
+            pass
+
+        class CallbackQuery:
+            pass
+
+        class Message:
+            pass
+
+        class TelegramObject:
+            pass
 
         aiogram_mock.BaseMiddleware = BaseMiddleware
         aiogram_mock.filters = MagicMock()
@@ -56,6 +74,7 @@ except ImportError:
         sys.modules["aiogram.fsm.state"] = MagicMock()
         sys.modules["aiogram.fsm.storage.base"] = MagicMock()
 
+
 # 1. Валидаторы анкеты
 def validate_fio(name: str) -> tuple[bool, str]:
     clean_name = (name or "").strip()
@@ -66,6 +85,7 @@ def validate_fio(name: str) -> tuple[bool, str]:
         return False, "ФИО не должно содержать цифры"
     return True, " ".join(words)
 
+
 def validate_phone(raw: str) -> tuple[bool, str]:
     digits = re.sub(r"\D", "", raw or "")
     if len(digits) == 11 and digits[0] in ("7", "8"):
@@ -73,6 +93,7 @@ def validate_phone(raw: str) -> tuple[bool, str]:
     elif len(digits) == 10 and digits[0] == "9":
         return True, "+7" + digits
     return False, "Некорректный формат номера телефона"
+
 
 def validate_birth_date(date_str: str) -> tuple[bool, str]:
     clean_str = (date_str or "").strip()
@@ -101,7 +122,12 @@ class TestCandidateValidators(unittest.TestCase):
             self.assertFalse(ok)
 
     def test_valid_phone(self):
-        for inp, exp in [("+79001234567", "+79001234567"), ("89001234567", "+79001234567"), ("9001234567", "+79001234567"), ("+7 (900) 123-45-67", "+79001234567")]:
+        for inp, exp in [
+            ("+79001234567", "+79001234567"),
+            ("89001234567", "+79001234567"),
+            ("9001234567", "+79001234567"),
+            ("+7 (900) 123-45-67", "+79001234567"),
+        ]:
             ok, res = validate_phone(inp)
             self.assertTrue(ok)
             self.assertEqual(res, exp)
@@ -136,6 +162,7 @@ class TestResumeDatabase(unittest.TestCase):
 
     def test_process_memory_mb(self):
         from common import get_process_memory_mb
+
         mem = get_process_memory_mb()
         self.assertIsInstance(mem, float)
         self.assertGreaterEqual(mem, 0.0)
@@ -144,6 +171,7 @@ class TestResumeDatabase(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = os.path.join(self.temp_dir.name, "test_resumes.db")
         from database import ResumeDB
+
         self.db = ResumeDB(self.db_path)
 
     def tearDown(self):
@@ -151,8 +179,14 @@ class TestResumeDatabase(unittest.TestCase):
 
     def test_add_and_get_candidate(self):
         t_id = self.db.add_candidate(
-            platform="tg", user_id="111222333", full_name="Иванов Иван", phone="+79001234567",
-            vacancy="Водитель трамвая", experience="Стаж 5 лет", birth_date="15.03.1990", city="Ульяновск"
+            platform="tg",
+            user_id="111222333",
+            full_name="Иванов Иван",
+            phone="+79001234567",
+            vacancy="Водитель трамвая",
+            experience="Стаж 5 лет",
+            birth_date="15.03.1990",
+            city="Ульяновск",
         )
         self.assertGreater(t_id, 0)
         cand = self.db.get_candidate(t_id)
@@ -162,7 +196,7 @@ class TestResumeDatabase(unittest.TestCase):
 
     def test_duplicate_application_prevention(self):
         u_id = "555666777"
-        t_id = self.db.add_candidate("tg", u_id, "Петров Петр", "+79998887766", "Кондуктор", "Без опыта")
+        self.db.add_candidate("tg", u_id, "Петров Петр", "+79998887766", "Кондуктор", "Без опыта")
         can_apply, reason, info = self.db.check_candidate_can_apply(u_id, platform="tg")
         self.assertFalse(can_apply)
         self.assertEqual(reason, "unprocessed")
@@ -200,8 +234,7 @@ class TestResumeDatabase(unittest.TestCase):
 
         # Add candidate referred by this employee
         t_id = self.db.add_candidate(
-            "tg", "999888111", "Реферальный Кандидат", "+79991112233",
-            "Водитель", "Без опыта", referrer_tab=str(emp_id)
+            "tg", "999888111", "Реферальный Кандидат", "+79991112233", "Водитель", "Без опыта", referrer_tab=str(emp_id)
         )
         self.assertGreater(t_id, 0)
 
@@ -249,17 +282,20 @@ class TestSecurityAuthorization(unittest.IsolatedAsyncioTestCase):
         self.super_admin_id = 823092891
         self.hr_group_id = -1003875480349
         from common import CONFIG
+
         CONFIG["SUPER_ADMIN_ID"] = self.super_admin_id
         CONFIG["HR_GROUP_ID"] = self.hr_group_id
 
     def test_check_hr_access_super_admin(self):
         from common import check_hr_access_or_block
+
         allowed, err = check_hr_access_or_block(self.super_admin_id, chat_id=12345)
         self.assertTrue(allowed)
         self.assertIsNone(err)
 
     def test_check_hr_access_in_hr_group(self):
         from common import check_hr_access_or_block
+
         any_user = 999888777
         allowed, err = check_hr_access_or_block(any_user, chat_id=self.hr_group_id)
         self.assertTrue(allowed)
@@ -267,6 +303,7 @@ class TestSecurityAuthorization(unittest.IsolatedAsyncioTestCase):
 
     def test_check_hr_access_unauthorized_outsider(self):
         from common import check_hr_access_or_block
+
         stranger_id = 111000999
         allowed, err = check_hr_access_or_block(stranger_id, chat_id=stranger_id)
         self.assertFalse(allowed)
@@ -275,6 +312,7 @@ class TestSecurityAuthorization(unittest.IsolatedAsyncioTestCase):
 
     async def test_hr_middleware_blocks_unauthorized_callback(self):
         from common import HRAccessMiddleware
+
         middleware = HRAccessMiddleware()
         mock_handler = AsyncMock()
         mock_callback = MagicMock()
@@ -286,6 +324,7 @@ class TestSecurityAuthorization(unittest.IsolatedAsyncioTestCase):
 
         # Mock isinstance check
         import common
+
         orig_cb = getattr(common.types, "CallbackQuery", None)
         common.types.CallbackQuery = type(mock_callback)
         try:
@@ -299,6 +338,7 @@ class TestSecurityAuthorization(unittest.IsolatedAsyncioTestCase):
 
     async def test_hr_middleware_allows_authorized_hr(self):
         from common import HRAccessMiddleware
+
         middleware = HRAccessMiddleware()
         mock_handler = AsyncMock(return_value="OK")
         mock_callback = MagicMock()
@@ -314,6 +354,7 @@ class TestSecurityAuthorization(unittest.IsolatedAsyncioTestCase):
 
     async def test_super_admin_filter(self):
         from common import IsSuperAdminFilter
+
         flt = IsSuperAdminFilter()
         super_event = MagicMock(from_user=MagicMock(id=self.super_admin_id))
         self.assertTrue(await flt(super_event))
@@ -328,8 +369,10 @@ class TestCandidateService(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = os.path.join(self.temp_dir.name, "test_service.db")
         from database import ResumeDB
+
         self.db = ResumeDB(self.db_path)
         from candidate_service import CandidateService
+
         self.service = CandidateService(db_instance=self.db)
 
     def tearDown(self):
@@ -368,7 +411,7 @@ class TestCandidateService(unittest.TestCase):
             "phone": "+79001112233",
             "vacancy": "Водитель трамвая",
             "experience": "Без опыта",
-            "city": "Ульяновск"
+            "city": "Ульяновск",
         }
         ticket_id, meta = self.service.register_candidate(data, platform="tg")
         self.assertGreater(ticket_id, 0)
@@ -386,7 +429,7 @@ class TestCandidateService(unittest.TestCase):
             "full_name": "Удаляемый Кандидат",
             "phone": "+79990001122",
             "vacancy": "Кондуктор",
-            "experience": "Без опыта"
+            "experience": "Без опыта",
         }
         t_id, _ = self.service.register_candidate(data, platform="tg")
         success, del_id, ts = self.service.revoke_consent_152fz("555444333", platform="tg")
@@ -404,7 +447,8 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
 
     def setUp(self):
         from database import ResumeDB
-        self.temp_db_file = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+
+        self.temp_db_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db = ResumeDB(self.temp_db_file.name)
 
     def tearDown(self):
@@ -416,6 +460,7 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
 
     def test_assistant_html_validator(self):
         from assistant import HRAssistant
+
         ok, _ = HRAssistant.validate_telegram_html("<b>Жирный</b> <i>курсив</i> <code>код</code>")
         self.assertTrue(ok)
 
@@ -430,6 +475,7 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
 
     def test_assistant_templates_and_preview(self):
         from assistant import HRAssistant
+
         templates = HRAssistant.list_templates()
         self.assertGreaterEqual(len(templates), 4)
 
@@ -442,6 +488,7 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
 
     def test_assistant_length_limits(self):
         from assistant import HRAssistant
+
         res_ok = HRAssistant.check_text_limits("Короткий текст", 4096)
         self.assertTrue(res_ok["is_valid"])
 
@@ -456,19 +503,30 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
 
     def test_doc_generator_and_destruction_logs(self):
         import importlib.util
+
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        spec = importlib.util.spec_from_file_location("doc_generator", os.path.join(cur_dir, "services", "doc_generator.py") if os.path.exists(os.path.join(cur_dir, "services", "doc_generator.py")) else os.path.join(cur_dir, "doc_generator.py"))
+        spec = importlib.util.spec_from_file_location(
+            "doc_generator",
+            os.path.join(cur_dir, "services", "doc_generator.py")
+            if os.path.exists(os.path.join(cur_dir, "services", "doc_generator.py"))
+            else os.path.join(cur_dir, "doc_generator.py"),
+        )
         doc_gen = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(doc_gen)
 
-        p1 = doc_gen.generate_destruction_act_docx({
-            'id': 999, 'fio': 'Тестов Тест', 'phone': '+79991234567',
-            'vacancy': 'Водитель', 'reason': 'Отзыв согласия 152-ФЗ'
-        })
+        p1 = doc_gen.generate_destruction_act_docx(
+            {
+                "id": 999,
+                "fio": "Тестов Тест",
+                "phone": "+79991234567",
+                "vacancy": "Водитель",
+                "reason": "Отзыв согласия 152-ФЗ",
+            }
+        )
         self.assertTrue(os.path.exists(p1))
 
         # Тест журнала в БД
-        self.db.log_pdn_destruction(999, '12345', 'tg', 'Тестовое уничтожение')
+        self.db.log_pdn_destruction(999, "12345", "tg", "Тестовое уничтожение")
         logs = self.db.get_destruction_logs(10)
         self.assertGreaterEqual(len(logs), 1)
         self.assertEqual(logs[0][1], 999)
@@ -483,7 +541,7 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
             experience="Без опыта",
             is_test=True,
             target_db="test",
-            source="Очный приём (Депо)"
+            source="Очный приём (Депо)",
         )
         self.assertGreaterEqual(ticket_id, 900000)
         cand = self.db.get_candidate(ticket_id)
@@ -494,18 +552,20 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
     def test_web_vacancies_and_apply_api(self):
         import asyncio
         import json
-        from web_app import WebPanel
+
         from aiohttp.test_utils import make_mocked_request
+
+        from web_app import WebPanel
 
         panel = WebPanel(self.db, bot=None)
 
         # 1. Проверка API вакансий
         async def run_vacancies():
-            req = make_mocked_request('GET', '/api/vacancies')
+            req = make_mocked_request("GET", "/api/vacancies")
             resp = await panel.handle_api_vacancies(req)
             data = json.loads(resp.text)
-            self.assertTrue(data['ok'])
-            self.assertGreaterEqual(len(data['vacancies']), 3)
+            self.assertTrue(data["ok"])
+            self.assertGreaterEqual(len(data["vacancies"]), 3)
 
         asyncio.run(run_vacancies())
 
@@ -527,31 +587,30 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
                 "criminal_record": "Нет",
                 "source": "Сайт предприятия",
                 "referrer_tab": "1042",
-                "platform": "web"
+                "platform": "web",
             }
-            req = make_mocked_request(
-                'POST', '/api/apply_candidate',
-                headers={'Content-Type': 'application/json'}
-            )
-            req._read_bytes = json.dumps(payload).encode('utf-8')
+            req = make_mocked_request("POST", "/api/apply_candidate", headers={"Content-Type": "application/json"})
+            req._read_bytes = json.dumps(payload).encode("utf-8")
             resp = await panel.handle_api_apply_candidate(req)
             data = json.loads(resp.text)
-            self.assertTrue(data['ok'])
-            self.assertIn('ticket_id', data)
-            t_id = data['ticket_id']
+            self.assertTrue(data["ok"])
+            self.assertIn("ticket_id", data)
+            t_id = data["ticket_id"]
 
             # Проверка детализации (с правами HR / SuperAdmin)
             from web_app import generate_auth_token
+
             auth_token = generate_auth_token(7657422832, "superadmin", "Главный Администратор")
             req_detail = make_mocked_request(
-                'GET', f'/api/candidate/{t_id}', 
-                match_info={'id': str(t_id)},
-                headers={'Authorization': f'Bearer {auth_token}'}
+                "GET",
+                f"/api/candidate/{t_id}",
+                match_info={"id": str(t_id)},
+                headers={"Authorization": f"Bearer {auth_token}"},
             )
             resp_detail = await panel.handle_api_candidate_detail(req_detail)
             cand_json = json.loads(resp_detail.text)
-            self.assertEqual(cand_json['full_name'], "Веб Кандидат Сергеевич")
-            self.assertEqual(cand_json['phone'], "+79279998877")
+            self.assertEqual(cand_json["full_name"], "Веб Кандидат Сергеевич")
+            self.assertEqual(cand_json["phone"], "+79279998877")
 
         asyncio.run(run_apply())
 
@@ -559,10 +618,12 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
         """Тест синхронизации закрытия/открытия вакансий между ботом и веб-формой."""
         import asyncio
         import json
+
+        from aiohttp.test_utils import make_mocked_request
+
         from common import get_all_vacancies, get_closed_vacancies, get_open_vacancies, set_closed_vacancies
         from keyboards import make_step5_vacancies_kb
         from web_app import WebPanel
-        from aiohttp.test_utils import make_mocked_request
 
         original_closed = get_closed_vacancies()
         try:
@@ -595,32 +656,34 @@ class TestHRAssistantAndMiniApp(unittest.TestCase):
             panel = WebPanel(self.db, bot=None)
 
             async def run_web_check():
-                req = make_mocked_request('GET', '/api/vacancies')
+                req = make_mocked_request("GET", "/api/vacancies")
                 resp = await panel.handle_api_vacancies(req)
                 data = json.loads(resp.text)
-                self.assertTrue(data['ok'])
-                titles = [v['title'] for v in data['vacancies']]
+                self.assertTrue(data["ok"])
+                titles = [v["title"] for v in data["vacancies"]]
                 self.assertNotIn(target_vac, titles)
 
                 # Запрос со всеми вакансиями (для админки) показывает её как закрытую
-                req_all = make_mocked_request('GET', '/api/vacancies?all=1')
+                req_all = make_mocked_request("GET", "/api/vacancies?all=1")
                 resp_all = await panel.handle_api_vacancies(req_all)
                 data_all = json.loads(resp_all.text)
-                target_item = next(v for v in data_all['vacancies'] if v['title'] == target_vac)
-                self.assertFalse(target_item['is_open'])
+                target_item = next(v for v in data_all["vacancies"] if v["title"] == target_vac)
+                self.assertFalse(target_item["is_open"])
 
                 # 4. Переключаем обратно через API (с правами HR / SuperAdmin)
                 from web_app import generate_auth_token
+
                 auth_token = generate_auth_token(7657422832, "superadmin", "Главный Администратор")
                 req_toggle = make_mocked_request(
-                    'POST', '/api/vacancies/toggle',
-                    headers={'Authorization': f'Bearer {auth_token}', 'Content-Type': 'application/json'}
+                    "POST",
+                    "/api/vacancies/toggle",
+                    headers={"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"},
                 )
-                req_toggle._read_bytes = json.dumps({"title": target_vac}).encode('utf-8')
+                req_toggle._read_bytes = json.dumps({"title": target_vac}).encode("utf-8")
                 resp_toggle = await panel.handle_api_vacancies_toggle(req_toggle)
                 toggle_data = json.loads(resp_toggle.text)
-                self.assertTrue(toggle_data['ok'])
-                self.assertTrue(toggle_data['is_open'])
+                self.assertTrue(toggle_data["ok"])
+                self.assertTrue(toggle_data["is_open"])
 
             asyncio.run(run_web_check())
 
@@ -639,7 +702,8 @@ class TestComplianceAndInterviewServices(unittest.TestCase):
 
     def setUp(self):
         from database import ResumeDB
-        self.temp_db_file = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+
+        self.temp_db_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db = ResumeDB(self.temp_db_file.name)
 
     def tearDown(self):
@@ -651,6 +715,7 @@ class TestComplianceAndInterviewServices(unittest.TestCase):
 
     def test_compliance_clean_candidate(self):
         from services.compliance_service import ComplianceService
+
         data = {
             "user_id": "111222333",
             "platform": "tg",
@@ -665,6 +730,7 @@ class TestComplianceAndInterviewServices(unittest.TestCase):
 
     def test_compliance_art_328_1_tk_rf(self):
         from services.compliance_service import ComplianceService
+
         # Судимость по тяжкой статье при подаче на водителя
         data = {
             "user_id": "999888777",
@@ -681,6 +747,7 @@ class TestComplianceAndInterviewServices(unittest.TestCase):
 
     def test_compliance_driver_license_analysis(self):
         from services.compliance_service import ComplianceService
+
         # Водитель трамвая с категорией B - требуется переподготовка
         analysis = ComplianceService.analyze_driver_licenses("Водитель трамвая", "B, C")
         self.assertTrue(analysis["offer_training"])
@@ -693,6 +760,7 @@ class TestComplianceAndInterviewServices(unittest.TestCase):
 
     def test_interview_slots_generation(self):
         from services.interview_service import InterviewService
+
         slots = InterviewService.generate_interview_slots(days_ahead=3)
         self.assertGreaterEqual(len(slots), 4)
         for s in slots:
@@ -706,7 +774,7 @@ class TestComplianceAndInterviewServices(unittest.TestCase):
             full_name="Собеседуемый Петр",
             phone="+79271112233",
             vacancy="Водитель трамвая",
-            experience="Стаж 5 лет"
+            experience="Стаж 5 лет",
         )
         self.assertGreater(ticket_id, 0)
 
@@ -757,6 +825,7 @@ def run_all_tests() -> tuple[bool, str]:
     )
     return success, summary
 
+
 run_system_self_tests = run_all_tests
 
 
@@ -772,4 +841,3 @@ if __name__ == "__main__":
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
-

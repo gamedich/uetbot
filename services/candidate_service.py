@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Единый сервисный слой подбора персонала МУП «Ульяновскэлектротранс» (Core Service).
 Унифицирует валидацию, проверку ограничений (152-ФЗ, дубликаты, кулдауны)
@@ -8,14 +7,13 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import re
-from config import CONFIG
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import texts
+from config import CONFIG
 from texts import clean_html
 
 logger = logging.getLogger("CANDIDATE_SERVICE")
@@ -51,6 +49,7 @@ class CandidateService:
         """Ленивая инициализация ссылки на БД для предотвращения циклических импортов."""
         if self._db is None:
             from common import db
+
             self._db = db
         return self._db
 
@@ -198,11 +197,7 @@ class CandidateService:
     # 4. РЕГИСТРАЦИЯ И ОПЕРАЦИИ С АНКЕТАМИ
     # =========================================================================
 
-    def register_candidate(
-        self,
-        data: Dict[str, Any],
-        platform: str = "tg"
-    ) -> Tuple[int, Dict[str, Any]]:
+    def register_candidate(self, data: Dict[str, Any], platform: str = "tg") -> Tuple[int, Dict[str, Any]]:
         """
         Регистрация новой анкеты со всеми 16 шагами:
         Сохраняет запись в SQLite через ResumeDB и вычисляет метаданные (триггер обучения).
@@ -262,7 +257,7 @@ class CandidateService:
             criminal_record=criminal_record,
             source=source,
             extra_info=extra_info,
-            referrer_tab=data.get("referrer_tab", "")
+            referrer_tab=data.get("referrer_tab", ""),
         )
 
         offer_training = self.should_offer_training(vacancy, experience)
@@ -273,11 +268,12 @@ class CandidateService:
             "phone": phone,
             "vacancy": vacancy,
             "consent_timestamp": consent_ts,
-            "platform": platform
+            "platform": platform,
         }
-        logger.info(f"Зарегистрирована анкета #{ticket_id} ({platform}): {full_name}, {vacancy}, обучение={offer_training}")
+        logger.info(
+            f"Зарегистрирована анкета #{ticket_id} ({platform}): {full_name}, {vacancy}, обучение={offer_training}"
+        )
         return ticket_id, meta
-    
 
     async def async_register_candidate(
         self,

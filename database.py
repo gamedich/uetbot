@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Модуль базы данных SQLite для МУП «Ульяновскэлектротранс».
 Поддерживает высоконагруженный режим WAL (Write-Ahead Logging),
@@ -15,7 +14,6 @@ import logging
 import os
 import sqlite3
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 try:
@@ -35,12 +33,20 @@ class ResumeDB:
         if not db_path:
             db_path = os.path.join(data_dir, "resumes.db")
         elif not os.path.isabs(db_path):
-            db_path = os.path.join(base_dir, db_path) if db_path.startswith("data/") else os.path.join(data_dir, os.path.basename(db_path))
+            db_path = (
+                os.path.join(base_dir, db_path)
+                if db_path.startswith("data/")
+                else os.path.join(data_dir, os.path.basename(db_path))
+            )
 
         if not test_db_path:
             test_db_path = os.path.join(data_dir, "resumes_test.db")
         elif not os.path.isabs(test_db_path):
-            test_db_path = os.path.join(base_dir, test_db_path) if test_db_path.startswith("data/") else os.path.join(data_dir, os.path.basename(test_db_path))
+            test_db_path = (
+                os.path.join(base_dir, test_db_path)
+                if test_db_path.startswith("data/")
+                else os.path.join(data_dir, os.path.basename(test_db_path))
+            )
 
         self.db_path = db_path
         self.test_db_path = test_db_path
@@ -82,12 +88,13 @@ class ResumeDB:
             yield conn
 
     def disable_all_hr_notifications(self) -> int:
-        
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("UPDATE admins SET notify_dm = 0 WHERE role = 'hr'")
             conn.commit()
             return cursor.rowcount
+
     async def get_async_connection(self, is_test: bool = False):
         """Создание асинхронного соединения через aiosqlite."""
         if aiosqlite is None:
@@ -105,10 +112,10 @@ class ResumeDB:
         """Создание таблиц, миграция структуры и установка высокоскоростных индексов"""
         with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
-    
+
             # 1. Таблица соискателей
             cursor.execute(
-            """
+                """
             CREATE TABLE IF NOT EXISTS candidates (
                 ticket_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 platform TEXT NOT NULL,
@@ -128,8 +135,8 @@ class ResumeDB:
                 interview_status TEXT DEFAULT 'pending'
             )
             """
-        )
-            #полей кандидатов
+            )
+            # полей кандидатов
             cursor.execute("PRAGMA table_info(candidates)")
             cand_cols = [row[1] for row in cursor.fetchall()]
             if "admin_note" not in cand_cols:
@@ -165,12 +172,8 @@ class ResumeDB:
 
             # Для тестовой базы стартуем нумерацию тикетов с 900000 (идемпотентно)
             if is_test:
-                cursor.execute(
-                    "INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('candidates', 900000)"
-                )
-                cursor.execute(
-                    "INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('inquiries', 900000)"
-                )
+                cursor.execute("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('candidates', 900000)")
+                cursor.execute("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('inquiries', 900000)")
                 conn.commit()
             # 2. Таблица администраторов
             cursor.execute(
@@ -254,7 +257,7 @@ class ResumeDB:
                 )
                 """
             )
-            
+
             # 7. Таблица активных прямых диалогов (живой мост Кадровик <-> Кандидат)
             cursor.execute(
                 """
@@ -386,6 +389,7 @@ class ResumeDB:
     def get_employee_by_phone(self, phone: str) -> Optional[Dict[str, Any]]:
         """Ищет сотрудника по последним 10 цифрам номера телефона"""
         import re
+
         clean = re.sub(r"\D", "", phone)[-10:]
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
@@ -400,7 +404,7 @@ class ResumeDB:
             cur = conn.cursor()
             cur.execute(
                 "UPDATE employees SET telegram_id = ?, updated_at = CURRENT_TIMESTAMP WHERE tab_number = ?",
-                (telegram_id, str(tab_number).strip())
+                (telegram_id, str(tab_number).strip()),
             )
             conn.commit()
             return cur.rowcount > 0
@@ -412,12 +416,12 @@ class ResumeDB:
             cur = conn.cursor()
             cur.execute(
                 """
-                SELECT ticket_id, full_name, vacancy, status, created_at 
-                FROM candidates 
-                WHERE referrer_tab = ? 
+                SELECT ticket_id, full_name, vacancy, status, created_at
+                FROM candidates
+                WHERE referrer_tab = ?
                 ORDER BY ticket_id DESC
                 """,
-                (str(tab_number).strip(),)
+                (str(tab_number).strip(),),
             )
             return [dict(r) for r in cur.fetchall()]
 
@@ -427,7 +431,7 @@ class ResumeDB:
             cur = conn.cursor()
             cur.execute(
                 "INSERT INTO employee_requests (tab_number, full_name, req_type) VALUES (?, ?, ?)",
-                (str(tab_number).strip(), full_name.strip(), req_type.strip())
+                (str(tab_number).strip(), full_name.strip(), req_type.strip()),
             )
             conn.commit()
             return cur.lastrowid
@@ -450,12 +454,29 @@ class ResumeDB:
     # =========================================================================
 
     def add_candidate(
-        self, platform: str, user_id: str, full_name: str, phone: str, vacancy: str, experience: str,
-        is_test: bool = False, consent_timestamp: Optional[str] = None,
-        birth_date: str = "", city: str = "", driver_license: str = "", education: str = "",
-        relocation: str = "", dormitory: str = "", shift_work: str = "",
-        medical_restrictions: str = "", criminal_record: str = "", source: str = "", extra_info: str = "",
-        raw_data_json: str = "{}", referrer_tab: str = "", target_db: str = ""
+        self,
+        platform: str,
+        user_id: str,
+        full_name: str,
+        phone: str,
+        vacancy: str,
+        experience: str,
+        is_test: bool = False,
+        consent_timestamp: Optional[str] = None,
+        birth_date: str = "",
+        city: str = "",
+        driver_license: str = "",
+        education: str = "",
+        relocation: str = "",
+        dormitory: str = "",
+        shift_work: str = "",
+        medical_restrictions: str = "",
+        criminal_record: str = "",
+        source: str = "",
+        extra_info: str = "",
+        raw_data_json: str = "{}",
+        referrer_tab: str = "",
+        target_db: str = "",
     ) -> int:
         # Автоматически проверяем переключатель активной базы
         target_setting = self.get_setting("active_db_target", "resumes.db")
@@ -478,10 +499,27 @@ class ResumeDB:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """,
                 (
-                    platform, str(user_id), full_name, phone, vacancy, experience, 1 if use_test else 0, consent_timestamp or "",
-                    birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                    medical_restrictions, criminal_record, source, extra_info, raw_data_json,
-                    str(referrer_tab).strip() if referrer_tab else None
+                    platform,
+                    str(user_id),
+                    full_name,
+                    phone,
+                    vacancy,
+                    experience,
+                    1 if use_test else 0,
+                    consent_timestamp or "",
+                    birth_date,
+                    city,
+                    driver_license,
+                    education,
+                    relocation,
+                    dormitory,
+                    shift_work,
+                    medical_restrictions,
+                    criminal_record,
+                    source,
+                    extra_info,
+                    raw_data_json,
+                    str(referrer_tab).strip() if referrer_tab else None,
                 ),
             )
             conn.commit()
@@ -530,8 +568,8 @@ class ResumeDB:
             return None
 
         # Номера #900000+ по регламенту лежат в тестовой базе
-        is_test = (ticket_id >= 900000)
-        
+        is_test = ticket_id >= 900000
+
         # 1. Запрос в целевую базу
         with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
@@ -543,7 +581,7 @@ class ResumeDB:
                        interview_depot, interview_time, interview_status
                 FROM candidates WHERE ticket_id = ?
                 """,
-                (ticket_id,)
+                (ticket_id,),
             )
             row = cursor.fetchone()
             if row:
@@ -560,11 +598,13 @@ class ResumeDB:
                        interview_depot, interview_time, interview_status
                 FROM candidates WHERE ticket_id = ?
                 """,
-                (ticket_id,)
+                (ticket_id,),
             )
             return cursor.fetchone()
 
-    def get_candidate_by_user_id(self, user_id: str, platform: str = "tg", is_test: Optional[bool] = None) -> Optional[Tuple]:
+    def get_candidate_by_user_id(
+        self, user_id: str, platform: str = "tg", is_test: Optional[bool] = None
+    ) -> Optional[Tuple]:
         """Поиск последней анкеты пользователя с бесшовным поиском в активной и резервной базах."""
         if is_test is True or is_test is False:
             with self._get_connection(is_test=is_test) as conn:
@@ -583,8 +623,8 @@ class ResumeDB:
 
         # Если режим не указан — опрашиваем сначала активную целевую базу
         target = self.get_setting("active_db_target", "resumes.db")
-        prefer_test = (target == "resumes_test.db")
-        
+        prefer_test = target == "resumes_test.db"
+
         row = self.get_candidate_by_user_id(user_id, platform=platform, is_test=prefer_test)
         if not row:
             # Fallback во вторую базу (если анкета была подана в другом режиме)
@@ -606,8 +646,8 @@ class ResumeDB:
                 # 1. Проверяем наличие активной анкеты
                 cursor.execute(
                     """
-                    SELECT ticket_id, status, created_at, full_name, vacancy 
-                    FROM candidates 
+                    SELECT ticket_id, status, created_at, full_name, vacancy
+                    FROM candidates
                     WHERE user_id = ? AND platform = ? AND (status IN ('Новая', 'В работе', 'Приглашен') OR status LIKE 'Приглашен%')
                     ORDER BY ticket_id DESC LIMIT 1
                     """,
@@ -616,19 +656,23 @@ class ResumeDB:
                 active_row = cursor.fetchone()
                 if active_row:
                     t_id, st, cr, fn, vc = active_row
-                    return False, "unprocessed", {
-                        "ticket_id": t_id,
-                        "status": st,
-                        "created_at": cr,
-                        "full_name": fn,
-                        "vacancy": vc,
-                    }
+                    return (
+                        False,
+                        "unprocessed",
+                        {
+                            "ticket_id": t_id,
+                            "status": st,
+                            "created_at": cr,
+                            "full_name": fn,
+                            "vacancy": vc,
+                        },
+                    )
 
                 # 2. Проверяем период кулдауна 90 дней после отказа
                 cursor.execute(
                     """
-                    SELECT ticket_id, status, created_at, updated_at, full_name, vacancy 
-                    FROM candidates 
+                    SELECT ticket_id, status, created_at, updated_at, full_name, vacancy
+                    FROM candidates
                     WHERE user_id = ? AND platform = ? AND (status = 'Отказ' OR status LIKE 'Отказ%')
                     ORDER BY ticket_id DESC LIMIT 1
                     """,
@@ -648,21 +692,25 @@ class ResumeDB:
                         available_dt = refuse_dt + timedelta(days=cooldown_days)
                         remaining_seconds = max(0.0, (available_dt - now).total_seconds())
                         days_left = max(1, int(remaining_seconds // 86400) + 1)
-                        return False, "rejected_cooldown", {
-                            "ticket_id": t_id,
-                            "status": st,
-                            "refuse_date": refuse_dt.strftime("%d.%m.%Y"),
-                            "available_date": available_dt.strftime("%d.%m.%Y"),
-                            "days_left": days_left,
-                            "full_name": fn,
-                            "vacancy": vc,
-                        }
+                        return (
+                            False,
+                            "rejected_cooldown",
+                            {
+                                "ticket_id": t_id,
+                                "status": st,
+                                "refuse_date": refuse_dt.strftime("%d.%m.%Y"),
+                                "available_date": available_dt.strftime("%d.%m.%Y"),
+                                "days_left": days_left,
+                                "full_name": fn,
+                                "vacancy": vc,
+                            },
+                        )
 
         return True, "ok", None
 
     def delete_candidate(self, ticket_id: int) -> bool:
         """Физическое удаление анкеты кандидата и связанных диалогов из базы (с поддержкой обеих БД)."""
-        is_test = (ticket_id >= 900000)
+        is_test = ticket_id >= 900000
         deleted = False
         for flag in (is_test, not is_test):
             with self._get_connection(is_test=flag) as conn:
@@ -716,17 +764,17 @@ class ResumeDB:
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    DELETE FROM candidates 
-                    WHERE is_test = 1 OR status LIKE '%Тест%' 
-                       OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%' 
+                    DELETE FROM candidates
+                    WHERE is_test = 1 OR status LIKE '%Тест%'
+                       OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%'
                        OR ticket_id >= 900000
                     """
                 )
                 cand_cnt += cursor.rowcount
                 cursor.execute(
                     """
-                    DELETE FROM inquiries 
-                    WHERE is_test = 1 OR question_text LIKE '%Тест%' 
+                    DELETE FROM inquiries
+                    WHERE is_test = 1 OR question_text LIKE '%Тест%'
                        OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%'
                        OR inquiry_id >= 900000
                     """
@@ -797,22 +845,28 @@ class ResumeDB:
             return cursor.fetchall()
 
     def update_status(self, ticket_id: int, new_status: str):
-        is_test = (ticket_id >= 900000)
+        is_test = ticket_id >= 900000
         with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
-            cursor.execute("UPDATE candidates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?", (new_status, ticket_id))
+            cursor.execute(
+                "UPDATE candidates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
+                (new_status, ticket_id),
+            )
             conn.commit()
 
     def update_admin_note(self, ticket_id: int, note: str):
-        is_test = (ticket_id >= 900000)
+        is_test = ticket_id >= 900000
         with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
-            cursor.execute("UPDATE candidates SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?", (note, ticket_id))
+            cursor.execute(
+                "UPDATE candidates SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
+                (note, ticket_id),
+            )
             conn.commit()
 
     def set_interview_details(self, ticket_id: int, depot: str, slot_time: str) -> bool:
         """Сохранение выбранного филиала депо и времени собеседования."""
-        is_test = (ticket_id >= 900000)
+        is_test = ticket_id >= 900000
         with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -828,7 +882,7 @@ class ResumeDB:
 
     def update_interview_status(self, ticket_id: int, status: str) -> bool:
         """Обновление статуса явки на собеседование (confirmed, reschedule и т.д.)."""
-        is_test = (ticket_id >= 900000)
+        is_test = ticket_id >= 900000
         with self._get_connection(is_test=is_test) as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -948,7 +1002,13 @@ class ResumeDB:
             return cursor.rowcount > 0
 
     def log_pdn_destruction(
-        self, candidate_id: int, user_id: str, platform: str, reason: str, act_number: str = "", operator: str = "Система"
+        self,
+        candidate_id: int,
+        user_id: str,
+        platform: str,
+        reason: str,
+        act_number: str = "",
+        operator: str = "Система",
     ) -> int:
         """Фиксация уничтожения ПДн в электронном журнале (Приказ Роскомнадзора № 179)."""
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -993,8 +1053,8 @@ class ResumeDB:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT ticket_id, user_id, platform, full_name, phone 
-                FROM candidates 
+                SELECT ticket_id, user_id, platform, full_name, phone
+                FROM candidates
                 WHERE created_at < ?
                 """,
                 (cutoff,),
@@ -1028,8 +1088,8 @@ class ResumeDB:
             try:
                 cursor.execute(
                     """
-                    INSERT INTO admins (user_id, role, notify_dm) 
-                    VALUES (?, ?, 1) 
+                    INSERT INTO admins (user_id, role, notify_dm)
+                    VALUES (?, ?, 1)
                     ON CONFLICT(user_id) DO UPDATE SET role = ?
                     """,
                     (user_id, role, role),
@@ -1076,7 +1136,7 @@ class ResumeDB:
             if cursor.rowcount == 0:
                 cursor.execute(
                     "INSERT INTO admins (user_id, role, notify_dm, web_password) VALUES (?, 'applicant', 1, ?)",
-                    (user_id, password.strip())
+                    (user_id, password.strip()),
                 )
             conn.commit()
             return True
@@ -1097,7 +1157,7 @@ class ResumeDB:
             if cursor.rowcount == 0:
                 cursor.execute(
                     "INSERT INTO admins (user_id, role, notify_dm, email) VALUES (?, 'applicant', 1, ?)",
-                    (user_id, email.strip())
+                    (user_id, email.strip()),
                 )
             conn.commit()
             return True
@@ -1130,7 +1190,7 @@ class ResumeDB:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT user_id, role, notify_dm, web_password, phone, full_name, added_at FROM admins WHERE user_id = ?",
-                (user_id,)
+                (user_id,),
             )
             row = cursor.fetchone()
             if not row:
@@ -1290,7 +1350,7 @@ class ResumeDB:
         phone: str = "",
         vacancy: str = "",
         is_test: bool = False,
-        consent_timestamp: Optional[str] = None
+        consent_timestamp: Optional[str] = None,
     ) -> int:
         target_setting = self.get_setting("active_db_target", "resumes.db")
         use_test = is_test or (target_setting == "resumes_test.db")
@@ -1305,16 +1365,23 @@ class ResumeDB:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    ticket_id, platform, str(user_id), full_name, phone, vacancy, question_text,
-                    1 if use_test else 0, consent_timestamp or ""
-                )
+                    ticket_id,
+                    platform,
+                    str(user_id),
+                    full_name,
+                    phone,
+                    vacancy,
+                    question_text,
+                    1 if use_test else 0,
+                    consent_timestamp or "",
+                ),
             )
             cursor.execute(
                 """
                 INSERT OR REPLACE INTO user_cooldowns (user_id, last_inquiry_at)
                 VALUES (?, CURRENT_TIMESTAMP)
                 """,
-                (str(user_id),)
+                (str(user_id),),
             )
             conn.commit()
             return cursor.lastrowid
@@ -1495,8 +1562,7 @@ class ResumeDB:
         with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO system_settings (key, value) VALUES (?, ?) "
-                "ON CONFLICT(key) DO UPDATE SET value = ?",
+                "INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
                 (key, str(value), str(value)),
             )
 
@@ -1735,9 +1801,7 @@ class ResumeDB:
     async def async_get_candidate(self, ticket_id: int) -> Optional[Tuple[Any, ...]]:
         return await asyncio.to_thread(self.get_candidate, ticket_id)
 
-    async def async_get_candidate_by_user_id(
-        self, user_id: str, platform: str = "tg"
-    ) -> Optional[Tuple[Any, ...]]:
+    async def async_get_candidate_by_user_id(self, user_id: str, platform: str = "tg") -> Optional[Tuple[Any, ...]]:
         return await asyncio.to_thread(self.get_candidate_by_user_id, user_id, platform)
 
     async def async_check_candidate_can_apply(
@@ -1751,9 +1815,7 @@ class ResumeDB:
     async def async_get_statistics(self) -> Dict[str, int]:
         return await asyncio.to_thread(self.get_statistics)
 
-    async def async_delete_candidate_152fz(
-        self, ticket_id: int
-    ) -> Tuple[bool, Optional[Dict[str, Any]]]:
+    async def async_delete_candidate_152fz(self, ticket_id: int) -> Tuple[bool, Optional[Dict[str, Any]]]:
         return await asyncio.to_thread(self.delete_candidate_152fz, ticket_id)
 
     async def async_update_status(self, ticket_id: int, new_status: str) -> None:

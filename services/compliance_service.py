@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Сервисный слой комплаенс-контроля и скоринга соискателей
 МУП «Ульяновскэлектротранс».
@@ -13,9 +12,8 @@
 
 from __future__ import annotations
 
-import html
 import re
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 from common import db
 
@@ -82,11 +80,11 @@ class ComplianceService:
             has_c = False
             has_d = False
         else:
-            has_tm = bool(re.search(r'(?<![А-ЯA-Z])(TM|ТМ)(?![А-ЯA-Z])', lic))
-            has_tb = bool(re.search(r'(?<![А-ЯA-Z])(TB|ТБ)(?![А-ЯA-Z])', lic))
-            has_b = bool(re.search(r'(?<![А-ЯA-Z])(B|В)(?![А-ЯA-Z])', lic))
-            has_c = bool(re.search(r'(?<![А-ЯA-Z])(C|С)(?![А-ЯA-Z])', lic))
-            has_d = bool(re.search(r'(?<![А-ЯA-Z])(D|Д)(?![А-ЯA-Z])', lic))
+            has_tm = bool(re.search(r"(?<![А-ЯA-Z])(TM|ТМ)(?![А-ЯA-Z])", lic))
+            has_tb = bool(re.search(r"(?<![А-ЯA-Z])(TB|ТБ)(?![А-ЯA-Z])", lic))
+            has_b = bool(re.search(r"(?<![А-ЯA-Z])(B|В)(?![А-ЯA-Z])", lic))
+            has_c = bool(re.search(r"(?<![А-ЯA-Z])(C|С)(?![А-ЯA-Z])", lic))
+            has_d = bool(re.search(r"(?<![А-ЯA-Z])(D|Д)(?![А-ЯA-Z])", lic))
 
         result = {
             "is_qualified": False,
@@ -102,11 +100,15 @@ class ComplianceService:
             elif has_b or has_c or has_d:
                 result["offer_training"] = True
                 result["training_type"] = "retraining"
-                result["note"] = "🎓 Есть категория B/C/D. Рекомендуется ускоренная переподготовка на водителя трамвая («Tm»)."
+                result["note"] = (
+                    "🎓 Есть категория B/C/D. Рекомендуется ускоренная переподготовка на водителя трамвая («Tm»)."
+                )
             else:
                 result["offer_training"] = True
                 result["training_type"] = "full_school"
-                result["note"] = "🎓 Нет прав. Направляется в Учебный центр предприятия (бесплатное обучение + стипендия 25 000 ₽)."
+                result["note"] = (
+                    "🎓 Нет прав. Направляется в Учебный центр предприятия (бесплатное обучение + стипендия 25 000 ₽)."
+                )
 
         elif is_trolley:
             if has_tb:

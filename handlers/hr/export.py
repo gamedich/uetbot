@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Выгрузка данных и генерация актов МУП «Ульяновскэлектротранс»:
 - Экспорт базы соискателей в CSV (/export, callback hr_export_excel)
@@ -57,10 +56,20 @@ async def process_export_candidates(event: Union[types.Message, types.CallbackQu
 
     output = io.StringIO()
     writer = csv.writer(output, delimiter=";", quoting=csv.QUOTE_MINIMAL)
-    writer.writerow([
-        "ID", "Дата подачи", "ФИО", "Телефон", "Вакансия",
-        "Опыт работы", "Статус", "Заметка HR", "Платформа", "ID пользователя",
-    ])
+    writer.writerow(
+        [
+            "ID",
+            "Дата подачи",
+            "ФИО",
+            "Телефон",
+            "Вакансия",
+            "Опыт работы",
+            "Статус",
+            "Заметка HR",
+            "Платформа",
+            "ID пользователя",
+        ]
+    )
 
     for c in candidates:
         row = [
@@ -113,13 +122,15 @@ async def cmd_generate_destruction_act(message: types.Message) -> None:
     vac = cand[5] if cand else "Соискатель"
 
     try:
-        path = generate_destruction_act_docx({
-            "id": cand_id,
-            "fio": fio,
-            "phone": phone,
-            "vacancy": vac,
-            "reason": "Запрос кадровой службы / уничтожение по ст. 21 152-ФЗ",
-        })
+        path = generate_destruction_act_docx(
+            {
+                "id": cand_id,
+                "fio": fio,
+                "phone": phone,
+                "vacancy": vac,
+                "reason": "Запрос кадровой службы / уничтожение по ст. 21 152-ФЗ",
+            }
+        )
         with open(path, "rb") as f:
             data = f.read()
 

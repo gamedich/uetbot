@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import gc
+
 # -*- coding: utf-8 -*-
 """
 Главная точка входа бота МУП «Ульяновскэлектротранс».
@@ -15,18 +17,18 @@ from datetime import datetime
 from aiogram import types
 
 from common import (
-    bot,
-    dp,
-    db,
-    setup_bot_commands,
-    SYSTEM_METRICS,
     CONFIG,
+    SYSTEM_METRICS,
+    bot,
+    db,
+    dp,
     safe_send,
+    setup_bot_commands,
     validate_config,
 )
-from handlers import candidate_router, hr_router, tech_router
-from gateways.vk_gateway import run_vk_gateway
 from gateways.max_gateway import run_max_gateway
+from gateways.vk_gateway import run_vk_gateway
+from handlers import candidate_router, hr_router, tech_router
 
 logger = logging.getLogger("UET_HR_BOT")
 
@@ -65,7 +67,7 @@ async def main() -> None:
     vk_task = None
     max_task = None
     backup_task = None
-    
+
     logger.info("Запуск многоканального сервиса МУП «Ульяновскэлектротранс»...")
 
     # 1. Строгая валидация обязательных переменных перед запуском
@@ -90,6 +92,7 @@ async def main() -> None:
             update = event.update
             if update.message:
                 from keyboards import make_candidate_main_keyboard
+
                 uid = update.message.from_user.id if update.message.from_user else 0
                 await safe_send(
                     bot,
@@ -98,11 +101,13 @@ async def main() -> None:
                     "Пожалуйста, попробуйте снова, воспользовавшись меню /start, "
                     "или обратитесь в отдел кадров: 8 (8422) 58-46-60",
                     reply_markup=make_candidate_main_keyboard(user_id=uid),
-                    parse_mode="HTML"
+                    parse_mode="HTML",
                 )
             elif update.callback_query:
                 try:
-                    await update.callback_query.answer("⚠️ Что-то пошло не так. Попробуйте нажать /start", show_alert=True)
+                    await update.callback_query.answer(
+                        "⚠️ Что-то пошло не так. Попробуйте нажать /start", show_alert=True
+                    )
                 except Exception:
                     pass
         except Exception as err:
@@ -116,10 +121,7 @@ async def main() -> None:
         me = await bot.get_me()
         SYSTEM_METRICS["tg_online"] = True
         bot_info_str = f"@{me.username}"
-        logger.info(
-            f"Telegram-бот подключен: @{me.username} [ID: {me.id}] "
-            f"(Режим: {env_mode})"
-        )
+        logger.info(f"Telegram-бот подключен: @{me.username} [ID: {me.id}] (Режим: {env_mode})")
     except Exception as e:
         logger.error(f"Не удалось подключиться к Telegram Bot API: {e}")
         SYSTEM_METRICS["tg_online"] = False
@@ -151,6 +153,7 @@ async def main() -> None:
     web_task = None
     try:
         from web_app import start_web_panel_task
+
         web_host = CONFIG.get("WEB_APP_HOST", "0.0.0.0")
         web_port = int(CONFIG.get("WEB_APP_PORT", 8080))
         web_task = asyncio.create_task(start_web_panel_task(db, bot=bot, host=web_host, port=web_port))
@@ -178,9 +181,7 @@ async def main() -> None:
     # 7. Главный цикл диспетчера с гарантированным завершением фоновых задач
     try:
         await dp.start_polling(
-            bot,
-            skip_updates=True,
-            allowed_updates=["message", "callback_query", "chat_member", "my_chat_member"]
+            bot, skip_updates=True, allowed_updates=["message", "callback_query", "chat_member", "my_chat_member"]
         )
     finally:
         logger.info("Остановка бота: завершение фоновых шлюзов и автобэкапа...")
@@ -201,8 +202,7 @@ async def main() -> None:
                 except Exception:
                     pass
         await asyncio.gather(
-            *[t for t in (vk_task, max_task, backup_task, web_task) if t is not None],
-            return_exceptions=True
+            *[t for t in (vk_task, max_task, backup_task, web_task) if t is not None], return_exceptions=True
         )
         await bot.session.close()
         logger.info("Бот успешно остановлен.")

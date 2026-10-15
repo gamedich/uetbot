@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Сервисный слой организации и сопровождения собеседований
 МУП «Ульяновскэлектротранс».
@@ -14,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import texts
 from common import (
@@ -55,8 +54,18 @@ class InterviewService:
         current_day = now + timedelta(days=1)  # начиная со следующего дня
 
         ru_months = {
-            1: "янв", 2: "фев", 3: "мар", 4: "апр", 5: "мая", 6: "июн",
-            7: "июл", 8: "авг", 9: "сен", 10: "окт", 11: "ноя", 12: "дек"
+            1: "янв",
+            2: "фев",
+            3: "мар",
+            4: "апр",
+            5: "мая",
+            6: "июн",
+            7: "июл",
+            8: "авг",
+            9: "сен",
+            10: "окт",
+            11: "ноя",
+            12: "дек",
         }
 
         while len(slots) < 8 and days_checked < 14:
@@ -112,7 +121,10 @@ class InterviewService:
             return True, f"Приглашение на {slot_time} в «{depot_name}» успешно отправлено кандидату."
         else:
             logger.error("Ошибка доставки приглашения #%d соискателю (%s:%s)", ticket_id, platform, user_id)
-            return False, "Не удалось доставить сообщение кандидату (возможно, чат заблокирован со стороны пользователя)."
+            return (
+                False,
+                "Не удалось доставить сообщение кандидату (возможно, чат заблокирован со стороны пользователя).",
+            )
 
     @classmethod
     async def handle_candidate_feedback(
@@ -140,18 +152,14 @@ class InterviewService:
         depot_dummy = {"name": depot_name, "address": "", "phone": ""}
 
         if is_confirmed:
-            admin_msg = texts.format_interview_confirmed_notification(
-                ticket_id, fio, vacancy, depot_dummy, slot_time
-            )
+            admin_msg = texts.format_interview_confirmed_notification(ticket_id, fio, vacancy, depot_dummy, slot_time)
             user_msg = (
                 "✅ <b>Спасибо за подтверждение!</b>\n\n"
                 f"Мы ждем вас <code>{slot_time}</code> в {depot_name}.\n"
                 "При себе обязательно имейте паспорт РФ."
             )
         else:
-            admin_msg = texts.format_interview_reschedule_notification(
-                ticket_id, fio, vacancy, depot_dummy, slot_time
-            )
+            admin_msg = texts.format_interview_reschedule_notification(ticket_id, fio, vacancy, depot_dummy, slot_time)
             user_msg = (
                 "🔄 <b>Запрос на перенос принят.</b>\n\n"
                 "Сотрудник отдела кадров свяжется с вами по указанному телефону для подбора удобного времени."

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Сценарии назначения собеседований и выбора филиалов депо:
 - Выбор филиала депо (№1 Северное, №2 Засвияжское, №3 Заволжское, Управление)
@@ -12,7 +11,6 @@ from __future__ import annotations
 
 import html
 import logging
-from typing import Any, Dict, List, Optional
 
 from aiogram import Bot, F, Router, types
 from aiogram.fsm.context import FSMContext
@@ -43,6 +41,7 @@ interviews_router = Router(name="hr_interviews")
 # 1. СЦЕНАРИЙ НАЗНАЧЕНИЯ СОБЕСЕДОВАНИЯ В ДЕПО
 # ==============================================================================
 
+
 @interviews_router.callback_query(F.data.startswith("schedule_interview_"))
 async def cb_schedule_interview_start(callback: types.CallbackQuery) -> None:
     """Шаг 1: Выбор филиала депо для встречи с соискателем."""
@@ -66,9 +65,7 @@ async def cb_schedule_interview_start(callback: types.CallbackQuery) -> None:
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "Выберите филиал депо или подразделение, куда приглашается соискатель:"
     )
-    await callback.message.edit_text(
-        text, reply_markup=make_depot_selection_keyboard(ticket_id), parse_mode="HTML"
-    )
+    await callback.message.edit_text(text, reply_markup=make_depot_selection_keyboard(ticket_id), parse_mode="HTML")
     await callback.answer()
 
 
@@ -138,6 +135,7 @@ async def cb_select_slot(callback: types.CallbackQuery, bot: Bot) -> None:
 # 2. РУЧНОЙ ВВОД ДАТЫ ВСТРЕЧИ (CustomInviteForm)
 # ==============================================================================
 
+
 @interviews_router.callback_query(F.data.startswith("invite_custom_"))
 async def cb_invite_custom(callback: types.CallbackQuery, state: FSMContext) -> None:
     """Запрос произвольной даты и времени собеседования в свободной форме."""
@@ -187,13 +185,10 @@ async def process_custom_invite_text(message: types.Message, state: FSMContext) 
 
     if platform == "vk":
         from gateways.vk_gateway import make_vk_reply_keyboard  # type: ignore
-        ok = await send_response_to_candidate(
-            platform, user_id, user_msg, keyboard=make_vk_reply_keyboard(ticket_id)
-        )
+
+        ok = await send_response_to_candidate(platform, user_id, user_msg, keyboard=make_vk_reply_keyboard(ticket_id))
     else:
-        ok = await send_response_to_candidate(
-            platform, user_id, user_msg, keyboard=make_cand_reply_keyboard(ticket_id)
-        )
+        ok = await send_response_to_candidate(platform, user_id, user_msg, keyboard=make_cand_reply_keyboard(ticket_id))
 
     updated_cand = db.get_candidate(ticket_id)
     updated_card = texts.format_hr_card_full(updated_cand) if updated_cand else ""
@@ -202,7 +197,9 @@ async def process_custom_invite_text(message: types.Message, state: FSMContext) 
         if scoring.get("summary_html"):
             updated_card += f"\n\n{scoring['summary_html']}"
 
-    status_note = "✅ Приглашение успешно отправлено соискателю!" if ok else "⚠️ Не удалось доставить сообщение кандидату."
+    status_note = (
+        "✅ Приглашение успешно отправлено соискателю!" if ok else "⚠️ Не удалось доставить сообщение кандидату."
+    )
     await safe_answer(
         message,
         f"{status_note}\n\n{updated_card}",
@@ -214,6 +211,7 @@ async def process_custom_invite_text(message: types.Message, state: FSMContext) 
 # ==============================================================================
 # 3. ОБРАБОТКА ПОДТВЕРЖДЕНИЯ ЯВКИ СОИСКАТЕЛЕМ
 # ==============================================================================
+
 
 @interviews_router.callback_query(F.data.startswith("cand_int_confirm_"))
 async def cb_candidate_confirm_interview(callback: types.CallbackQuery, bot: Bot) -> None:

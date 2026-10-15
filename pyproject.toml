@@ -1,0 +1,43 @@
+[project]
+name = "uetbot"
+version = "2.0.0"
+description = "Сервис подбора кадров МУП «Ульяновскэлектротранс»"
+readme = "README.md"
+requires-python = ">=3.9"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "ASYNC", # async checks
+]
+ignore = [
+    "E501",  # line length (handled by formatter)
+    "UP006", # keep typing.Dict/List for backward compat
+    "UP007", # keep typing.Union for python 3.9 backward compat
+    "UP035", # keep typing imports for backward compat
+    "UP045", # keep Optional for python 3.9 backward compat
+    "E402",  # module level import order
+    "ASYNC230", # blocking open in async (I/O)
+    "ASYNC240", # blocking path in async
+    "ASYNC221", # system commands in async
+    "ASYNC110", # sleep in while true
+    "E741",     # ambiguous variable name
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]

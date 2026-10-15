@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Шлюз интеграции с ВКонтакте для МУП «Ульяновскэлектротранс» (Production Ready).
 
@@ -24,15 +23,16 @@ import logging
 import random
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
-from aiohttp import ClientSession, ClientTimeout
 from aiogram import Bot
 from aiogram.types import BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiohttp import ClientSession, ClientTimeout
 
 import texts
+
 try:
     from services.candidate_service import candidate_service
 except ImportError:
@@ -45,10 +45,10 @@ from common import (
     VACANCIES,
     db,
     get_all_vacancies,
+    is_maintenance_active,
     route_new_candidate_ticket,
     route_new_inquiry_ticket,
     safe_send,
-    is_maintenance_active,
 )
 from database import ResumeDB
 from keyboards import make_inquiry_admin_keyboard, make_ticket_keyboard
@@ -72,6 +72,7 @@ VK_FAQ_DATA: Dict[str, str] = {
 # ==============================================================================
 # МУЛЬТИМЕДИА СЕРВИС ВКОНТАКТЕ (RAM-ONLY 152-ФЗ)
 # ==============================================================================
+
 
 class VKPhotoService:
     """Сервис взаимодействия с мультимедиа API ВКонтакте."""
@@ -126,15 +127,45 @@ class VKPhotoService:
 # КЛАВИАТУРЫ ВКОНТАКТЕ ДЛЯ ВСЕХ 16 ШАГОВ АНКЕТЫ
 # ==============================================================================
 
+
 def make_vk_main_keyboard() -> str:
     """Главное меню ВКонтакте с постоянными цветными кнопками."""
     buttons = [
-        [{"action": {"type": "text", "label": "📝 Заполнить анкету", "payload": json.dumps({"command": "apply"})}, "color": "positive"}],
-        [{"action": {"type": "text", "label": "📑 Моя анкета", "payload": json.dumps({"command": "my_app"})}, "color": "primary"}],
-        [{"action": {"type": "text", "label": "💬 Связаться с кадровиком", "payload": json.dumps({"command": "ask"})}, "color": "secondary"}],
         [
-            {"action": {"type": "text", "label": "📚 Частые вопросы (FAQ)", "payload": json.dumps({"command": "faq"})}, "color": "secondary"},
-            {"action": {"type": "text", "label": "📞 Контакты", "payload": json.dumps({"command": "contacts"})}, "color": "secondary"},
+            {
+                "action": {"type": "text", "label": "📝 Заполнить анкету", "payload": json.dumps({"command": "apply"})},
+                "color": "positive",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "📑 Моя анкета", "payload": json.dumps({"command": "my_app"})},
+                "color": "primary",
+            }
+        ],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "💬 Связаться с кадровиком",
+                    "payload": json.dumps({"command": "ask"}),
+                },
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "📚 Частые вопросы (FAQ)",
+                    "payload": json.dumps({"command": "faq"}),
+                },
+                "color": "secondary",
+            },
+            {
+                "action": {"type": "text", "label": "📞 Контакты", "payload": json.dumps({"command": "contacts"})},
+                "color": "secondary",
+            },
         ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
@@ -143,13 +174,47 @@ def make_vk_main_keyboard() -> str:
 def make_vk_faq_keyboard() -> str:
     """Клавиатура разделов базы знаний (FAQ) ВКонтакте."""
     buttons = [
-        [{"action": {"type": "text", "label": "🎓 Обучение на водителя", "payload": json.dumps({"faq": "training"})}, "color": "primary"}],
-        [{"action": {"type": "text", "label": "🏠 Жилье и общежитие", "payload": json.dumps({"faq": "housing"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "💰 Зарплата и льготная пенсия", "payload": json.dumps({"faq": "salary"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "📄 Необходимые документы", "payload": json.dumps({"faq": "docs"})}, "color": "secondary"}],
         [
-            {"action": {"type": "text", "label": "📝 Заполнить анкету", "payload": json.dumps({"command": "apply"})}, "color": "positive"},
-            {"action": {"type": "text", "label": "⬅️ Главное меню", "payload": json.dumps({"command": "start"})}, "color": "secondary"},
+            {
+                "action": {
+                    "type": "text",
+                    "label": "🎓 Обучение на водителя",
+                    "payload": json.dumps({"faq": "training"}),
+                },
+                "color": "primary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "🏠 Жилье и общежитие", "payload": json.dumps({"faq": "housing"})},
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "💰 Зарплата и льготная пенсия",
+                    "payload": json.dumps({"faq": "salary"}),
+                },
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "📄 Необходимые документы", "payload": json.dumps({"faq": "docs"})},
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "📝 Заполнить анкету", "payload": json.dumps({"command": "apply"})},
+                "color": "positive",
+            },
+            {
+                "action": {"type": "text", "label": "⬅️ Главное меню", "payload": json.dumps({"command": "start"})},
+                "color": "secondary",
+            },
         ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
@@ -158,7 +223,12 @@ def make_vk_faq_keyboard() -> str:
 def make_vk_cancel_keyboard() -> str:
     """Клавиатура с кнопкой отмены текущего сценария."""
     buttons = [
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}]
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ]
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -166,8 +236,22 @@ def make_vk_cancel_keyboard() -> str:
 def make_vk_consent_keyboard() -> str:
     """Шаг 0: Клавиатура согласия на обработку персональных данных (152-ФЗ РФ)."""
     buttons = [
-        [{"action": {"type": "text", "label": "✅ Согласен на обработку ПДн", "payload": json.dumps({"consent": "yes"})}, "color": "positive"}],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "✅ Согласен на обработку ПДн",
+                    "payload": json.dumps({"consent": "yes"}),
+                },
+                "color": "positive",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -175,10 +259,34 @@ def make_vk_consent_keyboard() -> str:
 def make_vk_city_keyboard() -> str:
     """Шаг 4: Выбор города проживания соискателя."""
     buttons = [
-        [{"action": {"type": "text", "label": "Ульяновск", "payload": json.dumps({"city": "Ульяновск"})}, "color": "primary"}],
-        [{"action": {"type": "text", "label": "Димитровград", "payload": json.dumps({"city": "Димитровград"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "Другой населенный пункт", "payload": json.dumps({"city": "other"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {"type": "text", "label": "Ульяновск", "payload": json.dumps({"city": "Ульяновск"})},
+                "color": "primary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "Димитровград", "payload": json.dumps({"city": "Димитровград"})},
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Другой населенный пункт",
+                    "payload": json.dumps({"city": "other"}),
+                },
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -196,31 +304,43 @@ def make_vk_vacancies_keyboard() -> str:
 
     buttons: List[List[Dict[str, Any]]] = []
     for vac in active_vacs:
-        buttons.append([{
-            "action": {
-                "type": "text",
-                "label": vac[:40],
-                "payload": json.dumps({"vac": vac}),
-            },
-            "color": "primary",
-        }])
+        buttons.append(
+            [
+                {
+                    "action": {
+                        "type": "text",
+                        "label": vac[:40],
+                        "payload": json.dumps({"vac": vac}),
+                    },
+                    "color": "primary",
+                }
+            ]
+        )
 
-    buttons.append([{
-        "action": {
-            "type": "text",
-            "label": "Другая должность",
-            "payload": json.dumps({"vac": "other"}),
-        },
-        "color": "secondary",
-    }])
-    buttons.append([{
-        "action": {
-            "type": "text",
-            "label": "❌ Отмена",
-            "payload": json.dumps({"command": "cancel"}),
-        },
-        "color": "negative",
-    }])
+    buttons.append(
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Другая должность",
+                    "payload": json.dumps({"vac": "other"}),
+                },
+                "color": "secondary",
+            }
+        ]
+    )
+    buttons.append(
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "❌ Отмена",
+                    "payload": json.dumps({"command": "cancel"}),
+                },
+                "color": "negative",
+            }
+        ]
+    )
 
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -229,18 +349,49 @@ def make_vk_license_keyboard() -> str:
     """Шаг 6: Водительское удостоверение соискателя."""
     buttons = [
         [
-            {"action": {"type": "text", "label": "Нет прав", "payload": json.dumps({"lic": "Нет прав"})}, "color": "secondary"},
-            {"action": {"type": "text", "label": "Категория B", "payload": json.dumps({"lic": "Категория B"})}, "color": "primary"},
+            {
+                "action": {"type": "text", "label": "Нет прав", "payload": json.dumps({"lic": "Нет прав"})},
+                "color": "secondary",
+            },
+            {
+                "action": {"type": "text", "label": "Категория B", "payload": json.dumps({"lic": "Категория B"})},
+                "color": "primary",
+            },
         ],
         [
-            {"action": {"type": "text", "label": "Категории B, C", "payload": json.dumps({"lic": "Категории B, C"})}, "color": "primary"},
-            {"action": {"type": "text", "label": "Категория D", "payload": json.dumps({"lic": "Категория D"})}, "color": "primary"},
+            {
+                "action": {"type": "text", "label": "Категории B, C", "payload": json.dumps({"lic": "Категории B, C"})},
+                "color": "primary",
+            },
+            {
+                "action": {"type": "text", "label": "Категория D", "payload": json.dumps({"lic": "Категория D"})},
+                "color": "primary",
+            },
         ],
         [
-            {"action": {"type": "text", "label": "Трамвай / Троллейбус", "payload": json.dumps({"lic": "Трамвай/Троллейбус"})}, "color": "positive"},
-            {"action": {"type": "text", "label": "Другие категории", "payload": json.dumps({"lic": "Другие категории"})}, "color": "secondary"},
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Трамвай / Троллейбус",
+                    "payload": json.dumps({"lic": "Трамвай/Троллейбус"}),
+                },
+                "color": "positive",
+            },
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Другие категории",
+                    "payload": json.dumps({"lic": "Другие категории"}),
+                },
+                "color": "secondary",
+            },
         ],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -249,14 +400,31 @@ def make_vk_experience_keyboard() -> str:
     """Шаг 7: Стаж / опыт работы соискателя."""
     buttons = [
         [
-            {"action": {"type": "text", "label": "Без опыта", "payload": json.dumps({"exp": "Без опыта"})}, "color": "positive"},
-            {"action": {"type": "text", "label": "До 1 года", "payload": json.dumps({"exp": "До 1 года"})}, "color": "primary"},
+            {
+                "action": {"type": "text", "label": "Без опыта", "payload": json.dumps({"exp": "Без опыта"})},
+                "color": "positive",
+            },
+            {
+                "action": {"type": "text", "label": "До 1 года", "payload": json.dumps({"exp": "До 1 года"})},
+                "color": "primary",
+            },
         ],
         [
-            {"action": {"type": "text", "label": "1–3 года", "payload": json.dumps({"exp": "1-3 года"})}, "color": "primary"},
-            {"action": {"type": "text", "label": "Более 3 лет", "payload": json.dumps({"exp": "Более 3 лет"})}, "color": "primary"},
+            {
+                "action": {"type": "text", "label": "1–3 года", "payload": json.dumps({"exp": "1-3 года"})},
+                "color": "primary",
+            },
+            {
+                "action": {"type": "text", "label": "Более 3 лет", "payload": json.dumps({"exp": "Более 3 лет"})},
+                "color": "primary",
+            },
         ],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -264,11 +432,43 @@ def make_vk_experience_keyboard() -> str:
 def make_vk_education_keyboard() -> str:
     """Шаг 8: Уровень образования соискателя."""
     buttons = [
-        [{"action": {"type": "text", "label": "Среднее специальное", "payload": json.dumps({"edu": "Среднее специальное"})}, "color": "primary"}],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Среднее специальное",
+                    "payload": json.dumps({"edu": "Среднее специальное"}),
+                },
+                "color": "primary",
+            }
+        ],
         [{"action": {"type": "text", "label": "Высшее", "payload": json.dumps({"edu": "Высшее"})}, "color": "primary"}],
-        [{"action": {"type": "text", "label": "Среднее общее (11 кл.)", "payload": json.dumps({"edu": "Среднее общее"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "Неоконченное высшее", "payload": json.dumps({"edu": "Неоконченное высшее"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Среднее общее (11 кл.)",
+                    "payload": json.dumps({"edu": "Среднее общее"}),
+                },
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Неоконченное высшее",
+                    "payload": json.dumps({"edu": "Неоконченное высшее"}),
+                },
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -276,12 +476,36 @@ def make_vk_education_keyboard() -> str:
 def make_vk_relocation_keyboard() -> str:
     """Шаг 9: Готовность к переезду в г. Ульяновск."""
     buttons = [
-        [{"action": {"type": "text", "label": "Уже проживаю в Ульяновске", "payload": json.dumps({"rel": "Уже проживаю"})}, "color": "positive"}],
         [
-            {"action": {"type": "text", "label": "Да, готов к переезду", "payload": json.dumps({"rel": "Да, готов"})}, "color": "primary"},
-            {"action": {"type": "text", "label": "Нет, не готов", "payload": json.dumps({"rel": "Нет"})}, "color": "secondary"},
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Уже проживаю в Ульяновске",
+                    "payload": json.dumps({"rel": "Уже проживаю"}),
+                },
+                "color": "positive",
+            }
         ],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Да, готов к переезду",
+                    "payload": json.dumps({"rel": "Да, готов"}),
+                },
+                "color": "primary",
+            },
+            {
+                "action": {"type": "text", "label": "Нет, не готов", "payload": json.dumps({"rel": "Нет"})},
+                "color": "secondary",
+            },
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -289,9 +513,32 @@ def make_vk_relocation_keyboard() -> str:
 def make_vk_dormitory_keyboard() -> str:
     """Шаг 10: Потребность в служебном общежитии предприятия."""
     buttons = [
-        [{"action": {"type": "text", "label": "Да, требуется общежитие", "payload": json.dumps({"dorm": "Да, требуется"})}, "color": "primary"}],
-        [{"action": {"type": "text", "label": "Нет, жильё есть", "payload": json.dumps({"dorm": "Нет, есть жилье"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Да, требуется общежитие",
+                    "payload": json.dumps({"dorm": "Да, требуется"}),
+                },
+                "color": "primary",
+            }
+        ],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Нет, жильё есть",
+                    "payload": json.dumps({"dorm": "Нет, есть жилье"}),
+                },
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -299,9 +546,28 @@ def make_vk_dormitory_keyboard() -> str:
 def make_vk_schedule_keyboard() -> str:
     """Шаг 11: Готовность к сменному графику 2/2."""
     buttons = [
-        [{"action": {"type": "text", "label": "Да, готов к графику 2/2", "payload": json.dumps({"shift": "Да, готов"})}, "color": "positive"}],
-        [{"action": {"type": "text", "label": "Нет, не подходит", "payload": json.dumps({"shift": "Нет"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Да, готов к графику 2/2",
+                    "payload": json.dumps({"shift": "Да, готов"}),
+                },
+                "color": "positive",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "Нет, не подходит", "payload": json.dumps({"shift": "Нет"})},
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -309,9 +575,28 @@ def make_vk_schedule_keyboard() -> str:
 def make_vk_health_keyboard() -> str:
     """Шаг 12: Медицинские противопоказания."""
     buttons = [
-        [{"action": {"type": "text", "label": "Противопоказаний нет", "payload": json.dumps({"med": "Нет"})}, "color": "positive"}],
-        [{"action": {"type": "text", "label": "Есть ограничения", "payload": json.dumps({"med": "Есть ограничения"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {"type": "text", "label": "Противопоказаний нет", "payload": json.dumps({"med": "Нет"})},
+                "color": "positive",
+            }
+        ],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Есть ограничения",
+                    "payload": json.dumps({"med": "Есть ограничения"}),
+                },
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -319,9 +604,24 @@ def make_vk_health_keyboard() -> str:
 def make_vk_criminal_keyboard() -> str:
     """Шаг 13: Проверка судимости по ст. 86 УК РФ."""
     buttons = [
-        [{"action": {"type": "text", "label": "Судимости нет", "payload": json.dumps({"crim": "Нет"})}, "color": "positive"}],
-        [{"action": {"type": "text", "label": "Имеется судимость", "payload": json.dumps({"crim": "Имеется"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {"type": "text", "label": "Судимости нет", "payload": json.dumps({"crim": "Нет"})},
+                "color": "positive",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "Имеется судимость", "payload": json.dumps({"crim": "Имеется"})},
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -330,14 +630,39 @@ def make_vk_source_keyboard() -> str:
     """Шаг 14: Источник информирования о вакансиях."""
     buttons = [
         [
-            {"action": {"type": "text", "label": "Реклама в транспорте", "payload": json.dumps({"src": "Реклама в транспорте"})}, "color": "primary"},
-            {"action": {"type": "text", "label": "Соцсети / ВКонтакте", "payload": json.dumps({"src": "ВКонтакте"})}, "color": "primary"},
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Реклама в транспорте",
+                    "payload": json.dumps({"src": "Реклама в транспорте"}),
+                },
+                "color": "primary",
+            },
+            {
+                "action": {"type": "text", "label": "Соцсети / ВКонтакте", "payload": json.dumps({"src": "ВКонтакте"})},
+                "color": "primary",
+            },
         ],
         [
-            {"action": {"type": "text", "label": "Сайт предприятия", "payload": json.dumps({"src": "Сайт предприятия"})}, "color": "secondary"},
-            {"action": {"type": "text", "label": "От знакомых", "payload": json.dumps({"src": "От знакомых"})}, "color": "secondary"},
+            {
+                "action": {
+                    "type": "text",
+                    "label": "Сайт предприятия",
+                    "payload": json.dumps({"src": "Сайт предприятия"}),
+                },
+                "color": "secondary",
+            },
+            {
+                "action": {"type": "text", "label": "От знакомых", "payload": json.dumps({"src": "От знакомых"})},
+                "color": "secondary",
+            },
         ],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -345,8 +670,18 @@ def make_vk_source_keyboard() -> str:
 def make_vk_skip_keyboard() -> str:
     """Клавиатура с кнопкой пропуска необязательного шага."""
     buttons = [
-        [{"action": {"type": "text", "label": "Пропустить ➡️", "payload": json.dumps({"skip": True})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {"type": "text", "label": "Пропустить ➡️", "payload": json.dumps({"skip": True})},
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отмена", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -354,8 +689,22 @@ def make_vk_skip_keyboard() -> str:
 def make_vk_confirm_keyboard() -> str:
     """Шаг 16: Финальное подтверждение анкеты соискателем."""
     buttons = [
-        [{"action": {"type": "text", "label": "✅ Подтвердить и отправить", "payload": json.dumps({"confirm": "yes"})}, "color": "positive"}],
-        [{"action": {"type": "text", "label": "❌ Отменить анкету", "payload": json.dumps({"command": "cancel"})}, "color": "negative"}],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "✅ Подтвердить и отправить",
+                    "payload": json.dumps({"confirm": "yes"}),
+                },
+                "color": "positive",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "❌ Отменить анкету", "payload": json.dumps({"command": "cancel"})},
+                "color": "negative",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -363,9 +712,28 @@ def make_vk_confirm_keyboard() -> str:
 def make_vk_blocked_apply_keyboard() -> str:
     """Клавиатура при наличии активной заявки соискателя."""
     buttons = [
-        [{"action": {"type": "text", "label": "📑 Моя анкета", "payload": json.dumps({"command": "my_app"})}, "color": "primary"}],
-        [{"action": {"type": "text", "label": "💬 Связаться с кадровиком", "payload": json.dumps({"command": "ask"})}, "color": "secondary"}],
-        [{"action": {"type": "text", "label": "⬅️ Главное меню", "payload": json.dumps({"command": "start"})}, "color": "secondary"}],
+        [
+            {
+                "action": {"type": "text", "label": "📑 Моя анкета", "payload": json.dumps({"command": "my_app"})},
+                "color": "primary",
+            }
+        ],
+        [
+            {
+                "action": {
+                    "type": "text",
+                    "label": "💬 Связаться с кадровиком",
+                    "payload": json.dumps({"command": "ask"}),
+                },
+                "color": "secondary",
+            }
+        ],
+        [
+            {
+                "action": {"type": "text", "label": "⬅️ Главное меню", "payload": json.dumps({"command": "start"})},
+                "color": "secondary",
+            }
+        ],
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -373,7 +741,12 @@ def make_vk_blocked_apply_keyboard() -> str:
 def make_vk_dialog_keyboard() -> str:
     """Клавиатура соискателя во время прямого диалога с кадровой службой."""
     buttons = [
-        [{"action": {"type": "text", "label": "⏹ Завершить диалог", "payload": json.dumps({"command": "stop"})}, "color": "negative"}]
+        [
+            {
+                "action": {"type": "text", "label": "⏹ Завершить диалог", "payload": json.dumps({"command": "stop"})},
+                "color": "negative",
+            }
+        ]
     ]
     return json.dumps({"one_time": False, "buttons": buttons}, ensure_ascii=False)
 
@@ -398,6 +771,7 @@ def make_vk_reply_keyboard(ticket_id: int = 0) -> str:
 # ==============================================================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ВАЛИДАЦИИ И МАРШРУТИЗАЦИИ
 # ==============================================================================
+
 
 def parse_phone_number(raw_text: str) -> Optional[str]:
     """Универсальный парсер российских телефонных номеров."""
@@ -488,6 +862,7 @@ async def send_vk_message(
 # ГЛАВНЫЙ ОБРАБОТЧИК СООБЩЕНИЙ ВКОНТАКТЕ
 # ==============================================================================
 
+
 async def handle_vk_message(
     user_id: str,
     text: str,
@@ -518,12 +893,19 @@ async def handle_vk_message(
                 pass
 
         # 3. Режим техобслуживания — блокирует только приём новых анкет
-        is_apply_attempt = (
-            cmd_from_payload in ["apply", "start_survey", "consent_yes"]
-            or any(w in clean_lower for w in [
-                "подать анкету", "заполнить анкету", "анкета", "работа", "/apply",
-                "вакансии", "трудоустройство", "📝 заполнить анкету", "согласен"
-            ])
+        is_apply_attempt = cmd_from_payload in ["apply", "start_survey", "consent_yes"] or any(
+            w in clean_lower
+            for w in [
+                "подать анкету",
+                "заполнить анкету",
+                "анкета",
+                "работа",
+                "/apply",
+                "вакансии",
+                "трудоустройство",
+                "📝 заполнить анкету",
+                "согласен",
+            ]
         )
         if is_maintenance_active() and is_apply_attempt:
             maint_msg = clean_html(texts.MAINTENANCE_ACTIVE) + f"\n\n📞 Отдел кадров: {CONFIG['HR_PHONE']}"
@@ -539,7 +921,9 @@ async def handle_vk_message(
             if cmd_from_payload == "stop" or clean_lower in ["/stop", "стоп", "завершить", "⏹ завершить диалог"]:
                 db.end_direct_dialog(user_id=user_id)
                 await send_vk_message(
-                    session, token, int(user_id),
+                    session,
+                    token,
+                    int(user_id),
                     clean_html(texts.LIVE_CHAT_ENDED),
                     keyboard=make_vk_main_keyboard(),
                 )
@@ -617,15 +1001,22 @@ async def handle_vk_message(
         session_data = EXTERNAL_SESSIONS.get(key)
 
         # 5. Глобальная отмена сценария
-        is_cancel = (
-            cmd_from_payload == "cancel"
-            or clean_lower in ["/cancel", "отмена", "отменить", "стоп", "/stop", "❌ отмена", "❌ отменить анкету"]
-        )
+        is_cancel = cmd_from_payload == "cancel" or clean_lower in [
+            "/cancel",
+            "отмена",
+            "отменить",
+            "стоп",
+            "/stop",
+            "❌ отмена",
+            "❌ отменить анкету",
+        ]
         if is_cancel:
             if key in EXTERNAL_SESSIONS:
                 del EXTERNAL_SESSIONS[key]
             return await send_vk_message(
-                session, token, int(user_id),
+                session,
+                token,
+                int(user_id),
                 clean_html(texts.NAV_CANCEL_TEXT),
                 keyboard=make_vk_main_keyboard(),
             )
@@ -641,7 +1032,9 @@ async def handle_vk_message(
                 is_valid, clean_q, err = candidate_service.validate_question(clean)
                 if not is_valid:
                     return await send_vk_message(
-                        session, token, int(user_id),
+                        session,
+                        token,
+                        int(user_id),
                         f"⚠️ {err or 'Пожалуйста, напишите ваш вопрос текстом в одном сообщении:'}",
                         keyboard=make_vk_cancel_keyboard(),
                     )
@@ -713,7 +1106,9 @@ async def handle_vk_message(
                     await safe_send(tg_bot, int(hr_group), reply_card, reply_markup=builder.as_markup())
 
                 await send_vk_message(
-                    session, token, int(user_id),
+                    session,
+                    token,
+                    int(user_id),
                     "✅ Ваш ответ успешно доставлен специалисту отдела кадров!",
                     keyboard=make_vk_main_keyboard(),
                 )
@@ -722,15 +1117,24 @@ async def handle_vk_message(
             # Шаг 0: Фиксация согласия на обработку ПДн (152-ФЗ)
             elif step == "consent":
                 if payload_dict.get("consent") == "yes" or clean_lower in [
-                    "согласен", "да", "согласна", "принимаю", "ок", "✅ согласен на обработку пдн"
+                    "согласен",
+                    "да",
+                    "согласна",
+                    "принимаю",
+                    "ок",
+                    "✅ согласен на обработку пдн",
                 ]:
                     session_data["data"]["consent_timestamp"] = datetime.now().strftime("%d.%m.%Y %H:%M")
                     session_data["step"] = "name"
                     prompt = "✅ Согласие на обработку ПДн принято.\n\n" + clean_html(texts.SURVEY_STEP1_NAME)
-                    return await send_vk_message(session, token, int(user_id), prompt, keyboard=make_vk_cancel_keyboard())
+                    return await send_vk_message(
+                        session, token, int(user_id), prompt, keyboard=make_vk_cancel_keyboard()
+                    )
                 else:
                     return await send_vk_message(
-                        session, token, int(user_id),
+                        session,
+                        token,
+                        int(user_id),
                         clean_html(texts.CONSENT_REFUSED_TEXT),
                         keyboard=make_vk_consent_keyboard(),
                     )
@@ -740,7 +1144,9 @@ async def handle_vk_message(
                 is_valid, clean_name, err = candidate_service.validate_fio(clean)
                 if not is_valid:
                     return await send_vk_message(
-                        session, token, int(user_id),
+                        session,
+                        token,
+                        int(user_id),
                         f"⚠️ {err or clean_html(texts.ERR_INVALID_NAME)}",
                         keyboard=make_vk_cancel_keyboard(),
                     )
@@ -754,7 +1160,9 @@ async def handle_vk_message(
                 is_valid, clean_date, err = candidate_service.validate_birth_date(clean)
                 if not is_valid:
                     return await send_vk_message(
-                        session, token, int(user_id),
+                        session,
+                        token,
+                        int(user_id),
                         f"⚠️ {err or clean_html(texts.ERR_INVALID_DATE_FORMAT)}",
                         keyboard=make_vk_cancel_keyboard(),
                     )
@@ -776,7 +1184,9 @@ async def handle_vk_message(
                 is_valid, norm_phone, err = candidate_service.validate_phone(parsed_phone or clean)
                 if not is_valid:
                     return await send_vk_message(
-                        session, token, int(user_id),
+                        session,
+                        token,
+                        int(user_id),
                         clean_html(texts.ERR_INVALID_PHONE),
                         keyboard=make_vk_cancel_keyboard(),
                     )
@@ -792,7 +1202,9 @@ async def handle_vk_message(
                 if payload_city == "other" or clean_lower in ["другой", "другой город", "другой населенный пункт"]:
                     session_data["step"] = "city_manual"
                     return await send_vk_message(
-                        session, token, int(user_id),
+                        session,
+                        token,
+                        int(user_id),
                         clean_html(texts.SURVEY_STEP4_MANUAL_PROMPT),
                         keyboard=make_vk_cancel_keyboard(),
                     )
@@ -801,20 +1213,26 @@ async def handle_vk_message(
                 session_data["data"]["city"] = chosen_city
                 session_data["step"] = "vacancy"
                 prompt = f"Город: {chosen_city}\n\n" + clean_html(texts.SURVEY_STEP5_VACANCY)
-                return await send_vk_message(session, token, int(user_id), prompt, keyboard=make_vk_vacancies_keyboard())
+                return await send_vk_message(
+                    session, token, int(user_id), prompt, keyboard=make_vk_vacancies_keyboard()
+                )
 
             elif step == "city_manual":
                 session_data["data"]["city"] = clean or "Ульяновск"
                 session_data["step"] = "vacancy"
                 prompt = f"Город: {session_data['data']['city']}\n\n" + clean_html(texts.SURVEY_STEP5_VACANCY)
-                return await send_vk_message(session, token, int(user_id), prompt, keyboard=make_vk_vacancies_keyboard())
+                return await send_vk_message(
+                    session, token, int(user_id), prompt, keyboard=make_vk_vacancies_keyboard()
+                )
 
             # Шаг 5: Должность
             elif step == "vacancy":
                 if payload_dict.get("vac") == "other" or clean_lower in ["другая", "другая должность", "другое"]:
                     session_data["step"] = "vacancy_manual"
                     return await send_vk_message(
-                        session, token, int(user_id),
+                        session,
+                        token,
+                        int(user_id),
                         clean_html(texts.SURVEY_STEP5_1_CUSTOM),
                         keyboard=make_vk_cancel_keyboard(),
                     )
@@ -838,7 +1256,9 @@ async def handle_vk_message(
                 session_data["data"]["driver_license"] = lic_text
                 session_data["step"] = "experience"
                 prompt = f"Водительские права: {lic_text}\n\n" + clean_html(texts.SURVEY_STEP7_EXPERIENCE)
-                return await send_vk_message(session, token, int(user_id), prompt, keyboard=make_vk_experience_keyboard())
+                return await send_vk_message(
+                    session, token, int(user_id), prompt, keyboard=make_vk_experience_keyboard()
+                )
 
             # Шаг 7: Стаж / Опыт работы (+ умный триггер бесплатного обучения со стипендией)
             elif step == "experience":
@@ -860,7 +1280,9 @@ async def handle_vk_message(
                     )
 
                 prompt = f"Опыт работы: {exp_text}{training_notice}\n\n" + clean_html(texts.SURVEY_STEP8_EDUCATION)
-                return await send_vk_message(session, token, int(user_id), prompt, keyboard=make_vk_education_keyboard())
+                return await send_vk_message(
+                    session, token, int(user_id), prompt, keyboard=make_vk_education_keyboard()
+                )
 
             # Шаг 8: Уровень образования
             elif step == "education":
@@ -878,7 +1300,9 @@ async def handle_vk_message(
                 session_data["data"]["education"] = f"{edu_level}, {fac_text}" if fac_text else edu_level
                 session_data["step"] = "relocation"
                 prompt = clean_html(texts.SURVEY_STEP9_RELOCATION)
-                return await send_vk_message(session, token, int(user_id), prompt, keyboard=make_vk_relocation_keyboard())
+                return await send_vk_message(
+                    session, token, int(user_id), prompt, keyboard=make_vk_relocation_keyboard()
+                )
 
             # Шаг 9: Готовность к переезду в г. Ульяновск
             elif step == "relocation":
@@ -886,7 +1310,9 @@ async def handle_vk_message(
                 session_data["data"]["relocation"] = rel_text
                 session_data["step"] = "dormitory"
                 prompt = f"Переезд: {rel_text}\n\n" + clean_html(texts.SURVEY_STEP10_DORMITORY)
-                return await send_vk_message(session, token, int(user_id), prompt, keyboard=make_vk_dormitory_keyboard())
+                return await send_vk_message(
+                    session, token, int(user_id), prompt, keyboard=make_vk_dormitory_keyboard()
+                )
 
             # Шаг 10: Общежитие предприятия
             elif step == "dormitory":
@@ -937,17 +1363,26 @@ async def handle_vk_message(
 
                 # Сводная 16-шаговая проверка анкеты строго из texts.format_survey_step16_review
                 summary_text = clean_html(format_survey_step16_review(session_data["data"]))
-                return await send_vk_message(session, token, int(user_id), summary_text, keyboard=make_vk_confirm_keyboard())
+                return await send_vk_message(
+                    session, token, int(user_id), summary_text, keyboard=make_vk_confirm_keyboard()
+                )
 
             # Шаг 16: Финальное подтверждение достоверности и отправка
             elif step == "confirm_review":
                 is_confirmed = payload_dict.get("confirm") == "yes" or clean_lower in [
-                    "подтвердить", "да", "отправить", "все верно", "готово",
-                    "✅ подтвердить и отправить", "подтверждаю",
+                    "подтвердить",
+                    "да",
+                    "отправить",
+                    "все верно",
+                    "готово",
+                    "✅ подтвердить и отправить",
+                    "подтверждаю",
                 ]
                 if not is_confirmed:
                     return await send_vk_message(
-                        session, token, int(user_id),
+                        session,
+                        token,
+                        int(user_id),
                         "Для отправки анкеты нажмите кнопку «✅ Подтвердить и отправить» или «❌ Отменить анкету»:",
                         keyboard=make_vk_confirm_keyboard(),
                     )
@@ -958,7 +1393,9 @@ async def handle_vk_message(
 
                 if is_maintenance_active():
                     maint_msg = clean_html(texts.MAINTENANCE_ACTIVE) + f"\n\n📞 Отдел кадров: {CONFIG['HR_PHONE']}"
-                    return await send_vk_message(session, token, int(user_id), maint_msg, keyboard=make_vk_main_keyboard())
+                    return await send_vk_message(
+                        session, token, int(user_id), maint_msg, keyboard=make_vk_main_keyboard()
+                    )
 
                 # 1. Регистрация через сервисный слой
                 ticket_id, meta = candidate_service.register_candidate(cand_data, platform="vk")
@@ -996,11 +1433,13 @@ async def handle_vk_message(
                                     logger.error("Ошибка пересылки фото VK к анкете: %s", e)
 
                 # 4. Сообщение соискателю об успешной подаче анкеты из texts.py
-                resp_text = clean_html(texts.format_survey_success(
-                    ticket_id=ticket_id,
-                    vacancy=cand_data.get("vacancy", ""),
-                    is_driver_no_exp=bool(meta.get("offer_training", False)),
-                ))
+                resp_text = clean_html(
+                    texts.format_survey_success(
+                        ticket_id=ticket_id,
+                        vacancy=cand_data.get("vacancy", ""),
+                        is_driver_no_exp=bool(meta.get("offer_training", False)),
+                    )
+                )
                 return await send_vk_message(session, token, int(user_id), resp_text, keyboard=make_vk_main_keyboard())
 
         # ----------------------------------------------------------------------
@@ -1009,8 +1448,19 @@ async def handle_vk_message(
 
         # Главное меню / Приветствие
         if cmd_from_payload == "start" or clean_lower in [
-            "/start", "start", "старт", "начать", "меню", "/menu",
-            "главное меню", "привет", "здравствуйте", "хелп", "/help", "помощь", "⬅️ главное меню"
+            "/start",
+            "start",
+            "старт",
+            "начать",
+            "меню",
+            "/menu",
+            "главное меню",
+            "привет",
+            "здравствуйте",
+            "хелп",
+            "/help",
+            "помощь",
+            "⬅️ главное меню",
         ]:
             if key in EXTERNAL_SESSIONS:
                 del EXTERNAL_SESSIONS[key]
@@ -1019,7 +1469,12 @@ async def handle_vk_message(
 
         # Моя анкета / Статус
         if cmd_from_payload == "my_app" or clean_lower in [
-            "/my", "моя анкета", "📑 моя анкета", "статус", "/status", "мой статус"
+            "/my",
+            "моя анкета",
+            "📑 моя анкета",
+            "статус",
+            "/status",
+            "мой статус",
         ]:
             cand = db.get_candidate_by_user_id(str(user_id), platform="vk")
             if cand:
@@ -1030,11 +1485,19 @@ async def handle_vk_message(
 
         # Задать вопрос (/ask)
         if cmd_from_payload == "ask" or clean_lower in [
-            "/ask", "ask", "вопрос", "задать вопрос", "связаться",
-            "кадровик", "связаться с кадровиком", "💬 связаться с кадровиком"
+            "/ask",
+            "ask",
+            "вопрос",
+            "задать вопрос",
+            "связаться",
+            "кадровик",
+            "связаться с кадровиком",
+            "💬 связаться с кадровиком",
         ]:
-            is_prod = (CONFIG.get("ENVIRONMENT") == "PROD")
-            cooldown = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200)))) if is_prod else 0
+            is_prod = CONFIG.get("ENVIRONMENT") == "PROD"
+            cooldown = (
+                int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200)))) if is_prod else 0
+            )
             can_ask, seconds_left = db.check_inquiry_cooldown(str(user_id), cooldown)
             if not can_ask:
                 minutes_left = max(1, (seconds_left + 59) // 60)
@@ -1052,28 +1515,43 @@ async def handle_vk_message(
 
         # Подать анкету (/apply)
         if cmd_from_payload == "apply" or clean_lower in [
-            "/apply", "apply", "подать анкету", "заполнить анкету",
-            "📝 заполнить анкету", "анкета", "работа", "вакансии", "трудоустройство"
+            "/apply",
+            "apply",
+            "подать анкету",
+            "заполнить анкету",
+            "📝 заполнить анкету",
+            "анкета",
+            "работа",
+            "вакансии",
+            "трудоустройство",
         ]:
             can_apply, reason, info = candidate_service.check_can_apply(user_id, platform="vk")
             if not can_apply and info:
                 ticket_id = info.get("ticket_id", 0)
                 if reason == "unprocessed":
-                    msg = clean_html(texts.format_already_applied(
-                        ticket_id=ticket_id,
-                        vacancy=info.get("vacancy", "Не указана"),
-                        created_at=info.get("created_at", ""),
-                        status=info.get("status", "Новая"),
-                    ))
-                    return await send_vk_message(session, token, int(user_id), msg, keyboard=make_vk_blocked_apply_keyboard())
+                    msg = clean_html(
+                        texts.format_already_applied(
+                            ticket_id=ticket_id,
+                            vacancy=info.get("vacancy", "Не указана"),
+                            created_at=info.get("created_at", ""),
+                            status=info.get("status", "Новая"),
+                        )
+                    )
+                    return await send_vk_message(
+                        session, token, int(user_id), msg, keyboard=make_vk_blocked_apply_keyboard()
+                    )
                 elif reason in ("cooldown", "rejected_cooldown"):
-                    msg = clean_html(texts.format_rejection_cooldown(
-                        ticket_id=ticket_id,
-                        rejected_date=info.get("refuse_date", ""),
-                        days_left=info.get("days_left", 0),
-                        cooldown_end=info.get("available_date", ""),
-                    ))
-                    return await send_vk_message(session, token, int(user_id), msg, keyboard=make_vk_blocked_apply_keyboard())
+                    msg = clean_html(
+                        texts.format_rejection_cooldown(
+                            ticket_id=ticket_id,
+                            rejected_date=info.get("refuse_date", ""),
+                            days_left=info.get("days_left", 0),
+                            cooldown_end=info.get("available_date", ""),
+                        )
+                    )
+                    return await send_vk_message(
+                        session, token, int(user_id), msg, keyboard=make_vk_blocked_apply_keyboard()
+                    )
 
             # Старт воронки: Шаг 0 (Согласие 152-ФЗ)
             EXTERNAL_SESSIONS[key] = {"step": "consent", "data": {}}
@@ -1081,11 +1559,18 @@ async def handle_vk_message(
                 clean_html(texts.CONSENT_SURVEY_PROMPT) + "\n\n"
                 "Для продолжения нажмите «✅ Согласен на обработку ПДн» ниже:"
             )
-            return await send_vk_message(session, token, int(user_id), consent_prompt, keyboard=make_vk_consent_keyboard())
+            return await send_vk_message(
+                session, token, int(user_id), consent_prompt, keyboard=make_vk_consent_keyboard()
+            )
 
         # База знаний (FAQ)
         if cmd_from_payload == "faq" or clean_lower in [
-            "/faq", "faq", "вопросы", "частые вопросы", "📚 частые вопросы (faq)", "вопросы и ответы"
+            "/faq",
+            "faq",
+            "вопросы",
+            "частые вопросы",
+            "📚 частые вопросы (faq)",
+            "вопросы и ответы",
         ]:
             faq_text = (
                 "📚 ЧАСТЫЕ ВОПРОСЫ И ОТВЕТЫ (FAQ)\n"
@@ -1096,24 +1581,40 @@ async def handle_vk_message(
             return await send_vk_message(session, token, int(user_id), faq_text, keyboard=make_vk_faq_keyboard())
 
         if "обучение" in clean_lower or "🎓" in clean:
-            return await send_vk_message(session, token, int(user_id), VK_FAQ_DATA["training"], keyboard=make_vk_faq_keyboard())
+            return await send_vk_message(
+                session, token, int(user_id), VK_FAQ_DATA["training"], keyboard=make_vk_faq_keyboard()
+            )
         if "жиль" in clean_lower or "общежит" in clean_lower or "🏠" in clean:
-            return await send_vk_message(session, token, int(user_id), VK_FAQ_DATA["housing"], keyboard=make_vk_faq_keyboard())
+            return await send_vk_message(
+                session, token, int(user_id), VK_FAQ_DATA["housing"], keyboard=make_vk_faq_keyboard()
+            )
         if "зарплат" in clean_lower or "пенси" in clean_lower or "льгот" in clean_lower or "💰" in clean:
-            return await send_vk_message(session, token, int(user_id), VK_FAQ_DATA["salary"], keyboard=make_vk_faq_keyboard())
+            return await send_vk_message(
+                session, token, int(user_id), VK_FAQ_DATA["salary"], keyboard=make_vk_faq_keyboard()
+            )
         if "документ" in clean_lower or "📄" in clean:
-            return await send_vk_message(session, token, int(user_id), VK_FAQ_DATA["docs"], keyboard=make_vk_faq_keyboard())
+            return await send_vk_message(
+                session, token, int(user_id), VK_FAQ_DATA["docs"], keyboard=make_vk_faq_keyboard()
+            )
 
         # Контакты
         if cmd_from_payload == "contacts" or clean_lower in [
-            "/contacts", "контакты", "📞 контакты", "телефон", "адрес", "где находитесь"
+            "/contacts",
+            "контакты",
+            "📞 контакты",
+            "телефон",
+            "адрес",
+            "где находитесь",
         ]:
             contacts_text = clean_html(texts.CONTACTS_SCREEN)
             return await send_vk_message(session, token, int(user_id), contacts_text, keyboard=make_vk_main_keyboard())
 
         # Ответ на сообщение кадровика
         if cmd_from_payload == "reply_hr" or clean_lower in [
-            "ответить", "ответить кадровику", "💬 ответить кадровику", "ответ кадровику"
+            "ответить",
+            "ответить кадровику",
+            "💬 ответить кадровику",
+            "ответ кадровику",
         ]:
             cand_t_id = payload_dict.get("ticket_id")
             if not cand_t_id:
@@ -1148,7 +1649,9 @@ async def handle_vk_message(
         logger.exception("Критическая ошибка обработки VK от %s: %s", user_id, e)
         try:
             await send_vk_message(
-                session, token, int(user_id),
+                session,
+                token,
+                int(user_id),
                 "⚠️ Произошла ошибка при обработке запроса. Вы возвращены в главное меню.",
                 keyboard=make_vk_main_keyboard(),
             )
@@ -1159,6 +1662,7 @@ async def handle_vk_message(
 # ==============================================================================
 # ФОНОВЫЙ СЕРВИС LONG POLL ВКОНТАКТЕ
 # ==============================================================================
+
 
 async def run_vk_gateway(bot: Bot, db: ResumeDB) -> None:
     """Фоновый воркер Long Poll ВКонтакте с автопереподключением и Exponential Backoff."""

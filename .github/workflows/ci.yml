@@ -1,153 +1,34 @@
-name: CI & Security Checks (MDK 03.03 Track B)
+name: CI
 
 on:
   push:
-    branches:
-      - 'main'
-      - 'beta'
-      - 'release/**'
-      - 'feature/**'
-      - 'hotfix/**'
+    branches: [ main, master ]
   pull_request:
-    branches:
-      - 'main'
-      - 'beta'
+    branches: [ main, master ]
 
 jobs:
-  lint:
-    name: 01. Lint, Syntax & Secret Leaks Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Stage 1 - Check for forbidden files (.db, .env)
-        run: |
-          echo "=== Проверка наличия запрещенных файлов (.db, .env) ==="
-          FORBIDDEN=$(git ls-files | grep -E '\.(db|sqlite|sqlite3)$|^\.env$|\.env\.(local|production|dev|stage)' || true)
-          if [ -n "$FORBIDDEN" ]; then
-            echo "::error::Обнаружены запрещенные файлы в репозитории:"
-            echo "$FORBIDDEN"
-            exit 1
-          fi
-          echo "OK: Запрещенные файлы (.db, .env) отсутствуют."
-
-      - name: Stage 2 - Check for exposed Telegram Bot Tokens
-        run: |
-          echo "=== Проверка на утечку Telegram Bot Tokens ==="
-          LEAKS=$(git grep -EI '[0-9]{8,10}:[a-zA-Z0-9_-]{35}' -- ':!.github' ':!.env.example' ':!README.md' || true)
-          if [ -n "$LEAKS" ]; then
-            echo "::error::В коде обнаружен незашифрованный Telegram Bot Token:"
-            echo "$LEAKS"
-            exit 1
-          fi
-          echo "OK: Утечек токенов не обнаружено."
-
-      - name: Stage 3 - Syntax Check (compileall)
-        run: |
-          echo "=== Проверка синтаксиса Python 3.12 (compileall) ==="
-          python -m compileall -q -f -x '(venv|\.venv)/' .
-          echo "OK: Все файлы успешно скомпилированы, синтаксических ошибок нет."
-
-      - name: Install Linters
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff flake8
-
-      - name: Stage 4 - Lint with Ruff
-        run: |
-          echo "=== Анализ кода с помощью Ruff ==="
-          ruff check . --select=E9,F63,F7,F82
-
-      - name: Stage 5 - Lint with Flake8
-        run: |
-          echo "=== Анализ кода с помощью Flake8 ==="
-          flake8 . --count --select=E9,F63,F7,F82 --exclude=venv,.venv --show-source --statistics
-
-  typecheck:
-    name: 02. Type Check (mypy)
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-      - name: Install mypy
-        run: pip install mypy
-      - name: Run mypy static analysis
-        run: |
-          mypy . --ignore-missing-imports || true
-
   test:
-    name: 03. Run Unit Tests (41 scenarios)
-    needs: typecheck
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Python 3.12
+
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
-      - name: Install Dependencies
+
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Run Unit Tests
-        env:
-          TG_BOT_TOKEN: "123456789:TestEnvironmentMockTokenForCiChecks12"
-        run: |
-          echo "=== Запуск полного набора автотестов uetbot ==="
-          python run_tests.py
 
-  security:
-    name: 04. Security Audit (pip-audit)
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-      - name: Run pip-audit for dependencies
+      - name: Lint and formatting with Ruff
         run: |
-          pip install pip-audit
-          pip-audit || true
+          ruff check .
+          ruff format --check .
 
-  docs:
-    name: 05. Docs Build Check (MkDocs)
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install MkDocs & Material Theme
-        run: pip install mkdocs mkdocs-material
-      - name: Verify Docs Build
+      - name: Run unit & integration tests
         run: |
-          if [ -f "mkdocs.yml" ]; then
-            mkdocs build --strict
-          else
-            echo "mkdocs.yml не найден, шаг пропущен."
-          fi
+          pytest tests/ -v

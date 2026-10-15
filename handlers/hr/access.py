@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Управление доступом, чатом кадровой службы, блокировками и настройками.
 - Авто-выдача и снятие ролей HR при входе/выходе из группы
@@ -55,6 +54,7 @@ access_router = Router(name="hr_access")
 # ==============================================================================
 # 1. АВТО-УПРАВЛЕНИЕ РОЛЯМИ В КАДРОВОМ ЧАТЕ (ВХОД, ВЫХОД)
 # ==============================================================================
+
 
 async def grant_hr_role_and_welcome(user: types.User, chat_id: int, bot: Bot) -> None:
     """Выдаёт роль HR в базе, синхронизирует меню и отправляет официальное приветствие."""
@@ -137,9 +137,10 @@ async def on_hr_member_left(event: types.ChatMemberUpdated, bot: Bot) -> None:
 # 2. ПРИВЯЗКА ГРУППЫ И СИНХРОНИЗАЦИЯ
 # ==============================================================================
 
+
 @access_router.message(Command("kick", "kick_hr"))
 async def cmd_kick_hr_reply(message: types.Message, bot: Bot) -> None:
-    hr_group = CONFIG.get("HR_GROUP_ID")
+    CONFIG.get("HR_GROUP_ID")
     super_admin = CONFIG.get("SUPER_ADMIN_ID")
     user_id = message.from_user.id
 
@@ -335,9 +336,15 @@ async def cmd_sync_group_two_way(event: Union[types.Message, types.CallbackQuery
             + "\n━━━━━━━━━━━━━━━━━━━━━\n"
         )
         if added_list:
-            report += f"➕ <b>Выдана роль HR ({len(added_list)}):</b>\n" + "\n".join(f"• {x}" for x in added_list) + "\n\n"
+            report += (
+                f"➕ <b>Выдана роль HR ({len(added_list)}):</b>\n" + "\n".join(f"• {x}" for x in added_list) + "\n\n"
+            )
         if removed_list:
-            report += f"➖ <b>Забрана роль HR (покинули чат) ({len(removed_list)}):</b>\n" + "\n".join(f"• {x}" for x in removed_list) + "\n\n"
+            report += (
+                f"➖ <b>Забрана роль HR (покинули чат) ({len(removed_list)}):</b>\n"
+                + "\n".join(f"• {x}" for x in removed_list)
+                + "\n\n"
+            )
 
         report += "<i>Все права зафиксированы в базе данных и соответствуют чату.</i>"
 
@@ -354,6 +361,7 @@ async def cmd_sync_group_two_way(event: Union[types.Message, types.CallbackQuery
 # ==============================================================================
 # 3. ЧЕРНЫЙ СПИСОК И БЛОКИРОВКИ
 # ==============================================================================
+
 
 @access_router.callback_query(F.data.startswith("block_cand_") | F.data.startswith("block_"))
 async def cb_block_candidate(callback: types.CallbackQuery) -> None:
@@ -374,9 +382,7 @@ async def cb_block_candidate(callback: types.CallbackQuery) -> None:
     full_name = cand[3]
     super_uid = str(CONFIG.get("SUPER_ADMIN_ID", 0))
 
-    if cand_uid == super_uid or (
-        cand_uid.isdigit() and (is_tech_admin(int(cand_uid)) or is_hr_admin(int(cand_uid)))
-    ):
+    if cand_uid == super_uid or (cand_uid.isdigit() and (is_tech_admin(int(cand_uid)) or is_hr_admin(int(cand_uid)))):
         await callback.answer("🚫 Нельзя добавить администратора в черный список!", show_alert=True)
         return
 
@@ -426,9 +432,7 @@ async def cb_unblock_candidate(callback: types.CallbackQuery) -> None:
     db.unblock_user(cand_uid)
 
     unban_user_msg = texts.format_unblock_notification(full_name)
-    sent = await send_response_to_candidate(
-        platform, cand_uid, unban_user_msg, keyboard=make_candidate_main_keyboard()
-    )
+    sent = await send_response_to_candidate(platform, cand_uid, unban_user_msg, keyboard=make_candidate_main_keyboard())
     alert = "✅ Блокировка снята! Соискателю отправлено уведомление." if sent else "✅ Блокировка снята!"
     await callback.answer(alert, show_alert=True)
     try:
@@ -499,9 +503,13 @@ async def cmd_unblock_user(message: types.Message) -> None:
     if ok:
         unban_user_msg = texts.format_unblock_notification(f"ID {target_id}")
         await send_response_to_candidate("tg", target_id, unban_user_msg, keyboard=make_candidate_main_keyboard())
-        await safe_answer(message, f"✅ <b>Пользователь <code>{target_id}</code> успешно разблокирован!</b>", parse_mode="HTML")
+        await safe_answer(
+            message, f"✅ <b>Пользователь <code>{target_id}</code> успешно разблокирован!</b>", parse_mode="HTML"
+        )
     else:
-        await safe_answer(message, f"ℹ️ Пользователь <code>{target_id}</code> не найден в черном списке.", parse_mode="HTML")
+        await safe_answer(
+            message, f"ℹ️ Пользователь <code>{target_id}</code> не найден в черном списке.", parse_mode="HTML"
+        )
 
 
 @access_router.message(Command("blacklist", "banlist"))
@@ -533,7 +541,9 @@ async def cb_unblock_raw(callback: types.CallbackQuery) -> None:
     await callback.answer(f"Пользователь {target_uid} разблокирован!", show_alert=True)
     b_list = db.get_blacklist()
     if not b_list:
-        await callback.message.edit_text("🕊 <b>Черный список пуст.</b> Все пользователи разблокированы.", parse_mode="HTML")
+        await callback.message.edit_text(
+            "🕊 <b>Черный список пуст.</b> Все пользователи разблокированы.", parse_mode="HTML"
+        )
         return
 
     builder = InlineKeyboardBuilder()
@@ -548,6 +558,7 @@ async def cb_unblock_raw(callback: types.CallbackQuery) -> None:
 # ==============================================================================
 # 4. НАСТРОЙКИ УВЕДОМЛЕНИЙ И КУЛДАУН
 # ==============================================================================
+
 
 @access_router.callback_query(F.data == "toggle_dm_notify")
 async def cb_toggle_dm_notify(callback: types.CallbackQuery) -> None:

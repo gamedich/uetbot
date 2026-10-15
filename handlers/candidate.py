@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Обработчики диалогов с соискателями МУП «Ульяновскэлектротранс»:
 - Главное меню, команды /start, /help, /id, /contacts, /privacy, /my, /training, /mydata, /revoke
@@ -12,10 +11,9 @@
 from __future__ import annotations
 
 import html
-import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 from aiogram import Bot, F, Router, types
 from aiogram.filters import Command, StateFilter
@@ -23,11 +21,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import texts
-from services.candidate_service import candidate_service
-
 from common import (
     CONFIG,
-    CandidateDirectMsgForm,
     CandidateForm,
     InquiryForm,
     RevokeConsentForm,
@@ -36,14 +31,13 @@ from common import (
     get_all_vacancies,
     get_open_vacancies,
     is_any_staff,
-    is_depot_admin,
     is_hr_admin,
+    is_maintenance_active,
     is_tech_admin,
     route_new_candidate_ticket,
     route_new_inquiry_ticket,
     safe_answer,
     safe_send,
-    is_maintenance_active,
 )
 from keyboards import (
     make_candidate_main_keyboard,
@@ -54,13 +48,6 @@ from keyboards import (
     make_mydata_kb,
     make_phone_reply_keyboard,
     make_revoke_confirm_kb,
-    make_step10_dormitory_kb,
-    make_step11_schedule_kb,
-    make_step12_health_kb,
-    make_step13_criminal_kb,
-    make_step14_source_kb,
-    make_step16_confirm_kb,
-    make_step16_edit_menu_kb,
     make_step2_birthdate_kb,
     make_step4_city_kb,
     make_step5_vacancies_kb,
@@ -69,9 +56,17 @@ from keyboards import (
     make_step7_experience_kb,
     make_step8_education_kb,
     make_step9_relocation_kb,
+    make_step10_dormitory_kb,
+    make_step11_schedule_kb,
+    make_step12_health_kb,
+    make_step13_criminal_kb,
+    make_step14_source_kb,
+    make_step16_confirm_kb,
+    make_step16_edit_menu_kb,
     make_step_nav_kb,
     make_ticket_keyboard,
 )
+from services.candidate_service import candidate_service
 
 logger = logging.getLogger("CANDIDATE_HANDLER")
 candidate_router = Router(name="candidate")
@@ -80,6 +75,7 @@ candidate_router = Router(name="candidate")
 # ==============================================================================
 # СИСТЕМНЫЕ КОМАНДЫ НАВИГАЦИИ (/cancel, /stop, /help, /id, /start)
 # ==============================================================================
+
 
 @candidate_router.message(Command("cancel"))
 @candidate_router.message(F.text.lower().in_(["/cancel", "отмена", "отменить"]))
@@ -157,9 +153,7 @@ async def cmd_id(message: types.Message) -> None:
     chat_id = message.chat.id
     username = message.from_user.username
     info_text = texts.format_id_text(user_id, chat_id, username)
-    is_admin_user = (
-        user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
-    )
+    is_admin_user = user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
     if is_admin_user and message.chat.type != "private":
         info_text += (
             "\n━━━━━━━━━━━━━━━━━━━━━\n"
@@ -184,9 +178,7 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     if ref_tab:
         await state.update_data(referrer_tab=ref_tab)
     user_id = message.from_user.id
-    is_admin = (
-        user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
-    )
+    user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
 
     if db.is_blocked(user_id, super_admin_id=CONFIG.get("SUPER_ADMIN_ID")):
         await safe_answer(
@@ -234,18 +226,22 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
 async def cmd_web_panel_entry(message: types.Message) -> None:
     """Точка входа в веб-панель управления и Telegram Mini App."""
     user_id = message.from_user.id
-    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    CONFIG.get("SUPER_ADMIN_ID")
     is_admin = is_any_staff(user_id)
     if not is_admin:
         await safe_answer(
             message,
             "🚫 <b>Доступ ограничен.</b> Веб-панель предназначена для авторизованных сотрудников предприятия.",
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
         return
 
     cur_pwd = db.get_admin_password(user_id)
-    pwd_note = "🔑 <i>У вас установлен пароль для сайта.</i>" if cur_pwd else "⚠️ <i>У вас ещё не задан пароль. Задайте его командой:</i> <code>/password ВАШ_ПАРОЛЬ</code>"
+    pwd_note = (
+        "🔑 <i>У вас установлен пароль для сайта.</i>"
+        if cur_pwd
+        else "⚠️ <i>У вас ещё не задан пароль. Задайте его командой:</i> <code>/password ВАШ_ПАРОЛЬ</code>"
+    )
 
     builder = InlineKeyboardBuilder()
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
@@ -277,7 +273,11 @@ async def cmd_set_password_entry(event: types.Message | types.CallbackQuery) -> 
     if is_callback:
         await event.answer()
 
-    parts = (event.message.text if is_callback and event.message and event.message.text else (message.text or "")).strip().split(maxsplit=1)
+    parts = (
+        (event.message.text if is_callback and event.message and event.message.text else (message.text or ""))
+        .strip()
+        .split(maxsplit=1)
+    )
     # Если вызов по кнопке или без аргументов — показываем статус и инструкцию
     if is_callback or len(parts) < 2 or not parts[1].strip():
         cur_pwd = db.get_admin_password(user_id)
@@ -285,8 +285,14 @@ async def cmd_set_password_entry(event: types.Message | types.CallbackQuery) -> 
         is_staff = is_any_staff(user_id)
         role_desc = "Сотрудник депо / Кадровик" if is_staff else "Соискатель / Личный кабинет"
 
-        cur_status = f"🔑 <b>Ваш текущий пароль:</b> <code>{cur_pwd}</code>\n" if cur_pwd else "⚠️ <b>Пароль ещё не задан!</b>\n"
-        email_status = f"📧 <b>Привязанный Email:</b> <code>{cur_email}</code>\n" if cur_email else "📧 <i>Почта не привязана (можно привязать в ЛК)</i>\n"
+        cur_status = (
+            f"🔑 <b>Ваш текущий пароль:</b> <code>{cur_pwd}</code>\n" if cur_pwd else "⚠️ <b>Пароль ещё не задан!</b>\n"
+        )
+        email_status = (
+            f"📧 <b>Привязанный Email:</b> <code>{cur_email}</code>\n"
+            if cur_email
+            else "📧 <i>Почта не привязана (можно привязать в ЛК)</i>\n"
+        )
 
         web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
         builder = InlineKeyboardBuilder()
@@ -339,15 +345,13 @@ async def cmd_depot_referral_entry(message: types.Message) -> None:
     """Просмотр персональной реферальной ссылки сотрудника депо и статистики начислений."""
     user_id = message.from_user.id
     ref_info = db.get_depot_referrals(user_id)
-    bot_info = await message.bot.get_me()
-    bot_user = bot_info.username or "UetFeedback_bot"
-    ref_link = f"https://t.me/{bot_user}?start=ref_{user_id}"
+    await message.bot.get_me()
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
-    total = ref_info.get("total_referred", 0)
-    in_progress = ref_info.get("in_progress", 0)
-    hired = ref_info.get("hired", 0)
-    bonus = ref_info.get("bonus_total", 0)
+    ref_info.get("total_referred", 0)
+    ref_info.get("in_progress", 0)
+    ref_info.get("hired", 0)
+    ref_info.get("bonus_total", 0)
 
     text = (
         "🚋 <b>ПРОГРАММА «ПРИВЕДИ ДРУГА В ДЕПО» (В ПЛАНАХ / ROADMAP)</b>\n"
@@ -367,6 +371,7 @@ async def cmd_depot_referral_entry(message: types.Message) -> None:
 # ==============================================================================
 # ЭКСТРЕННАЯ СВЯЗЬ С ТЕХПОДДЕРЖКОЙ (/support, /sos)
 # ==============================================================================
+
 
 @candidate_router.callback_query(F.data == "cand_support")
 @candidate_router.message(Command("support", "sos", "tech_support"))
@@ -446,6 +451,7 @@ async def process_support_message(message: types.Message, state: FSMContext, bot
 # РАЗДЕЛ «МОЯ АНКЕТА» (/my)
 # ==============================================================================
 
+
 @candidate_router.callback_query(F.data == "cand_my_application")
 @candidate_router.message(Command("my", "status", "stat"))
 @candidate_router.message(F.text.lower().in_(["📊 мой статус", "мой статус", "статус", "моя анкета"]))
@@ -483,6 +489,7 @@ async def cb_cand_my_application(event: Union[types.CallbackQuery, types.Message
 # ==============================================================================
 # КОМАНДЫ ПРАВ СУБЪЕКТА 152-ФЗ (/mydata, /revoke)
 # ==============================================================================
+
 
 @candidate_router.message(Command("mydata"))
 async def cmd_mydata(message: types.Message) -> None:
@@ -545,6 +552,7 @@ async def cb_revoke_confirm(callback: types.CallbackQuery, state: FSMContext) ->
 # ==============================================================================
 # РАЗДЕЛЫ «ОБУЧЕНИЕ», FAQ И КОНТАКТЫ (/training, /faq, /contacts, /privacy)
 # ==============================================================================
+
 
 @candidate_router.callback_query(F.data == "cand_training_info")
 @candidate_router.message(Command("training", "obuchenie"))
@@ -631,6 +639,7 @@ async def cb_faq_item(callback: types.CallbackQuery) -> None:
 # ВОПРОСЫ В ОТДЕЛ КАДРОВ (/ask, InquiryForm)
 # ==============================================================================
 
+
 @candidate_router.callback_query(F.data == "cand_ask_question")
 @candidate_router.message(Command("ask"))
 async def cb_cand_ask_question(event: Union[types.CallbackQuery, types.Message], state: FSMContext) -> None:
@@ -644,9 +653,7 @@ async def cb_cand_ask_question(event: Union[types.CallbackQuery, types.Message],
         await safe_answer(event, "⛔ Отправка вопросов недоступна.", parse_mode="HTML")
         return
 
-    is_admin = (
-        user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
-    )
+    is_admin = user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
     env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
     if env_mode in ("PROD", "PRODUCTION") and not is_admin:
         allowed, seconds_left = db.check_inquiry_cooldown(
@@ -699,12 +706,10 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
     vacancy = cand_info[5] if cand_info else "Анкета не подана"
 
     consent_ts = datetime.now().strftime("%d.%m.%Y %H:%M")
-    is_admin = (
-        int(user_id) == CONFIG.get("SUPER_ADMIN_ID")
-        or is_hr_admin(int(user_id))
-        or is_tech_admin(int(user_id))
+    is_admin = int(user_id) == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(int(user_id)) or is_tech_admin(int(user_id))
+    is_test_inq = is_admin and (
+        db.get_setting("active_db_target", "resumes.db") == "resumes_test.db" or "тест" in q_text.lower()
     )
-    is_test_inq = is_admin and (db.get_setting("active_db_target", "resumes.db") == "resumes_test.db" or "тест" in q_text.lower())
     cooldown = CONFIG.get("COOLDOWN_SECONDS", 1200) if not is_admin else 0
 
     success, msg, inq_id = candidate_service.submit_inquiry(
@@ -725,7 +730,9 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
 
     await state.clear()
     conf_text = texts.format_inquiry_sent(inq_id or 0)
-    await safe_answer(message, conf_text, reply_markup=make_candidate_main_keyboard(user_id=message.from_user.id), parse_mode="HTML")
+    await safe_answer(
+        message, conf_text, reply_markup=make_candidate_main_keyboard(user_id=message.from_user.id), parse_mode="HTML"
+    )
 
     # Маршрутизация в кадровый чат через SSOT шаблон
     hr_card = texts.format_inquiry_hr_card(
@@ -745,6 +752,7 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
 # ==============================================================================
 # ОПРОСНИК СОИСКАТЕЛЯ (16 ШАГОВ АНКЕТЫ)
 # ==============================================================================
+
 
 @candidate_router.callback_query(F.data == "cand_start_apply")
 @candidate_router.message(Command("apply", "job", "rabota", "anketa"))
@@ -786,9 +794,7 @@ async def run_candidate_survey(
         else:
             await safe_answer(event, txt, reply_markup=reply_markup, parse_mode="HTML")
 
-    is_admin = (
-        user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
-    )
+    is_admin = user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
 
     if is_maintenance_active():
         m_info = db.get_setting("maintenance_details", "")
@@ -841,7 +847,9 @@ async def run_candidate_survey(
             builder.button(text="🏢 Контакты отдела кадров", callback_data="cand_hr_contacts")
             builder.button(text=texts.BTN_BACK_TO_MENU, callback_data="cand_back_to_menu")
             builder.adjust(1)
-            await send_or_edit(texts.format_already_applied(ticket_id, vac, created, status), reply_markup=builder.as_markup())
+            await send_or_edit(
+                texts.format_already_applied(ticket_id, vac, created, status), reply_markup=builder.as_markup()
+            )
             return
         elif reason == "rejected_cooldown" and info:
             ticket_id = info.get("ticket_id", 0)
@@ -853,7 +861,9 @@ async def run_candidate_survey(
             builder.button(text="🏢 Контакты предприятия", callback_data="cand_hr_contacts")
             builder.button(text=texts.BTN_BACK_TO_MENU, callback_data="cand_back_to_menu")
             builder.adjust(1)
-            await send_or_edit(texts.format_rejection_cooldown(ticket_id, ref_date, days_left), reply_markup=builder.as_markup())
+            await send_or_edit(
+                texts.format_rejection_cooldown(ticket_id, ref_date, days_left), reply_markup=builder.as_markup()
+            )
             return
 
     await state.clear()
@@ -892,7 +902,9 @@ async def process_name(message: types.Message, state: FSMContext) -> None:
     raw_name = (message.text or "").strip()
     is_valid, clean_name, err = candidate_service.validate_fio(raw_name)
     if not is_valid:
-        await safe_answer(message, err or texts.ERR_INVALID_NAME, reply_markup=make_step_nav_kb(can_skip=False), parse_mode="HTML")
+        await safe_answer(
+            message, err or texts.ERR_INVALID_NAME, reply_markup=make_step_nav_kb(can_skip=False), parse_mode="HTML"
+        )
         return
 
     await state.update_data(full_name=clean_name)
@@ -1046,6 +1058,7 @@ VACANCY_MAP: Dict[str, str] = {
     "electro": "Электромонтёр контактной сети",
     "other": "other",
 }
+
 
 @candidate_router.callback_query(CandidateForm.vacancy, F.data.startswith("vac_"))
 async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -1625,13 +1638,11 @@ async def cb_submit_final(callback: types.CallbackQuery, state: FSMContext, bot:
     user_id = str(callback.from_user.id)
     data["user_id"] = user_id
 
-    is_admin = (
-        int(user_id) == CONFIG.get("SUPER_ADMIN_ID")
-        or is_hr_admin(int(user_id))
-        or is_tech_admin(int(user_id))
-    )
+    is_admin = int(user_id) == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(int(user_id)) or is_tech_admin(int(user_id))
     full_name = data.get("full_name", "")
-    is_test_cand = is_admin and (db.get_setting("active_db_target", "resumes.db") == "resumes_test.db" or "тест" in full_name.lower())
+    is_test_cand = is_admin and (
+        db.get_setting("active_db_target", "resumes.db") == "resumes_test.db" or "тест" in full_name.lower()
+    )
     data["is_test"] = is_test_cand
 
     # Регистрация анкеты через сервисный слой (16 полей, триггер обучения со стипендией)
@@ -1663,6 +1674,7 @@ async def cb_submit_final(callback: types.CallbackQuery, state: FSMContext, bot:
 # КНОПКИ НАВИГАЦИИ (ПРОПУСТИТЬ, НАЗАД)
 # ==============================================================================
 
+
 @candidate_router.callback_query(F.data == "cand_nav_skip")
 @candidate_router.message(Command("skip"))
 async def cb_nav_skip(event: Union[types.CallbackQuery, types.Message], state: FSMContext) -> None:
@@ -1690,7 +1702,9 @@ async def cb_nav_skip(event: Union[types.CallbackQuery, types.Message], state: F
             if isinstance(event, types.CallbackQuery):
                 await event.answer("В данный момент нет активного шага анкеты.", show_alert=True)
                 return
-            await safe_answer(event, "В данный момент нет активного шага анкеты. Воспользуйтесь /start для перехода в главное меню.")
+            await safe_answer(
+                event, "В данный момент нет активного шага анкеты. Воспользуйтесь /start для перехода в главное меню."
+            )
             return
         if isinstance(event, types.CallbackQuery):
             await event.answer("Этот шаг обязателен.", show_alert=True)
@@ -1712,36 +1726,116 @@ async def cb_nav_back(event: Union[types.CallbackQuery, types.Message], state: F
     data = await state.get_data()
 
     step_transitions: Dict[str, Tuple[Any, str, Any]] = {
-        CandidateForm.birth_date.state: (CandidateForm.full_name, texts.SURVEY_STEP1_NAME, make_step_nav_kb(can_skip=False)),
+        CandidateForm.birth_date.state: (
+            CandidateForm.full_name,
+            texts.SURVEY_STEP1_NAME,
+            make_step_nav_kb(can_skip=False),
+        ),
         CandidateForm.phone.state: (CandidateForm.birth_date, texts.SURVEY_STEP2_BIRTHDATE, make_step2_birthdate_kb()),
-        CandidateForm.city.state: (CandidateForm.phone, texts.format_survey_ask_phone(data.get("full_name", "")), make_phone_reply_keyboard()),
+        CandidateForm.city.state: (
+            CandidateForm.phone,
+            texts.format_survey_ask_phone(data.get("full_name", "")),
+            make_phone_reply_keyboard(),
+        ),
         CandidateForm.city_manual.state: (CandidateForm.city, texts.SURVEY_STEP4_CITY, make_step4_city_kb()),
         CandidateForm.vacancy.state: (CandidateForm.city, texts.SURVEY_STEP4_CITY, make_step4_city_kb()),
-        CandidateForm.custom_vacancy.state: (CandidateForm.vacancy, texts.SURVEY_STEP5_VACANCY, make_step5_vacancies_kb()),
+        CandidateForm.custom_vacancy.state: (
+            CandidateForm.vacancy,
+            texts.SURVEY_STEP5_VACANCY,
+            make_step5_vacancies_kb(),
+        ),
         CandidateForm.has_license.state: (CandidateForm.vacancy, texts.SURVEY_STEP5_VACANCY, make_step5_vacancies_kb()),
-        CandidateForm.license_categories.state: (CandidateForm.has_license, texts.SURVEY_STEP6_LICENSE, make_step6_license_kb()),
-        CandidateForm.license_categories_manual.state: (CandidateForm.has_license, texts.SURVEY_STEP6_LICENSE, make_step6_license_kb()),
-        CandidateForm.has_experience.state: (CandidateForm.has_license, texts.SURVEY_STEP6_LICENSE, make_step6_license_kb()),
-        CandidateForm.experience.state: (CandidateForm.has_experience, texts.SURVEY_STEP7_EXPERIENCE, make_step7_experience_kb()),
-        CandidateForm.education_level.state: (CandidateForm.has_experience, texts.SURVEY_STEP7_EXPERIENCE, make_step7_experience_kb()),
-        CandidateForm.education_manual.state: (CandidateForm.education_level, texts.SURVEY_STEP8_EDUCATION, make_step8_education_kb()),
-        CandidateForm.education_facility.state: (CandidateForm.education_level, texts.SURVEY_STEP8_EDUCATION, make_step8_education_kb()),
-        CandidateForm.relocation.state: (CandidateForm.education_level, texts.SURVEY_STEP8_EDUCATION, make_step8_education_kb()),
-        CandidateForm.relocation_manual.state: (CandidateForm.relocation, texts.SURVEY_STEP9_RELOCATION, make_step9_relocation_kb()),
-        CandidateForm.dormitory.state: (CandidateForm.relocation, texts.SURVEY_STEP9_RELOCATION, make_step9_relocation_kb()),
-        CandidateForm.dormitory_manual.state: (CandidateForm.dormitory, texts.SURVEY_STEP10_DORMITORY, make_step10_dormitory_kb()),
-        CandidateForm.schedule.state: (CandidateForm.dormitory, texts.SURVEY_STEP10_DORMITORY, make_step10_dormitory_kb()),
-        CandidateForm.schedule_manual.state: (CandidateForm.schedule, texts.SURVEY_STEP11_SCHEDULE, make_step11_schedule_kb()),
+        CandidateForm.license_categories.state: (
+            CandidateForm.has_license,
+            texts.SURVEY_STEP6_LICENSE,
+            make_step6_license_kb(),
+        ),
+        CandidateForm.license_categories_manual.state: (
+            CandidateForm.has_license,
+            texts.SURVEY_STEP6_LICENSE,
+            make_step6_license_kb(),
+        ),
+        CandidateForm.has_experience.state: (
+            CandidateForm.has_license,
+            texts.SURVEY_STEP6_LICENSE,
+            make_step6_license_kb(),
+        ),
+        CandidateForm.experience.state: (
+            CandidateForm.has_experience,
+            texts.SURVEY_STEP7_EXPERIENCE,
+            make_step7_experience_kb(),
+        ),
+        CandidateForm.education_level.state: (
+            CandidateForm.has_experience,
+            texts.SURVEY_STEP7_EXPERIENCE,
+            make_step7_experience_kb(),
+        ),
+        CandidateForm.education_manual.state: (
+            CandidateForm.education_level,
+            texts.SURVEY_STEP8_EDUCATION,
+            make_step8_education_kb(),
+        ),
+        CandidateForm.education_facility.state: (
+            CandidateForm.education_level,
+            texts.SURVEY_STEP8_EDUCATION,
+            make_step8_education_kb(),
+        ),
+        CandidateForm.relocation.state: (
+            CandidateForm.education_level,
+            texts.SURVEY_STEP8_EDUCATION,
+            make_step8_education_kb(),
+        ),
+        CandidateForm.relocation_manual.state: (
+            CandidateForm.relocation,
+            texts.SURVEY_STEP9_RELOCATION,
+            make_step9_relocation_kb(),
+        ),
+        CandidateForm.dormitory.state: (
+            CandidateForm.relocation,
+            texts.SURVEY_STEP9_RELOCATION,
+            make_step9_relocation_kb(),
+        ),
+        CandidateForm.dormitory_manual.state: (
+            CandidateForm.dormitory,
+            texts.SURVEY_STEP10_DORMITORY,
+            make_step10_dormitory_kb(),
+        ),
+        CandidateForm.schedule.state: (
+            CandidateForm.dormitory,
+            texts.SURVEY_STEP10_DORMITORY,
+            make_step10_dormitory_kb(),
+        ),
+        CandidateForm.schedule_manual.state: (
+            CandidateForm.schedule,
+            texts.SURVEY_STEP11_SCHEDULE,
+            make_step11_schedule_kb(),
+        ),
         CandidateForm.health.state: (CandidateForm.schedule, texts.SURVEY_STEP11_SCHEDULE, make_step11_schedule_kb()),
         CandidateForm.health_manual.state: (CandidateForm.health, texts.SURVEY_STEP12_HEALTH, make_step12_health_kb()),
         CandidateForm.criminal.state: (CandidateForm.health, texts.SURVEY_STEP12_HEALTH, make_step12_health_kb()),
-        CandidateForm.criminal_manual.state: (CandidateForm.criminal, texts.SURVEY_STEP13_CRIMINAL, make_step13_criminal_kb()),
+        CandidateForm.criminal_manual.state: (
+            CandidateForm.criminal,
+            texts.SURVEY_STEP13_CRIMINAL,
+            make_step13_criminal_kb(),
+        ),
         CandidateForm.source.state: (CandidateForm.criminal, texts.SURVEY_STEP13_CRIMINAL, make_step13_criminal_kb()),
         CandidateForm.source_manual.state: (CandidateForm.source, texts.SURVEY_STEP14_SOURCE, make_step14_source_kb()),
         CandidateForm.extra_info.state: (CandidateForm.source, texts.SURVEY_STEP14_SOURCE, make_step14_source_kb()),
-        CandidateForm.confirm_review.state: (CandidateForm.extra_info, texts.SURVEY_STEP15_EXTRA, make_step_nav_kb(can_skip=True)),
-        CandidateForm.edit_field_select.state: (CandidateForm.confirm_review, texts.format_survey_step16_review(data), make_step16_confirm_kb()),
-        CandidateForm.edit_field_input.state: (CandidateForm.confirm_review, texts.format_survey_step16_review(data), make_step16_confirm_kb()),
+        CandidateForm.confirm_review.state: (
+            CandidateForm.extra_info,
+            texts.SURVEY_STEP15_EXTRA,
+            make_step_nav_kb(can_skip=True),
+        ),
+        CandidateForm.edit_field_select.state: (
+            CandidateForm.confirm_review,
+            texts.format_survey_step16_review(data),
+            make_step16_confirm_kb(),
+        ),
+        CandidateForm.edit_field_input.state: (
+            CandidateForm.confirm_review,
+            texts.format_survey_step16_review(data),
+            make_step16_confirm_kb(),
+        ),
     }
 
     if cur_state in step_transitions:
@@ -1792,6 +1886,7 @@ async def cb_cand_reply_hr(callback: types.CallbackQuery, state: FSMContext) -> 
 # ПРЯМОЙ ДИАЛОГ (LIVE-CHAT): СООБЩЕНИЯ СОИСКАТЕЛЯ В ОТДЕЛ КАДРОВ
 # ==============================================================================
 
+
 def is_candidate_in_dialog_filter(message: types.Message) -> bool:
     """Срабатывает ТОЛЬКО если соискатель находится в открытом прямом диалоге."""
     return bool(db.get_dialog_by_user(str(message.from_user.id)))
@@ -1835,6 +1930,7 @@ async def process_candidate_live_dialog_msg(message: types.Message, state: FSMCo
 # ==============================================================================
 # ОБРАБОТКА НЕИЗВЕСТНЫХ КОМАНД И НЕШТАТНОГО ВВОДА (РАЗДЕЛ 10.6 ТЗ)
 # ==============================================================================
+
 
 @candidate_router.message(F.text.startswith("/"))
 async def handle_unknown_command(message: types.Message) -> None:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Модуль конфигурации МУП «Ульяновскэлектротранс».
 Безопасная загрузка переменных окружения из .env файла.
@@ -12,6 +11,7 @@ import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
 from dotenv import load_dotenv
 
 logger = logging.getLogger("UET_CONFIG")
@@ -30,6 +30,7 @@ else:
 # ==============================================================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ БЕЗОПАСНОГО ПАРСИНГА
 # ==============================================================================
+
 
 def _clean_val(val: Optional[str]) -> str:
     """Очищает значение от внешних кавычек и инлайн-комментариев."""
@@ -95,6 +96,7 @@ for directory in (DATA_DIR, LOGS_DIR, BACKUP_DIR):
 # КЛАСС КОНФИГУРАЦИИ ПРИЛОЖЕНИЯ
 # ==============================================================================
 
+
 class AppConfig(dict):
     """
     Класс конфигурации приложения с поддержкой:
@@ -128,59 +130,56 @@ os.environ["DB_PATH"] = resolved_db_path
 
 
 # Инициализация глобального словаря настроек
-CONFIG: AppConfig = AppConfig({
-    # --- Среда выполнения и версия ---
-    "ENVIRONMENT": _get_str("ENVIRONMENT", "TEST").upper(),
-    "BOT_VERSION": _get_str("BOT_VERSION", "1.9.1"),
-
-    # --- Пути файловой системы ---
-    "BASE_DIR": str(BASE_DIR),
-    "DATA_DIR": str(DATA_DIR),
-    "LOGS_DIR": str(LOGS_DIR),
-    "BACKUP_DIR": str(BACKUP_DIR),
-    "DB_PATH": resolved_db_path,
-    "LOG_FILE": _get_str("LOG_FILE", str(LOGS_DIR / "bot.log")),
-
-    # --- Токены внешних шлюзов и сеть ---
-    "TG_BOT_TOKEN": _get_str("TG_BOT_TOKEN", ""),
-    "PROXY_URL": _get_str("PROXY_URL", os.getenv("HTTPS_PROXY", os.getenv("https_proxy", os.getenv("HTTP_PROXY", "")))),
-    "VK_GROUP_TOKEN": _get_str("VK_GROUP_TOKEN", ""),
-    "VK_GROUP_ID": _get_str("VK_GROUP_ID", ""),
-    "MAX_BOT_TOKEN": _get_str("MAX_BOT_TOKEN", ""),
-    "MAX_API_BASE": _get_str("MAX_API_BASE", "https://api.myteam.mail.ru/bot/v1").rstrip("/"),
-
-    # --- Права доступа и маршрутизация ---
-    "SUPER_ADMIN_ID": _get_int("SUPER_ADMIN_ID", 0),
-    "TECH_ADMIN_ID": _get_int("TECH_ADMIN_ID", 0),
-    "SUPER_ADMIN_PASSWORD": _get_str("SUPER_ADMIN_PASSWORD", "uet2026super"),
-    "HR_ADMIN_PASSWORD": _get_str("HR_ADMIN_PASSWORD", "uet2026hr"),
-    "HR_GROUP_ID": _get_int("HR_GROUP_ID", 0),
-    "TARGET_CHATS": initial_target_chats,
-
-    # --- Реквизиты оператора ПДн (152-ФЗ РФ) ---
-    "OPERATOR_NAME": "МУП «Ульяновскэлектротранс»",
-    "OPERATOR_INN": "7325000960",
-    "OPERATOR_OGRN": "1027301160350",
-    "DATA_RETENTION_DAYS": 1095,  # 3 года — кадровый резерв (Приказ Росархива №236, ст. 441)
-
-    # --- Контакты и регламент кадровой службы МУП «УЭТ» ---
-    "HR_PHONE": _get_str("HR_PHONE", "+7 (8422) 58-46-60"),
-    "HR_ADDRESS": _get_str("HR_ADDRESS", "г. Ульяновск, ул. Гончарова, 2"),
-    "HR_SCHEDULE": _get_str("HR_SCHEDULE", "пн-пт 08:00–17:00 (перерыв 12:00–13:00)"),
-    "COOLDOWN_SECONDS": _get_int("COOLDOWN_SECONDS", 1200),  # 20 минут антифлуд
-
-    # --- Системные режимы и 152-ФЗ ---
-    "MAINTENANCE_MODE": _get_bool("MAINTENANCE_MODE", False),
-    "ANONYMIZE_LOGS": _get_bool("ANONYMIZE_LOGS", True),
-    "ALLOW_TEST_SUBMISSIONS_IN_PROD": _get_bool("ALLOW_TEST_SUBMISSIONS_IN_PROD", False),
-
-    # --- Telegram Mini App / Веб-панель ---
-    "BOT_USERNAME": _get_str("BOT_USERNAME", "UetFeedback_bot"),
-    "TG_BOT_URL": _get_str("TG_BOT_URL", "https://t.me/UetFeedback_bot"),
-    "WEB_APP_URL": _get_str("WEB_APP_URL", "https://213.226.124.135.sslip.io/"),
-    "WEB_APP_HOST": _get_str("WEB_APP_HOST", "127.0.0.1"),
-    "WEB_APP_PORT": _get_int("WEB_APP_PORT", 8080),
-})
+CONFIG: AppConfig = AppConfig(
+    {
+        # --- Среда выполнения и версия ---
+        "ENVIRONMENT": _get_str("ENVIRONMENT", "TEST").upper(),
+        "BOT_VERSION": _get_str("BOT_VERSION", "1.9.1"),
+        # --- Пути файловой системы ---
+        "BASE_DIR": str(BASE_DIR),
+        "DATA_DIR": str(DATA_DIR),
+        "LOGS_DIR": str(LOGS_DIR),
+        "BACKUP_DIR": str(BACKUP_DIR),
+        "DB_PATH": resolved_db_path,
+        "LOG_FILE": _get_str("LOG_FILE", str(LOGS_DIR / "bot.log")),
+        # --- Токены внешних шлюзов и сеть ---
+        "TG_BOT_TOKEN": _get_str("TG_BOT_TOKEN", ""),
+        "PROXY_URL": _get_str(
+            "PROXY_URL", os.getenv("HTTPS_PROXY", os.getenv("https_proxy", os.getenv("HTTP_PROXY", "")))
+        ),
+        "VK_GROUP_TOKEN": _get_str("VK_GROUP_TOKEN", ""),
+        "VK_GROUP_ID": _get_str("VK_GROUP_ID", ""),
+        "MAX_BOT_TOKEN": _get_str("MAX_BOT_TOKEN", ""),
+        "MAX_API_BASE": _get_str("MAX_API_BASE", "https://api.myteam.mail.ru/bot/v1").rstrip("/"),
+        # --- Права доступа и маршрутизация ---
+        "SUPER_ADMIN_ID": _get_int("SUPER_ADMIN_ID", 0),
+        "TECH_ADMIN_ID": _get_int("TECH_ADMIN_ID", 0),
+        "SUPER_ADMIN_PASSWORD": _get_str("SUPER_ADMIN_PASSWORD", "uet2026super"),
+        "HR_ADMIN_PASSWORD": _get_str("HR_ADMIN_PASSWORD", "uet2026hr"),
+        "HR_GROUP_ID": _get_int("HR_GROUP_ID", 0),
+        "TARGET_CHATS": initial_target_chats,
+        # --- Реквизиты оператора ПДн (152-ФЗ РФ) ---
+        "OPERATOR_NAME": "МУП «Ульяновскэлектротранс»",
+        "OPERATOR_INN": "7325000960",
+        "OPERATOR_OGRN": "1027301160350",
+        "DATA_RETENTION_DAYS": 1095,  # 3 года — кадровый резерв (Приказ Росархива №236, ст. 441)
+        # --- Контакты и регламент кадровой службы МУП «УЭТ» ---
+        "HR_PHONE": _get_str("HR_PHONE", "+7 (8422) 58-46-60"),
+        "HR_ADDRESS": _get_str("HR_ADDRESS", "г. Ульяновск, ул. Гончарова, 2"),
+        "HR_SCHEDULE": _get_str("HR_SCHEDULE", "пн-пт 08:00–17:00 (перерыв 12:00–13:00)"),
+        "COOLDOWN_SECONDS": _get_int("COOLDOWN_SECONDS", 1200),  # 20 минут антифлуд
+        # --- Системные режимы и 152-ФЗ ---
+        "MAINTENANCE_MODE": _get_bool("MAINTENANCE_MODE", False),
+        "ANONYMIZE_LOGS": _get_bool("ANONYMIZE_LOGS", True),
+        "ALLOW_TEST_SUBMISSIONS_IN_PROD": _get_bool("ALLOW_TEST_SUBMISSIONS_IN_PROD", False),
+        # --- Telegram Mini App / Веб-панель ---
+        "BOT_USERNAME": _get_str("BOT_USERNAME", "UetFeedback_bot"),
+        "TG_BOT_URL": _get_str("TG_BOT_URL", "https://t.me/UetFeedback_bot"),
+        "WEB_APP_URL": _get_str("WEB_APP_URL", "https://213.226.124.135.sslip.io/"),
+        "WEB_APP_HOST": _get_str("WEB_APP_HOST", "127.0.0.1"),
+        "WEB_APP_PORT": _get_int("WEB_APP_PORT", 8080),
+    }
+)
 
 # Заполнение списка чатов для гарантированной доставки уведомлений
 if CONFIG["HR_GROUP_ID"] and CONFIG["HR_GROUP_ID"] not in CONFIG["TARGET_CHATS"]:
@@ -193,6 +192,7 @@ if CONFIG["SUPER_ADMIN_ID"] and CONFIG["SUPER_ADMIN_ID"] not in CONFIG["TARGET_C
 # ==============================================================================
 # СЕРВИСНЫЕ МЕТОДЫ УПРАВЛЕНИЯ КОНФИГУРАЦИЕЙ
 # ==============================================================================
+
 
 def load_config() -> AppConfig:
     """Фабричная функция загрузки конфигурации."""
@@ -210,7 +210,7 @@ def update_env_variable(key: str, value: Any) -> bool:
     try:
         content = ""
         if target_path.exists():
-            with open(target_path, "r", encoding="utf-8") as f:
+            with open(target_path, encoding="utf-8") as f:
                 content = f.read()
 
         pattern = rf"^{re.escape(key)}=.*$"

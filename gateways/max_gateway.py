@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Шлюз интеграции с корпоративным мессенджером МАКС (VK Teams / MyTeam) для МУП «Ульяновскэлектротранс».
 Поддерживает:
@@ -8,37 +7,38 @@
 - Двусторонний мост прямого диалога соискателя из МАКС со специалистом кадровой службы в Telegram.
 - Автоматически активируется при наличии MAX_BOT_TOKEN в .env.
 """
+
 from __future__ import annotations
 
 import asyncio
 import html
 import json
 import logging
-import re
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
-from aiohttp import ClientSession, ClientTimeout
 from aiogram import Bot
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiohttp import ClientSession, ClientTimeout
 
 import texts
 from common import (
     CONFIG,
-    VACANCIES,
     EXTERNAL_SESSIONS,
     SYSTEM_METRICS,
+    VACANCIES,
     route_new_candidate_ticket,
     route_new_inquiry_ticket,
-    safe_send
+    safe_send,
 )
-from services.candidate_service import candidate_service
 from database import ResumeDB
-from keyboards import make_ticket_keyboard, make_inquiry_admin_keyboard
+from keyboards import make_inquiry_admin_keyboard, make_ticket_keyboard
+from services.candidate_service import candidate_service
 
 logger = logging.getLogger("MAX_GATEWAY")
 
 # ==================== КЛАВИАТУРЫ ДЛЯ МАКС ====================
+
 
 def make_max_main_keyboard() -> List[List[Dict[str, Any]]]:
     """Главное меню соискателя в мессенджере МАКС."""
@@ -48,22 +48,20 @@ def make_max_main_keyboard() -> List[List[Dict[str, Any]]]:
         [{"text": "💬 Связаться с кадровиком", "callbackData": "ask"}],
         [
             {"text": "📚 Частые вопросы (FAQ)", "callbackData": "faq"},
-            {"text": "📞 Контакты", "callbackData": "contacts"}
-        ]
+            {"text": "📞 Контакты", "callbackData": "contacts"},
+        ],
     ]
+
 
 def make_max_consent_keyboard(command: str) -> List[List[Dict[str, Any]]]:
     """Клавиатура согласия с 152-ФЗ в МАКС."""
-    return [
-        [{"text": "✅ Согласен", "callbackData": command}],
-        [{"text": "❌ Отмена", "callbackData": "cancel"}]
-    ]
+    return [[{"text": "✅ Согласен", "callbackData": command}], [{"text": "❌ Отмена", "callbackData": "cancel"}]]
+
 
 def make_max_cancel_keyboard() -> List[List[Dict[str, Any]]]:
     """Кнопка отмены для шагов FSM."""
-    return [
-        [{"text": "❌ Отмена", "callbackData": "cancel"}]
-    ]
+    return [[{"text": "❌ Отмена", "callbackData": "cancel"}]]
+
 
 def make_max_vacancies_keyboard() -> List[List[Dict[str, Any]]]:
     """Список вакансий предприятия для МАКС."""
@@ -74,14 +72,14 @@ def make_max_vacancies_keyboard() -> List[List[Dict[str, Any]]]:
     buttons.append([{"text": "❌ Отмена", "callbackData": "cancel"}])
     return buttons
 
+
 def make_max_experience_keyboard() -> List[List[Dict[str, Any]]]:
     """Кнопка без опыта для МАКС."""
-    return [
-        [{"text": "Без опыта", "callbackData": "exp_no"}],
-        [{"text": "❌ Отмена", "callbackData": "cancel"}]
-    ]
+    return [[{"text": "Без опыта", "callbackData": "exp_no"}], [{"text": "❌ Отмена", "callbackData": "cancel"}]]
+
 
 # ==================== ОТПРАВКА СООБЩЕНИЙ ====================
+
 
 async def send_max_message(
     session: ClientSession,
@@ -89,16 +87,11 @@ async def send_max_message(
     token: str,
     chat_id: str,
     text: str,
-    keyboard: Optional[List[List[Dict[str, Any]]]] = None
+    keyboard: Optional[List[List[Dict[str, Any]]]] = None,
 ) -> bool:
     """Отправка текстового сообщения в МАКС с поддержкой инлайн-клавиатур."""
     url = f"{api_base}/messages/sendText"
-    params: Dict[str, Any] = {
-        "token": token,
-        "chatId": str(chat_id),
-        "text": text,
-        "parseMode": "HTML"
-    }
+    params: Dict[str, Any] = {"token": token, "chatId": str(chat_id), "text": text, "parseMode": "HTML"}
     if keyboard:
         params["inlineKeyboardMarkup"] = json.dumps(keyboard, ensure_ascii=False)
 
@@ -113,6 +106,7 @@ async def send_max_message(
         logger.error(f"Сбой отправки сообщения в МАКС chat_id={chat_id}: {e}")
         return False
 
+
 async def answer_max_callback(session: ClientSession, api_base: str, token: str, query_id: str) -> bool:
     """Ответ на нажатие инлайн-кнопки (callback query) в МАКС."""
     url = f"{api_base}/messages/answerCallbackQuery"
@@ -123,7 +117,9 @@ async def answer_max_callback(session: ClientSession, api_base: str, token: str,
     except Exception:
         return False
 
+
 # ==================== ОБРАБОТКА ДИАЛОГА ====================
+
 
 async def handle_max_message(
     user_id: str,
@@ -134,7 +130,7 @@ async def handle_max_message(
     session: ClientSession,
     api_base: str,
     token: str,
-    payload_cmd: str = ""
+    payload_cmd: str = "",
 ):
     """Интеллектуальная обработка сообщений соискателей в МАКС."""
     key = ("max", str(user_id))
@@ -164,14 +160,17 @@ async def handle_max_message(
         if dialog:
             db.end_direct_dialog(str(user_id))
             await send_max_message(
-                session, api_base, token, chat_id,
+                session,
+                api_base,
+                token,
+                chat_id,
                 "⏹ Диалог со специалистом отдела кадров завершён.",
-                keyboard=make_max_main_keyboard()
+                keyboard=make_max_main_keyboard(),
             )
             await tg_bot.send_message(
                 chat_id=dialog[1],
                 text=f"⏹ Соискатель <b>{dialog[3]}</b> (МАКС id{user_id}) завершил диалог.",
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
             return
 
@@ -180,9 +179,12 @@ async def handle_max_message(
         if key in EXTERNAL_SESSIONS:
             del EXTERNAL_SESSIONS[key]
         return await send_max_message(
-            session, api_base, token, chat_id,
+            session,
+            api_base,
+            token,
+            chat_id,
             "🚫 Действие отменено. Вы возвращены в главное меню.",
-            keyboard=make_max_main_keyboard()
+            keyboard=make_max_main_keyboard(),
         )
 
     # 4. Моя анкета (статус)
@@ -225,7 +227,9 @@ async def handle_max_message(
     # 5. Контакты (синхронизировано с texts.py)
     if clean_lower in ("контакты", "/contacts") or payload_cmd == "contacts":
         text_contacts = texts.CONTACTS_SCREEN
-        return await send_max_message(session, api_base, token, chat_id, text_contacts, keyboard=make_max_main_keyboard())
+        return await send_max_message(
+            session, api_base, token, chat_id, text_contacts, keyboard=make_max_main_keyboard()
+        )
 
     # 6. FAQ (синхронизировано с texts.py)
     if clean_lower in ("faq", "/faq", "вопросы") or payload_cmd == "faq":
@@ -262,17 +266,21 @@ async def handle_max_message(
             "━━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Для продолжения нажмите кнопку «✅ Согласен» ниже:</i>"
         )
-        return await send_max_message(session, api_base, token, chat_id, apply_prompt, keyboard=make_max_consent_keyboard("consent_apply"))
+        return await send_max_message(
+            session, api_base, token, chat_id, apply_prompt, keyboard=make_max_consent_keyboard("consent_apply")
+        )
 
     # 8. Вопрос кадровику (/ask)
     if clean_lower in ("/ask", "задать вопрос", "связаться с кадровиком") or payload_cmd == "ask":
-        is_prod = (CONFIG.get("ENVIRONMENT") == "PROD")
+        is_prod = CONFIG.get("ENVIRONMENT") == "PROD"
         cooldown = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200)))) if is_prod else 0
         can_ask, seconds_left = db.check_inquiry_cooldown(str(user_id), cooldown)
         if not can_ask:
             minutes_left = max(1, (seconds_left + 59) // 60)
             msg_text = f"⏳ Вы сможете задать следующий вопрос через {minutes_left} мин.\nСрочные вопросы: {CONFIG['HR_PHONE']}"
-            return await send_max_message(session, api_base, token, chat_id, msg_text, keyboard=make_max_main_keyboard())
+            return await send_max_message(
+                session, api_base, token, chat_id, msg_text, keyboard=make_max_main_keyboard()
+            )
 
         EXTERNAL_SESSIONS[key] = {"step": "waiting_consent_ask", "data": {}}
         ask_prompt = (
@@ -280,7 +288,9 @@ async def handle_max_message(
             "━━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Для продолжения нажмите кнопку «✅ Согласен» ниже:</i>"
         )
-        return await send_max_message(session, api_base, token, chat_id, ask_prompt, keyboard=make_max_consent_keyboard("consent_ask"))
+        return await send_max_message(
+            session, api_base, token, chat_id, ask_prompt, keyboard=make_max_consent_keyboard("consent_ask")
+        )
 
     # ==================== ПОШАГОВЫЕ СЦЕНАРИИ ====================
     if session_data:
@@ -292,12 +302,17 @@ async def handle_max_message(
                 session_data["data"]["consent_timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 session_data["step"] = "name"
                 msg = "✅ Согласие принято!\n\n1️⃣ Введите ваши <b>ФИО полностью</b> (например: Иванов Иван Иванович):"
-                return await send_max_message(session, api_base, token, chat_id, msg, keyboard=make_max_cancel_keyboard())
+                return await send_max_message(
+                    session, api_base, token, chat_id, msg, keyboard=make_max_cancel_keyboard()
+                )
             else:
                 return await send_max_message(
-                    session, api_base, token, chat_id,
+                    session,
+                    api_base,
+                    token,
+                    chat_id,
                     "⚠️ Для заполнения анкеты нажмите кнопку «✅ Согласен» ниже:",
-                    keyboard=make_max_consent_keyboard("consent_apply")
+                    keyboard=make_max_consent_keyboard("consent_apply"),
                 )
 
         # Б. Ввод ФИО
@@ -305,28 +320,38 @@ async def handle_max_message(
             is_valid, clean_name, err = candidate_service.validate_fio(clean)
             if not is_valid:
                 return await send_max_message(
-                    session, api_base, token, chat_id,
+                    session,
+                    api_base,
+                    token,
+                    chat_id,
                     f"⚠️ {err or 'Пожалуйста, укажите имя и фамилию полностью (минимум 2 слова):'}",
-                    keyboard=make_max_cancel_keyboard()
+                    keyboard=make_max_cancel_keyboard(),
                 )
             session_data["data"]["full_name"] = clean_name
             session_data["step"] = "phone"
             prompt = "2️⃣ Укажите ваш <b>контактный номер телефона</b> (например: <code>+79001234567</code> или <code>89001234567</code>):"
-            return await send_max_message(session, api_base, token, chat_id, prompt, keyboard=make_max_cancel_keyboard())
+            return await send_max_message(
+                session, api_base, token, chat_id, prompt, keyboard=make_max_cancel_keyboard()
+            )
 
         # В. Ввод телефона
         elif step == "phone":
             is_valid, norm_phone, err = candidate_service.validate_phone(clean)
             if not is_valid:
                 return await send_max_message(
-                    session, api_base, token, chat_id,
+                    session,
+                    api_base,
+                    token,
+                    chat_id,
                     "⚠️ Некорректный номер. Введите 11 цифр (например: <code>+79001234567</code>):",
-                    keyboard=make_max_cancel_keyboard()
+                    keyboard=make_max_cancel_keyboard(),
                 )
             session_data["data"]["phone"] = norm_phone
             session_data["step"] = "vacancy"
             prompt = f"✅ Номер принят: <code>{norm_phone}</code>\n\n3️⃣ Выберите вакансию из списка ниже:"
-            return await send_max_message(session, api_base, token, chat_id, prompt, keyboard=make_max_vacancies_keyboard())
+            return await send_max_message(
+                session, api_base, token, chat_id, prompt, keyboard=make_max_vacancies_keyboard()
+            )
 
         # Г. Выбор вакансии
         elif step == "vacancy":
@@ -346,7 +371,9 @@ async def handle_max_message(
                 f"Выбранная должность: <b>{chosen_vac}</b>\n\n"
                 "4️⃣ Опишите ваш <b>опыт работы</b> или стаж (если опыта нет — нажмите «Без опыта» ниже):"
             )
-            return await send_max_message(session, api_base, token, chat_id, prompt, keyboard=make_max_experience_keyboard())
+            return await send_max_message(
+                session, api_base, token, chat_id, prompt, keyboard=make_max_experience_keyboard()
+            )
 
         # Д. Опыт работы и отправка анкеты
         elif step == "experience":
@@ -366,7 +393,11 @@ async def handle_max_message(
             ph = meta["phone"]
             vc = meta["vacancy"]
             cand_consent = meta["consent_timestamp"]
-            recom_line = "\n💡 <b>Рекомендация:</b> кандидат без опыта, можно предложить обучение\n" if meta["offer_training"] else ""
+            recom_line = (
+                "\n💡 <b>Рекомендация:</b> кандидат без опыта, можно предложить обучение\n"
+                if meta["offer_training"]
+                else ""
+            )
 
             safe_fn = html.escape(fn)
             safe_ph = html.escape(ph)
@@ -399,7 +430,9 @@ async def handle_max_message(
                 f"Статус заявки доступен по кнопке «📑 Моя анкета».\n"
                 f"Телефон отдела кадров: {CONFIG['HR_PHONE']}."
             )
-            return await send_max_message(session, api_base, token, chat_id, resp_text, keyboard=make_max_main_keyboard())
+            return await send_max_message(
+                session, api_base, token, chat_id, resp_text, keyboard=make_max_main_keyboard()
+            )
 
         # Е. Согласие перед вопросом
         elif step == "waiting_consent_ask":
@@ -407,12 +440,17 @@ async def handle_max_message(
                 session_data["data"]["consent_timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 session_data["step"] = "waiting_question"
                 msg = "💬 Напишите ваш вопрос <b>одним сообщением</b>. Он будет передан специалисту кадровой службы:"
-                return await send_max_message(session, api_base, token, chat_id, msg, keyboard=make_max_cancel_keyboard())
+                return await send_max_message(
+                    session, api_base, token, chat_id, msg, keyboard=make_max_cancel_keyboard()
+                )
             else:
                 return await send_max_message(
-                    session, api_base, token, chat_id,
+                    session,
+                    api_base,
+                    token,
+                    chat_id,
                     "⚠️ Для отправки вопроса нажмите кнопку «✅ Согласен» ниже:",
-                    keyboard=make_max_consent_keyboard("consent_ask")
+                    keyboard=make_max_consent_keyboard("consent_ask"),
                 )
 
         # Ж. Текст вопроса
@@ -420,12 +458,17 @@ async def handle_max_message(
             is_valid, clean_q, err = candidate_service.validate_question(clean)
             if not is_valid:
                 return await send_max_message(
-                    session, api_base, token, chat_id,
+                    session,
+                    api_base,
+                    token,
+                    chat_id,
                     f"⚠️ {err or 'Напишите ваш вопрос текстом в одном сообщении:'}",
-                    keyboard=make_max_cancel_keyboard()
+                    keyboard=make_max_cancel_keyboard(),
                 )
 
-            inq_consent = session_data.get("data", {}).get("consent_timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            inq_consent = session_data.get("data", {}).get("consent_timestamp") or datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
             if key in EXTERNAL_SESSIONS:
                 del EXTERNAL_SESSIONS[key]
 
@@ -449,7 +492,7 @@ async def handle_max_message(
                 full_name=full_name,
                 phone=phone,
                 vacancy=vacancy,
-                consent_timestamp=inq_consent
+                consent_timestamp=inq_consent,
             )
 
             safe_clean = html.escape(clean_q)
@@ -478,7 +521,9 @@ async def handle_max_message(
                 f"Специалист рассмотрит его в рабочее время ({CONFIG['HR_SCHEDULE']}). Ответ поступит прямо в этот диалог.\n\n"
                 f"Телефон отдела кадров: {CONFIG['HR_PHONE']}."
             )
-            return await send_max_message(session, api_base, token, chat_id, conf_text, keyboard=make_max_main_keyboard())
+            return await send_max_message(
+                session, api_base, token, chat_id, conf_text, keyboard=make_max_main_keyboard()
+            )
 
     # Главное меню по умолчанию
     welcome = (
@@ -487,7 +532,9 @@ async def handle_max_message(
     )
     return await send_max_message(session, api_base, token, chat_id, welcome, keyboard=make_max_main_keyboard())
 
+
 # ==================== ГЛАВНЫЙ ЦИКЛ LONG POLL ДЛЯ МАКС ====================
+
 
 async def run_max_gateway(bot: Bot, db: ResumeDB):
     """Фоновый воркер Long Poll для мессенджера МАКС внутри единого процесса бота."""
@@ -536,7 +583,7 @@ async def run_max_gateway(bot: Bot, db: ResumeDB):
                                         tg_bot=bot,
                                         session=session,
                                         api_base=api_base,
-                                        token=token
+                                        token=token,
                                     )
                                 )
 
@@ -559,7 +606,7 @@ async def run_max_gateway(bot: Bot, db: ResumeDB):
                                         session=session,
                                         api_base=api_base,
                                         token=token,
-                                        payload_cmd=cb_data
+                                        payload_cmd=cb_data,
                                     )
                                 )
 

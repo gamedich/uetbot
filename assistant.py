@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Модуль HRAssistant для интеллектуальной поддержки кадровой службы
 МУП «Ульяновскэлектротранс» и серверной логики Telegram Mini App.
@@ -14,8 +13,21 @@ class HRAssistant:
     """Ассистент кадровика для шаблонов сообщений, HTML-валидации и предпросмотра."""
 
     ALLOWED_TAGS = {
-        "b", "strong", "i", "em", "u", "ins", "s", "strike", "del",
-        "span", "tg-spoiler", "a", "code", "pre", "blockquote"
+        "b",
+        "strong",
+        "i",
+        "em",
+        "u",
+        "ins",
+        "s",
+        "strike",
+        "del",
+        "span",
+        "tg-spoiler",
+        "a",
+        "code",
+        "pre",
+        "blockquote",
     }
 
     TEMPLATES: Dict[str, Dict[str, str]] = {

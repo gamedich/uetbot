@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Инженерный модуль технического обслуживания, мониторинга и тестирования:
 - Команда /tech (чистый мониторинг систем, базы данных, статуса шлюзов, аптайма)
@@ -19,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import html
-import json
 import logging
 import os
 import random
@@ -27,14 +25,14 @@ import re
 import sys
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from aiohttp import ClientSession, ClientTimeout
 from aiogram import Bot, F, Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiohttp import ClientSession, ClientTimeout
 
 import texts
 from common import (
@@ -42,13 +40,12 @@ from common import (
     SYSTEM_METRICS,
     AdminManageState,
     TechAccessMiddleware,
+    broadcast_maintenance_alert,
     db,
     get_all_vacancies,
     get_closed_vacancies,
-    get_open_vacancies,
-    get_vacancy_icon,
-    grant_admin_and_sync,
     is_hr_admin,
+    is_maintenance_active,
     is_tech_admin,
     memory_log_handler,
     revoke_admin_and_sync,
@@ -58,19 +55,15 @@ from common import (
     safe_send,
     save_all_vacancies,
     set_closed_vacancies,
+    set_maintenance_active,
     sync_user_commands,
     update_env_mode,
-    is_maintenance_active,
-    set_maintenance_active,
-    get_maintenance_info,
-    broadcast_maintenance_alert,
 )
 from keyboards import (
     get_tech_screen_data,
     make_admins_menu_keyboard,
     make_inquiry_admin_keyboard,
     make_remove_admin_keyboard,
-    make_tech_menu_keyboard,
     make_tests_menu_keyboard,
     make_ticket_keyboard,
 )
@@ -123,6 +116,7 @@ async def run_shell_cmd(cmd: str) -> Tuple[int, str]:
 # 1. МОНИТОРИНГ И ИНЖЕНЕРНАЯ ПАНЕЛЬ (/tech)
 # ==============================================================================
 
+
 @tech_router.message(Command("tech"))
 async def cmd_tech(message: types.Message) -> None:
     user_id = message.from_user.id
@@ -151,6 +145,7 @@ async def cb_tech_refresh(event: Union[types.Message, types.CallbackQuery]) -> N
         cand = db.get_candidate_by_user_id(str(user_id), platform="tg")
         if cand:
             from handlers.candidate import cb_cand_my_application
+
             await cb_cand_my_application(event)
             return
         if isinstance(event, types.CallbackQuery):
@@ -198,6 +193,8 @@ async def cb_tech_toggle_env(callback: types.CallbackQuery) -> None:
         await callback.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
     except Exception:
         pass
+
+
 @tech_router.callback_query(F.data == "tech_toggle_db")
 async def cb_tech_toggle_db(callback: types.CallbackQuery):
     if not is_privileged_user(callback.from_user.id):
@@ -205,15 +202,15 @@ async def cb_tech_toggle_db(callback: types.CallbackQuery):
 
     cur_db = db.get_setting("active_db_target", "resumes.db")
     new_db = "resumes_test.db" if cur_db == "resumes.db" else "resumes.db"
-    
+
     # Записываем выбор в базу и память
     db.set_setting("active_db_target", new_db)
     CONFIG["ACTIVE_DB_TARGET"] = new_db
 
     alert = (
         "🧪 Активирована ТЕСТОВАЯ база (resumes_test.db)!\nВсе тестовые анкеты будут изолированы с номерами #900000+."
-        if new_db == "resumes_test.db" else
-        "📁 Активирована БОЕВАЯ база (resumes.db)!\nВсе заявки сохраняются в официальную базу предприятия."
+        if new_db == "resumes_test.db"
+        else "📁 Активирована БОЕВАЯ база (resumes.db)!\nВсе заявки сохраняются в официальную базу предприятия."
     )
     await callback.answer(alert, show_alert=True)
 
@@ -223,6 +220,7 @@ async def cb_tech_toggle_db(callback: types.CallbackQuery):
         await callback.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
     except Exception:
         pass
+
 
 @tech_router.callback_query(F.data == "tech_toggle_maint")
 async def cb_tech_toggle_maint(callback: types.CallbackQuery) -> None:
@@ -305,10 +303,10 @@ async def cb_tech_maint_resolve(callback: types.CallbackQuery, bot: Bot) -> None
         pass
 
 
-
 # ==============================================================================
 # УПРАВЛЕНИЕ РЕЗЕРВНЫМИ КОПИЯМИ (/backups, /backup, /restore)
 # ==============================================================================
+
 
 @tech_router.message(Command("backup"))
 async def cmd_backup(message: types.Message) -> None:
@@ -634,6 +632,7 @@ async def cmd_set_cooldown(message: types.Message) -> None:
 # 2. ПАНЕЛЬ ТЕСТОВ И ДИАГНОСТИКИ (/tests)
 # ==============================================================================
 
+
 @tech_router.message(Command("tests", "test", "test_menu"))
 @tech_router.callback_query(F.data == "test_menu_back")
 async def cmd_tests_menu(event: Union[types.Message, types.CallbackQuery]) -> None:
@@ -676,7 +675,7 @@ async def cmd_view_changelog(event: Union[types.Message, types.CallbackQuery]) -
     header = f"🚀 <b>Бот v{version}</b>\n━━━━━━━━━━━━━━━━━━━━━\n"
     if os.path.exists(changelog_path):
         try:
-            with open(changelog_path, "r", encoding="utf-8") as f:
+            with open(changelog_path, encoding="utf-8") as f:
                 preview = "\n".join(f.read().strip().splitlines()[:30])
             text = f"{header}<pre>{html.escape(preview)}</pre>"
         except Exception as e:
@@ -782,7 +781,9 @@ async def cb_test_send_tg(event: Union[types.Message, types.CallbackQuery], bot:
 
     if isinstance(event, types.CallbackQuery):
         await event.answer("Тестовая анкета TG отправлена!")
-    await safe_answer(event, f"✅ Сгенерирована тестовая анкета #{t_id} с 16 шагами ({c['vacancy']})", parse_mode="HTML")
+    await safe_answer(
+        event, f"✅ Сгенерирована тестовая анкета #{t_id} с 16 шагами ({c['vacancy']})", parse_mode="HTML"
+    )
 
 
 @tech_router.message(Command("test_vk"))
@@ -817,7 +818,9 @@ async def cb_test_send_vk(event: Union[types.Message, types.CallbackQuery], bot:
 
     if isinstance(event, types.CallbackQuery):
         await event.answer("Тестовая анкета VK отправлена!")
-    await safe_answer(event, f"✅ Сгенерирована тестовая анкета VK #{t_id} с 16 шагами ({c['vacancy']})", parse_mode="HTML")
+    await safe_answer(
+        event, f"✅ Сгенерирована тестовая анкета VK #{t_id} с 16 шагами ({c['vacancy']})", parse_mode="HTML"
+    )
 
 
 RANDOM_QUESTIONS_POOL: List[str] = [
@@ -1123,11 +1126,14 @@ async def cb_test_do_reset(
 # 3. УПРАВЛЕНИЕ АДМИНИСТРАТОРАМИ (/admins)
 # ==============================================================================
 
+
 @tech_router.message(Command("admins", "team"))
 async def cmd_admins_menu(message: types.Message, bot: Bot) -> None:
     user_id = message.from_user.id
     if user_id != CONFIG.get("SUPER_ADMIN_ID"):
-        await safe_answer(message, "🚫 Управление сотрудниками и ролями доступно исключительно Главному администратору.")
+        await safe_answer(
+            message, "🚫 Управление сотрудниками и ролями доступно исключительно Главному администратору."
+        )
         return
 
     all_admins = db.get_all_admins()
@@ -1206,12 +1212,10 @@ async def cb_adm_ui_remove_list(callback: types.CallbackQuery, bot: Bot) -> None
         _, short_label = await resolve_user_display(bot, adm_id)
         admins_with_names.append((adm_id, role, short_label))
 
-    text = (
-        "➖ <b>ОТЗЫВ ПРАВ ДОСТУПА СОТРУДНИКА</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "Выберите сотрудника для отзыва прав:"
+    text = "➖ <b>ОТЗЫВ ПРАВ ДОСТУПА СОТРУДНИКА</b>\n━━━━━━━━━━━━━━━━━━━━━\nВыберите сотрудника для отзыва прав:"
+    await callback.message.edit_text(
+        text, reply_markup=make_remove_admin_keyboard(admins_with_names), parse_mode="HTML"
     )
-    await callback.message.edit_text(text, reply_markup=make_remove_admin_keyboard(admins_with_names), parse_mode="HTML")
     await callback.answer()
 
 
@@ -1303,7 +1307,11 @@ async def cmd_add_hr(message: types.Message, bot: Bot) -> None:
     btn_kb = InlineKeyboardBuilder()
     btn_kb.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
     sent = await safe_send(bot, new_id, notify_text, reply_markup=btn_kb.as_markup())
-    note = "✅ Уведомление отправлено в ЛС." if sent else "⚠️ <i>Сотруднику нужно нажать /start в боте для получения анкет в ЛС.</i>"
+    note = (
+        "✅ Уведомление отправлено в ЛС."
+        if sent
+        else "⚠️ <i>Сотруднику нужно нажать /start в боте для получения анкет в ЛС.</i>"
+    )
     await sync_user_commands(bot, new_id, role="hr")
 
     await safe_answer(
@@ -1353,7 +1361,11 @@ async def cmd_add_tech(message: types.Message, bot: Bot) -> None:
     btn_kb = InlineKeyboardBuilder()
     btn_kb.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
     sent = await safe_send(bot, new_id, notify_text, reply_markup=btn_kb.as_markup())
-    note = "✅ Оповещение отправлено инженеру в ЛС." if sent else "⚠️ <i>Инженер назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
+    note = (
+        "✅ Оповещение отправлено инженеру в ЛС."
+        if sent
+        else "⚠️ <i>Инженер назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
+    )
     await sync_user_commands(bot, new_id, role="tech")
 
     await safe_answer(
@@ -1407,7 +1419,11 @@ async def cmd_add_depot(message: types.Message, bot: Bot) -> None:
     btn_kb = InlineKeyboardBuilder()
     btn_kb.button(text="🌐 Открыть кабинет депо", web_app=types.WebAppInfo(url=web_url))
     sent = await safe_send(bot, new_id, notify_text, reply_markup=btn_kb.as_markup())
-    note = "✅ Оповещение отправлено сотруднику в ЛС." if sent else "⚠️ <i>Сотрудник депо назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
+    note = (
+        "✅ Оповещение отправлено сотруднику в ЛС."
+        if sent
+        else "⚠️ <i>Сотрудник депо назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
+    )
     await sync_user_commands(bot, new_id, role="depot")
 
     await safe_answer(
@@ -1487,11 +1503,12 @@ async def cmd_notify_panel_broadcast(message: types.Message, bot: Bot) -> None:
     await safe_answer(
         message,
         f"✅ <b>Рассылка завершена!</b>\nИнструкции по входу в веб-панель отправлены {sent_count} сотрудникам.",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
 # --- Кнопки интерфейса добавления через меню ---
+
 
 @tech_router.callback_query(F.data == "adm_ui_add_hr")
 async def cb_adm_ui_add_hr(callback: types.CallbackQuery, state: FSMContext) -> None:
@@ -1538,7 +1555,11 @@ async def process_add_hr_id(message: types.Message, state: FSMContext, bot: Bot)
     btn_kb = InlineKeyboardBuilder()
     btn_kb.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
     sent = await safe_send(bot, new_id, notify_text, reply_markup=btn_kb.as_markup())
-    note = "✅ Уведомление отправлено в ЛС." if sent else "⚠️ <i>Сотруднику нужно нажать /start в боте для получения анкет в ЛС.</i>"
+    note = (
+        "✅ Уведомление отправлено в ЛС."
+        if sent
+        else "⚠️ <i>Сотруднику нужно нажать /start в боте для получения анкет в ЛС.</i>"
+    )
     await sync_user_commands(bot, new_id, role="hr")
 
     await safe_answer(
@@ -1598,7 +1619,11 @@ async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bo
     btn_kb = InlineKeyboardBuilder()
     btn_kb.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
     sent = await safe_send(bot, new_id, notify_text, reply_markup=btn_kb.as_markup())
-    note = "✅ Оповещение отправлено инженеру в ЛС." if sent else "⚠️ <i>Инженер назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
+    note = (
+        "✅ Оповещение отправлено инженеру в ЛС."
+        if sent
+        else "⚠️ <i>Инженер назначен, но не получил сообщение в ЛС (нужно нажать /start в боте).</i>"
+    )
     await sync_user_commands(bot, new_id, role="tech")
 
     await safe_answer(
@@ -1615,6 +1640,7 @@ async def process_add_tech_id(message: types.Message, state: FSMContext, bot: Bo
 # ==============================================================================
 # 4. УПРАВЛЕНИЕ НАБОРОМ ВАКАНСИЙ
 # ==============================================================================
+
 
 @tech_router.callback_query(F.data == "tech_vacancies_menu")
 async def cb_tech_vacancies_menu(
@@ -1760,6 +1786,7 @@ async def cb_vac_del_execute(callback: types.CallbackQuery) -> None:
 # 5. ПЕРЕЗАПУСК СЛУЖБЫ (/restart)
 # ==============================================================================
 
+
 @tech_router.callback_query(F.data == "tech_action_restart_only")
 async def cb_tech_restart_only(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
@@ -1803,6 +1830,7 @@ async def cmd_restart(message: types.Message) -> None:
 # ==============================================================================
 # 6. ВЫГРУЗКА ПАКЕТА ДОКУМЕНТАЦИИ (ГОСТ 19.505, ГОСТ 19.503, 152-ФЗ)
 # ==============================================================================
+
 
 @tech_router.message(Command("docs", "manual"))
 async def cmd_generate_project_docs(message: types.Message) -> None:

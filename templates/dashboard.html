@@ -147,6 +147,16 @@
                     </svg>
                 </button>
 
+                <!-- Кнопка "Задать вопрос" на виду для всех -->
+                <button onclick="openQuestionModal('ask')"
+                    class="bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-110 text-white font-bold px-3 py-2 rounded-xl text-xs shadow-sm flex items-center gap-1.5 transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <span>Задать вопрос</span>
+                </button>
+
                 <!-- Авторизация гостя: Вход и Регистрация -->
                 <div id="authGuestBlock" class="flex items-center gap-1.5 sm:gap-2">
                     <button onclick="openLoginModal('login')"
@@ -207,7 +217,7 @@
                 <div class="flex items-center gap-2 overflow-x-auto no-scrollbar text-xs font-semibold py-1">
                     <!-- 1. Панель HR (Кадровик) -->
                     <button onclick="switchTab('hr')" id="topBtnHrHub"
-                        class="nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        class="hidden nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                         <span>👔 Панель кадров (HR)</span>
                         <span id="badgeInquiriesNav" class="hidden px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-orange-500 text-white">0</span>
                     </button>
@@ -241,8 +251,10 @@
                 class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">🏠 Главная</button>
             <button id="mBtnSurvey" onclick="switchTab('survey16'); toggleMobileNav();"
                 class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">📝 Подать анкету</button>
-            <button onclick="openQuestionModal(); toggleMobileNav();"
+            <button onclick="openQuestionModal('ask'); toggleMobileNav();"
                 class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-orange-600 font-bold flex items-center gap-1.5">💬 Задать вопрос</button>
+            <button onclick="openQuestionModal('check'); toggleMobileNav();"
+                class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-blue-600 font-bold flex items-center gap-1.5">📬 Проверить ответ на вопрос</button>
             <button id="mBtnStatus" onclick="switchTab('status'); toggleMobileNav();"
                 class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">📊 Статус заявки</button>
             <button id="mBtnCabinet" onclick="switchTab('cabinet'); toggleMobileNav();"
@@ -258,7 +270,7 @@
             <div id="mServiceNav"
                 class="hidden flex-col gap-1 pt-1 mt-1 border-t border-slate-200 dark:border-slate-800">
                 <button id="mBtnHrHub" onclick="switchTab('hr'); toggleMobileNav();"
-                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-[#1371B9] dark:text-blue-400 font-bold flex items-center justify-between">
+                    class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-[#1371B9] dark:text-blue-400 font-bold flex items-center justify-between">
                     <span>👔 Панель кадров (HR)</span>
                     <span id="mBadgeInquiriesNav" class="hidden px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-orange-500 text-white">0</span>
                 </button>
@@ -827,47 +839,6 @@
                             <!-- Рендерится через JS -->
                         </tbody>
                     </table>
-                </div>
-            </div>
-
-            <!-- КОНСОЛЬ НАСТРОЕК HR -->
-            <div
-                class="bg-white dark:bg-[#112240] rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                <h3 class="font-bold text-base mb-1">Консоль настроек HR-отдела</h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Настройка кадровых автоответов и
-                    синхронизации с депо</p>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                    <div
-                        class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                        <div class="font-bold">Уведомления в Telegram</div>
-                        <p class="text-slate-400 text-[11px]">Моментально дублировать веб-отклики в кадровый чат депо
-                        </p>
-                        <label class="flex items-center gap-2 cursor-pointer pt-1">
-                            <input id="hrSettingNotify" type="checkbox" checked
-                                class="w-4 h-4 rounded accent-[#1371B9]">
-                            <span class="font-semibold">Включено</span>
-                        </label>
-                    </div>
-                    <div
-                        class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                        <div class="font-bold">Проверка ст. 328.1 ТК РФ</div>
-                        <p class="text-slate-400 text-[11px]">Автоматический комплаенс-скрининг кандидатов на водителей
-                        </p>
-                        <label class="flex items-center gap-2 cursor-pointer pt-1">
-                            <input id="hrSettingCompliance" type="checkbox" checked
-                                class="w-4 h-4 rounded accent-[#1371B9]">
-                            <span class="font-semibold">Строгий контроль</span>
-                        </label>
-                    </div>
-                    <div
-                        class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                        <div class="font-bold">Сохранить параметры</div>
-                        <p class="text-slate-400 text-[11px]">Применить конфигурацию для всех кадровиков</p>
-                        <button onclick="saveHrSettingsConsole()"
-                            class="w-full py-2 bg-[#1371B9] hover:bg-blue-700 text-white font-bold rounded-xl transition">
-                            Применить настройки
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -2091,29 +2062,9 @@
             </div>
 
             <!-- ================= ВКЛАДКА 2: ВХОД ДЛЯ СОТРУДНИКОВ И АДМИНИСТРАЦИИ ================= -->
-            <div id="authContentStaff" class="space-y-4 hidden">
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-400 mb-2">Выберите роль для быстрого входа:</label>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button type="button" onclick="setPresetRole('superadmin')" id="roleCardSuper"
-                            class="p-2.5 rounded-xl border border-purple-500/30 bg-purple-50/50 dark:bg-purple-950/20 hover:border-purple-500 text-left transition">
-                            <span class="text-base block">👑</span>
-                            <span class="text-xs font-bold block text-purple-700 dark:text-purple-300">Владелец</span>
-                            <span class="text-[10px] text-slate-400 block truncate">@its_darksold1</span>
-                        </button>
-                        <button type="button" onclick="setPresetRole('hr')" id="roleCardHr"
-                            class="p-2.5 rounded-xl border border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20 hover:border-blue-500 text-left transition">
-                            <span class="text-base block">💼</span>
-                            <span class="text-xs font-bold block text-[#1371B9] dark:text-blue-300">Кадры (HR)</span>
-                            <span class="text-[10px] text-slate-400 block truncate">Отдел кадров</span>
-                        </button>
-                        <button type="button" onclick="setPresetRole('tech')" id="roleCardTech"
-                            class="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 hover:border-emerald-500 text-left transition">
-                            <span class="text-base block">🛠</span>
-                            <span class="text-xs font-bold block text-emerald-700 dark:text-emerald-300">Тех-Админ</span>
-                            <span class="text-[10px] text-slate-400 block truncate">Инженер / Сервер</span>
-                        </button>
-                    </div>
+                <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+                    <p class="font-bold text-[#1371B9] dark:text-blue-400 mb-1">Служебный вход для сотрудников МУП «УЭТ»:</p>
+                    <p class="text-[11px] leading-relaxed">Введите ваш персональный служебный логин и пароль. Доступ предоставляется строго в соответствии с назначенной ролью (Кадры, Инженерная служба, SuperAdmin).</p>
                 </div>
 
                 <form onsubmit="handleStaffLogin(event)" autocomplete="off" class="space-y-3.5">
@@ -2300,81 +2251,120 @@
                 class="hidden p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs">
             </div>
 
-            <form id="askQuestionForm" onsubmit="submitQuestionForm(event)" class="space-y-3.5">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Переключатель: Задать вопрос / Проверить ответ -->
+            <div class="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 dark:bg-slate-800 p-1 mb-4 text-xs font-bold">
+                <button type="button" id="modalTabBtnAsk" onclick="switchQuestionModalTab('ask')"
+                    class="py-2.5 px-3 rounded-xl transition bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs">
+                    ✏️ Задать вопрос
+                </button>
+                <button type="button" id="modalTabBtnCheck" onclick="switchQuestionModalTab('check')"
+                    class="py-2.5 px-3 rounded-xl transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                    📬 Проверить ответ
+                </button>
+            </div>
+
+            <!-- ВКЛАДКА 1: ПОДАЧА ВОПРОСА -->
+            <div id="askQuestionContentAsk">
+                <form id="askQuestionForm" onsubmit="submitQuestionForm(event)" class="space-y-3.5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Ваше ФИО / Имя</label>
+                            <input id="qFullName" type="text" placeholder="Иванов Иван Иванович"
+                                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Контактный телефон <span class="text-red-500">*</span></label>
+                            <input id="qPhone" type="tel" required placeholder="+7 (999) 000-00-00"
+                                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Номер анкеты (если есть)</label>
+                            <input id="qTicketId" type="text" placeholder="Например: 142 или #142"
+                                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Email для ответа</label>
+                            <input id="qEmail" type="email" placeholder="example@mail.ru"
+                                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition" />
+                        </div>
+                    </div>
+
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Ваше ФИО / Имя</label>
-                        <input id="qFullName" type="text" placeholder="Иванов Иван Иванович"
-                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition" />
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Куда отправить ответ отдела кадров?</label>
+                        <div class="grid grid-cols-3 gap-2 text-xs">
+                            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-[#1371B9]">
+                                <input type="radio" name="replyChannel" value="tg" checked class="accent-[#1371B9]">
+                                <span class="font-semibold text-slate-800 dark:text-slate-200">🤖 Telegram-бот</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-[#1371B9]">
+                                <input type="radio" name="replyChannel" value="email" class="accent-[#1371B9]">
+                                <span class="font-semibold text-slate-800 dark:text-slate-200">📧 На Email</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-[#1371B9]">
+                                <input type="radio" name="replyChannel" value="phone" class="accent-[#1371B9]">
+                                <span class="font-semibold text-slate-800 dark:text-slate-200">📞 Телефон</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Интересующая вакансия или тема</label>
+                        <select id="qVacancy"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition">
+                            <option value="Водитель трамвая">Водитель трамвая (обучение со стипендией)</option>
+                            <option value="Водитель троллейбуса">Водитель троллейбуса</option>
+                            <option value="Кондуктор">Кондуктор</option>
+                            <option value="Слесарь / Электрик">Слесарь / Электромеханик депо</option>
+                            <option value="Стипендия и общежитие">Вопрос по стипендии и общежитию</option>
+                            <option value="Другой вопрос">Другой кадровый вопрос</option>
+                        </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Контактный телефон <span class="text-red-500">*</span></label>
-                        <input id="qPhone" type="tel" required placeholder="+7 (999) 000-00-00"
-                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition" />
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Текст вопроса <span class="text-red-500">*</span></label>
+                        <textarea id="qText" required rows="3"
+                            placeholder="Задайте ваш вопрос: график, условия обучения, документы для приема..."
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition"></textarea>
                     </div>
+                    <div class="pt-2 flex gap-2">
+                        <button type="button" onclick="closeQuestionModal()"
+                            class="w-1/3 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition">
+                            Отмена
+                        </button>
+                        <button type="submit" id="btnSubmitQuestion"
+                            class="flex-1 py-3 bg-gradient-to-r from-[#F26E22] to-amber-500 hover:brightness-110 text-slate-950 font-extrabold rounded-xl text-xs shadow-md transition flex items-center justify-center gap-1.5">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                            <span>Отправить вопрос в кадры</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ВКЛАДКА 2: ПРОВЕРКА ОТВЕТА НА ВОПРОС -->
+            <div id="askQuestionContentCheck" class="hidden space-y-4">
+                <div class="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 text-xs text-slate-600 dark:text-slate-300">
+                    <p class="font-bold text-[#1371B9] dark:text-blue-400 mb-1">Проверка официального ответа:</p>
+                    <p class="text-[11px] leading-relaxed">Введите номер телефона, указанный при подаче вопроса, или номер обращения (например: <b>В-1</b> или <b>1</b>).</p>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Номер анкеты (если есть)</label>
-                        <input id="qTicketId" type="text" placeholder="Например: 142 или #142"
-                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition" />
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Email для ответа</label>
-                        <input id="qEmail" type="email" placeholder="example@mail.ru"
-                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition" />
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Куда отправить ответ отдела кадров?</label>
-                    <div class="grid grid-cols-3 gap-2 text-xs">
-                        <label class="flex items-center gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-[#1371B9]">
-                            <input type="radio" name="replyChannel" value="tg" checked class="accent-[#1371B9]">
-                            <span class="font-semibold text-slate-800 dark:text-slate-200">🤖 Telegram-бот</span>
-                        </label>
-                        <label class="flex items-center gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-[#1371B9]">
-                            <input type="radio" name="replyChannel" value="email" class="accent-[#1371B9]">
-                            <span class="font-semibold text-slate-800 dark:text-slate-200">📧 На Email</span>
-                        </label>
-                        <label class="flex items-center gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-[#1371B9]">
-                            <input type="radio" name="replyChannel" value="phone" class="accent-[#1371B9]">
-                            <span class="font-semibold text-slate-800 dark:text-slate-200">📞 Телефон</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Интересующая вакансия или тема</label>
-                    <select id="qVacancy"
-                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition">
-                        <option value="Водитель трамвая">Водитель трамвая (обучение со стипендией)</option>
-                        <option value="Водитель троллейбуса">Водитель троллейбуса</option>
-                        <option value="Кондуктор">Кондуктор</option>
-                        <option value="Слесарь / Электрик">Слесарь / Электромеханик депо</option>
-                        <option value="Стипендия и общежитие">Вопрос по стипендии и общежитию</option>
-                        <option value="Другой вопрос">Другой кадровый вопрос</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Текст вопроса <span class="text-red-500">*</span></label>
-                    <textarea id="qText" required rows="3"
-                        placeholder="Задайте ваш вопрос: график, условия обучения, документы для приема..."
-                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition"></textarea>
-                </div>
-                <div class="pt-2 flex gap-2">
-                    <button type="button" onclick="closeQuestionModal()"
-                        class="w-1/3 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition">
-                        Отмена
+                <div class="flex gap-2">
+                    <input id="inqCheckQueryInput" type="text" placeholder="+7 (999) 000-00-00 или В-1..."
+                        onkeydown="if(event.key === 'Enter'){ event.preventDefault(); performModalInquiryCheck(); }"
+                        class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm focus:border-[#1371B9] outline-none transition" />
+                    <button type="button" onclick="performModalInquiryCheck()" id="btnInqCheckSubmit"
+                        class="px-4 py-2.5 rounded-xl bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs transition whitespace-nowrap shadow-xs">
+                        🔍 Найти ответ
                     </button>
-                    <button type="submit" id="btnSubmitQuestion"
-                        class="flex-1 py-3 bg-gradient-to-r from-[#F26E22] to-amber-500 hover:brightness-110 text-slate-950 font-extrabold rounded-xl text-xs shadow-md transition flex items-center justify-center gap-1.5">
-                        <i data-lucide="send" class="w-4 h-4"></i>
-                        <span>Отправить вопрос в кадры</span>
-                    </button>
                 </div>
-            </form>
+
+                <div id="inqCheckResultBlock" class="space-y-3 max-h-72 overflow-y-auto no-scrollbar pt-1">
+                    <div class="text-center p-6 text-slate-400 text-xs">
+                        Введите номер телефона или код обращения и нажмите «Найти ответ».
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2628,30 +2618,112 @@
         }
 
         function setPresetRole(role) {
-            const uInput = document.getElementById('staffLoginUsername');
-            const pInput = document.getElementById('staffLoginPassword');
-            const cSuper = document.getElementById('roleCardSuper');
-            const cHr = document.getElementById('roleCardHr');
-            const cTech = document.getElementById('roleCardTech');
+            // Предустановленные пароли отключены для безопасности системы
+        }
 
-            [cSuper, cHr, cTech].forEach(c => {
-                if (c) c.classList.remove('ring-2', 'ring-purple-500', 'ring-blue-500', 'ring-emerald-500');
-            });
+        function switchQuestionModalTab(tab = 'ask') {
+            const btnAsk = document.getElementById('modalTabBtnAsk');
+            const btnCheck = document.getElementById('modalTabBtnCheck');
+            const contentAsk = document.getElementById('askQuestionContentAsk');
+            const contentCheck = document.getElementById('askQuestionContentCheck');
 
-            if (role === 'superadmin') {
-                if (uInput) uInput.value = 'admin';
-                if (pInput) pInput.value = 'uet2026super';
-                if (cSuper) cSuper.classList.add('ring-2', 'ring-purple-500');
-            } else if (role === 'hr') {
-                if (uInput) uInput.value = 'hr';
-                if (pInput) pInput.value = 'uet2026hr';
-                if (cHr) cHr.classList.add('ring-2', 'ring-blue-500');
-            } else if (role === 'tech') {
-                if (uInput) uInput.value = 'tech';
-                if (pInput) pInput.value = 'uet2026';
-                if (cTech) cTech.classList.add('ring-2', 'ring-emerald-500');
+            if (tab === 'ask') {
+                if (btnAsk) btnAsk.className = 'py-2.5 px-3 rounded-xl transition bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs font-bold';
+                if (btnCheck) btnCheck.className = 'py-2.5 px-3 rounded-xl transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-bold';
+                contentAsk?.classList.remove('hidden');
+                contentCheck?.classList.add('hidden');
+            } else {
+                if (btnCheck) btnCheck.className = 'py-2.5 px-3 rounded-xl transition bg-[#1371B9] text-white shadow-xs font-bold';
+                if (btnAsk) btnAsk.className = 'py-2.5 px-3 rounded-xl transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-bold';
+                contentCheck?.classList.remove('hidden');
+                contentAsk?.classList.add('hidden');
+                setTimeout(() => document.getElementById('inqCheckQueryInput')?.focus(), 50);
             }
-            if (pInput) setTimeout(() => pInput.focus(), 50);
+        }
+
+        async function performModalInquiryCheck() {
+            const input = document.getElementById('inqCheckQueryInput');
+            const resBlock = document.getElementById('inqCheckResultBlock');
+            const btn = document.getElementById('btnInqCheckSubmit');
+            const query = (input?.value || '').trim();
+
+            if (!query) {
+                if (resBlock) {
+                    resBlock.innerHTML = `
+                        <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs text-center font-bold">
+                            ⚠️ Пожалуйста, введите ваш контактный телефон или номер обращения (например, В-1).
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            if (btn) btn.disabled = true;
+            if (resBlock) {
+                resBlock.innerHTML = `
+                    <div class="p-6 text-center text-slate-400 text-xs">
+                        <span class="inline-block animate-spin text-lg mr-1">⏳</span> Поиск обращений в базе кадров...
+                    </div>
+                `;
+            }
+
+            try {
+                const resp = await fetch(`/api/inquiry/check?query=${encodeURIComponent(query)}`);
+                const data = await resp.json();
+                if (data.ok && data.items && data.items.length > 0) {
+                    resBlock.innerHTML = data.items.map(it => {
+                        const isReplied = (it.reply_status === 'replied') || Boolean(it.reply_text);
+                        return `
+                            <div class="p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-xs space-y-2.5 text-left">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-mono font-black text-sm text-[#1371B9] dark:text-blue-400">№ В-${it.inquiry_id}</span>
+                                    <span class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${isReplied ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'}">
+                                        ${isReplied ? '✅ Дан официальный ответ' : '⏳ В обработке у кадровика'}
+                                    </span>
+                                </div>
+                                <div class="text-[11px] text-slate-500 flex items-center justify-between">
+                                    <span>Вакансия: <b>${escapeHtml(it.vacancy || 'Общий вопрос')}</b></span>
+                                    <span>${it.created_at || ''}</span>
+                                </div>
+                                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200">
+                                    <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Ваш вопрос:</div>
+                                    <p class="leading-relaxed font-medium">${escapeHtml(it.question)}</p>
+                                </div>
+                                ${isReplied ? `
+                                    <div class="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-xs space-y-1">
+                                        <div class="flex items-center justify-between text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+                                            <span>👔 Ответ специалиста отдела кадров МУП «УЭТ»:</span>
+                                            <span class="font-mono text-[10px]">${it.replied_at || ''}</span>
+                                        </div>
+                                        <p class="text-slate-900 dark:text-slate-100 font-semibold leading-relaxed">${escapeHtml(it.reply_text)}</p>
+                                    </div>
+                                ` : `
+                                    <div class="text-[11px] text-amber-600 dark:text-amber-400 font-medium italic">
+                                        Специалист отдела кадров сейчас рассматривает ваш вопрос. Как только будет подготовлен ответ, он отобразится здесь и будет отправлен в выбранный вами канал связи.
+                                    </div>
+                                `}
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    resBlock.innerHTML = `
+                        <div class="p-4 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center text-xs text-slate-500 space-y-2">
+                            <div>Обращения по запросу «<b>${escapeHtml(query)}</b>» не найдены.</div>
+                            <p class="text-[11px] text-slate-400">Проверьте правильность введенного номера телефона или кода обращения (например: В-1).</p>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                if (resBlock) {
+                    resBlock.innerHTML = `
+                        <div class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs text-center">
+                            Ошибка связи с сервером при проверке ответа. Повторите попытку позже.
+                        </div>
+                    `;
+                }
+            } finally {
+                if (btn) btn.disabled = false;
+            }
         }
 
         async function handleApplicantLogin(e) {
@@ -2802,12 +2874,14 @@
         }
 
         // Управление модальным окном вопроса соискателя
-        function openQuestionModal() {
+        function openQuestionModal(defaultTab = 'ask') {
             const modal = document.getElementById('askQuestionModal');
             const errEl = document.getElementById('questionErrorMsg');
             const okEl = document.getElementById('questionSuccessMsg');
             if (errEl) errEl.classList.add('hidden');
             if (okEl) okEl.classList.add('hidden');
+
+            switchQuestionModalTab(defaultTab);
 
             // Автозаполнение данных, если пользователь авторизован
             if (state && state.user) {
@@ -2878,11 +2952,21 @@
                 const data = await resp.json();
                 if (data.ok) {
                     if (okEl) {
-                        okEl.innerHTML = `<div>${escapeHtml(data.message || '✅ Ваш вопрос успешно принят!')}</div><div class="mt-1 text-[11px] font-mono text-emerald-800 dark:text-emerald-200">Номер для отслеживания: <b>${escapeHtml(data.ticket_code || '')}</b></div>`;
+                        const code = data.ticket_code || '';
+                        okEl.innerHTML = `
+                            <div class="font-bold text-sm">✅ ${escapeHtml(data.message || 'Ваш вопрос успешно принят!')}</div>
+                            <div class="mt-1.5 text-xs text-emerald-800 dark:text-emerald-200">
+                                Номер обращения: <b class="font-mono text-sm underline">${escapeHtml(code)}</b>
+                            </div>
+                            <div class="mt-2.5 flex items-center justify-center gap-2">
+                                <button type="button" onclick="document.getElementById('inqCheckQueryInput').value='${escapeHtml(code)}'; switchQuestionModalTab('check'); performModalInquiryCheck();" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-sm">
+                                    📬 Проверить ответ на вопрос
+                                </button>
+                            </div>
+                        `;
                         okEl.classList.remove('hidden');
                     }
                     document.getElementById('askQuestionForm')?.reset();
-                    setTimeout(() => closeQuestionModal(), 3800);
                 } else {
                     if (errEl) {
                         errEl.innerText = data.error || 'Ошибка отправки вопроса. Попробуйте еще раз.';
@@ -3377,43 +3461,34 @@
         function openLoginModal(targetTabOrRole = 'login', targetRole = '') {
             const errEl = document.getElementById('loginErrorMsg');
             if (errEl) errEl.classList.add('hidden');
+            const staffErr = document.getElementById('staffLoginErrorMsg');
+            if (staffErr) staffErr.classList.add('hidden');
+            const appErr = document.getElementById('appLoginErrorMsg');
+            if (appErr) appErr.classList.add('hidden');
+
             document.getElementById('loginModal').classList.remove('hidden');
 
-            let tab = 'login';
+            let tab = 'applicant';
             if (targetTabOrRole === 'register') {
                 tab = 'register';
+            } else if (['staff', 'hr', 'tech', 'superadmin'].includes(targetTabOrRole) || ['staff', 'hr', 'tech', 'superadmin'].includes(targetRole)) {
+                tab = 'staff';
             }
 
             switchAuthTab(tab);
 
-            // Определение целевой роли
-            const roleToSelect = targetRole || (targetTabOrRole === 'superadmin' ? 'superadmin' : (targetTabOrRole === 'hr' ? 'staff' : 'applicant'));
-            selectLoginRole(roleToSelect === 'hr' ? 'staff' : (roleToSelect === 'superadmin' ? 'superadmin' : 'applicant'));
+            // КРИТИЧЕСКАЯ БЕЗОПАСНОСТЬ: Очищаем поля ввода! Никаких предустановленных паролей!
+            const staffU = document.getElementById('staffLoginUsername');
+            const staffP = document.getElementById('staffLoginPassword');
+            if (staffU) staffU.value = '';
+            if (staffP) staffP.value = '';
+            const appP = document.getElementById('appLoginPassword');
+            if (appP) appP.value = '';
 
-            if (roleToSelect === 'hr') {
-                setStaffRolePreset('hr', 'Отдел кадров');
-            }
-
-            // Восстановление запомненного логина или телефона
-            const savedUsername = localStorage.getItem('uet_remember_username') || '';
-            const uInput = document.getElementById('loginUsername');
-            const pInput = document.getElementById('loginPassword');
-            const rememberCheck = document.getElementById('loginRememberMe');
-
-            if (uInput && roleToSelect !== 'superadmin' && roleToSelect !== 'hr') {
-                uInput.value = savedUsername;
-            }
-            if (pInput) {
-                pInput.value = '';
-            }
-            if (rememberCheck) {
-                rememberCheck.checked = true;
-            }
-
-            if (savedUsername && pInput && roleToSelect !== 'superadmin') {
-                setTimeout(() => pInput.focus(), 60);
-            } else if (uInput) {
-                setTimeout(() => uInput.focus(), 60);
+            if (tab === 'staff') {
+                setTimeout(() => staffU?.focus(), 50);
+            } else {
+                setTimeout(() => document.getElementById('appLoginPhone')?.focus(), 50);
             }
         }
 
@@ -3873,6 +3948,7 @@
 
         function switchTab(tabName) {
             // Разрешаем макро-роутинг по клику на основные кнопки ролей
+            if (tabName === 'survey') tabName = 'survey16';
             if (tabName === 'hr') tabName = 'applicants';
             if (tabName === 'owner') tabName = 'customization';
 
@@ -3881,21 +3957,20 @@
             const techTabs = ['tech'];
 
             if (hrTabs.includes(tabName)) {
-                if (!['hr', 'superadmin', 'depot', 'tech'].includes(state.role)) {
-                    alert('Доступ ограничен. Данный раздел предназначен для кадровой службы МУП «УЭТ».');
-                    openLoginModal('login');
+                if (!['hr', 'superadmin', 'super', 'depot'].includes(state.role)) {
+                    openLoginModal('staff', 'hr');
                     return;
                 }
             }
             if (techTabs.includes(tabName)) {
-                if (!['tech', 'superadmin'].includes(state.role)) {
-                    alert('Доступ ограничен. Данный раздел предназначен для технических инженеров и SuperAdmin.');
+                if (!['tech', 'superadmin', 'super'].includes(state.role)) {
+                    openLoginModal('staff', 'tech');
                     return;
                 }
             }
             if (ownerTabs.includes(tabName)) {
-                if (state.role !== 'superadmin') {
-                    alert('Доступ запрещен. Раздел доступен исключительно Главному администратору (SuperAdmin).');
+                if (state.role !== 'superadmin' && state.role !== 'super') {
+                    openLoginModal('staff', 'superadmin');
                     return;
                 }
             }

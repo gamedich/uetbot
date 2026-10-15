@@ -322,16 +322,14 @@ class WebPanel:
     async def handle_index(self, request: web.Request) -> web.Response:
         """
         Единая входная точка веб-сервиса:
-        - По умолчанию: красивый портал предприятия с информацией, вакансиями и анкетой (apply.html).
-        - ?mode=dashboard или переход сотрудника: полноценный служебный дашборд (dashboard.html).
+        - Главный портал экосистемы МУП «УЭТ» (dashboard.html):
+          Публичный лендинг, 16 шагов анкеты, проверка статуса, личный кабинет соискателя,
+          а для авторизованных сотрудников — консолидированные хабы HR, Tech и SuperAdmin.
         """
-        mode = request.query.get("mode", "")
-        if mode == "dashboard":
-            return await self.handle_dashboard_page(request)
-        return await self.handle_apply_page(request)
+        return await self.handle_dashboard_page(request)
 
     async def handle_dashboard_page(self, request: web.Request) -> web.Response:
-        """Служебный дашборд управления предприятием (HR, Tech, SuperAdmin)."""
+        """Служебный дашборд управления предприятием (HR, Tech, SuperAdmin) и единый портал."""
         if DASHBOARD_HTML_PATH.exists():
             content = DASHBOARD_HTML_PATH.read_text(encoding="utf-8")
         else:
@@ -345,16 +343,7 @@ class WebPanel:
 
     async def handle_apply_page(self, request: web.Request) -> web.Response:
         """Единый карьерный портал МУП «УЭТ»: презентация предприятия, 16 шагов анкеты, проверка статуса."""
-        if APPLY_HTML_PATH.exists():
-            content = APPLY_HTML_PATH.read_text(encoding="utf-8")
-        else:
-            content = "<h1>Ошибка: Шаблон apply.html не найден</h1>"
-        return web.Response(
-            text=content,
-            content_type="text/html",
-            charset="utf-8",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
-        )
+        return await self.handle_dashboard_page(request)
 
     async def handle_kadry_page(self, request: web.Request) -> web.Response:
         """Модульная дизайн-система и адаптивная навигация HR-платформы «КАДРЫ» (служебный рабочий кабинет)."""

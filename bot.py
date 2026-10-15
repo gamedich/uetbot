@@ -28,7 +28,18 @@ from common import (
 )
 from gateways.max_gateway import run_max_gateway
 from gateways.vk_gateway import run_vk_gateway
-from handlers import candidate_router, hr_router, tech_router
+from handlers import candidate_router, hr_router
+
+# Безопасное подключение приватных модулей инженерии и владельца
+try:
+    from handlers import tech_router
+except (ImportError, AttributeError):
+    tech_router = None
+
+try:
+    from private_admin import owner_router
+except ImportError:
+    owner_router = None
 
 logger = logging.getLogger("UET_HR_BOT")
 
@@ -79,8 +90,14 @@ async def main() -> None:
         return
 
     # 2. Регистрация модулей обработчиков (роутеров) Telegram
-    # Приоритет: инженерные команды -> кадровая панель -> воронка соискателя
-    dp.include_router(tech_router)
+    # Приоритет: пульт владельца -> инженерия -> кадровая панель -> воронка соискателя
+    if owner_router:
+        dp.include_router(owner_router)
+        logger.info("👑 Приватный пульт владельца (Owner Kit) успешно подключен")
+
+    if tech_router:
+        dp.include_router(tech_router)
+
     dp.include_router(hr_router)
     dp.include_router(candidate_router)
 

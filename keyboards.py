@@ -43,45 +43,42 @@ def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
 def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     """
     Эргономичное и минималистичное главное меню бота МУП «УЭТ»:
-    - 🌐 Заполнить на сайте (открытие в 1 клик через WebApp)
-    - 📝 Заполнить в Telegram (пошаговый чат-опросник)
-    - 📊 Мой статус / Заявка
-    - 💬 Вопрос кадровику
-    - 🎓 Обучение со стипендией
-    - 📞 Контакты депо
+    - [ 🌐 Заполнить анкету на сайте / Личный кабинет ] (закреплённая WebApp-кнопка)
+    - Сетка 2x2:
+        [ 📝 Анкета в чате ]    [ 📑 Мой статус ]
+        [ 💬 Задать вопрос ]    [ 📞 Контакты депо ]
     """
     builder = InlineKeyboardBuilder()
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
-    # 1. Подача заявки: на сайте или в Telegram (с индикацией ТО)
     maint_active = is_maintenance_active()
+
+    # 1. Закреплённая WebApp-кнопка (Главный акцент на сайт)
     if maint_active:
         builder.button(text="🌐 На сайте (техработы ⏸)", web_app=types.WebAppInfo(url=web_url))
-        builder.button(text="⏸ В Telegram (ТО на линии)", callback_data="cand_start_apply")
     else:
-        builder.button(text="🌐 Заполнить на сайте", web_app=types.WebAppInfo(url=web_url))
-        builder.button(text="📝 Заполнить в Telegram", callback_data="cand_start_apply")
+        builder.button(text="🌐 Заполнить анкету на сайте / Личный кабинет", web_app=types.WebAppInfo(url=web_url))
 
-    # 2. Мой статус и прямой диалог
-    builder.button(text="📊 Мой статус / Заявка", callback_data="cand_my_application")
-    builder.button(text="💬 Вопрос кадровику", callback_data="cand_ask_question")
+    # 2. Компактная сетка 2x2
+    if maint_active:
+        builder.button(text="⏸ Анкета (ТО на линии)", callback_data="cand_start_apply")
+    else:
+        builder.button(text="📝 Анкета в чате", callback_data="cand_start_apply")
 
-    # 3. Обучение со стипендией и контакты
-    builder.button(text="🎓 Обучение со стипендией", callback_data="cand_training_info")
+    builder.button(text="📑 Мой статус", callback_data="cand_my_application")
+    builder.button(text="💬 Задать вопрос", callback_data="cand_ask_question")
     builder.button(text="📞 Контакты депо", callback_data="cand_hr_contacts")
 
-    # 4. Личный кабинет и пароль для сайта
-    builder.button(text="🔑 Личный кабинет / Пароль", callback_data="cand_web_credentials")
-
+    # Для служебного персонала (Кадры / Tech / SuperAdmin)
     super_id = CONFIG.get("SUPER_ADMIN_ID")
     is_tech = bool(user_id and (user_id == super_id or is_tech_admin(user_id)))
     is_hr = bool(user_id and (user_id == super_id or is_hr_admin(user_id)))
 
     if is_tech or is_hr:
         builder.button(text="👔 Служебный кабинет", web_app=types.WebAppInfo(url=f"{web_url.rstrip('/')}/dashboard"))
-        builder.adjust(2, 2, 2, 1, 1)
+        builder.adjust(1, 2, 2, 1)
     else:
-        builder.adjust(2, 2, 2, 1)
+        builder.adjust(1, 2, 2)
 
     return builder.as_markup()
 
@@ -96,61 +93,44 @@ def make_phone_reply_keyboard() -> types.ReplyKeyboardMarkup:
 
 def make_ticket_keyboard(ticket_id: int) -> types.InlineKeyboardMarkup:
     """
-    Карточка соискателя в кадровой группе (Fast Action Bar для HR):
-    Ряд 1 (Связь):   [ 📞 Телефон ]     [ 🟢 Live-чат ]      [ 💬 Написать ]
-    Ряд 2 (Статус):  [ 📂 В работу ]    [ 🟢 Пригласить ]    [ 🔴 Отказ ]
-    Ряд 3 (Детали):  [ 🏢 Встреча ]     [ 🔍 Риски ТК РФ ]   [ 📝 Заметка ]
-    Ряд 4 (Доп):     [ 🌐 На сайте ]    [ ⛔ В ЧС / Снять ]  [ 🗑 Удалить ]
+    Карточка соискателя для HR (Fast Action Bar):
+    Ряд 1: [ 📞 Позвонить ] (tel:) | [ 🟢 Live-чат ] | [ 📝 Заметка ]
+    Ряд 2: [ 📅 Назначить встречу ] | [ 🔍 Проверка рисков ]
+    Ряд 3: [ 📂 В работу ] | [ ❌ Отказ ] | [ 🌐 Открыть на сайте ]
     """
     builder = InlineKeyboardBuilder()
     cand = db.get_candidate(ticket_id)
     cand[1] if cand else "tg"
-    user_id = str(cand[2]) if cand else ""
-    status = cand[7] if cand and len(cand) > 7 else "Новая"
-    is_cand_blocked = db.is_blocked(user_id) if user_id else False
+    cand[7] if cand and len(cand) > 7 else "Новая"
 
     phone = str(cand[4]) if cand and len(cand) > 4 and cand[4] else ""
-    phone_btn_text = f"📞 {phone}" if phone else "📞 Телефон"
+    # Очищаем телефон для ссылки tel:
+    clean_tel = "".join(ch for ch in phone if ch.isdigit() or ch == "+")
+    if clean_tel and not clean_tel.startswith("+"):
+        clean_tel = f"+{clean_tel}"
 
-    # --- РЯД 1: СВЯЗЬ ---
-    builder.button(text=phone_btn_text, callback_data=f"cand_call_{ticket_id}")
-    builder.button(text="🟢 Live-чат", callback_data=f"live_dlg_cand_{ticket_id}")
-    builder.button(text="💬 Написать", callback_data=f"cand_msg_{ticket_id}")
-
-    # --- РЯД 2: ВОРОНКА И РЕШЕНИЯ ПО СТАТУСУ ---
-    if status == "В работе":
-        builder.button(text="🟡 В работе (активно)", callback_data=f"status_noop_{ticket_id}")
-    else:
-        builder.button(text="📂 В работу", callback_data=f"status_{ticket_id}_В работе")
-
-    if "Приглашен" in status:
-        builder.button(text="🟢 Приглашен (активно)", callback_data=f"status_noop_{ticket_id}")
-    else:
-        builder.button(text="🟢 Пригласить", callback_data=f"status_{ticket_id}_Приглашен")
-
-    if status == "Отказ":
-        builder.button(text="🔴 Отказ (активно)", callback_data=f"status_noop_{ticket_id}")
-    else:
-        builder.button(text="🔴 Отказ", callback_data=f"status_{ticket_id}_Отказ")
-
-    # --- РЯД 3: ВСТРЕЧА, РИСКИ И ЗАМЕТКА ---
-    builder.button(text="🏢 Встреча", callback_data=f"schedule_interview_{ticket_id}")
-    builder.button(text="🔍 Риски ТК РФ", callback_data=f"cand_risk_{ticket_id}")
-    builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
-
-    # --- РЯД 4: КАРТОЧКА НА САЙТЕ, ЧС, УДАЛЕНИЕ ---
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     cand_web_url = f"{web_url.rstrip('/')}/#cand_{ticket_id}"
-    builder.button(text="🌐 На сайте", url=cand_web_url)
 
-    if is_cand_blocked:
-        builder.button(text="✅ Снять ЧС", callback_data=f"unblock_cand_{ticket_id}")
+    # --- РЯД 1 ---
+    if clean_tel:
+        builder.button(text="📞 Позвонить", url=f"https://t.me/share/url?url={clean_tel}")
     else:
-        builder.button(text="⛔ В ЧС", callback_data=f"block_cand_{ticket_id}")
+        builder.button(text="📞 Позвонить", callback_data=f"cand_call_{ticket_id}")
 
-    builder.button(text="🗑 Удалить", callback_data=f"del_ask_{ticket_id}")
+    builder.button(text="🟢 Live-чат", callback_data=f"live_dlg_cand_{ticket_id}")
+    builder.button(text="📝 Заметка", callback_data=f"cand_note_{ticket_id}")
 
-    builder.adjust(3, 3, 3, 3)
+    # --- РЯД 2 ---
+    builder.button(text="📅 Назначить встречу", callback_data=f"schedule_interview_{ticket_id}")
+    builder.button(text="🔍 Проверка рисков", callback_data=f"cand_risk_{ticket_id}")
+
+    # --- РЯД 3 ---
+    builder.button(text="📂 В работу", callback_data=f"status_{ticket_id}_В работе")
+    builder.button(text="❌ Отказ", callback_data=f"status_{ticket_id}_Отказ")
+    builder.button(text="🌐 Открыть на сайте", url=cand_web_url)
+
+    builder.adjust(3, 2, 3)
     return builder.as_markup()
 
 

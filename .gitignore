@@ -1,14 +1,48 @@
 # ==============================================================================
 # .gitignore — МУП «Ульяновскэлектротранс» UETBot
-# Исключает секреты, ПДн, кэши, виртуальные окружения и генерируемые файлы.
+# ЖЁСТКАЯ ИЗОЛЯЦИЯ PRIVATE VS PUBLIC
 # ==============================================================================
 
 # --- Секреты и конфигурация ---
 .env
-.env.local
-.env.*.local
+.env.*
+*.pem
+*.key
 
-# --- Python кэши ---
+# --- Приватные модули владельца и инженерии ---
+private_admin.py
+private_*.py
+handlers/tech.py
+tech.py
+run_tests.py
+tests/
+test_*.py
+clean_*.py
+fix_*.py
+update_*.py
+local_git.py
+local_git*
+scripts/local_admin_*
+private/
+
+# --- Персональные данные (152-ФЗ РФ) и дампы БД ---
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+data/
+backups/
+*.zip
+*.docx
+*.xlsx
+*.csv
+*.pdf
+docs/generated/
+
+# --- Логи и кэш ---
+logs/
+*.log
 __pycache__/
 *.py[cod]
 *$py.class
@@ -17,41 +51,16 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 
-# --- Сборки документации и артефакты ---
-site/
-.cache/
-
+# --- Виртуальные окружения ---
 venv/
 env/
 .venv/
 .env/
 ENV/
 
-# --- Базы данных SQLite (152-ФЗ: персональные данные соискателей) ---
-*.db
-*.db-wal
-*.db-shm
-*.sqlite
-*.sqlite3
-data/*.db
-data/*.db-wal
-data/*.db-shm
-data/*.sqlite
-data/*.sqlite3
-
-# --- Логи ---
-logs/
-*.log
-
-# --- Резервные копии (генерируются автоматически, не для git) ---
-backups/
-
-# --- Сгенерированные кадровые документы (содержат ПДн) ---
-docs/generated/
-*.docx
-*.xlsx
-*.csv
-*.pdf
+# --- Сборки документации и артефакты ---
+site/
+.cache/
 
 # --- IDE и системные файлы ---
 .vscode/
@@ -61,21 +70,13 @@ docs/generated/
 *~
 .DS_Store
 Thumbs.db
-
-# --- Временные и локальные админ-скрипты сервера ---
 tmp/
 temp/
 path/to/web-switcher/
 switch_script.sh
-deploy/server_switch_branch.sh
-scripts/local_admin_*
-private/
-local_git.py
-local_git*
 
 # --- Antigravity IDE / AI ассистент ---
 .antigravity*
 .agents/
 templates/antigravity_*
 *.antigravity*
-

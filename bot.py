@@ -181,7 +181,7 @@ async def main() -> None:
     start_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
     web_panel_link = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
     start_msg = (
-        f"🟢 <b>Сервис МУП «Ульяновскэлектротранс» запущен (v{CONFIG.get('BOT_VERSION', '1.9.0')})</b>\n"
+        f"🟢 <b>Сервис МУП «Ульяновскэлектротранс» запущен (v{CONFIG.get('BOT_VERSION', '2.0.0')})</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"🤖 <b>Бот:</b> {bot_info_str}\n"
         f"⚙️ <b>Режим:</b> <code>{env_mode}</code>\n"

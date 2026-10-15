@@ -134,7 +134,7 @@ CONFIG: AppConfig = AppConfig(
     {
         # --- Среда выполнения и версия ---
         "ENVIRONMENT": _get_str("ENVIRONMENT", "TEST").upper(),
-        "BOT_VERSION": _get_str("BOT_VERSION", "1.9.1"),
+        "BOT_VERSION": _get_str("BOT_VERSION", "2.0.0"),
         # --- Пути файловой системы ---
         "BASE_DIR": str(BASE_DIR),
         "DATA_DIR": str(DATA_DIR),

@@ -99,11 +99,20 @@ class CandidateService:
     def validate_birth_date(self, raw_date: str) -> Tuple[bool, str, Optional[str]]:
         """
         Юридически точная валидация даты рождения и совершеннолетия (18+):
+        - Поддерживает форматы ДД.ММ.ГГГГ, ГГГГ-ММ-ДД (ISO), 8 цифр без точек (ДДММГГГГ)
         - Поддерживает разделители точки, дефиса и слэша
         - Расчет возраста по календарной дате согласно ТК РФ
         Возвращает: (is_valid, normalized_date, error_message)
         """
-        clean = (raw_date or "").strip().replace("/", ".").replace("-", ".")
+        raw = (raw_date or "").strip()
+        # Поддержка формата ISO ГГГГ-ММ-ДД (например, из input type="date")
+        iso_m = re.match(r"^(\d{4})[-./](\d{2})[-./](\d{2})$", raw)
+        if iso_m:
+            raw = f"{iso_m.group(3)}.{iso_m.group(2)}.{iso_m.group(1)}"
+        elif raw.isdigit() and len(raw) == 8:
+            raw = f"{raw[:2]}.{raw[2:4]}.{raw[4:]}"
+
+        clean = raw.replace("/", ".").replace("-", ".")
         try:
             dt = datetime.strptime(clean, "%d.%m.%Y")
         except ValueError:
@@ -223,17 +232,26 @@ class CandidateService:
         source = data.get("source", "Бот предприятия")
         extra_info = data.get("additional_info") or data.get("extra_info", "")
 
-        # 2. Умное автоопределение тестовой анкеты
+        # 2. Умное определение тестовой анкеты
         target_db = self.db.get_setting("active_db_target", "resumes.db")
         fn_lower = full_name.lower()
         exp_lower = experience.lower()
+        uid_str = str(user_id).lower()
+        is_test_marker = (
+            "тест" in fn_lower
+            or "test" in fn_lower
+            or "кандидат сергеевич" in fn_lower
+            or "кандидат иванович" in fn_lower
+            or "алексеев алексей" in fn_lower
+            or "удаляемый" in fn_lower
+            or "тест" in exp_lower
+            or "test" in exp_lower
+            or uid_str.startswith("office_test")
+        )
         is_test = bool(
             data.get("is_test", False)
-            or target_db == "resumes_test.db"
-            or CONFIG.get("ENVIRONMENT") == "TEST"
-            or "тест" in fn_lower
-            or "test" in fn_lower
-            or "тест" in exp_lower
+            or is_test_marker
+            or (target_db == "resumes_test.db" and is_test_marker)
         )
 
         # 3. Сохранение в базу данных

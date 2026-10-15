@@ -226,13 +226,17 @@ class WebPanel:
         self.app.router.add_post("/api/vacancies/add", self.handle_api_vacancies_add)
         self.app.router.add_post("/api/vacancies/delete", self.handle_api_vacancies_delete)
         self.app.router.add_post("/api/apply_candidate", self.handle_api_apply_candidate)
-        self.app.router.add_post("/api/candidate/apply", self.handle_api_apply_candidate)
         self.app.router.add_get("/api/candidate/lookup", self.handle_api_candidate_lookup)
+        self.app.router.add_post("/api/candidate/lookup", self.handle_api_candidate_lookup)
 
         # Auth
         self.app.router.add_post("/api/auth/login", self.handle_api_auth_login)
         self.app.router.add_post("/api/auth/register", self.handle_api_auth_register)
         self.app.router.add_post("/api/auth/verify_session", self.handle_api_auth_verify_session)
+        self.app.router.add_post("/api/auth/logout", self.handle_api_auth_logout)
+        self.app.router.add_get("/api/auth/logout", self.handle_api_auth_logout)
+        self.app.router.add_post("/api/logout", self.handle_api_auth_logout)
+        self.app.router.add_get("/api/logout", self.handle_api_auth_logout)
         self.app.router.add_get("/login", self.handle_index)
 
         # Candidates API
@@ -350,61 +354,88 @@ class WebPanel:
         return await self.handle_dashboard_page(request)
 
     async def handle_api_candidate_lookup(self, request: web.Request) -> web.Response:
-        """Поиск статуса анкеты соискателем по номеру заявки или номеру телефона."""
-        q = request.query.get("query", "").strip()
+        """Поиск статуса анкеты соискателем по номеру заявки, номеру телефона или ФИО (в обоих контурах: PROD и TEST)."""
+        q = request.query.get("query") or request.query.get("ticket_id") or request.query.get("phone") or ""
+        if not q and request.method == "POST":
+            try:
+                body = await request.json()
+                q = str(body.get("query") or body.get("ticket_id") or body.get("phone") or "")
+            except Exception:
+                pass
+        q = str(q).strip()
         if not q:
             return web.json_response({"ok": False, "error": "Укажите номер анкеты или номер телефона"}, status=400)
 
         cand = None
-        clean_q = re.sub(r"\D", "", q)
-        if q.isdigit() and len(q) <= 7:
-            cand = self.db.get_candidate(int(q))
+        # Очистка номера тикета от префиксов (№, #, 73-, В-)
+        cleaned_num = q.replace("#", "").replace("№", "").replace("73-", "").replace("в-", "").replace("В-", "").strip()
+        clean_digits = re.sub(r"\D", "", q)
 
-        if not cand and len(clean_q) >= 10:
-            with self.db.connection() as conn:
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT * FROM resumes WHERE phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
-                    (f"%{clean_q[-10:]}%",),
-                )
-                cand = cur.fetchone()
+        # 1. Поиск по прямому числовому ID (авто-маршрутизация PROD/TEST)
+        if cleaned_num.isdigit() and len(cleaned_num) <= 8:
+            try:
+                cand = self.db.get_candidate(int(cleaned_num))
+            except Exception as e:
+                logger.warning("Ошибка get_candidate по ID %s: %s", cleaned_num, e)
 
-        if not cand and clean_q:
-            with self.db.connection() as conn:
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT ticket_id, full_name, phone, vacancy, status, created_at, interview_depot, interview_time FROM candidates WHERE ticket_id = ? OR phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
-                    (clean_q, f"%{clean_q[-10:]}%"),
-                )
-                row = cur.fetchone()
-                if row:
-                    cand = (
-                        row[0],
-                        "web",
-                        "",
-                        row[1],
-                        row[2],
-                        row[3],
-                        "",
-                        row[4],
-                        "",
-                        row[5],
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        row[6] or "",
-                        row[7] or "",
-                    )
+        # 2. Поиск по номеру телефона или ФИО в обеих базах (PROD и TEST)
+        if not cand:
+            for is_test_db in (False, True):
+                try:
+                    with self.db._get_connection(is_test=is_test_db) as conn:
+                        cur = conn.cursor()
+                        # Поиск по последним 10 цифрам телефона
+                        if len(clean_digits) >= 10:
+                            cur.execute(
+                                """
+                                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                                       birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
+                                       interview_depot, interview_time, interview_status
+                                FROM candidates WHERE phone LIKE ? ORDER BY ticket_id DESC LIMIT 1
+                                """,
+                                (f"%{clean_digits[-10:]}%",),
+                            )
+                            row = cur.fetchone()
+                            if row:
+                                cand = row
+                                break
+
+                        # Поиск по точному ID в таблице
+                        if clean_digits:
+                            cur.execute(
+                                """
+                                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                                       birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
+                                       interview_depot, interview_time, interview_status
+                                FROM candidates WHERE ticket_id = ? ORDER BY ticket_id DESC LIMIT 1
+                                """,
+                                (clean_digits,),
+                            )
+                            row = cur.fetchone()
+                            if row:
+                                cand = row
+                                break
+
+                        # Поиск по совпадению ФИО (от 3 символов)
+                        if len(q) >= 3 and not q.isdigit():
+                            cur.execute(
+                                """
+                                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                                       birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
+                                       interview_depot, interview_time, interview_status
+                                FROM candidates WHERE full_name LIKE ? ORDER BY ticket_id DESC LIMIT 1
+                                """,
+                                (f"%{q}%",),
+                            )
+                            row = cur.fetchone()
+                            if row:
+                                cand = row
+                                break
+                except Exception as err:
+                    logger.warning("Ошибка поиска в базе (is_test=%s): %s", is_test_db, err)
 
         if not cand:
             return web.json_response(
@@ -738,6 +769,12 @@ class WebPanel:
         return web.json_response(
             {"ok": True, "role": role, "user_id": uid, "name": name, "label": f"● {name} ({role})"}
         )
+
+    async def handle_api_auth_logout(self, request: web.Request) -> web.Response:
+        """Сброс сессионной cookie uet_token при выходе сотрудника или соискателя из системы."""
+        resp = web.json_response({"ok": True, "message": "Сессия успешно завершена, cookie очищены."})
+        resp.del_cookie("uet_token", path="/")
+        return resp
 
     async def handle_api_auth_login(self, request: web.Request) -> web.Response:
         """Безопасная авторизация по логину/паролю или валидированному TMA."""
@@ -2372,7 +2409,7 @@ class WebPanel:
                 "db_test_kb": db_test_kb,
                 "db_prod_rows": db_prod_rows,
                 "db_test_rows": db_test_rows,
-                "bot_version": CONFIG.get("BOT_VERSION", "1.7.0"),
+                "bot_version": CONFIG.get("BOT_VERSION", "2.0.0"),
             }
         )
 
@@ -2878,7 +2915,7 @@ class WebPanel:
             {
                 "status": "ok",
                 "time": datetime.now().isoformat(),
-                "version": CONFIG.get("BOT_VERSION", "1.7.0"),
+                "version": CONFIG.get("BOT_VERSION", "2.0.0"),
             }
         )
 

@@ -1933,6 +1933,42 @@
         </div>
     </div>
 
+    <!-- МОДАЛЬНОЕ ОКНО УСПЕШНОЙ ПОДАЧИ АНКЕТЫ С НОМЕРОМ ТИКЕТА -->
+    <div id="applicationSuccessModal"
+        class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-[#112240] rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-emerald-500/30 text-center transition-colors my-8 relative">
+            <div class="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-3xl mx-auto mb-4 border border-emerald-500/20">
+                ✅
+            </div>
+            <h3 class="text-2xl font-extrabold text-slate-900 dark:text-white mb-1">
+                Анкета успешно подана!
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">
+                Ваши данные зарегистрированы в защищенном реестре МУП «Ульяновскэлектротранс» (152-ФЗ РФ) и направлены в кадровую службу.
+            </p>
+
+            <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 mb-6 space-y-3">
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ваш уникальный номер заявки</div>
+                <div class="flex items-center justify-center gap-2">
+                    <span id="successModalTicketId" class="text-3xl font-black font-mono text-[#1371B9] dark:text-blue-400">#900371</span>
+                    <button type="button" onclick="copySuccessModalTicket()" class="p-2 rounded-xl bg-blue-500/10 text-[#1371B9] hover:bg-blue-500 hover:text-white transition" title="Скопировать номер анкеты">
+                        📋
+                    </button>
+                </div>
+                <div id="successModalCandidateInfo" class="text-xs text-slate-600 dark:text-slate-300 font-medium"></div>
+            </div>
+
+            <div class="space-y-3">
+                <button type="button" onclick="goToStatusFromSuccessModal()" class="w-full py-3.5 rounded-2xl bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-sm shadow-lg transition flex items-center justify-center gap-2">
+                    <span>📊 Отследить статус анкеты онлайн</span>
+                </button>
+                <button type="button" onclick="closeSuccessModalAndGoToCabinet()" class="w-full py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs transition">
+                    <span>👤 Перейти в личный кабинет</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ И РЕГИСТРАЦИИ (СОИСКАТЕЛЬ / СЛУЖЕБНЫЙ ВХОД / РЕГИСТРАЦИЯ) -->
     <div id="loginModal"
         class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
@@ -3847,6 +3883,10 @@
         }
 
         function logoutUser() {
+            try {
+                fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+            } catch (e) {}
+            document.cookie = 'uet_token=; Max-Age=0; path=/;';
             sessionStorage.clear();
             localStorage.removeItem('uet_session');
             localStorage.removeItem('uet_saved_session');
@@ -4363,18 +4403,277 @@
                         </select>
                     </div>
                 `;
+            } else if (stepNum === 2) {
+                // Шаг 2: Дата рождения с автоматической расстановкой точек (ДД.ММ.ГГГГ), валидацией 18+ и быстрым выбором из календаря
+                const maxAdultDate = new Date();
+                maxAdultDate.setFullYear(maxAdultDate.getFullYear() - 18);
+                const maxAdultDateStr = maxAdultDate.toISOString().split('T')[0];
+
+                container.innerHTML = `
+                    <div class="space-y-3">
+                        <label class="block text-xs font-semibold text-slate-400">${q.desc}</label>
+                        <div class="relative flex items-center">
+                            <input id="surveyInputCurrent"
+                                   type="text"
+                                   inputmode="numeric"
+                                   maxlength="10"
+                                   autocomplete="bday"
+                                   placeholder="ДД.ММ.ГГГГ (например: 15.04.1995)"
+                                   value="${state.surveyData[q.field] || ''}"
+                                   class="w-full px-4 py-3.5 pr-12 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium text-sm focus:outline-none focus:border-[#1371B9] transition shadow-sm" />
+                            <button type="button"
+                                    id="btnOpenDatePicker"
+                                    onclick="openSurveyDatePicker()"
+                                    class="absolute right-3 p-2 rounded-xl text-slate-400 hover:text-[#1371B9] hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                                    title="Выбрать дату в календаре">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </button>
+                            <input type="date" id="nativeDatePicker" class="sr-only absolute" max="${maxAdultDateStr}" />
+                        </div>
+                        <div id="surveyDateAgeHint" class="text-xs transition flex items-center gap-1.5 text-slate-400">
+                            <span>📅 Введите 8 цифр — точки расставятся автоматически (например, 15041995)</span>
+                        </div>
+                    </div>
+                `;
+                setTimeout(() => {
+                    setupBirthDateMask();
+                }, 50);
+            } else if (stepNum === 3) {
+                // Шаг 3: Телефон с маской +7 (XXX) XXX-XX-XX
+                container.innerHTML = `
+                    <div class="space-y-3">
+                        <label class="block text-xs font-semibold text-slate-400">${q.desc}</label>
+                        <input id="surveyInputCurrent"
+                               type="tel"
+                               inputmode="tel"
+                               autocomplete="tel"
+                               placeholder="${q.placeholder}"
+                               value="${state.surveyData[q.field] || ''}"
+                               class="w-full px-4 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium text-sm focus:outline-none focus:border-[#1371B9] transition shadow-sm" />
+                    </div>
+                `;
+                setTimeout(() => {
+                    setupPhoneMask();
+                }, 50);
             } else {
                 container.innerHTML = `
                     <div class="space-y-3">
                         <label class="block text-xs font-semibold text-slate-400">${q.desc}</label>
-                        <input id="surveyInputCurrent" type="${q.type}" placeholder="${q.placeholder}" value="${state.surveyData[q.field] || ''}" class="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium text-sm focus:outline-none focus:border-[#1371B9]" />
+                        <input id="surveyInputCurrent" type="${q.type}" placeholder="${q.placeholder}" value="${state.surveyData[q.field] || ''}" class="w-full px-4 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium text-sm focus:outline-none focus:border-[#1371B9] transition shadow-sm" />
                     </div>
                 `;
                 setTimeout(() => {
                     const inp = document.getElementById('surveyInputCurrent');
-                    if (inp) inp.focus();
-                }, 100);
+                    if (inp) {
+                        inp.focus();
+                        inp.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                surveyNextStep();
+                            }
+                        });
+                    }
+                }, 80);
             }
+        }
+
+        function openSurveyDatePicker() {
+            const picker = document.getElementById('nativeDatePicker');
+            if (!picker) return;
+            if (picker.showPicker) {
+                picker.showPicker();
+            } else {
+                picker.click();
+            }
+        }
+
+        function getAgeNoun(n) {
+            n = Math.abs(n) % 100;
+            const n1 = n % 10;
+            if (n > 10 && n < 20) return 'лет';
+            if (n1 > 1 && n1 < 5) return 'года';
+            if (n1 === 1) return 'год';
+            return 'лет';
+        }
+
+        function validateBirthDateString(str) {
+            if (!str || !str.trim()) {
+                return { ok: false, msg: 'Пожалуйста, укажите дату рождения в формате ДД.ММ.ГГГГ.' };
+            }
+            const clean = str.trim();
+            const match = clean.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+            if (!match) {
+                return { ok: false, msg: 'Дата рождения должна быть в формате ДД.ММ.ГГГГ (например: 15.04.1995).' };
+            }
+            const day = parseInt(match[1], 10);
+            const month = parseInt(match[2], 10);
+            const year = parseInt(match[3], 10);
+
+            if (month < 1 || month > 12) {
+                return { ok: false, msg: 'Некорректный месяц (должен быть от 01 до 12).' };
+            }
+            const daysInMonth = new Date(year, month, 0).getDate();
+            if (day < 1 || day > daysInMonth) {
+                return { ok: false, msg: `В указанном месяце всего ${daysInMonth} дн.` };
+            }
+
+            const birthDate = new Date(year, month - 1, day);
+            const today = new Date();
+
+            if (birthDate > today) {
+                return { ok: false, msg: 'Дата рождения не может быть в будущем.' };
+            }
+
+            let age = today.getFullYear() - year;
+            const mDiff = today.getMonth() - (month - 1);
+            if (mDiff < 0 || (mDiff === 0 && today.getDate() < day)) {
+                age--;
+            }
+
+            if (age < 18) {
+                return { ok: false, msg: `Возраст: ${age} ${getAgeNoun(age)}. Трудоустройство в МУП «УЭТ» возможно строго с 18 лет (ст. 63 ТК РФ).`, age: age };
+            }
+            if (age > 95 || year < 1925) {
+                return { ok: false, msg: 'Пожалуйста, проверьте правильность года рождения.', age: age };
+            }
+
+            const dd = String(day).padStart(2, '0');
+            const mm = String(month).padStart(2, '0');
+            return { ok: true, formatted: `${dd}.${mm}.${year}`, age: age };
+        }
+
+        function setupBirthDateMask() {
+            const inp = document.getElementById('surveyInputCurrent');
+            const picker = document.getElementById('nativeDatePicker');
+            const hint = document.getElementById('surveyDateAgeHint');
+            if (!inp) return;
+
+            inp.focus();
+
+            const updateHint = (val) => {
+                if (!hint) return;
+                if (!val || val.length < 10) {
+                    hint.className = 'text-xs transition flex items-center gap-1.5 text-slate-400';
+                    hint.innerHTML = '<span>📅 Введите 8 цифр — точки расставятся автоматически (например: 15041995)</span>';
+                    return;
+                }
+                const v = validateBirthDateString(val);
+                if (v.ok) {
+                    hint.className = 'text-xs transition flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium';
+                    hint.innerHTML = `<span>✅ Возраст: ${v.age} ${getAgeNoun(v.age)} (совершеннолетие подтверждено, ст. 63 ТК РФ)</span>`;
+                    document.getElementById('surveyErrorAlert')?.classList.add('hidden');
+                } else {
+                    hint.className = 'text-xs transition flex items-center gap-1.5 text-red-500 font-medium';
+                    hint.innerHTML = `<span>⚠️ ${v.msg}</span>`;
+                }
+            };
+
+            if (picker) {
+                picker.addEventListener('change', () => {
+                    if (picker.value) {
+                        const parts = picker.value.split('-');
+                        if (parts.length === 3) {
+                            const formatted = `${parts[2]}.${parts[1]}.${parts[0]}`;
+                            inp.value = formatted;
+                            state.surveyData.step2_birthdate = formatted;
+                            updateHint(formatted);
+                            document.getElementById('surveyErrorAlert')?.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+
+            inp.addEventListener('input', (e) => {
+                let val = inp.value;
+
+                // Поддержка вставки даты ISO (ГГГГ-ММ-ДД)
+                if (/^\d{4}[-./]\d{2}[-./]\d{2}$/.test(val.trim())) {
+                    const parts = val.trim().split(/[-./]/);
+                    const formatted = `${parts[2]}.${parts[1]}.${parts[0]}`;
+                    inp.value = formatted;
+                    state.surveyData.step2_birthdate = formatted;
+                    updateHint(formatted);
+                    return;
+                }
+
+                const isDeleting = e.inputType && e.inputType.startsWith('delete');
+                const digits = val.replace(/\D/g, '').slice(0, 8);
+                let res = '';
+
+                if (digits.length <= 2) {
+                    res = digits;
+                    if (!isDeleting && digits.length === 2 && !val.endsWith('.')) {
+                        res = digits + '.';
+                    }
+                } else if (digits.length <= 4) {
+                    res = digits.slice(0, 2) + '.' + digits.slice(2);
+                    if (!isDeleting && digits.length === 4 && !val.endsWith('.')) {
+                        res += '.';
+                    }
+                } else {
+                    res = digits.slice(0, 2) + '.' + digits.slice(2, 4) + '.' + digits.slice(4, 8);
+                }
+
+                // Обработка ручного ввода разделителя (точка, дефис, слэш)
+                if (!isDeleting && (val.endsWith('.') || val.endsWith('/') || val.endsWith('-'))) {
+                    if (digits.length === 1) res = '0' + digits + '.';
+                    else if (digits.length === 2 && !res.endsWith('.')) res = digits + '.';
+                    else if (digits.length === 3) res = digits.slice(0, 2) + '.0' + digits.slice(2) + '.';
+                    else if (digits.length === 4 && !res.endsWith('.')) res = digits.slice(0, 2) + '.' + digits.slice(2, 4) + '.';
+                }
+
+                inp.value = res;
+                state.surveyData.step2_birthdate = res;
+                updateHint(res);
+            });
+
+            inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    surveyNextStep();
+                }
+            });
+
+            if (inp.value) {
+                updateHint(inp.value);
+            }
+        }
+
+        function setupPhoneMask() {
+            const inp = document.getElementById('surveyInputCurrent');
+            if (!inp) return;
+            inp.focus();
+
+            inp.addEventListener('input', (e) => {
+                let val = inp.value;
+                let digits = val.replace(/\D/g, '');
+                if (digits.startsWith('8') || digits.startsWith('7')) {
+                    digits = digits.slice(1);
+                }
+                digits = digits.slice(0, 10);
+                let res = '';
+                if (digits.length > 0) {
+                    res = '+7 (' + digits.slice(0, 3);
+                    if (digits.length >= 3) {
+                        res += ') ' + digits.slice(3, 6);
+                    }
+                    if (digits.length >= 6) {
+                        res += '-' + digits.slice(6, 8);
+                    }
+                    if (digits.length >= 8) {
+                        res += '-' + digits.slice(8, 10);
+                    }
+                }
+                inp.value = res;
+                state.surveyData.step3_phone = res;
+            });
+
+            inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    surveyNextStep();
+                }
+            });
         }
 
         function surveyPrevStep() {
@@ -4402,11 +4701,13 @@
                 }
             } else if (stepNum === 2) {
                 const bdate = state.surveyData.step2_birthdate.trim();
-                if (!bdate || bdate.length < 8) {
-                    errEl.innerText = 'Укажите дату рождения в формате ДД.ММ.ГГГГ.';
+                const v = validateBirthDateString(bdate);
+                if (!v.ok) {
+                    errEl.innerText = v.msg;
                     errEl.classList.remove('hidden');
                     return;
                 }
+                state.surveyData.step2_birthdate = v.formatted;
             } else if (stepNum === 3) {
                 const phone = state.surveyData.step3_phone.trim();
                 if (!phone || phone.replace(/\D/g, '').length < 10) {
@@ -4484,11 +4785,24 @@
 
                 if (res.ok) {
                     const ticketId = res.ticket_id || '73-200';
-                    document.getElementById('cabinetStepTitle').innerText = `Заявка #${ticketId} (Шаг 1 из 16: Принята)`;
-                    document.getElementById('cabinetVacancySub').innerText = `Направление: ${res.vacancy || state.surveyData.step5_vacancy}`;
+                    state.role = 'applicant';
+                    state.user = {
+                        ticket_id: ticketId,
+                        user_id: ticketId,
+                        name: payload.full_name,
+                        phone: payload.phone,
+                        vacancy: res.vacancy || payload.vacancy,
+                        status: 'Новая'
+                    };
+                    sessionStorage.setItem('uet_candidate_ticket', ticketId);
+                    sessionStorage.setItem('uet_candidate_phone', payload.phone);
+                    sessionStorage.setItem('uet_candidate_name', payload.full_name);
+                    localStorage.setItem('uet_candidate_ticket', ticketId);
 
-                    alert(`✓ Ваша анкета #${ticketId} успешно зарегистрирована и отправлена в отдел кадров МУП «УЭТ»!`);
-                    switchTab('cabinet');
+                    const sInp = document.getElementById('statusCheckInput');
+                    if (sInp) sInp.value = ticketId;
+
+                    showSurveySuccessModal(ticketId, payload);
                 } else {
                     errEl.innerText = res.error || 'Ошибка при отправке анкеты';
                     errEl.classList.remove('hidden');
@@ -4500,6 +4814,46 @@
                 nextBtn.disabled = false;
                 nextBtn.innerText = 'Отправить анкету по ГОСТ →';
             }
+        }
+
+        function showSurveySuccessModal(ticketId, payload) {
+            const modal = document.getElementById('applicationSuccessModal');
+            if (!modal) return;
+            const tEl = document.getElementById('successModalTicketId');
+            if (tEl) tEl.innerText = `#${ticketId}`;
+            const infoEl = document.getElementById('successModalCandidateInfo');
+            if (infoEl) {
+                infoEl.innerText = `${payload.full_name} • ${payload.vacancy}`;
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function copySuccessModalTicket() {
+            const tEl = document.getElementById('successModalTicketId');
+            const text = tEl ? tEl.innerText.replace('#', '') : '';
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert(`Номер заявки #${text} скопирован в буфер обмена!`);
+                });
+            }
+        }
+
+        function goToStatusFromSuccessModal() {
+            const modal = document.getElementById('applicationSuccessModal');
+            if (modal) modal.classList.add('hidden');
+            const tEl = document.getElementById('successModalTicketId');
+            const tid = tEl ? tEl.innerText.replace('#', '') : '';
+            const input = document.getElementById('statusCheckInput');
+            if (input) input.value = tid;
+            switchTab('status');
+            handleQuickStatusCheck();
+        }
+
+        function closeSuccessModalAndGoToCabinet() {
+            const modal = document.getElementById('applicationSuccessModal');
+            if (modal) modal.classList.add('hidden');
+            renderCabinetView();
+            switchTab('cabinet');
         }
 
         // =========================================================================

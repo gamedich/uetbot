@@ -12,6 +12,7 @@ exclude_docs: |
 
 nav:
   - Главная: index.md
+  - Презентация UETBot 2.0: presentation.md
   - PRD (Требования): prd.md
   - Глоссарий: glossary.md
   - Руководство по стилю (PEP 8): style-guide.md

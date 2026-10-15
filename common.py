@@ -1309,8 +1309,10 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
     except Exception as e:
         logger.warning("Не удалось установить команды для групп: %s", e)
 
-    # 3. Полное меню для SuperAdmin
+    # 3. Полное меню для SuperAdmin (Владелец)
     super_commands = [
+        BotCommand(command="owner", description="👑 Пульт владельца (UET Kit)"),
+        BotCommand(command="tests", description="🧪 Тестовая лаборатория и симуляции"),
         BotCommand(command="panel", description="🌐 Веб-панель управления"),
         BotCommand(command="to", description="🛠 Вкл/Выкл режим ТО"),
         BotCommand(command="password", description="🔑 Пароль от веб-панели"),

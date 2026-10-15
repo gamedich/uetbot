@@ -203,48 +203,23 @@
         <div id="serviceNavItems"
             class="hidden bg-slate-100/90 dark:bg-[#0c182e] border-t border-b border-slate-200 dark:border-white/10 px-4 lg:px-8 transition-colors">
             <div class="max-w-7xl mx-auto h-11 flex items-center justify-between gap-4">
-                <!-- Горизонтальная лента административных вкладок -->
-                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs font-semibold py-1">
-                    <button onclick="switchTab('applicants')" id="topBtnApplicants"
-                        class="nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>👥 Кандидаты</span>
-                    </button>
-                    <button onclick="switchTab('inquiries')" id="topBtnInquiries"
-                        class="nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>💬 Вопросы</span>
+                <!-- Консолидированная лента ролей (без нагромождения кнопок) -->
+                <div class="flex items-center gap-2 overflow-x-auto no-scrollbar text-xs font-semibold py-1">
+                    <!-- 1. Панель HR (Кадровик) -->
+                    <button onclick="switchTab('hr')" id="topBtnHrHub"
+                        class="nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <span>👔 Панель кадров (HR)</span>
                         <span id="badgeInquiriesNav" class="hidden px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-orange-500 text-white">0</span>
                     </button>
-                    <button onclick="switchTab('vacancies')" id="topBtnVacancies"
-                        class="nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>💼 Вакансии</span>
+                    <!-- 2. Панель Тех-Админа (Инженер) -->
+                    <button onclick="switchTab('tech')" id="topBtnTechHub"
+                        class="hidden nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <span>🛠 Инженерная панель (Tech)</span>
                     </button>
-                    <button onclick="switchTab('questions')" id="topBtnQuestions"
-                        class="nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>🛠 Конструктор</span>
-                    </button>
-                    <button onclick="switchTab('security')" id="topBtnSecurity"
-                        class="nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>⚖️ 152-ФЗ и ГОСТ</span>
-                    </button>
-                    <button onclick="switchTab('customization')" id="topBtnCustomization"
-                        class="nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>🎨 Кастомизация</span>
-                    </button>
-                    <button onclick="switchTab('broadcast')" id="topBtnBroadcast"
-                        class="nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>📢 Рассылка</span>
-                    </button>
-                    <button onclick="switchTab('admins')" id="topBtnAdmins"
-                        class="hidden nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>🔐 Права и доступ</span>
-                    </button>
-                    <button onclick="switchTab('tech')" id="topBtnTech"
-                        class="hidden nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>🔀 Git и ветки</span>
-                    </button>
-                    <button onclick="switchTab('ai')" id="topBtnAi"
-                        class="hidden nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>🧠 ИИ-Аналитик</span>
+                    <!-- 3. Панель SuperAdmin (Владелец) -->
+                    <button onclick="switchTab('owner')" id="topBtnOwnerHub"
+                        class="hidden nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1.5 shadow-2xs">
+                        <span>👑 Центр SuperAdmin</span>
                     </button>
                 </div>
 
@@ -282,41 +257,24 @@
             </div>
             <div id="mServiceNav"
                 class="hidden flex-col gap-1 pt-1 mt-1 border-t border-slate-200 dark:border-slate-800">
-                <button id="mBtnApplicants" onclick="switchTab('applicants'); toggleMobileNav();"
-                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-[#1371B9] dark:text-blue-400 font-bold">👥
-                    Кандидаты</button>
-                <button id="mBtnInquiries" onclick="switchTab('inquiries'); toggleMobileNav();"
-                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-orange-600 dark:text-orange-400 font-bold">💬
-                    Вопросы соискателей</button>
+                <button id="mBtnHrHub" onclick="switchTab('hr'); toggleMobileNav();"
+                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-[#1371B9] dark:text-blue-400 font-bold flex items-center justify-between">
+                    <span>👔 Панель кадров (HR)</span>
+                    <span id="mBadgeInquiriesNav" class="hidden px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-orange-500 text-white">0</span>
+                </button>
+                <button id="mBtnTechHub" onclick="switchTab('tech'); toggleMobileNav();"
+                    class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-amber-600 dark:text-amber-400 font-bold">
+                    🛠 Инженерная панель (Tech)
+                </button>
+                <button id="mBtnOwnerHub" onclick="switchTab('owner'); toggleMobileNav();"
+                    class="hidden text-left px-3 py-2 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-600 dark:text-purple-400 font-bold border border-purple-500/30">
+                    👑 Центр SuperAdmin (Владелец)
+                </button>
                 <button id="mBtnToggleCandidatesNav" onclick="toggleCandidatesMenu()"
                     class="hidden text-left px-3 py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 font-semibold text-xs items-center gap-1.5">
                     <span id="mCandidatesNavIcon">👁️</span>
                     <span id="mCandidatesNavText">Приём анкет: Вкл</span>
                 </button>
-                <button onclick="switchTab('vacancies'); toggleMobileNav();"
-                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-amber-600 dark:text-amber-400 font-bold">💼
-                    Вакансии</button>
-                <button onclick="switchTab('questions'); toggleMobileNav();"
-                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold">🛠
-                    Конструктор</button>
-                <button onclick="switchTab('security'); toggleMobileNav();"
-                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-sky-600 dark:text-sky-400 font-bold">⚖️
-                    152-ФЗ и ГОСТ</button>
-                <button id="mBtnCustomization" onclick="switchTab('customization'); toggleMobileNav();"
-                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-purple-600 dark:text-purple-400 font-bold">🎨
-                    Кастомизация текстов</button>
-                <button id="mBtnBroadcast" onclick="switchTab('broadcast'); toggleMobileNav();"
-                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold">📢
-                    Центр рассылок</button>
-                <button onclick="switchTab('admins'); toggleMobileNav();" id="mAdminsBtn"
-                    class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-purple-600 dark:text-purple-400 font-bold">🔐
-                    Права и доступ</button>
-                <button onclick="switchTab('ai'); toggleMobileNav();" id="mAiBtn"
-                    class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold">🧠
-                    ИИ-Шлюз</button>
-                <button onclick="switchTab('tech'); toggleMobileNav();" id="mTechBtn"
-                    class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-red-500 font-bold">🔀
-                    Git и ветки</button>
             </div>
         </div>
     </header>
@@ -324,6 +282,83 @@
     <!-- ОСНОВНОЙ КОНТЕЙНЕР: РАБОЧАЯ ОБЛАСТЬ БЕЗ КОНФЛИКТУЮЩЕГО САЙДБАРА -->
     <div class="max-w-7xl mx-auto px-4 lg:px-8 py-3 lg:py-5">
         <main class="w-full">
+
+            <!-- =========================================================================
+                КОНСОЛИДИРОВАННЫЙ СУБ-БАР КАДРОВОЙ СЛУЖБЫ (HR HUB)
+            ========================================================================= -->
+            <div id="hrRoleSubbar" class="hidden bg-white/85 dark:bg-[#0c182e]/90 backdrop-blur-md rounded-2xl p-3 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3 mb-6 transition-all">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-blue-500/10 text-[#1371B9] flex items-center justify-center font-bold text-lg border border-blue-500/20">
+                        👔
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            Кадровая служба предприятия
+                            <span class="text-[9px] uppercase font-mono px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/30">Панель HR</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Управление воронкой соискателей, обращениями, набором и регламентом 152-ФЗ</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-semibold">
+                    <button onclick="switchTab('applicants')" id="hrSubBtnApplicants"
+                        class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span>👥 Кандидаты</span>
+                    </button>
+                    <button onclick="switchTab('inquiries')" id="hrSubBtnInquiries"
+                        class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span>💬 Вопросы</span>
+                        <span id="badgeInquiriesSub" class="hidden px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-orange-500 text-white">0</span>
+                    </button>
+                    <button onclick="switchTab('vacancies')" id="hrSubBtnVacancies"
+                        class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span>💼 Вакансии</span>
+                    </button>
+                    <button onclick="switchTab('security')" id="hrSubBtnSecurity"
+                        class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span>⚖️ 152-ФЗ и ГОСТ</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- =========================================================================
+                КОНСОЛИДИРОВАННЫЙ ПУЛЬТ SUPERADMIN / ВЛАДЕЛЬЦА (OWNER HUB)
+            ========================================================================= -->
+            <div id="ownerRoleSubbar" class="hidden bg-gradient-to-r from-purple-900/20 via-indigo-900/15 to-purple-900/10 backdrop-blur-md rounded-2xl p-3 border border-purple-500/30 shadow-xs flex flex-wrap items-center justify-between gap-3 mb-6 transition-all">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-lg border border-purple-500/30 shadow-inner">
+                        👑
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            Центр управления SuperAdmin
+                            <span class="text-[9px] uppercase font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-400 font-bold border border-purple-500/30">Владелец</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Эксклюзивный доступ: кастомизация текстов и кнопок, конструктор анкеты, роли, рассылка и ИИ</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-semibold">
+                    <button onclick="switchTab('customization')" id="ownerSubBtnCustomization"
+                        class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span>🎨 Кастомизация</span>
+                    </button>
+                    <button onclick="switchTab('questions')" id="ownerSubBtnQuestions"
+                        class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span>🛠 Конструктор анкеты</span>
+                    </button>
+                    <button onclick="switchTab('admins')" id="ownerSubBtnAdmins"
+                        class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span>🔐 Права и доступ</span>
+                    </button>
+                    <button onclick="switchTab('broadcast')" id="ownerSubBtnBroadcast"
+                        class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span>📢 Рассылка</span>
+                    </button>
+                    <button onclick="switchTab('ai')" id="ownerSubBtnAi"
+                        class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                        <span>🧠 ИИ-Шлюз</span>
+                    </button>
+                </div>
+            </div>
 
             <!-- =========================================================================
                 1. ГЛАВНЫЙ ЭКРАН (ПУБЛИЧНЫЙ ЛЕНДИНГ ПРЕДПРИЯТИЯ)
@@ -2892,10 +2927,14 @@
 
                 const openCount = allInquiriesData.filter(x => x.status !== 'Отвечено' && x.status !== 'Закрыто').length;
                 if (countBadge) countBadge.innerText = `${allInquiriesData.length} (новых: ${openCount})`;
-                if (navBadge) {
-                    navBadge.innerText = openCount;
-                    navBadge.classList.toggle('hidden', openCount === 0);
-                }
+                const subBadge = document.getElementById('badgeInquiriesSub');
+                const mNavBadge = document.getElementById('mBadgeInquiriesNav');
+                [navBadge, subBadge, mNavBadge].forEach(b => {
+                    if (b) {
+                        b.innerText = openCount;
+                        b.classList.toggle('hidden', openCount === 0);
+                    }
+                });
                 renderInquiriesList();
             } catch (e) {
                 if (container) container.innerHTML = '<div class="text-center py-8 text-red-400 text-xs">Не удалось загрузить обращения. Повторите попытку.</div>';
@@ -3629,27 +3668,41 @@
                 }
             }
 
-            const techBtn = document.getElementById('topBtnTech');
-            const mTechBtn = document.getElementById('mTechBtn');
-            const adminsBtn = document.getElementById('topBtnAdmins');
-            const mAdminsBtn = document.getElementById('mAdminsBtn');
-            const aiBtn = document.getElementById('topBtnAi');
-            const mAiBtn = document.getElementById('mAiBtn');
+            const hrBtn = document.getElementById('topBtnHrHub');
+            const mHrBtn = document.getElementById('mBtnHrHub');
+            const techBtn = document.getElementById('topBtnTechHub');
+            const mTechBtn = document.getElementById('mBtnTechHub');
+            const ownerBtn = document.getElementById('topBtnOwnerHub');
+            const mOwnerBtn = document.getElementById('mBtnOwnerHub');
 
             if (state.role === 'superadmin') {
-                if (techBtn) techBtn.classList.remove('hidden');
-                if (mTechBtn) mTechBtn.classList.remove('hidden');
-                if (adminsBtn) adminsBtn.classList.remove('hidden');
-                if (mAdminsBtn) mAdminsBtn.classList.remove('hidden');
-                if (aiBtn) aiBtn.classList.remove('hidden');
-                if (mAiBtn) mAiBtn.classList.remove('hidden');
+                hrBtn?.classList.remove('hidden');
+                mHrBtn?.classList.remove('hidden');
+                techBtn?.classList.remove('hidden');
+                mTechBtn?.classList.remove('hidden');
+                ownerBtn?.classList.remove('hidden');
+                mOwnerBtn?.classList.remove('hidden');
+            } else if (state.role === 'tech') {
+                hrBtn?.classList.add('hidden');
+                mHrBtn?.classList.add('hidden');
+                techBtn?.classList.remove('hidden');
+                mTechBtn?.classList.remove('hidden');
+                ownerBtn?.classList.add('hidden');
+                mOwnerBtn?.classList.add('hidden');
+            } else if (state.role === 'hr' || state.role === 'depot') {
+                hrBtn?.classList.remove('hidden');
+                mHrBtn?.classList.remove('hidden');
+                techBtn?.classList.add('hidden');
+                mTechBtn?.classList.add('hidden');
+                ownerBtn?.classList.add('hidden');
+                mOwnerBtn?.classList.add('hidden');
             } else {
-                if (techBtn) techBtn.classList.add('hidden');
-                if (mTechBtn) mTechBtn.classList.add('hidden');
-                if (adminsBtn) adminsBtn.classList.add('hidden');
-                if (mAdminsBtn) mAdminsBtn.classList.add('hidden');
-                if (aiBtn) aiBtn.classList.add('hidden');
-                if (mAiBtn) mAiBtn.classList.add('hidden');
+                hrBtn?.classList.add('hidden');
+                mHrBtn?.classList.add('hidden');
+                techBtn?.classList.add('hidden');
+                mTechBtn?.classList.add('hidden');
+                ownerBtn?.classList.add('hidden');
+                mOwnerBtn?.classList.add('hidden');
             }
 
             if (isStaff) {
@@ -3797,10 +3850,12 @@
                 mServiceNav.classList.remove('flex');
             }
 
-            ['topBtnTech', 'mTechBtn', 'topBtnAdmins', 'mAdminsBtn', 'topBtnAi', 'mAiBtn'].forEach(id => {
+            ['topBtnHrHub', 'mBtnHrHub', 'topBtnTechHub', 'mBtnTechHub', 'topBtnOwnerHub', 'mBtnOwnerHub'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
             });
+            document.getElementById('hrRoleSubbar')?.classList.add('hidden');
+            document.getElementById('ownerRoleSubbar')?.classList.add('hidden');
 
             applyCandidatesMenuVisibility();
             renderCabinetView();
@@ -3817,15 +3872,30 @@
         // =========================================================================
 
         function switchTab(tabName) {
-            const staffTabs = ['vacancies', 'applicants', 'inquiries', 'questions', 'security', 'tech', 'admins', 'ai', 'customization', 'broadcast'];
-            if (staffTabs.includes(tabName)) {
-                if (!['hr', 'tech', 'superadmin', 'depot'].includes(state.role)) {
-                    alert('Доступ ограничен. Данный раздел предназначен только для уполномоченных сотрудников отдела кадров и администраторов МУП «УЭТ».');
+            // Разрешаем макро-роутинг по клику на основные кнопки ролей
+            if (tabName === 'hr') tabName = 'applicants';
+            if (tabName === 'owner') tabName = 'customization';
+
+            const hrTabs = ['applicants', 'inquiries', 'vacancies', 'security'];
+            const ownerTabs = ['customization', 'questions', 'admins', 'broadcast', 'ai'];
+            const techTabs = ['tech'];
+
+            if (hrTabs.includes(tabName)) {
+                if (!['hr', 'superadmin', 'depot', 'tech'].includes(state.role)) {
+                    alert('Доступ ограничен. Данный раздел предназначен для кадровой службы МУП «УЭТ».');
                     openLoginModal('login');
                     return;
                 }
-                if (['tech', 'admins', 'ai'].includes(tabName) && state.role !== 'superadmin') {
-                    alert('Доступ запрещен. Требуются права Главного администратора (SuperAdmin).');
+            }
+            if (techTabs.includes(tabName)) {
+                if (!['tech', 'superadmin'].includes(state.role)) {
+                    alert('Доступ ограничен. Данный раздел предназначен для технических инженеров и SuperAdmin.');
+                    return;
+                }
+            }
+            if (ownerTabs.includes(tabName)) {
+                if (state.role !== 'superadmin') {
+                    alert('Доступ запрещен. Раздел доступен исключительно Главному администратору (SuperAdmin).');
                     return;
                 }
             }
@@ -3855,36 +3925,103 @@
                 }
             });
 
-            if (tabName === 'customization') loadCustomizationSettings();
-            if (tabName === 'broadcast') updateBroadcastPreview();
+            // Управление видимостью консолидированных суб-баров (HR vs Owner)
+            const hrSubbar = document.getElementById('hrRoleSubbar');
+            const ownerSubbar = document.getElementById('ownerRoleSubbar');
 
-            // Обновление кнопок в ЕДИНОМ меню
-            const topBtns = [
-                { id: 'topBtnLanding', tab: 'landing' },
-                { id: 'topBtnSurvey', tab: 'survey16' },
-                { id: 'topBtnStatus', tab: 'status' },
-                { id: 'topBtnCabinet', tab: 'cabinet' },
-                { id: 'topBtnApplicants', tab: 'applicants' },
-                { id: 'topBtnInquiries', tab: 'inquiries' },
-                { id: 'topBtnCustomization', tab: 'customization' },
-                { id: 'topBtnBroadcast', tab: 'broadcast' },
-                { id: 'topBtnVacancies', tab: 'vacancies' },
-                { id: 'topBtnQuestions', tab: 'questions' },
-                { id: 'topBtnSecurity', tab: 'security' },
-                { id: 'topBtnAdmins', tab: 'admins' },
-                { id: 'topBtnAi', tab: 'ai' },
-                { id: 'topBtnTech', tab: 'tech' }
+            if (hrTabs.includes(tabName)) {
+                hrSubbar?.classList.remove('hidden');
+                ownerSubbar?.classList.add('hidden');
+            } else if (ownerTabs.includes(tabName)) {
+                ownerSubbar?.classList.remove('hidden');
+                hrSubbar?.classList.add('hidden');
+            } else {
+                hrSubbar?.classList.add('hidden');
+                ownerSubbar?.classList.add('hidden');
+            }
+
+            // Подсветка внутренних кнопок в HR Subbar
+            const hrSubBtns = [
+                { id: 'hrSubBtnApplicants', active: tabName === 'applicants' },
+                { id: 'hrSubBtnInquiries', active: tabName === 'inquiries' },
+                { id: 'hrSubBtnVacancies', active: tabName === 'vacancies' },
+                { id: 'hrSubBtnSecurity', active: tabName === 'security' },
             ];
-            topBtns.forEach(b => {
+            hrSubBtns.forEach(b => {
                 const el = document.getElementById(b.id);
                 if (el) {
-                    if (b.tab === tabName) {
-                        el.className = "px-3.5 py-2 rounded-xl transition bg-[#1371B9] text-white shadow-sm font-bold flex items-center gap-1.5";
+                    if (b.active) {
+                        el.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition bg-[#1371B9] text-white shadow-2xs flex items-center gap-1.5";
                     } else {
-                        el.className = "px-3.5 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5";
+                        el.className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-1.5";
                     }
                 }
             });
+
+            // Подсветка внутренних кнопок в Owner Subbar
+            const ownerSubBtns = [
+                { id: 'ownerSubBtnCustomization', active: tabName === 'customization' },
+                { id: 'ownerSubBtnQuestions', active: tabName === 'questions' },
+                { id: 'ownerSubBtnAdmins', active: tabName === 'admins' },
+                { id: 'ownerSubBtnBroadcast', active: tabName === 'broadcast' },
+                { id: 'ownerSubBtnAi', active: tabName === 'ai' },
+            ];
+            ownerSubBtns.forEach(b => {
+                const el = document.getElementById(b.id);
+                if (el) {
+                    if (b.active) {
+                        el.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition bg-purple-600 text-white shadow-2xs flex items-center gap-1.5";
+                    } else {
+                        el.className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition hover:bg-purple-900/30 text-purple-700 dark:text-purple-300 flex items-center gap-1.5";
+                    }
+                }
+            });
+
+            // Подсветка основных кнопок в шапке (Соискатель + 3 Hub-кнопки)
+            const isHrActive = hrTabs.includes(tabName);
+            const isTechActive = techTabs.includes(tabName);
+            const isOwnerActive = ownerTabs.includes(tabName);
+
+            const hrHubBtn = document.getElementById('topBtnHrHub');
+            const techHubBtn = document.getElementById('topBtnTechHub');
+            const ownerHubBtn = document.getElementById('topBtnOwnerHub');
+
+            if (hrHubBtn) {
+                hrHubBtn.className = isHrActive
+                    ? "px-3.5 py-1.5 rounded-lg transition bg-[#1371B9] text-white font-bold flex items-center gap-1.5 shadow-2xs"
+                    : "px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5";
+            }
+            if (techHubBtn) {
+                techHubBtn.className = isTechActive
+                    ? "px-3.5 py-1.5 rounded-lg transition bg-amber-600 text-white font-bold flex items-center gap-1.5 shadow-2xs"
+                    : "px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5";
+            }
+            if (ownerHubBtn) {
+                ownerHubBtn.className = isOwnerActive
+                    ? "px-3.5 py-1.5 rounded-lg transition bg-purple-700 text-white font-bold flex items-center gap-1.5 shadow-2xs border border-purple-500/50"
+                    : "px-3.5 py-1.5 rounded-lg transition hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1.5 shadow-2xs";
+            }
+
+            // Кнопки соискателя в верхней панели
+            const candBtns = [
+                { id: 'topBtnLanding', active: tabName === 'landing' },
+                { id: 'topBtnSurvey', active: tabName === 'survey16' },
+                { id: 'topBtnStatus', active: tabName === 'status' },
+                { id: 'topBtnCabinet', active: tabName === 'cabinet' },
+            ];
+            candBtns.forEach(b => {
+                const el = document.getElementById(b.id);
+                if (el) {
+                    if (b.active) {
+                        el.className = "px-3 py-2 rounded-xl transition bg-[#1371B9] text-white shadow-xs font-bold flex items-center gap-1.5";
+                    } else {
+                        el.className = "px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5";
+                    }
+                }
+            });
+
+            if (tabName === 'customization') loadCustomizationSettings();
+            if (tabName === 'broadcast') updateBroadcastPreview();
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
 

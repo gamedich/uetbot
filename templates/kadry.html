@@ -1404,6 +1404,9 @@
             // Проверка режима технического обслуживания (ТО)
             checkMaintenanceMode();
 
+            // Динамическая синхронизация перечня вакансий из единого источника
+            syncDynamicVacancies();
+
             // Восстановление авторизованной сессии (sessionStorage или сохраненная в localStorage)
             let savedSession = sessionStorage.getItem('uet_session');
             if (!savedSession) {
@@ -1670,7 +1673,7 @@
             } else if (presetKey === 'username') {
                 if (uInput) {
                     uInput.value = '';
-                    uInput.placeholder = '@its_darksold1 или ваш Telegram username...';
+                    uInput.placeholder = '@username или ваш логин в Telegram...';
                     uInput.focus();
                 }
                 if (pHint) pHint.innerText = 'Введите ваш @username в Telegram и персональный пароль:';
@@ -2245,8 +2248,55 @@
         }
 
         // =========================================================================
-        // УПРАВЛЕНИЕ И КАСТОМИЗАЦИЯ ВАКАНСИЙ (ОТКРЫТЬ / ЗАКРЫТЬ НАБОР)
+        // УПРАВЛЕНИЕ И КАСТОМИЗАЦИЯ ВАКАНСИЙ (ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ)
         // =========================================================================
+
+        function syncDynamicVacanciesFromList(list) {
+            if (!list || !Array.isArray(list)) return;
+            const titles = list.map(v => typeof v === 'string' ? v : v.title).filter(Boolean);
+            const openTitles = list.filter(v => typeof v === 'object' ? v.is_open : true).map(v => typeof v === 'string' ? v : v.title).filter(Boolean);
+            const activeTitles = openTitles.length ? openTitles : titles;
+
+            // 1. Обновление 5-го шага веб-анкеты (surveyQuestions)
+            if (typeof surveyQuestions !== 'undefined' && Array.isArray(surveyQuestions)) {
+                const q5 = surveyQuestions.find(q => q.field === 'step5_vacancy');
+                if (q5 && activeTitles.length) {
+                    q5.options = [...activeTitles];
+                }
+            }
+
+            // 2. Обновление выпадающего списка регистрации regVacancy
+            const regVac = document.getElementById('regVacancy');
+            if (regVac && activeTitles.length) {
+                const curVal = regVac.value;
+                regVac.innerHTML = activeTitles.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                if (curVal && activeTitles.includes(curVal)) {
+                    regVac.value = curVal;
+                }
+            }
+
+            // 3. Обновление модального окна редактирования соискателя mVacancy
+            const mVac = document.getElementById('mVacancy');
+            if (mVac && titles.length) {
+                const curVal = mVac.value;
+                mVac.innerHTML = titles.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                if (curVal && titles.includes(curVal)) {
+                    mVac.value = curVal;
+                }
+            }
+        }
+
+        async function syncDynamicVacancies() {
+            try {
+                const resp = await fetch('/api/vacancies?all=1');
+                const data = await resp.json();
+                if (data && data.vacancies) {
+                    syncDynamicVacanciesFromList(data.vacancies);
+                }
+            } catch (e) {
+                console.warn('Ошибка автосинхронизации вакансий:', e);
+            }
+        }
 
         async function loadVacanciesManagement() {
             const grid = document.getElementById('vacanciesManagementGrid');
@@ -2268,6 +2318,7 @@
                 }
 
                 const list = data.vacancies || [];
+                syncDynamicVacanciesFromList(list);
                 const openCount = list.filter(v => v.is_open).length;
                 const closedCount = list.length - openCount;
 

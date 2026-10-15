@@ -529,9 +529,10 @@ class SupportForm(StatesGroup):
 VACANCIES: List[str] = [
     "Водитель трамвая",
     "Водитель троллейбуса",
-    "Кондуктор",
     "Слесарь по ремонту подвижного состава",
     "Электромонтер контактной сети",
+    "Монтер пути",
+    "Кондуктор",
 ]
 
 BASE_DIR: Path = Path(__file__).resolve().parent
@@ -910,13 +911,13 @@ async def safe_answer(
 
 async def safe_send(
     bot_instance: Bot,
-    chat_id: int,
+    chat_id: Union[int, str],
     text: str,
     reply_markup: Optional[Union[types.InlineKeyboardMarkup, types.ReplyKeyboardMarkup]] = None,
     parse_mode: Optional[str] = "HTML",
 ) -> bool:
     """
-    Безопасная отправка в произвольный чат с полной защитой от FloodWait,
+    Безопасная отправка в произвольный чат/канал с полной защитой от FloodWait,
     блокировок бота пользователем и сетевых таймаутов.
     """
     if not chat_id or not text:
@@ -963,17 +964,19 @@ async def safe_send(
 async def broadcast_message(
     bot_instance: Bot,
     text: str,
-    target_mode: str = "me",  # "me", "hr", "all"
+    target_mode: str = "me",  # "me", "channel", "hr", "all"
     title: str = "",
     reply_markup: Optional[Any] = None,
+    channel_target: Optional[Union[int, str]] = None,
 ) -> Dict[str, Any]:
     """
     Универсальный движок рассылки сообщений со встроенным тестовым режимом.
-    - 'me': рассылка строго владельцу/супер-админу (@its_darksold1 / SUPER_ADMIN_ID).
+    - 'me': рассылка строго главному администратору (SUPER_ADMIN_ID).
+    - 'channel': публикация в официальный канал предприятия (или указанный чат).
     - 'hr': рассылка в кадровый чат и сотрудникам отдела кадров.
     - 'all': полномасштабная рассылка соискателям из БД, админам и в кадровый чат.
     """
-    targets: Set[int] = set()
+    targets: List[Union[int, str]] = []
     raw_super = CONFIG.get("SUPER_ADMIN_ID")
     super_id = int(raw_super) if raw_super and str(raw_super).isdigit() else 7657422832
 
@@ -981,29 +984,36 @@ async def broadcast_message(
     hr_group = int(raw_hr) if raw_hr and str(raw_hr).lstrip("-").isdigit() else None
 
     if target_mode == "me":
-        targets.add(super_id)
+        targets.append(super_id)
     elif target_mode == "channel":
-        targets.add(-1004402944926)
-        targets.add(super_id)
+        c_list = []
+        if channel_target:
+            c_list.append(channel_target)
+        env_channel = CONFIG.get("BROADCAST_CHANNEL_ID")
+        if env_channel:
+            c_list.append(env_channel)
+        c_list.extend(["@helpuet73", "-1004402944926"])
+        for c in c_list:
+            if c and c not in targets:
+                targets.append(c)
     elif target_mode == "hr":
         if hr_group:
-            targets.add(hr_group)
-        targets.add(super_id)
+            targets.append(hr_group)
+        targets.append(super_id)
         try:
             for adm_id, _ in db.get_all_admins():
-                if str(adm_id).lstrip("-").isdigit():
-                    targets.add(int(adm_id))
+                if str(adm_id).lstrip("-").isdigit() and int(adm_id) not in targets:
+                    targets.append(int(adm_id))
         except Exception as e:
             logger.warning(f"Ошибка получения админов для рассылки HR: {e}")
     else:  # "all"
-        targets.add(super_id)
-        targets.add(-1004402944926)
-        if hr_group:
-            targets.add(hr_group)
+        targets.append(super_id)
+        if hr_group and hr_group not in targets:
+            targets.append(hr_group)
         try:
             for adm_id, _ in db.get_all_admins():
-                if str(adm_id).lstrip("-").isdigit():
-                    targets.add(int(adm_id))
+                if str(adm_id).lstrip("-").isdigit() and int(adm_id) not in targets:
+                    targets.append(int(adm_id))
         except Exception:
             pass
         # Собираем пользователей из обеих баз
@@ -1021,7 +1031,9 @@ async def broadcast_message(
                     for r in rows:
                         uid_str = str(r[0]).strip()
                         if uid_str.lstrip("-").isdigit():
-                            targets.add(int(uid_str))
+                            uid_int = int(uid_str)
+                            if uid_int not in targets:
+                                targets.append(uid_int)
             except Exception as e:
                 logger.warning(f"Ошибка сбора пользователей для рассылки: {e}")
 
@@ -1038,13 +1050,16 @@ async def broadcast_message(
             ok = await safe_send(bot_instance, tid, formatted_msg, reply_markup=reply_markup, parse_mode="HTML")
             if ok:
                 sent += 1
-                recipients.append({"id": tid, "status": "ok"})
+                recipients.append({"id": str(tid), "status": "ok"})
+                if target_mode == "channel":
+                    # Если отправка в один из вариантов канала успешна, прерываем цикл перебора каналов
+                    break
             else:
                 failed += 1
-                recipients.append({"id": tid, "status": "failed"})
+                recipients.append({"id": str(tid), "status": "failed"})
         except Exception as e:
             failed += 1
-            recipients.append({"id": tid, "status": "error", "error": str(e)})
+            recipients.append({"id": str(tid), "status": "error", "error": str(e)})
         await asyncio.sleep(0.04)
 
     logger.info(f"[BROADCAST] Режим '{target_mode}': доставлено {sent}, ошибок {failed}, всего {len(targets)}")

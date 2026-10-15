@@ -35,6 +35,7 @@ private/
 *.sqlite
 *.sqlite3
 data/
+!data/vacancies.json
 backups/
 *.zip
 *.docx

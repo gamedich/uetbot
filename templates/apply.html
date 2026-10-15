@@ -1097,7 +1097,7 @@
                                 <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-200 dark:bg-blue-900 text-[#1371B9] dark:text-blue-300">1 получатель</span>
                             </div>
                             <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                                Отправка лично вам (@its_darksold1 / 7657422832). Проверьте форматирование, ссылки и оформление перед массовой рассылкой.
+                                Отправка тестового предпросмотра администратору в Telegram. Проверьте форматирование, ссылки и оформление перед массовой рассылкой.
                             </p>
                         </div>
                         <div class="mt-3 text-[11px] font-bold text-[#1371B9] dark:text-blue-400 flex items-center gap-1">
@@ -1184,6 +1184,13 @@
             <!-- ФОРМА СООБЩЕНИЯ -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div class="space-y-4">
+                    <div id="broadcastChannelField" class="hidden p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 space-y-1.5 transition">
+                        <label class="block text-xs font-bold text-purple-900 dark:text-purple-300">Целевой канал / группа Telegram:</label>
+                        <input type="text" id="broadcastChannelTarget" value="@helpuet73" placeholder="@helpuet73 или -1004402944926"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700 text-xs sm:text-sm font-semibold text-slate-800 dark:text-white outline-none focus:border-purple-500">
+                        <p class="text-[11px] text-purple-700 dark:text-purple-400">💡 Бот должен быть назначен администратором канала с правом «Публикация сообщений».</p>
+                    </div>
+
                     <div>
                         <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Заголовок / Тема рассылки</label>
                         <input type="text" id="broadcastTitleInput" placeholder="Например: Новый набор в группу водителей трамвая"
@@ -2054,8 +2061,8 @@
 
                 <form onsubmit="handleStaffLogin(event)" autocomplete="off" class="space-y-3.5">
                     <div>
-                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Служебный логин, роль или @username</label>
-                        <input id="staffLoginUsername" type="text" placeholder="admin, hr, tech или @its_darksold1..."
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Служебный логин или роль</label>
+                        <input id="staffLoginUsername" type="text" placeholder="admin, hr, tech или ID сотрудника..."
                             class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-purple-500 text-xs sm:text-sm font-medium"
                             required />
                     </div>
@@ -2083,7 +2090,7 @@
                         <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600">Telegram</span>
                     </div>
                     <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Нажмите кнопку — бот мгновенно отправит полную памятку со всеми паролями и ролями лично вам в Telegram (@its_darksold1).
+                        Нажмите кнопку — бот мгновенно отправит полную памятку со всеми паролями и ролями администратору в Telegram.
                     </p>
                     <button type="button" onclick="sendInstructionToTg()" id="btnSendTgInstruction"
                         class="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
@@ -2398,6 +2405,9 @@
 
             // Проверка режима технического обслуживания (ТО)
             checkMaintenanceMode();
+
+            // Динамическая синхронизация перечня вакансий из единого источника
+            syncDynamicVacancies();
 
             // Восстановление авторизованной сессии (sessionStorage или сохраненная в localStorage)
             let savedSession = sessionStorage.getItem('uet_session');
@@ -2827,7 +2837,7 @@
                 });
                 const res = await resp.json();
                 if (statusEl) {
-                    statusEl.innerText = res.message || '✅ Шпаргалка успешно отправлена вам в Telegram (@its_darksold1)!';
+                    statusEl.innerText = res.message || '✅ Памятка успешно отправлена администратору в Telegram!';
                     statusEl.classList.remove('hidden');
                 }
             } catch (err) {
@@ -3307,6 +3317,15 @@
             const cardHr = document.getElementById('bModeCardHr');
             const cardAll = document.getElementById('bModeCardAll');
             const submitBtnText = document.getElementById('btnSubmitBroadcastText');
+            const chField = document.getElementById('broadcastChannelField');
+
+            if (chField) {
+                if (mode === 'channel') {
+                    chField.classList.remove('hidden');
+                } else {
+                    chField.classList.add('hidden');
+                }
+            }
 
             const activeStyle = 'cursor-pointer p-4 rounded-2xl border-2 border-[#1371B9] bg-blue-50/50 dark:bg-blue-950/30 transition flex flex-col justify-between';
             const inactiveStyle = 'cursor-pointer p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 transition flex flex-col justify-between';
@@ -3318,7 +3337,7 @@
 
             if (submitBtnText) {
                 if (mode === 'me') submitBtnText.innerText = '🚀 Отправить рассылку (Только мне — Тест)';
-                else if (mode === 'channel') submitBtnText.innerText = '📢 Опубликовать в канал @helpuet73';
+                else if (mode === 'channel') submitBtnText.innerText = '📢 Опубликовать в Telegram-канал';
                 else if (mode === 'hr') submitBtnText.innerText = '🚀 Отправить в чат Отдела Кадров';
                 else submitBtnText.innerText = '🚀 Запустить боевую рассылку (Всем соискателям)';
             }
@@ -3397,6 +3416,9 @@
             if (statusInfo) statusInfo.innerText = 'Идет отправка сообщений...';
 
             try {
+                const channelTargetInput = document.getElementById('broadcastChannelTarget');
+                const channelTarget = channelTargetInput ? channelTargetInput.value.trim() : '@helpuet73';
+
                 const resp = await fetch('/api/broadcast/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -3404,7 +3426,8 @@
                         mode: currentBroadcastMode,
                         title: title,
                         text: text,
-                        with_button: withBtn
+                        with_button: withBtn,
+                        channel_target: channelTarget
                     })
                 });
                 const res = await resp.json();
@@ -4101,8 +4124,53 @@
         }
 
         // =========================================================================
-        // УПРАВЛЕНИЕ И КАСТОМИЗАЦИЯ ВАКАНСИЙ (ОТКРЫТЬ / ЗАКРЫТЬ НАБОР)
+        // УПРАВЛЕНИЕ И КАСТОМИЗАЦИЯ ВАКАНСИЙ (ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ)
         // =========================================================================
+
+        function syncDynamicVacanciesFromList(list) {
+            if (!list || !Array.isArray(list)) return;
+            const titles = list.map(v => typeof v === 'string' ? v : v.title).filter(Boolean);
+            const openTitles = list.filter(v => typeof v === 'object' ? v.is_open : true).map(v => typeof v === 'string' ? v : v.title).filter(Boolean);
+            const activeTitles = openTitles.length ? openTitles : titles;
+
+            // 1. Обновление 5-го шага веб-анкеты (surveyQuestions)
+            const q5 = surveyQuestions.find(q => q.field === 'step5_vacancy');
+            if (q5 && activeTitles.length) {
+                q5.options = [...activeTitles];
+            }
+
+            // 2. Обновление выпадающего списка регистрации regVacancy
+            const regVac = document.getElementById('regVacancy');
+            if (regVac && activeTitles.length) {
+                const curVal = regVac.value;
+                regVac.innerHTML = activeTitles.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                if (curVal && activeTitles.includes(curVal)) {
+                    regVac.value = curVal;
+                }
+            }
+
+            // 3. Обновление модального окна редактирования соискателя mVacancy
+            const mVac = document.getElementById('mVacancy');
+            if (mVac && titles.length) {
+                const curVal = mVac.value;
+                mVac.innerHTML = titles.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                if (curVal && titles.includes(curVal)) {
+                    mVac.value = curVal;
+                }
+            }
+        }
+
+        async function syncDynamicVacancies() {
+            try {
+                const resp = await fetch('/api/vacancies?all=1');
+                const data = await resp.json();
+                if (data && data.vacancies) {
+                    syncDynamicVacanciesFromList(data.vacancies);
+                }
+            } catch (e) {
+                console.warn('Ошибка автосинхронизации вакансий:', e);
+            }
+        }
 
         async function loadVacanciesManagement() {
             const grid = document.getElementById('vacanciesManagementGrid');
@@ -4124,6 +4192,7 @@
                 }
 
                 const list = data.vacancies || [];
+                syncDynamicVacanciesFromList(list);
                 const openCount = list.filter(v => v.is_open).length;
                 const closedCount = list.length - openCount;
 

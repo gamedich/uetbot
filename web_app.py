@@ -1680,6 +1680,14 @@ class WebPanel:
                 "description": "Обслуживание и оперативный ремонт контактных сетей и тяговых подстанций.",
                 "sub": "Обслуживание контактных сетей и подстанций",
             },
+            "Монтер пути": {
+                "salary": "42 000 — 65 000 ₽",
+                "training": False,
+                "stipend": None,
+                "requirements": "От 21 года, хорошая физическая подготовка",
+                "description": "Текущее содержание, ремонт и обслуживание трамвайных путей и стрелочных переводов.",
+                "sub": "Служба пути МУП «Ульяновскэлектротранс»",
+            },
         }
 
         show_all = request.query.get("all") in ("1", "true")
@@ -2232,15 +2240,52 @@ class WebPanel:
             if not text or len(text) < 3:
                 return web.json_response({"ok": False, "error": "Текст сообщения не может быть пустым (минимум 3 символа)."}, status=400)
 
+            channel_target = data.get("channel_target") or data.get("channel") or data.get("chat_id")
+            with_btn = data.get("with_button", True)
+
+            reply_markup = None
+            if with_btn:
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+                reply_markup = InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [InlineKeyboardButton(text="🌐 Открыть Кадровый портал МУП «УЭТ»", url=web_url)]
+                    ]
+                )
+
             from common import broadcast_message
-            res = await broadcast_message(self.bot, text=text, target_mode=mode, title=title)
+            res = await broadcast_message(
+                self.bot,
+                text=text,
+                target_mode=mode,
+                title=title,
+                reply_markup=reply_markup,
+                channel_target=channel_target,
+            )
+            delivered = res.get("sent", 0)
+            failed = res.get("failed", 0)
+            total = res.get("total", 0)
+
+            if mode == "channel" and delivered == 0:
+                return web.json_response({
+                    "ok": False,
+                    "error": (
+                        "Не удалось опубликовать пост в канале. "
+                        "Убедитесь, что бот @UetFeedback_bot добавлен в администраторы канала с правом «Публикация сообщений»."
+                    ),
+                    "delivered": 0,
+                    "failed": failed,
+                    "total": total,
+                    "recipients": res.get("recipients", []),
+                }, status=400)
+
             return web.json_response({
                 "ok": True,
                 "result": res,
-                "total": res.get("total", 0),
-                "delivered": res.get("delivered", 0),
-                "failed": res.get("failed", 0),
-                "message": res.get("message", ""),
+                "total": total,
+                "delivered": delivered,
+                "failed": failed,
+                "message": f"Рассылка успешно выполнена. Доставлено: {delivered}, ошибок: {failed}.",
             })
         except Exception as e:
             logger.error("Ошибка при отправке рассылки: %s", e)
@@ -2257,7 +2302,7 @@ class WebPanel:
             "━━━━━━━━━━━━━━━━━━━━━\n"
             "🌐 <b>Адрес веб-портала:</b> https://213.226.124.135.sslip.io/\n\n"
             "👑 <b>1. ГЛАВНЫЙ АДМИНИСТРАТОР (ВЛАДЕЛЕЦ):</b>\n"
-            "• Логин: <code>@its_darksold1</code> или <code>7657422832</code>\n"
+            f"• Логин: <code>admin</code> или <code>superadmin</code> (ID: <code>{super_id}</code>)\n"
             "• Пароль: <code>uet2026super</code>\n"
             "• <i>Права: Полный доступ, Git, ИИ-шлюз, рассылки, конструктор текстов</i>\n\n"
             "🛠 <b>2. ТЕХНИЧЕСКИЙ АДМИНИСТРАТОР:</b>\n"

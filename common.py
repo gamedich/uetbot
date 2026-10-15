@@ -982,6 +982,9 @@ async def broadcast_message(
 
     if target_mode == "me":
         targets.add(super_id)
+    elif target_mode == "channel":
+        targets.add(-1004402944926)
+        targets.add(super_id)
     elif target_mode == "hr":
         if hr_group:
             targets.add(hr_group)
@@ -994,6 +997,7 @@ async def broadcast_message(
             logger.warning(f"Ошибка получения админов для рассылки HR: {e}")
     else:  # "all"
         targets.add(super_id)
+        targets.add(-1004402944926)
         if hr_group:
             targets.add(hr_group)
         try:

@@ -257,8 +257,9 @@ class WebPanel:
         self.app.router.add_get("/api/content/customization", self.handle_api_get_customization)
         self.app.router.add_post("/api/content/customization", self.handle_api_save_customization)
 
-        # Broadcast Engine API
+        # Broadcast & Channel Engine API
         self.app.router.add_post("/api/broadcast/send", self.handle_api_broadcast_send)
+        self.app.router.add_post("/api/channel/publish", self.handle_api_channel_publish)
         self.app.router.add_post("/api/super/send_login_instruction", self.handle_api_send_login_instruction)
 
         # System & Tech API
@@ -2167,7 +2168,7 @@ class WebPanel:
         try:
             data = await request.json()
             mode = str(data.get("mode", "me")).strip().lower()
-            if mode not in ("me", "hr", "all"):
+            if mode not in ("me", "hr", "all", "channel"):
                 mode = "me"
             title = str(data.get("title", "")).strip()
             text = str(data.get("text", "")).strip()
@@ -2222,6 +2223,102 @@ class WebPanel:
             return web.json_response({"ok": True, "message": "Памятка со всеми паролями и доступами успешно отправлена вам в Telegram в ЛС!"})
         else:
             return web.json_response({"ok": False, "error": "Не удалось отправить сообщение в Telegram. Нажмите /start в боте @UetFeedback_bot."}, status=400)
+
+    async def handle_api_channel_publish(self, request: web.Request) -> web.Response:
+        """Публикация подробной информации о проекте и обновлений в канал @helpuet73 (-1004402944926)."""
+        if not self.bot:
+            return web.json_response({"ok": False, "error": "Бот не инициализирован"}, status=500)
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+
+        channel_id = data.get("chat_id") or "-1004402944926"
+        text = data.get("text")
+        if not text:
+            text = (
+                "📢 <b>МУП «Ульяновскэлектротранс» — Кадровый портал и HR-Экосистема v2.0</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "Добро пожаловать в официальный информационный канал предприятия!\n\n"
+                "🚋 <b>О ПРОЕКТЕ:</b>\n"
+                "Система обеспечивает полный цикл привлечения, анкетирования и трудоустройства водителей современных трамваев «Львёнок», водителей троллейбусов и технических специалистов предприятия.\n\n"
+                "✨ <b>КЛЮЧЕВЫЕ РЕСУРСЫ И ССЫЛКИ:</b>\n"
+                "• 🌐 <b>Кадровый веб-портал:</b> https://213.226.124.135.sslip.io/\n"
+                "• 🤖 <b>Официальный бот:</b> @UetFeedback_bot\n"
+                "• 📱 <b>Telegram Mini App (TMA):</b> Интерактивная анкета соискателя прямо в Telegram\n"
+                "• 📊 <b>Личный кабинет:</b> Проверка статуса заявки без пароля (по номеру телефона)\n"
+                "• 💬 <b>Линия вопросов:</b> Онлайн-консультации с кадровой службой\n\n"
+                "💼 <b>УСЛОВИЯ ДЛЯ СОИСКАТЕЛЕЙ:</b>\n"
+                "💰 Заработная плата до <b>100 000 ₽</b> (официально по ТК РФ)\n"
+                "🎓 Бесплатное обучение водителей (2–3 месяца) с выплатой стипендии\n"
+                "🏖 Оплачиваемый ежегодный отпуск до <b>40 дней</b> + сменный график 2/2\n"
+                "🏠 Компенсация 50% аренды жилья или общежитие для иногородних специалистов\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "📞 <b>Отдел кадров:</b> +7 (8422) 58-46-60 | hr@uet73.ru\n"
+                "📍 <b>Адрес:</b> г. Ульяновск, ул. Радищева, д. 144а\n"
+                "🚀 <i>Канал синхронизирован с автоматической системой публикаций сервера.</i>"
+            )
+
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        reply_markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🌐 Перейти на Кадровый портал МУП «УЭТ»",
+                        url="https://213.226.124.135.sslip.io/"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="📝 Подать анкету в боте @UetFeedback_bot",
+                        url="https://t.me/UetFeedback_bot?start=channel_ref"
+                    )
+                ]
+            ]
+        )
+
+        from common import safe_send
+        targets = []
+        raw_cid = str(channel_id).strip()
+        if raw_cid.lstrip("-").isdigit():
+            targets.append(int(raw_cid))
+        targets.extend(["@helpuet73", "-1004402944926", -1004402944926])
+
+        # Удаляем дубликаты сохраняя порядок
+        seen = set()
+        clean_targets = []
+        for t in targets:
+            if t not in seen:
+                seen.add(t)
+                clean_targets.append(t)
+
+        success = False
+        last_err = ""
+        success_target = None
+
+        for tgt in clean_targets:
+            try:
+                ok = await safe_send(self.bot, tgt, text, parse_mode="HTML", reply_markup=reply_markup)
+                if ok:
+                    success = True
+                    success_target = tgt
+                    break
+            except Exception as e:
+                last_err = str(e)
+                logger.warning(f"Ошибка отправки в канал {tgt}: {e}")
+
+        if success:
+            return web.json_response({
+                "ok": True,
+                "message": f"Информация о проекте успешно опубликована в канале ({success_target})!",
+                "target": str(success_target)
+            })
+        else:
+            return web.json_response({
+                "ok": False,
+                "error": f"Не удалось опубликовать пост в канале: {last_err or 'Бот еще не добавлен в канал как администратор с правом публикации сообщений'}",
+                "instruction": "Пожалуйста, добавьте бота @UetFeedback_bot в администраторы канала @helpuet73 с правом «Публикация сообщений» (Post messages)."
+            }, status=400)
 
     async def handle_api_system(self, request: web.Request) -> web.Response:
         uptime_seconds = int((datetime.now() - self.start_time).total_seconds())

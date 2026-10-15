@@ -80,6 +80,54 @@
         </button>
     </div>
 
+    <!-- ПОЛНОЭКРАННАЯ ЗАГЛУШКА «САЙТ В РАЗРАБОТКЕ / ДОСТУП ЗАКРЫТ» -->
+    <div id="siteLockdownScreen"
+        class="hidden fixed inset-0 z-[90] bg-[#0A192F] flex flex-col items-center justify-center p-4 sm:p-6 text-center select-none overflow-y-auto">
+        <div class="max-w-lg w-full bg-[#112240]/95 backdrop-blur-xl border border-amber-500/30 rounded-3xl p-6 sm:p-10 shadow-2xl relative space-y-6">
+            <div class="w-20 h-20 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-4xl shadow-inner animate-pulse">
+                🚧
+            </div>
+            <div class="space-y-2">
+                <span class="inline-block text-[11px] font-extrabold uppercase px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 tracking-wider">
+                    Технический перерыв • Режим разработки
+                </span>
+                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+                    Сайт в разработке
+                </h1>
+                <p class="text-sm font-bold text-red-400">
+                    Доступ закрыт
+                </p>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                На официальном кадровом портале <b>МУП «Ульяновскэлектротранс»</b> ведутся технические работы и обновление систем. Доступ к публичным сервисам сайта временно ограничен.
+            </p>
+            <div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-700/60 text-left text-xs space-y-2 text-slate-300">
+                <div class="flex items-center gap-2">
+                    <span>📞</span>
+                    <span>Отдел кадров: <b class="text-white">+7 (8422) 58-46-60</b></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>🏢</span>
+                    <span>Адрес: г. Ульяновск, ул. Гончарова, д. 2</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>⏰</span>
+                    <span>Режим работы: Пн–Пт 08:00–17:00</span>
+                </div>
+            </div>
+            <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button type="button" onclick="openLoginModal('staff', 'superadmin')"
+                    class="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#1371B9] hover:bg-blue-600 text-white font-extrabold text-xs uppercase tracking-wider transition shadow-lg shadow-blue-900/50 flex items-center justify-center gap-2">
+                    <span>🔒</span>
+                    <span>Вход для супер-администратора</span>
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-500">
+                МУП «Ульяновскэлектротранс» © 2026 • Горячая клавиша: <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">Ctrl+Shift+A</kbd>
+            </p>
+        </div>
+    </div>
+
     <!-- ВЕРХНЯЯ ПАНЕЛЬ (MAIN TOPBAR - 64PX): БРЕНД, КЛИЕНТСКОЕ МЕНЮ И ПРОФИЛЬ -->
     <header
         class="sticky top-0 z-50 backdrop-blur-md bg-white/95 dark:bg-[#112240]/95 border-b border-slate-200 dark:border-slate-800 transition-colors shadow-xs">
@@ -368,6 +416,12 @@
                     <button onclick="switchTab('ai')" id="ownerSubBtnAi"
                         class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
                         <span>🧠 ИИ-Шлюз</span>
+                    </button>
+                    <button onclick="triggerToggleMaintenance()" id="ownerSubBtnLockdown"
+                        class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 font-bold border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                        title="Включить или отключить режим разработки (заглушку «Доступ закрыт»)">
+                        <span>🚧</span>
+                        <span id="ownerSubLockdownText">Сайт в разработке: ВЫКЛ</span>
                     </button>
                 </div>
             </div>
@@ -1554,13 +1608,13 @@
                 перезапуска сервисов</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <button id="btnToggleMaintenance" onclick="triggerToggleMaintenance()"
-                    class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-left hover:bg-amber-500/20 transition text-amber-600 dark:text-amber-400">
+                    class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left hover:border-[#1371B9] transition">
                     <div class="flex items-center justify-between">
-                        <div class="font-bold text-xs">Режим ТО (Шлюзы & Сайт)</div>
+                        <div class="font-bold text-xs">🚧 Сайт в разработке (Заглушка)</div>
                         <span id="badgeMaintenanceStatus"
-                            class="text-[10px] px-2 py-0.5 rounded font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">ВЫКЛ</span>
+                            class="text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-500 text-white">ДОСТУП ОТКРЫТ</span>
                     </div>
-                    <div class="text-[11px] opacity-80 mt-1">Блокировка приема анкет (Бот/ВК/Сайт)</div>
+                    <div id="badgeMaintenanceDesc" class="text-[11px] opacity-80 mt-1">Доступ открыт. Кликните для включения заглушки «Доступ закрыт».</div>
                 </button>
                 <button onclick="triggerSystemBackup()"
                     class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left hover:border-[#1371B9] transition">
@@ -1978,7 +2032,7 @@
 
     <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ И РЕГИСТРАЦИИ (СОИСКАТЕЛЬ / СЛУЖЕБНЫЙ ВХОД / РЕГИСТРАЦИЯ) -->
     <div id="loginModal"
-        class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+        class="hidden fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
         onclick="handleBackdropClick(event)">
         <div class="bg-white dark:bg-[#112240] rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-slate-200 dark:border-slate-700 transition-colors my-8 relative"
             onclick="event.stopPropagation()">
@@ -2458,6 +2512,14 @@
             if (window.lucide && typeof lucide.createIcons === 'function') {
                 lucide.createIcons();
             }
+
+            // Горячие клавиши для быстрого вызова входа администратора (Ctrl+Shift+A или Ctrl+Shift+L)
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['A', 'a', 'L', 'l', 'Ф', 'ф', 'Д', 'д'].includes(e.key)) {
+                    e.preventDefault();
+                    openLoginModal('staff', 'superadmin');
+                }
+            });
         });
 
         function updateIcons() {
@@ -2514,29 +2576,90 @@
             const stub = document.getElementById('surveyMaintenanceStub');
             const container = document.getElementById('surveyActiveContainer');
             const badge = document.getElementById('badgeMaintenanceStatus');
+            const badgeDesc = document.getElementById('badgeMaintenanceDesc');
+            const rootToggleBtn = document.getElementById('btnToggleMaintenance');
+            const lockdownScreen = document.getElementById('siteLockdownScreen');
+            const ownerSubLockdownText = document.getElementById('ownerSubLockdownText');
+            const ownerSubBtnLockdown = document.getElementById('ownerSubBtnLockdown');
 
-            if (banner) banner.classList.toggle('hidden', !state.isMaintenance);
+            const isAuthAdmin = ['superadmin', 'super', 'tech', 'admin'].includes(state.role);
+
+            if (state.isMaintenance) {
+                if (isAuthAdmin) {
+                    // Для администратора сайт открывается полностью, вверху показывается информационный баннер с кнопкой
+                    if (lockdownScreen) lockdownScreen.classList.add('hidden');
+                    if (banner) {
+                        banner.classList.remove('hidden');
+                        banner.className = 'bg-amber-500 text-slate-950 font-bold px-5 py-2.5 text-xs flex items-center justify-between gap-3 shadow-lg sticky top-0 z-[60] transition-all border-b border-amber-600';
+                        banner.innerHTML = `
+                            <div class="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
+                                <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-ping shrink-0"></span>
+                                <span class="truncate">🚧 <b>САЙТ В РАЗРАБОТКЕ:</b> Доступ для посетителей закрыт. Вы авторизованы как Администратор.</span>
+                            </div>
+                            <button onclick="triggerToggleMaintenance()" class="px-3.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-amber-400 font-extrabold text-xs whitespace-nowrap shrink-0 transition shadow-sm border border-amber-400/40 flex items-center gap-1.5">
+                                <span>🟢</span>
+                                <span>Открыть доступ сайту (Выключить заглушку)</span>
+                            </button>
+                        `;
+                    }
+                } else {
+                    // Для обычных посетителей сайт полностью блокируется заглушкой
+                    if (lockdownScreen) lockdownScreen.classList.remove('hidden');
+                    if (banner) banner.classList.add('hidden');
+                }
+            } else {
+                // Штатный режим: сайт открыт для всех
+                if (lockdownScreen) lockdownScreen.classList.add('hidden');
+                if (banner) banner.classList.add('hidden');
+            }
+
             if (stub && container) {
                 stub.classList.toggle('hidden', !state.isMaintenance);
                 container.classList.toggle('hidden', state.isMaintenance);
             }
+
             if (badge) {
-                badge.innerText = state.isMaintenance ? 'АКТИВЕН' : 'ВЫКЛ';
+                badge.innerText = state.isMaintenance ? 'ДОСТУП ЗАКРЫТ' : 'ДОСТУП ОТКРЫТ';
                 badge.className = state.isMaintenance
-                    ? 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500 text-slate-950 animate-pulse'
-                    : 'text-[10px] px-2 py-0.5 rounded font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
+                    ? 'text-[10px] px-2.5 py-0.5 rounded font-extrabold bg-red-500 text-white animate-pulse'
+                    : 'text-[10px] px-2.5 py-0.5 rounded font-extrabold bg-emerald-500 text-white';
+            }
+
+            if (badgeDesc) {
+                badgeDesc.innerText = state.isMaintenance
+                    ? 'Заглушка АКТИВНА! Сайт закрыт для всех посетителей. Доступ только у вас.'
+                    : 'Доступ открыт для всех. Кликните для включения заглушки «Доступ закрыт».';
+            }
+
+            if (rootToggleBtn) {
+                if (state.isMaintenance) {
+                    rootToggleBtn.className = 'p-4 rounded-2xl bg-red-500/15 border-2 border-red-500 text-left hover:bg-red-500/25 transition text-red-600 dark:text-red-400 shadow-sm';
+                } else {
+                    rootToggleBtn.className = 'p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left hover:border-[#1371B9] transition text-slate-800 dark:text-slate-100';
+                }
+            }
+
+            if (ownerSubLockdownText) {
+                ownerSubLockdownText.innerText = state.isMaintenance ? 'Сайт в разработке: ВКЛ (ЗАКРЫТ)' : 'Сайт в разработке: ВЫКЛ';
+            }
+            if (ownerSubBtnLockdown) {
+                if (state.isMaintenance) {
+                    ownerSubBtnLockdown.className = 'px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 font-bold border-2 border-red-500 bg-red-500/20 text-red-600 dark:text-red-400 animate-pulse';
+                } else {
+                    ownerSubBtnLockdown.className = 'px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 font-bold border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-amber-500';
+                }
             }
         }
 
         async function triggerToggleMaintenance() {
             if (!['superadmin', 'super', 'tech', 'admin'].includes(state.role)) {
-                alert('Управление режимом ТО доступно только Администратору.');
+                openLoginModal('staff', 'superadmin');
                 return;
             }
             const targetState = !state.isMaintenance;
             const confirmMsg = targetState
-                ? 'Включить РЕЖИМ ТЕХНИЧЕСКОГО ОБСЛУЖИВАНИЯ (ТО)?\n\n• Прием анкет будет заблокирован во всех каналах (сайт, Telegram, VK).\n• На сайте включится заглушка.\n• Доступ к админ-панелям сохранится.'
-                : 'Выключить режим ТО и возобновить прием анкет во всех каналах?';
+                ? '⚠️ Включить режим «САЙТ В РАЗРАБОТКЕ (ДОСТУП ЗАКРЫТ)»?\n\n• Для всех посетителей сайт будет заблокирован полноэкранной заглушкой.\n• Прием анкет в боте и на сайте временно приостановится.\n• Доступ и все панели останутся ТОЛЬКО у вас (Супер-Администратора).'
+                : '🟢 Открыть доступ к сайту для всех посетителей (выключить заглушку и возобновить штатный режим)?';
             if (!confirm(confirmMsg)) return;
 
             try {
@@ -2549,9 +2672,9 @@
                 if (res.ok) {
                     state.isMaintenance = !!(res.maintenance !== undefined ? res.maintenance : (res.maintenance_mode !== undefined ? res.maintenance_mode : res.active));
                     updateMaintenanceUI();
-                    alert(res.message || 'Статус режима ТО успешно изменен.');
+                    alert(res.message || (targetState ? 'Заглушка «Сайт в разработке» включена. Доступ закрыт.' : 'Сайт открыт для всех.'));
                 } else {
-                    alert(res.error || 'Ошибка изменения режима ТО');
+                    alert(res.error || 'Ошибка изменения статуса');
                 }
             } catch (e) {
                 alert('Ошибка связи с сервером');
@@ -3794,6 +3917,7 @@
             }
 
             applyCandidatesMenuVisibility();
+            updateMaintenanceUI();
         }
 
         let adminShowCandidates = localStorage.getItem('uet_admin_show_candidates') === 'true'; // false по умолчанию для админа
@@ -3946,6 +4070,7 @@
 
             applyCandidatesMenuVisibility();
             renderCabinetView();
+            updateMaintenanceUI();
             switchTab('landing');
         }
 

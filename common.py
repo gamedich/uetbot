@@ -295,14 +295,137 @@ def is_maintenance_active() -> bool:
 
 
 
-def set_maintenance_active(active: bool) -> bool:
-    """Устанавливает глобальный режим ТО и синхронизирует CONFIG и БД."""
+def get_maintenance_info() -> Dict[str, Any]:
+    """Возвращает информацию о текущем режиме ТО: статус, тип (planned/emergency), детали."""
+    active = is_maintenance_active()
+    maint_type = db.get_setting("maintenance_type", "emergency")
+    maint_details = db.get_setting("maintenance_details", "")
+    return {
+        "active": active,
+        "type": maint_type,
+        "details": maint_details,
+    }
+
+
+def set_maintenance_active(active: bool, maint_type: str = "emergency", details: str = "") -> bool:
+    """Устанавливает глобальный режим ТО, его тип (planned/emergency) и детали."""
     CONFIG["MAINTENANCE_MODE"] = bool(active)
     try:
         db.set_setting("maintenance_mode", "1" if active else "0")
+        if active:
+            db.set_setting("maintenance_type", str(maint_type))
+            if details:
+                db.set_setting("maintenance_details", str(details))
+        else:
+            db.set_setting("maintenance_details", "")
     except Exception as e:
         logger.error(f"Не удалось сохранить режим ТО в БД: {e}")
     return CONFIG["MAINTENANCE_MODE"]
+
+
+async def broadcast_maintenance_alert(
+    bot_instance: Bot,
+    action: str,  # "planned", "emergency", "resolved"
+    details: str = "",
+) -> Dict[str, int]:
+    """
+    Рассылает служебные оповещения о режиме ТО (плановое, внеплановое, завершение):
+    - Всем администраторам (HR, Tech, SuperAdmin)
+    - В целевые группы (кадровый чат)
+    - Соискателям, оставившим контакты/заявки в системе
+    """
+    targets: Set[int] = set()
+
+    # 1. Администраторы
+    try:
+        for adm_id, _ in db.get_all_admins():
+            if str(adm_id).lstrip("-").isdigit():
+                targets.add(int(adm_id))
+    except Exception as e:
+        logger.warning(f"Ошибка получения админов для рассылки ТО: {e}")
+
+    super_id = CONFIG.get("SUPER_ADMIN_ID")
+    if super_id:
+        targets.add(int(super_id))
+
+    # 2. Кадровый чат / группа
+    hr_group = CONFIG.get("HR_GROUP_ID")
+    if hr_group:
+        targets.add(int(hr_group))
+
+    # 3. Активные пользователи Telegram из БД
+    try:
+        with db.connection() as conn:
+            cur = conn.cursor()
+            rows = cur.execute("""
+                SELECT DISTINCT user_id FROM candidates WHERE platform = 'tg'
+                UNION
+                SELECT DISTINCT user_id FROM inquiries WHERE platform = 'tg'
+                UNION
+                SELECT DISTINCT user_id FROM user_consents
+            """).fetchall()
+            for r in rows:
+                uid_str = str(r[0]).strip()
+                if uid_str.lstrip("-").isdigit():
+                    targets.add(int(uid_str))
+    except Exception as e:
+        logger.warning(f"Ошибка сбора пользователей для рассылки ТО: {e}")
+
+    # Формирование текста оповещения
+    now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+    hr_phone = CONFIG.get("HR_PHONE", "8 (8422) 58-46-60")
+
+    if action == "planned":
+        time_hint = f"\n⏱ <b>Ориентировочное время:</b> {details}" if details else "\n⏱ <b>Ориентировочное время:</b> ~15-30 минут"
+        msg = (
+            "⚙️ <b>ПЛАНОВОЕ ТЕХНИЧЕСКОЕ ОБСЛУЖИВАНИЕ</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "Уважаемые соискатели и коллеги!\n\n"
+            "Цифровая система МУП «Ульяновскэлектротранс» уведомляет о проведении <b>плановых регламентных работ</b>.\n"
+            f"{time_hint}\n\n"
+            "⚠️ В этот период приём новых анкет в боте временно приостановлен.\n"
+            f"📞 <i>Отдел кадров:</i> <code>{hr_phone}</code>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🕒 <i>Время уведомления: {now_str}</i>"
+        )
+    elif action == "emergency":
+        reason_hint = f"\n⚠️ <b>Причина / статус:</b> {details}" if details else ""
+        msg = (
+            "🚨 <b>ВНЕПЛАНОВОЕ ТЕХНИЧЕСКОЕ ОБСЛУЖИВАНИЕ</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "Внимание! Сервисы МУП «Ульяновскэлектротранс» переведены в режим <b>срочного технического обслуживания</b>.\n"
+            f"{reason_hint}\n\n"
+            "Инженеры уже проводят необходимые восстановительные работы. Приём анкет временно на паузе.\n"
+            f"📞 <i>Контакты диспетчерской / ОК:</i> <code>{hr_phone}</code>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🕒 <i>Время перехода в ТО: {now_str}</i>"
+        )
+    else:  # resolved / finished
+        msg = (
+            "✅ <b>ТЕХНИЧЕСКИЕ РАБОТЫ ЗАВЕРШЕНЫ</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "Сервисы МУП «Ульяновскэлектротранс» полностью функционируют в <b>штатном режиме</b>.\n\n"
+            "🟢 Приём анкет и обращений соискателей возобновлён в полном объёме!\n"
+            "Для подачи анкеты или проверки статуса нажмите /start\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🕒 <i>Возобновлено: {now_str}</i>"
+        )
+
+    sent = 0
+    failed = 0
+    for tid in targets:
+        try:
+            ok = await safe_send(bot_instance, tid, msg, parse_mode="HTML")
+            if ok:
+                sent += 1
+            else:
+                failed += 1
+        except Exception:
+            failed += 1
+        await asyncio.sleep(0.05)  # Защита от флуда Telegram API
+
+    logger.info(f"[MAINTENANCE_BROADCAST] Рассылка '{action}' завершена: доставлено {sent}, ошибок {failed}")
+    return {"sent": sent, "failed": failed, "total": len(targets)}
 
 saved_group = db.get_setting("hr_group_id", "")
 if saved_group and saved_group.lstrip("-").isdigit():

@@ -73,3 +73,9 @@ private/
 local_git.py
 local_git*
 
+# --- Antigravity IDE / AI ассистент ---
+.antigravity*
+.agents/
+templates/antigravity_*
+*.antigravity*
+

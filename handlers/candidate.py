@@ -199,13 +199,23 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         )
         return
 
+    welcome_text = texts.START_WELCOME
     if is_maintenance_active() and not is_admin:
-        await safe_answer(message, texts.MAINTENANCE_ACTIVE, parse_mode="HTML")
-        return
+        m_info = db.get_setting("maintenance_details", "")
+        time_note = f"\n⏱ <i>Ориентировочное время:</i> {m_info}" if m_info else ""
+        welcome_text = (
+            "⚙️ <b>ВНИМАНИЕ: ВЕДУТСЯ ТЕХНИЧЕСКИЕ РАБОТЫ</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "Сервисы цифровой системы МУП «УЭТ» временно переведены в режим технического обслуживания.\n"
+            f"{time_note}\n\n"
+            "⚠️ <b>Подача новых анкет временно приостановлена.</b>\n"
+            "Вы можете просматривать контакты, условия обучения и информацию о предприятии ниже:\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        ) + texts.START_WELCOME
 
     await safe_answer(
         message,
-        texts.START_WELCOME,
+        welcome_text,
         reply_markup=make_candidate_main_keyboard(user_id=user_id),
         parse_mode="HTML",
     )
@@ -781,7 +791,19 @@ async def run_candidate_survey(
     )
 
     if is_maintenance_active() and not is_admin:
-        await send_or_edit(texts.MAINTENANCE_ACTIVE)
+        m_info = db.get_setting("maintenance_details", "")
+        time_hint = f"\n⏱ <i>Ориентировочное время завершения:</i> {m_info}" if m_info else ""
+        back_kb = InlineKeyboardBuilder()
+        back_kb.button(text="🔙 Главное меню", callback_data="cand_nav_main_menu")
+        await send_or_edit(
+            "⚙️ <b>ПРИЁМ АНКЕТ ВРЕМЕННО НА ПАУЗЕ</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "На сервере МУП «Ульяновскэлектротранс» ведутся технические работы.\n"
+            f"{time_hint}\n\n"
+            "Пожалуйста, попробуйте отправить анкету немного позже. Мы возобновим приём сразу после завершения работ!\n\n"
+            f"📞 <i>Отдел кадров:</i> <code>{CONFIG['HR_PHONE']}</code>",
+            reply_markup=back_kb.as_markup(),
+        )
         return
 
     # Сервисная проверка права подачи анкеты (ЧС, дубликат, кулдаун)

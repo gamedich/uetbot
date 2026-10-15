@@ -57,9 +57,14 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
     builder = InlineKeyboardBuilder()
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
-    # 1. Подача заявки: на сайте или в Telegram
-    builder.button(text="🌐 Заполнить на сайте", web_app=types.WebAppInfo(url=web_url))
-    builder.button(text="📝 Заполнить в Telegram", callback_data="cand_start_apply")
+    # 1. Подача заявки: на сайте или в Telegram (с индикацией ТО)
+    maint_active = is_maintenance_active()
+    if maint_active:
+        builder.button(text="🌐 На сайте (техработы ⏸)", web_app=types.WebAppInfo(url=web_url))
+        builder.button(text="⏸ В Telegram (ТО на линии)", callback_data="cand_start_apply")
+    else:
+        builder.button(text="🌐 Заполнить на сайте", web_app=types.WebAppInfo(url=web_url))
+        builder.button(text="📝 Заполнить в Telegram", callback_data="cand_start_apply")
 
     # 2. Мой статус и прямой диалог
     builder.button(text="📊 Мой статус / Заявка", callback_data="cand_my_application")
@@ -316,8 +321,11 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder.button(text=db_btn_text, callback_data="tech_toggle_db")
 
     builder.button(text="💾 Управление бэкапами (/backups)", callback_data="tech_manage_backups")
-    maint_text = "🟡 Выключить ТО" if is_maintenance_active() else "🟢 Включить ТО (пауза)"
-    builder.button(text=maint_text, callback_data="tech_toggle_maint")
+    if is_maintenance_active():
+        builder.button(text="🟢 Завершить ТО и уведомить всех ✅", callback_data="tech_maint_resolve")
+    else:
+        builder.button(text="🟡 Плановое ТО (рассылка со временем)", callback_data="tech_maint_plan")
+        builder.button(text="🚨 Срочное ТО (мгновенная рассылка)", callback_data="tech_maint_emergency")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")
     builder.button(text="🔄 Обновить статус", callback_data="tech_refresh")
     builder.adjust(1)

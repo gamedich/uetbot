@@ -142,7 +142,7 @@ async def main() -> None:
         logger.error(f"Ошибка запуска шлюза MAX: {e}")
 
     try:
-        backup_task = asyncio.create_task(run_auto_backup_worker(db, bot), name="AutoBackupWorker")
+        backup_task = asyncio.create_task(run_auto_backup_worker(), name="AutoBackupWorker")
         logger.info("Воркер автоматического резервного копирования БД активирован.")
     except Exception as e:
         logger.error(f"Ошибка запуска автобэкапа: {e}")

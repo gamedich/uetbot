@@ -1844,22 +1844,64 @@
                 return;
             }
             const targetState = !state.isMaintenance;
-            const confirmMsg = targetState
-                ? 'Включить РЕЖИМ ТЕХНИЧЕСКОГО ОБСЛУЖИВАНИЯ (ТО)?\n\n• Прием анкет будет заблокирован во всех каналах (сайт, Telegram, VK).\n• На сайте включится заглушка.\n• Доступ к админ-панелям сохранится.'
-                : 'Выключить режим ТО и возобновить прием анкет во всех каналах?';
-            if (!confirm(confirmMsg)) return;
+            let maintType = "emergency";
+            let details = "";
+            let shouldBroadcast = true;
+
+            if (targetState) {
+                const choice = prompt(
+                    "⚙️ ВКЛЮЧЕНИЕ РЕЖИМА ТЕХОБСЛУЖИВАНИЯ (ТО):\n\n" +
+                    "Введите тип ТО:\n" +
+                    "1 — 🟡 Плановое ТО (с рассылкой предупреждения соискателям и HR)\n" +
+                    "2 — 🚨 Срочное / Аварийное ТО (немедленная рассылка о приостановке)\n" +
+                    "3 — 🔕 Включить без рассылки\n\n" +
+                    "Введите 1, 2 или 3:", "1"
+                );
+                if (!choice) return;
+                if (choice.trim() === "1") {
+                    maintType = "planned";
+                    details = prompt("Укажите ориентировочное время работ (например: ~15-30 минут или до 23:30):", "~15-30 минут") || "~15-30 минут";
+                    shouldBroadcast = true;
+                } else if (choice.trim() === "2") {
+                    maintType = "emergency";
+                    details = prompt("Укажите краткую причину/детали:", "срочные регламентные работы") || "срочные регламентные работы";
+                    shouldBroadcast = true;
+                } else if (choice.trim() === "3") {
+                    maintType = "emergency";
+                    shouldBroadcast = false;
+                } else {
+                    return;
+                }
+            } else {
+                const bcConfirm = confirm(
+                    "✅ ЗАВЕРШЕНИЕ РЕЖИМА ТО:\n\n" +
+                    "Возобновить штатную работу сервиса и отправить рассылку соискателям и персоналу о возобновлении приёма анкет?"
+                );
+                shouldBroadcast = bcConfirm;
+                maintType = "resolved";
+            }
 
             try {
                 const resp = await fetch('/api/system/maintenance', {
                     method: 'POST',
                     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify({ active: targetState, enabled: targetState, maintenance: targetState, maintenance_mode: targetState })
+                    body: JSON.stringify({
+                        active: targetState,
+                        enabled: targetState,
+                        type: maintType,
+                        details: details,
+                        broadcast: shouldBroadcast
+                    })
                 });
                 const res = await resp.json();
                 if (res.ok) {
                     state.isMaintenance = !!(res.maintenance !== undefined ? res.maintenance : (res.maintenance_mode !== undefined ? res.maintenance_mode : res.active));
                     updateMaintenanceUI();
-                    alert(res.message || 'Статус режима ТО успешно изменен.');
+                    let extra = "";
+                    if (res.broadcast) {
+                        extra = `\n📢 Рассылка доставлена: ${res.broadcast.sent} получателям.`;
+                    }
+                    alert((res.message || 'Статус режима ТО успешно изменен.') + extra);
                 } else {
                     alert(res.error || 'Ошибка изменения режима ТО');
                 }

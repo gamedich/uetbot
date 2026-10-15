@@ -62,6 +62,8 @@ from common import (
     update_env_mode,
     is_maintenance_active,
     set_maintenance_active,
+    get_maintenance_info,
+    broadcast_maintenance_alert,
 )
 from keyboards import (
     get_tech_screen_data,
@@ -229,24 +231,78 @@ async def cb_tech_toggle_maint(callback: types.CallbackQuery) -> None:
         return
 
     new_state = not is_maintenance_active()
-    set_maintenance_active(new_state)
+    set_maintenance_active(new_state, maint_type="emergency" if new_state else "resolved")
 
     status_str = "ВКЛЮЧЕН (прием анкет на паузе)" if new_state else "ВЫКЛЮЧЕН (штатная работа)"
     await callback.answer(f"Режим ТО: {status_str}", show_alert=True)
     if callback.message:
-        msg_text = callback.message.text or ""
-        if "ТЕХНИЧЕСКИЙ МОНИТОРИНГ" in msg_text:
-            screen_text, kb = get_tech_screen_data(callback.from_user.id)
-            try:
-                await callback.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
-            except Exception:
-                pass
-        else:
-            try:
-                from keyboards import make_admin_menu_keyboard
-                await callback.message.edit_reply_markup(reply_markup=make_admin_menu_keyboard(callback.from_user.id))
-            except Exception:
-                pass
+        screen_text, kb = get_tech_screen_data(callback.from_user.id)
+        try:
+            await callback.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
+
+
+@tech_router.callback_query(F.data == "tech_maint_plan")
+async def cb_tech_maint_plan(callback: types.CallbackQuery, bot: Bot) -> None:
+    """Активация планового ТО с рассылкой предупреждения."""
+    if not is_privileged_user(callback.from_user.id):
+        await callback.answer("🚫 Нет прав доступа!", show_alert=True)
+        return
+
+    details = "плановые работы на сервере (~15-30 минут)"
+    set_maintenance_active(True, maint_type="planned", details=details)
+    await callback.answer("🟡 Плановое ТО активировано! Идёт рассылка...", show_alert=True)
+
+    stats = await broadcast_maintenance_alert(bot, action="planned", details=details)
+
+    screen_text, kb = get_tech_screen_data(callback.from_user.id)
+    alert_report = f"\n\n📢 <b>Плановое ТО объявлено!</b>\nДоставлено уведомлений: <code>{stats['sent']}</code>"
+    try:
+        await callback.message.edit_text(screen_text + alert_report, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        pass
+
+
+@tech_router.callback_query(F.data == "tech_maint_emergency")
+async def cb_tech_maint_emergency(callback: types.CallbackQuery, bot: Bot) -> None:
+    """Активация срочного/внепланового ТО с мгновенной рассылкой."""
+    if not is_privileged_user(callback.from_user.id):
+        await callback.answer("🚫 Нет прав доступа!", show_alert=True)
+        return
+
+    details = "срочные восстановительные работы"
+    set_maintenance_active(True, maint_type="emergency", details=details)
+    await callback.answer("🚨 Срочное ТО активировано! Идёт рассылка...", show_alert=True)
+
+    stats = await broadcast_maintenance_alert(bot, action="emergency", details=details)
+
+    screen_text, kb = get_tech_screen_data(callback.from_user.id)
+    alert_report = f"\n\n🚨 <b>Срочное ТО объявлено!</b>\nДоставлено уведомлений: <code>{stats['sent']}</code>"
+    try:
+        await callback.message.edit_text(screen_text + alert_report, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        pass
+
+
+@tech_router.callback_query(F.data == "tech_maint_resolve")
+async def cb_tech_maint_resolve(callback: types.CallbackQuery, bot: Bot) -> None:
+    """Завершение ТО и рассылка уведомления о возобновлении приёма анкет."""
+    if not is_privileged_user(callback.from_user.id):
+        await callback.answer("🚫 Нет прав доступа!", show_alert=True)
+        return
+
+    set_maintenance_active(False, maint_type="resolved")
+    await callback.answer("🟢 ТО снято! Идёт рассылка о возобновлении работы...", show_alert=True)
+
+    stats = await broadcast_maintenance_alert(bot, action="resolved")
+
+    screen_text, kb = get_tech_screen_data(callback.from_user.id)
+    alert_report = f"\n\n✅ <b>ТО завершено! Сервис работает в штатном режиме.</b>\nДоставлено уведомлений: <code>{stats['sent']}</code>"
+    try:
+        await callback.message.edit_text(screen_text + alert_report, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        pass
 
 
 

@@ -50,6 +50,8 @@ from common import (
     set_closed_vacancies,
     is_maintenance_active,
     set_maintenance_active,
+    get_maintenance_info,
+    broadcast_maintenance_alert,
 )
 
 logger = logging.getLogger("UET_WEB_APP")
@@ -292,6 +294,7 @@ class WebPanel:
         self.app.router.add_post("/api/hr/recruitment_config", self.handle_api_recruitment_config_save)
         self.app.router.add_get("/api/system/maintenance", self.handle_api_system_maintenance_get)
         self.app.router.add_post("/api/system/maintenance", self.handle_api_system_maintenance_set)
+        self.app.router.add_get("/widget/limits", self.handle_view_widget_limits)
 
         # Локальный модуль администрирования Git (присутствует только локально, не в git)
         try:
@@ -463,20 +466,25 @@ class WebPanel:
         return session, None
 
     async def handle_api_system_maintenance_get(self, request: web.Request) -> web.Response:
-        """Получить текущий статус глобального режима техобслуживания."""
-        active = is_maintenance_active()
+        """Получить текущий статус глобального режима техобслуживания и его тип."""
+        info = get_maintenance_info()
         return web.json_response({
             "ok": True,
-            "maintenance": active,
-            "maintenance_mode": active,
-            "active": active
+            "maintenance": info["active"],
+            "maintenance_mode": info["active"],
+            "active": info["active"],
+            "type": info["type"],
+            "details": info["details"],
         })
 
     async def handle_api_system_maintenance_set(self, request: web.Request) -> web.Response:
-        """Включить или отключить глобальный режим ТО (SuperAdmin / Tech / Admin)."""
+        """Включить или отключить глобальный режим ТО с опциональной рассылкой оповещений."""
         _, err = self.require_roles(request, {"superadmin", "super", "tech", "admin"})
         if err:
             return err
+        maint_type = "emergency"
+        details = ""
+        should_broadcast = False
         try:
             data = await request.json() if request.can_read_body else {}
             if "active" in data:
@@ -489,18 +497,37 @@ class WebPanel:
                 new_state = bool(data.get("maintenance_mode"))
             else:
                 new_state = not is_maintenance_active()
+
+            maint_type = str(data.get("type", "emergency" if new_state else "resolved"))
+            details = str(data.get("details", ""))
+            should_broadcast = bool(data.get("broadcast", False))
         except Exception:
             new_state = not is_maintenance_active()
 
-        actual = set_maintenance_active(new_state)
-        logger.info("Веб-панель: Режим ТО переключен на %s", actual)
+        actual = set_maintenance_active(new_state, maint_type=maint_type, details=details)
+        broadcast_res = None
+        if should_broadcast and self.bot:
+            action = maint_type if actual else "resolved"
+            broadcast_res = await broadcast_maintenance_alert(self.bot, action=action, details=details)
+
+        logger.info("Веб-панель: Режим ТО переключен на %s (тип: %s, рассылка: %s)", actual, maint_type, should_broadcast)
         return web.json_response({
             "ok": True,
             "maintenance": actual,
             "maintenance_mode": actual,
             "active": actual,
+            "type": maint_type,
+            "details": details,
+            "broadcast": broadcast_res,
             "message": f"Режим ТО {'ВКЛЮЧЕН (приём анкет на паузе)' if actual else 'ВЫКЛЮЧЕН (штатная работа)'}"
         })
+
+    async def handle_view_widget_limits(self, request: web.Request) -> web.Response:
+        """Отображение виджета статуса Antigravity AI, модели и квот."""
+        w_path = TEMPLATES_DIR / "antigravity_limits_widget.html"
+        if w_path.exists():
+            return web.FileResponse(w_path)
+        return web.Response(text="Виджет не найден", status=404)
 
     async def handle_api_auth_verify_session(self, request: web.Request) -> web.Response:
         """Проверка валидности сессии (по токену / cookie) и проверка актуальности прав в БД."""

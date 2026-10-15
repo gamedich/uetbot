@@ -131,7 +131,7 @@ os.environ["DB_PATH"] = resolved_db_path
 CONFIG: AppConfig = AppConfig({
     # --- Среда выполнения и версия ---
     "ENVIRONMENT": _get_str("ENVIRONMENT", "TEST").upper(),
-    "BOT_VERSION": _get_str("BOT_VERSION", "1.9.0"),
+    "BOT_VERSION": _get_str("BOT_VERSION", "1.9.1"),
 
     # --- Пути файловой системы ---
     "BASE_DIR": str(BASE_DIR),

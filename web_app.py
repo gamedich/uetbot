@@ -253,6 +253,14 @@ class WebPanel:
         self.app.router.add_get("/api/inquiries", self.handle_api_inquiries)
         self.app.router.add_post("/api/inquiries/{inquiry_id}/reply", self.handle_api_inquiry_reply)
 
+        # Customization & Content API
+        self.app.router.add_get("/api/content/customization", self.handle_api_get_customization)
+        self.app.router.add_post("/api/content/customization", self.handle_api_save_customization)
+
+        # Broadcast Engine API
+        self.app.router.add_post("/api/broadcast/send", self.handle_api_broadcast_send)
+        self.app.router.add_post("/api/super/send_login_instruction", self.handle_api_send_login_instruction)
+
         # System & Tech API
         self.app.router.add_get("/api/system", self.handle_api_system)
         self.app.router.add_post("/api/system/toggle_db", self.handle_api_toggle_db)
@@ -2101,6 +2109,119 @@ class WebPanel:
                 logger.warning("Не удалось переслать ответ соискателю в TG: %s", e)
 
         return web.json_response({"ok": True, "inquiry_id": inquiry_id, "sent_tg": sent_tg})
+
+    async def handle_api_get_customization(self, request: web.Request) -> web.Response:
+        """Публичное получение актуальных текстов и заголовков сайта из БД."""
+        default_customization = {
+            "hero_title": "Работа в МУП «Ульяновскэлектротранс»",
+            "hero_subtitle": "Официальное трудоустройство по ТК РФ, заработная плата до 100 000 ₽, оплачиваемый отпуск до 40 дней, стабильный соцпакет и компенсация 50% аренды жилья иногородним.",
+            "hero_badge": "Набор в новую группу обучения водителей",
+            "btn_survey_text": "Заполнить анкету на работу",
+            "btn_ask_text": "Задать вопрос",
+            "btn_status_text": "Проверить статус заявки",
+            "adv1_val": "до 100к ₽",
+            "adv1_label": "Заработная плата ТК РФ",
+            "adv2_val": "2–3 мес.",
+            "adv2_label": "Обучение со стипендией",
+            "adv3_val": "40 дней",
+            "adv3_label": "Оплачиваемый отпуск + 2/2",
+            "adv4_val": "50%",
+            "adv4_label": "Компенсация жилья / Общежитие",
+            "contact_phone": "+7 (8422) 58-46-60",
+            "contact_address": "г. Ульяновск, ул. Гончарова, 2",
+            "contact_schedule": "пн-пт 08:00–17:00 (перерыв 12:00–13:00)",
+            "bot_greeting": "Добро пожаловать в официальный сервис МУП «Ульяновскэлектротранс»!",
+        }
+        overrides = self.db.get_all_text_overrides()
+        data = dict(default_customization)
+        data.update(overrides)
+        return web.json_response({"ok": True, "customization": data, "data": data})
+
+    async def handle_api_save_customization(self, request: web.Request) -> web.Response:
+        """Сохранение кастомизации текстов и кнопок сайта в БД."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
+        try:
+            payload = await request.json()
+            items = payload.get("customization", {})
+            if not items:
+                items = {k: v for k, v in payload.items() if k not in ("ok", "token", "role")}
+            for k, v in items.items():
+                clean_k = str(k).strip()
+                clean_v = str(v).strip()
+                if clean_k:
+                    self.db.set_dynamic_text(clean_k, clean_v)
+            return web.json_response({"ok": True, "message": "Тексты и кнопки сайта успешно сохранены и обновлены!", "customization": items, "data": items})
+        except Exception as e:
+            logger.error("Ошибка сохранения кастомизации сайта: %s", e)
+            return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+    async def handle_api_broadcast_send(self, request: web.Request) -> web.Response:
+        """Универсальная рассылка сообщений с переключением режима (тест владельцу / всем)."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
+        if not self.bot:
+            return web.json_response({"ok": False, "error": "Бот не инициализирован"}, status=500)
+        try:
+            data = await request.json()
+            mode = str(data.get("mode", "me")).strip().lower()
+            if mode not in ("me", "hr", "all"):
+                mode = "me"
+            title = str(data.get("title", "")).strip()
+            text = str(data.get("text", "")).strip()
+
+            if not text or len(text) < 3:
+                return web.json_response({"ok": False, "error": "Текст сообщения не может быть пустым (минимум 3 символа)."}, status=400)
+
+            from common import broadcast_message
+            res = await broadcast_message(self.bot, text=text, target_mode=mode, title=title)
+            return web.json_response({
+                "ok": True,
+                "result": res,
+                "total": res.get("total", 0),
+                "delivered": res.get("delivered", 0),
+                "failed": res.get("failed", 0),
+                "message": res.get("message", ""),
+            })
+        except Exception as e:
+            logger.error("Ошибка при отправке рассылки: %s", e)
+            return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+    async def handle_api_send_login_instruction(self, request: web.Request) -> web.Response:
+        """Отправка полной памятки со всеми логинами и паролями супер-админу в Telegram."""
+        if not self.bot:
+            return web.json_response({"ok": False, "error": "Telegram-бот не подключен"}, status=500)
+
+        super_id = CONFIG.get("SUPER_ADMIN_ID", 7657422832)
+        instruction_text = (
+            "🔐 <b>ПАМЯТКА ПО ДОСТУПУ В ПАНЕЛЬ УПРАВЛЕНИЯ МУП «УЭТ»</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "🌐 <b>Адрес веб-портала:</b> https://213.226.124.135.sslip.io/\n\n"
+            "👑 <b>1. ГЛАВНЫЙ АДМИНИСТРАТОР (ВЛАДЕЛЕЦ):</b>\n"
+            "• Логин: <code>@its_darksold1</code> или <code>7657422832</code>\n"
+            "• Пароль: <code>uet2026super</code>\n"
+            "• <i>Права: Полный доступ, Git, ИИ-шлюз, рассылки, конструктор текстов</i>\n\n"
+            "🛠 <b>2. ТЕХНИЧЕСКИЙ АДМИНИСТРАТОР:</b>\n"
+            "• Логин: <code>tech</code>\n"
+            "• Пароль: <code>uet2026super</code>\n"
+            "• <i>Права: Git и ветки, Режим ТО, логи сервера</i>\n\n"
+            "👥 <b>3. ОТДЕЛ КАДРОВ (HR):</b>\n"
+            "• Логин: <code>hr</code>\n"
+            "• Пароль: <code>uet2026hr</code>\n"
+            "• <i>Права: Воронка кандидатов, вакансии, вопросы соискателей</i>\n\n"
+            "👤 <b>4. СОИСКАТЕЛЬ:</b>\n"
+            "• Вход БЕЗ пароля: только номер телефона или номер анкеты\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Сохраните данное сообщение в «Избранное» для быстрого входа.</i>"
+        )
+        from common import safe_send
+        ok = await safe_send(self.bot, int(super_id), instruction_text, parse_mode="HTML")
+        if ok:
+            return web.json_response({"ok": True, "message": "Памятка со всеми паролями и доступами успешно отправлена вам в Telegram в ЛС!"})
+        else:
+            return web.json_response({"ok": False, "error": "Не удалось отправить сообщение в Telegram. Нажмите /start в боте @UetFeedback_bot."}, status=400)
 
     async def handle_api_system(self, request: web.Request) -> web.Response:
         uptime_seconds = int((datetime.now() - self.start_time).total_seconds())

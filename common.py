@@ -913,6 +913,7 @@ async def safe_send(
     chat_id: int,
     text: str,
     reply_markup: Optional[Union[types.InlineKeyboardMarkup, types.ReplyKeyboardMarkup]] = None,
+    parse_mode: Optional[str] = "HTML",
 ) -> bool:
     """
     Безопасная отправка в произвольный чат с полной защитой от FloodWait,
@@ -929,7 +930,7 @@ async def safe_send(
                 chat_id=chat_id,
                 text=text,
                 reply_markup=reply_markup,
-                parse_mode="HTML",
+                parse_mode=parse_mode,
             )
             SYSTEM_METRICS["tg_online"] = True
             return True
@@ -947,30 +948,110 @@ async def safe_send(
             if "too long" in msg_lower:
                 short_t = text[:2000] + "\n... (сообщение сокращено)"
                 try:
-                    await bot_instance.send_message(chat_id=chat_id, text=short_t, reply_markup=reply_markup)
+                    await bot_instance.send_message(chat_id=chat_id, text=short_t, reply_markup=reply_markup, parse_mode=parse_mode)
                     return True
                 except Exception:
-                    return False
-            try:
-                clean_t = re.sub(r"<[^>]+>", "", text)
-                await bot_instance.send_message(chat_id=chat_id, text=clean_t, reply_markup=reply_markup)
-                return True
-            except Exception as e2:
-                logger.warning("Fallback с кнопками не удался в чат %s: %s. Отправка без кнопок...", chat_id, e2)
-                try:
-                    clean_t = re.sub(r"<[^>]+>", "", text)
-                    await bot_instance.send_message(chat_id=chat_id, text=clean_t, reply_markup=None)
-                    return True
-                except Exception as e3:
-                    logger.error("Полный сбой отправки в чат %s: %s", chat_id, e3)
-                    return False
-        except (TelegramNetworkError, ClientError, asyncio.TimeoutError):
-            await asyncio.sleep(1.2)
-        except Exception as e:
-            logger.error("Не удалось отправить сообщение в чат %s: %s", chat_id, e)
-            SYSTEM_METRICS["errors_count"] += 1
+                    pass
+            logger.warning("TelegramBadRequest для %s: %s", chat_id, e.message)
             return False
+        except Exception as e:
+            logger.warning("Ошибка safe_send для чата %s: %s", chat_id, e)
+            await asyncio.sleep(0.5)
     return False
+
+
+async def broadcast_message(
+    bot_instance: Bot,
+    text: str,
+    target_mode: str = "me",  # "me", "hr", "all"
+    title: str = "",
+    reply_markup: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """
+    Универсальный движок рассылки сообщений со встроенным тестовым режимом.
+    - 'me': рассылка строго владельцу/супер-админу (@its_darksold1 / SUPER_ADMIN_ID).
+    - 'hr': рассылка в кадровый чат и сотрудникам отдела кадров.
+    - 'all': полномасштабная рассылка соискателям из БД, админам и в кадровый чат.
+    """
+    targets: Set[int] = set()
+    raw_super = CONFIG.get("SUPER_ADMIN_ID")
+    super_id = int(raw_super) if raw_super and str(raw_super).isdigit() else 7657422832
+
+    raw_hr = CONFIG.get("HR_GROUP_ID")
+    hr_group = int(raw_hr) if raw_hr and str(raw_hr).lstrip("-").isdigit() else None
+
+    if target_mode == "me":
+        targets.add(super_id)
+    elif target_mode == "hr":
+        if hr_group:
+            targets.add(hr_group)
+        targets.add(super_id)
+        try:
+            for adm_id, _ in db.get_all_admins():
+                if str(adm_id).lstrip("-").isdigit():
+                    targets.add(int(adm_id))
+        except Exception as e:
+            logger.warning(f"Ошибка получения админов для рассылки HR: {e}")
+    else:  # "all"
+        targets.add(super_id)
+        if hr_group:
+            targets.add(hr_group)
+        try:
+            for adm_id, _ in db.get_all_admins():
+                if str(adm_id).lstrip("-").isdigit():
+                    targets.add(int(adm_id))
+        except Exception:
+            pass
+        # Собираем пользователей из обеих баз
+        for is_test in (False, True):
+            try:
+                with db._get_connection(is_test=is_test) as conn:
+                    cur = conn.cursor()
+                    rows = cur.execute("""
+                        SELECT DISTINCT user_id FROM candidates WHERE platform = 'tg'
+                        UNION
+                        SELECT DISTINCT user_id FROM inquiries WHERE platform = 'tg'
+                        UNION
+                        SELECT DISTINCT user_id FROM user_consents
+                    """).fetchall()
+                    for r in rows:
+                        uid_str = str(r[0]).strip()
+                        if uid_str.lstrip("-").isdigit():
+                            targets.add(int(uid_str))
+            except Exception as e:
+                logger.warning(f"Ошибка сбора пользователей для рассылки: {e}")
+
+    # Оформление текста
+    formatted_msg = text
+    if title:
+        formatted_msg = f"📢 <b>{html.escape(title)}</b>\n━━━━━━━━━━━━━━━━━━━━━\n{text}"
+
+    sent = 0
+    failed = 0
+    recipients = []
+    for tid in targets:
+        try:
+            ok = await safe_send(bot_instance, tid, formatted_msg, reply_markup=reply_markup, parse_mode="HTML")
+            if ok:
+                sent += 1
+                recipients.append({"id": tid, "status": "ok"})
+            else:
+                failed += 1
+                recipients.append({"id": tid, "status": "failed"})
+        except Exception as e:
+            failed += 1
+            recipients.append({"id": tid, "status": "error", "error": str(e)})
+        await asyncio.sleep(0.04)
+
+    logger.info(f"[BROADCAST] Режим '{target_mode}': доставлено {sent}, ошибок {failed}, всего {len(targets)}")
+    return {
+        "sent": sent,
+        "failed": failed,
+        "total": len(targets),
+        "target_mode": target_mode,
+        "recipients": recipients[:20]
+    }
+
 
 
 # ==============================================================================

@@ -226,6 +226,14 @@
                         class="nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                         <span>⚖️ 152-ФЗ и ГОСТ</span>
                     </button>
+                    <button onclick="switchTab('customization')" id="topBtnCustomization"
+                        class="nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <span>🎨 Кастомизация</span>
+                    </button>
+                    <button onclick="switchTab('broadcast')" id="topBtnBroadcast"
+                        class="nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <span>📢 Рассылка</span>
+                    </button>
                     <button onclick="switchTab('admins')" id="topBtnAdmins"
                         class="hidden nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                         <span>🔐 Права и доступ</span>
@@ -294,6 +302,12 @@
                 <button onclick="switchTab('security'); toggleMobileNav();"
                     class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-sky-600 dark:text-sky-400 font-bold">⚖️
                     152-ФЗ и ГОСТ</button>
+                <button id="mBtnCustomization" onclick="switchTab('customization'); toggleMobileNav();"
+                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-purple-600 dark:text-purple-400 font-bold">🎨
+                    Кастомизация текстов</button>
+                <button id="mBtnBroadcast" onclick="switchTab('broadcast'); toggleMobileNav();"
+                    class="text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold">📢
+                    Центр рассылок</button>
                 <button onclick="switchTab('admins'); toggleMobileNav();" id="mAdminsBtn"
                     class="hidden text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-purple-600 dark:text-purple-400 font-bold">🔐
                     Права и доступ</button>
@@ -326,10 +340,10 @@
                             <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
                             <span id="heroRecruitmentBadgeText">Набор в новую группу обучения водителей</span>
                         </div>
-                        <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight leading-tight">
+                        <h1 id="heroMainTitle" class="text-2xl md:text-4xl font-extrabold tracking-tight leading-tight">
                             Работа в МУП «Ульяновскэлектротранс»
                         </h1>
-                        <p class="text-blue-100 text-xs md:text-sm leading-relaxed max-w-xl">
+                        <p id="heroSubtitle" class="text-blue-100 text-xs md:text-sm leading-relaxed max-w-xl">
                             Официальное трудоустройство по ТК РФ, заработная плата до <strong>100 000 ₽</strong>,
                             оплачиваемый отпуск до 40 дней, стабильный соцпакет и компенсация 50% аренды жилья
                             иногородним.
@@ -340,34 +354,34 @@
                             <div
                                 class="glass-card p-3.5 rounded-2xl flex flex-col justify-between transition hover:border-amber-400/50">
                                 <div class="flex items-center justify-between mb-1.5">
-                                    <span class="text-amber-400 font-black text-lg">до 100к ₽</span>
+                                    <span id="adv1Val" class="text-amber-400 font-black text-lg">до 100к ₽</span>
                                     <i data-lucide="banknote" class="w-5 h-5 text-amber-400"></i>
                                 </div>
-                                <div class="text-[11px] text-blue-100 font-medium">Заработная плата ТК РФ</div>
+                                <div id="adv1Label" class="text-[11px] text-blue-100 font-medium">Заработная плата ТК РФ</div>
                             </div>
                             <div
                                 class="glass-card p-3.5 rounded-2xl flex flex-col justify-between transition hover:border-emerald-400/50">
                                 <div class="flex items-center justify-between mb-1.5">
-                                    <span class="text-emerald-400 font-black text-lg">2–3 мес.</span>
+                                    <span id="adv2Val" class="text-emerald-400 font-black text-lg">2–3 мес.</span>
                                     <i data-lucide="graduation-cap" class="w-5 h-5 text-emerald-400"></i>
                                 </div>
-                                <div class="text-[11px] text-blue-100 font-medium">Обучение со стипендией</div>
+                                <div id="adv2Label" class="text-[11px] text-blue-100 font-medium">Обучение со стипендией</div>
                             </div>
                             <div
                                 class="glass-card p-3.5 rounded-2xl flex flex-col justify-between transition hover:border-sky-400/50">
                                 <div class="flex items-center justify-between mb-1.5">
-                                    <span class="text-sky-300 font-black text-lg">40 дней</span>
+                                    <span id="adv3Val" class="text-sky-300 font-black text-lg">40 дней</span>
                                     <i data-lucide="calendar-clock" class="w-5 h-5 text-sky-300"></i>
                                 </div>
-                                <div class="text-[11px] text-blue-100 font-medium">Оплачиваемый отпуск + 2/2</div>
+                                <div id="adv3Label" class="text-[11px] text-blue-100 font-medium">Оплачиваемый отпуск + 2/2</div>
                             </div>
                             <div
                                 class="glass-card p-3.5 rounded-2xl flex flex-col justify-between transition hover:border-white/50">
                                 <div class="flex items-center justify-between mb-1.5">
-                                    <span class="text-white font-black text-lg">50%</span>
+                                    <span id="adv4Val" class="text-white font-black text-lg">50%</span>
                                     <i data-lucide="building-2" class="w-5 h-5 text-white/90"></i>
                                 </div>
-                                <div class="text-[11px] text-blue-100 font-medium">Компенсация жилья / Общежитие</div>
+                                <div id="adv4Label" class="text-[11px] text-blue-100 font-medium">Компенсация жилья / Общежитие</div>
                             </div>
                         </div>
 
@@ -375,7 +389,7 @@
                         <div class="flex flex-wrap gap-3 pt-2">
                             <button onclick="switchTab('survey')"
                                 class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-[#F26E22] text-slate-900 font-bold hover:brightness-110 shadow-lg shadow-orange-500/25 transition flex items-center gap-2">
-                                <span>Заполнить анкету на работу</span>
+                                <span id="ctaSurveyBtnText">Заполнить анкету на работу</span>
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                         d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -387,11 +401,11 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
-                                <span>Задать вопрос</span>
+                                <span id="ctaAskBtnText">Задать вопрос</span>
                             </button>
                             <button onclick="switchTab('cabinet')"
                                 class="px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white font-medium border border-white/20 transition flex items-center gap-2">
-                                <span>Проверить статус заявки</span>
+                                <span id="ctaStatusBtnText">Проверить статус заявки</span>
                             </button>
                         </div>
                     </div>
@@ -913,6 +927,379 @@
             <div id="inquiriesListContainer" class="space-y-3.5">
                 <div class="text-center py-10 text-slate-400 text-xs">Загрузка обращений соискателей...</div>
             </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+        4.0A. КАСТОМИЗАЦИЯ ТЕКСТОВ И КНОПОК САЙТА (CONTENT CUSTOMIZER)
+    ========================================================================= -->
+    <div id="tabContentCustomization" class="space-y-6 hidden">
+        <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="p-3 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                        <i data-lucide="palette" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl md:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <span>Кастомизация текстов и кнопок</span>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">Live Editor</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Изменяйте заголовки, преимущества, кнопки и контакты в один клик без правки исходного кода</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="resetCustomizationDefaults()" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5 transition">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        <span>Сброс по умолчанию</span>
+                    </button>
+                    <button onclick="saveCustomizationSettings()" id="btnSaveCustomization" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-[#1371B9] hover:brightness-110 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition">
+                        <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                        <span>Сохранить и применить</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Уведомление об успешном сохранении -->
+            <div id="custAlertBox" class="hidden mb-6 p-4 rounded-2xl text-xs font-semibold flex items-center justify-between gap-3">
+                <span id="custAlertMsg"></span>
+                <button onclick="document.getElementById('custAlertBox').classList.add('hidden')" class="text-xs font-bold opacity-70 hover:opacity-100">✕</button>
+            </div>
+
+            <!-- Блоки кастомизации -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- 1. Главный экран (Hero-блок) -->
+                <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-4">
+                    <div class="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+                        <span>Главный баннер (Hero-блок)</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Верхний бейдж (Актуальный набор)</label>
+                        <input type="text" id="cust_hero_badge" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-medium focus:border-[#1371B9] outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Главный заголовок H1</label>
+                        <input type="text" id="cust_hero_title" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-medium focus:border-[#1371B9] outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Подзаголовок / Описание условий работы</label>
+                        <textarea id="cust_hero_subtitle" rows="3" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-medium focus:border-[#1371B9] outline-none leading-relaxed"></textarea>
+                    </div>
+                </div>
+
+                <!-- 2. Кнопки действий (CTA) -->
+                <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-4">
+                    <div class="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <i data-lucide="mouse-pointer-click" class="w-4 h-4 text-[#1371B9]"></i>
+                        <span>Кнопки действий (CTA)</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Основная кнопка подачи анкеты</label>
+                        <input type="text" id="cust_cta_survey_btn" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-medium focus:border-[#1371B9] outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Кнопка «Задать вопрос соискателя»</label>
+                        <input type="text" id="cust_cta_ask_btn" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-medium focus:border-[#1371B9] outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Кнопка «Проверить статус заявки»</label>
+                        <input type="text" id="cust_cta_status_btn" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-medium focus:border-[#1371B9] outline-none">
+                    </div>
+                </div>
+
+                <!-- 3. Четыре карточки преимуществ -->
+                <div class="lg:col-span-2 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-4">
+                    <div class="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <i data-lucide="award" class="w-4 h-4 text-emerald-500"></i>
+                        <span>4 Карточки ключевых преимуществ</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Карточка 1 -->
+                        <div class="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                            <span class="text-[11px] font-bold text-amber-500 uppercase">Карточка 1: Зарплата</span>
+                            <input type="text" id="cust_adv1_val" placeholder="до 100к ₽" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                            <input type="text" id="cust_adv1_label" placeholder="Заработная плата ТК РФ" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                        </div>
+
+                        <!-- Карточка 2 -->
+                        <div class="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                            <span class="text-[11px] font-bold text-emerald-500 uppercase">Карточка 2: Обучение</span>
+                            <input type="text" id="cust_adv2_val" placeholder="2–3 мес." class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                            <input type="text" id="cust_adv2_label" placeholder="Обучение со стипендией" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                        </div>
+
+                        <!-- Карточка 3 -->
+                        <div class="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                            <span class="text-[11px] font-bold text-sky-500 uppercase">Карточка 3: Отпуск/График</span>
+                            <input type="text" id="cust_adv3_val" placeholder="40 дней" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                            <input type="text" id="cust_adv3_label" placeholder="Оплачиваемый отпуск + 2/2" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                        </div>
+
+                        <!-- Карточка 4 -->
+                        <div class="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                            <span class="text-[11px] font-bold text-purple-500 uppercase">Карточка 4: Жилье</span>
+                            <input type="text" id="cust_adv4_val" placeholder="50%" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                            <input type="text" id="cust_adv4_label" placeholder="Компенсация жилья / Общежитие" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Контакты и Кадровая служба -->
+                <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-4">
+                    <div class="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <i data-lucide="phone-call" class="w-4 h-4 text-blue-500"></i>
+                        <span>Контакты отдела кадров</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Телефон</label>
+                            <input type="text" id="cust_contact_phone" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium focus:border-[#1371B9] outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Email</label>
+                            <input type="email" id="cust_contact_email" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium focus:border-[#1371B9] outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Адрес предприятия</label>
+                        <input type="text" id="cust_contact_address" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium focus:border-[#1371B9] outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Режим работы</label>
+                        <input type="text" id="cust_contact_hours" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium focus:border-[#1371B9] outline-none">
+                    </div>
+                </div>
+
+                <!-- 5. Telegram-бот приветствие -->
+                <div class="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-4">
+                    <div class="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100 pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <i data-lucide="bot" class="w-4 h-4 text-sky-500"></i>
+                        <span>Telegram-бот (@UetFeedback_bot)</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Приветственное сообщение бота (/start)</label>
+                        <textarea id="cust_bot_greeting" rows="4" class="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-medium focus:border-[#1371B9] outline-none leading-relaxed"></textarea>
+                    </div>
+
+                    <p class="text-[11px] text-slate-400">Это сообщение отправляется новым соискателям при первом запуске бота в Telegram.</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+        4.0B. ЦЕНТР РАССЫЛОК И УВЕДОМЛЕНИЙ (BROADCAST HUB)
+    ========================================================================= -->
+    <div id="tabContentBroadcast" class="space-y-6 hidden">
+        <div class="bg-white dark:bg-[#112240] rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="p-3 rounded-2xl bg-blue-500/10 text-[#1371B9] dark:text-blue-400">
+                        <i data-lucide="send" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl md:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <span>Центр рассылок и оповещений</span>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-[#1371B9] dark:text-blue-400 border border-blue-200 dark:border-blue-800">Telegram Bot</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Отправка сообщений через бота @UetFeedback_bot с безопасным тестовым режимом</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Бот онлайн: @UetFeedback_bot</span>
+                </div>
+            </div>
+
+            <!-- ВЫБОР РЕЖИМА РАССЫЛКИ (ТЕСТОВЫЙ / HR / БОЕВОЙ) -->
+            <div class="mb-6 space-y-2">
+                <label class="block text-xs font-bold uppercase text-slate-400">Выберите аудиторию рассылки:</label>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                    <!-- Режим 1: Только мне (Тест) -->
+                    <div onclick="selectBroadcastMode('me')" id="bModeCardMe" class="cursor-pointer p-4 rounded-2xl border-2 border-[#1371B9] bg-blue-50/50 dark:bg-blue-950/30 transition flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                                    <span>🧪 Только мне (Тест)</span>
+                                </span>
+                                <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-200 dark:bg-blue-900 text-[#1371B9] dark:text-blue-300">1 получатель</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Отправка лично вам (@its_darksold1 / 7657422832). Проверьте форматирование, ссылки и оформление перед массовой рассылкой.
+                            </p>
+                        </div>
+                        <div class="mt-3 text-[11px] font-bold text-[#1371B9] dark:text-blue-400 flex items-center gap-1">
+                            <span>✓ Режим по умолчанию</span>
+                        </div>
+                    </div>
+
+                    <!-- Режим 2: Кадровый чат (HR) -->
+                    <div onclick="selectBroadcastMode('hr')" id="bModeCardHr" class="cursor-pointer p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 transition flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                                    <span>👔 Кадровый чат</span>
+                                </span>
+                                <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Служебный чат</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Доставка в закрытую рабочую группу отдела кадров предприятия (-1003875480349).
+                            </p>
+                        </div>
+                        <div class="mt-3 text-[11px] font-semibold text-slate-400">
+                            <span>Для внутренних объявлений</span>
+                        </div>
+                    </div>
+
+                    <!-- Режим 3: Всем пользователям (Боевой) -->
+                    <div onclick="selectBroadcastMode('all')" id="bModeCardAll" class="cursor-pointer p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 transition flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                                    <span>🌐 Всем соискателям</span>
+                                </span>
+                                <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800">Боевой</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Массовое оповещение всех реальных соискателей и зарегистрированных пользователей в базе данных.
+                            </p>
+                        </div>
+                        <div class="mt-3 text-[11px] font-semibold text-amber-500">
+                            <span>⚠️ Внимание: массовая отправка</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- БЫСТРЫЕ ШАБЛОНЫ СООБЩЕНИЙ -->
+            <div class="mb-5 space-y-1.5">
+                <span class="text-xs font-bold uppercase text-slate-400">Быстрые шаблоны:</span>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="setBroadcastTemplate('driver_recruitment')" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition flex items-center gap-1">
+                        <span>📢 Набор водителей</span>
+                    </button>
+                    <button type="button" onclick="setBroadcastTemplate('maintenance')" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition flex items-center gap-1">
+                        <span>⚠️ Регламентные работы</span>
+                    </button>
+                    <button type="button" onclick="setBroadcastTemplate('salary_increase')" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition flex items-center gap-1">
+                        <span>💼 Новые вакансии и условия</span>
+                    </button>
+                    <button type="button" onclick="clearBroadcastForm()" class="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-semibold transition">
+                        <span>Очистить</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ФОРМА СООБЩЕНИЯ -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Заголовок / Тема рассылки</label>
+                        <input type="text" id="broadcastTitleInput" placeholder="Например: Новый набор в группу водителей трамвая"
+                            oninput="updateBroadcastPreview()"
+                            class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-medium focus:border-[#1371B9] outline-none">
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold uppercase text-slate-400">Текст сообщения</label>
+                            <span class="text-[11px] text-slate-400">HTML-теги: &lt;b&gt;, &lt;i&gt;, &lt;code&gt;, &lt;a&gt;</span>
+                        </div>
+                        <textarea id="broadcastTextInput" rows="8" placeholder="Введите текст сообщения рассылки..."
+                            oninput="updateBroadcastPreview()"
+                            class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-medium focus:border-[#1371B9] outline-none leading-relaxed font-mono"></textarea>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="broadcastWithButton" checked onchange="updateBroadcastPreview()" class="w-4 h-4 rounded text-[#1371B9]">
+                        <label for="broadcastWithButton" class="text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer">
+                            Добавить инлайн-кнопку «Открыть портал МУП «УЭТ»»
+                        </label>
+                    </div>
+                </div>
+
+                <!-- ЖИВОЙ ПРЕДПРОСМОТР В СТИЛЕ TELEGRAM -->
+                <div class="space-y-2">
+                    <span class="block text-xs font-bold uppercase text-slate-400">Живой предпросмотр сообщения (как в Telegram):</span>
+                    <div class="p-4 rounded-3xl bg-[#0e1621] text-white border border-slate-800 shadow-inner flex flex-col justify-between min-h-[280px]">
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2 pb-2 border-b border-white/10 text-xs text-sky-400 font-bold">
+                                <span>🤖 @UetFeedback_bot</span>
+                                <span class="text-[10px] text-slate-400 font-normal">только что</span>
+                            </div>
+                            <div id="previewBroadcastTitle" class="font-bold text-sm text-amber-300">
+                                Заголовок сообщения
+                            </div>
+                            <div id="previewBroadcastBody" class="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed font-sans">
+                                Текст сообщения появится здесь в реальном времени...
+                            </div>
+                        </div>
+
+                        <div id="previewBroadcastBtnContainer" class="pt-4">
+                            <div class="w-full py-2 px-3 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold text-xs text-center border border-sky-400/30">
+                                🌐 Открыть Кадровый портал МУП «УЭТ» ↗
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- КНОПКА ОТПРАВКИ И РЕЗУЛЬТАТЫ -->
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="submitBroadcast()" id="btnSubmitBroadcast"
+                        class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#1371B9] to-blue-600 hover:brightness-110 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-500/25 flex items-center gap-2 transition">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span id="btnSubmitBroadcastText">🚀 Отправить рассылку (Только мне)</span>
+                    </button>
+                </div>
+
+                <div id="broadcastStatusInfo" class="text-xs text-slate-400 font-medium">
+                    Готово к отправке. Выберите режим и нажмите «Отправить».
+                </div>
+            </div>
+
+            <!-- БЛОК СТАТИСТИКИ ОТПРАВКИ -->
+            <div id="broadcastResultBox" class="hidden mt-6 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase text-slate-400">Отчёт о доставке:</span>
+                    <span id="broadcastResultBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-600">Завершено</span>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span class="text-[10px] font-bold uppercase text-slate-400">Целевая аудитория</span>
+                        <div id="bStatTotal" class="text-lg font-black text-[#1371B9] font-mono">0</div>
+                    </div>
+                    <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span class="text-[10px] font-bold uppercase text-slate-400">Успешно доставлено</span>
+                        <div id="bStatDelivered" class="text-lg font-black text-emerald-500 font-mono">0</div>
+                    </div>
+                    <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span class="text-[10px] font-bold uppercase text-slate-400">Ошибок доставки</span>
+                        <div id="bStatFailed" class="text-lg font-black text-red-500 font-mono">0</div>
+                    </div>
+                </div>
+                <p id="bStatNote" class="text-[11px] text-slate-500 dark:text-slate-400"></p>
+            </div>
+
         </div>
     </div>
 
@@ -1573,7 +1960,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ И РЕГИСТРАЦИИ (ТЕЛЕГРАМ / САЙТ) -->
+    <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ И РЕГИСТРАЦИИ (СОИСКАТЕЛЬ / СЛУЖЕБНЫЙ ВХОД / РЕГИСТРАЦИЯ) -->
     <div id="loginModal"
         class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
         onclick="handleBackdropClick(event)">
@@ -1584,272 +1971,160 @@
             <div class="flex justify-between items-center mb-5">
                 <div>
                     <h3 class="text-xl font-extrabold flex items-center gap-2">
-                        <span>Личный кабинет МУП «УЭТ»</span>
+                        <span>Кадровый портал МУП «УЭТ»</span>
                     </h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Вход и регистрация через Telegram или
-                        на сайте</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Личный кабинет соискателя и панель сотрудников</p>
                 </div>
                 <button onclick="closeLoginModal()"
                     class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition"
                     title="Закрыть окно">✕</button>
             </div>
 
-            <!-- Вкладки: Вход / Регистрация -->
-            <div class="flex rounded-2xl bg-slate-100 dark:bg-slate-800/80 p-1 mb-5">
-                <button id="authTabBtnLogin" onclick="switchAuthTab('login')"
-                    class="flex-1 py-2.5 rounded-xl font-bold text-xs transition bg-[#1371B9] text-white shadow-sm flex items-center justify-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                    </svg>
-                    <span>Вход в систему</span>
+            <!-- Вкладки авторизации: Соискатель / Сотрудники / Регистрация -->
+            <div class="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 p-1 mb-5 text-xs font-bold">
+                <button id="authTabBtnApplicant" onclick="switchAuthTab('applicant')"
+                    class="py-2.5 px-2 rounded-xl transition bg-[#1371B9] text-white shadow-sm flex items-center justify-center gap-1">
+                    <span>👤 Соискатель</span>
+                </button>
+                <button id="authTabBtnStaff" onclick="switchAuthTab('staff')"
+                    class="py-2.5 px-2 rounded-xl transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1">
+                    <span>💼 Сотрудник / HR</span>
                 </button>
                 <button id="authTabBtnRegister" onclick="switchAuthTab('register')"
-                    class="flex-1 py-2.5 rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                    </svg>
-                    <span>Регистрация соискателя</span>
+                    class="py-2.5 px-2 rounded-xl transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1">
+                    <span>📝 Регистрация</span>
                 </button>
             </div>
 
-            <!-- ================= ВКЛАДКА 1: ВХОД ================= -->
-            <div id="authContentLogin" class="space-y-4">
-
-                <!-- Быстрый вход через Telegram -->
-                <div
-                    class="p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/50 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <div class="font-bold text-xs text-sky-800 dark:text-sky-300 flex items-center gap-1.5">
-                            <span>✈️ Вход через Telegram</span>
-                        </div>
-                        <span class="text-[10px] bg-sky-500 text-white font-bold px-2 py-0.5 rounded-full">1 клик</span>
-                    </div>
-
-                    <button type="button" onclick="handleTelegramQuickAuth()" id="btnTgQuickAuth"
-                        class="w-full py-3 px-4 rounded-xl bg-[#229ED9] hover:bg-[#1E88C7] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition">
-                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                            <path
-                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.17 3.35-1.37 3.73-1.37.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" />
-                        </svg>
-                        <span>Войти через Telegram-аккаунт</span>
-                    </button>
-
-                    <div class="flex items-center justify-between text-[11px] text-sky-700 dark:text-sky-400 pt-1">
-                        <a href="https://t.me/UetFeedback_bot?start=site_auth" target="_blank"
-                            class="hover:underline flex items-center gap-1">
-                            <span>🤖 Открыть бота @UetFeedback_bot</span>
-                            <span>↗</span>
-                        </a>
-                        <span class="text-slate-400">Команда: <code>/password</code></span>
-                    </div>
+            <!-- ================= ВКЛАДКА 1: ВХОД ДЛЯ СОИСКАТЕЛЯ ================= -->
+            <div id="authContentApplicant" class="space-y-4">
+                <div class="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 text-xs text-slate-600 dark:text-slate-300">
+                    <p class="font-bold text-[#1371B9] dark:text-blue-400 mb-1">Вход для кандидатов и соискателей:</p>
+                    <p class="text-[11px] leading-relaxed">Введите номер телефона или номер анкеты (тикета). Если вы не задавали пароль при регистрации, оставьте поле пароля пустым — система пустит вас по номеру.</p>
                 </div>
 
-                <!-- Разделитель -->
-                <div class="relative flex items-center justify-center my-2">
-                    <div class="border-t border-slate-200 dark:border-slate-700 w-full"></div>
-                    <span
-                        class="bg-white dark:bg-[#112240] px-3 text-[11px] text-slate-400 font-semibold uppercase shrink-0">или
-                        вход на сайте по роли и паролю</span>
-                </div>
-
-                <!-- Селектор роли пользователя -->
-                <div class="space-y-1.5">
-                    <div
-                        class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        <span>Кто входит в систему?</span>
-                        <span id="roleBadgeHelp"
-                            class="text-[10px] text-[#1371B9] dark:text-sky-400 font-semibold cursor-pointer hover:underline"
-                            onclick="toggleAuthHelp(true)">💡 Как это работает?</span>
-                    </div>
-                    <div
-                        class="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
-                        <button type="button" id="roleBtnApplicant" onclick="selectLoginRole('applicant')"
-                            class="py-2 px-1 text-center rounded-xl font-bold text-xs transition bg-[#1371B9] text-white shadow-sm flex flex-col items-center justify-center gap-0.5">
-                            <span class="text-base leading-none">👤</span>
-                            <span>Соискатель</span>
-                        </button>
-                        <button type="button" id="roleBtnStaff" onclick="selectLoginRole('staff')"
-                            class="py-2 px-1 text-center rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex flex-col items-center justify-center gap-0.5">
-                            <span class="text-base leading-none">💼</span>
-                            <span>Сотрудник / HR</span>
-                        </button>
-                        <button type="button" id="roleBtnAdmin" onclick="selectLoginRole('superadmin')"
-                            class="py-2 px-1 text-center rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex flex-col items-center justify-center gap-0.5">
-                            <span class="text-base leading-none">👑</span>
-                            <span>Администратор</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Быстрые фишки для Сотрудников -->
-                <div id="staffPresetsBox"
-                    class="hidden p-3 rounded-2xl bg-sky-50/80 dark:bg-sky-950/25 border border-sky-200/60 dark:border-sky-900/40 space-y-2">
-                    <div class="flex items-center justify-between text-[11px] text-sky-800 dark:text-sky-300 font-bold">
-                        <span>👔 Способ входа сотрудника:</span>
-                        <span class="text-[10px] font-normal text-slate-400">по логину или Telegram ID</span>
-                    </div>
-                    <div class="grid grid-cols-3 gap-1.5">
-                        <button type="button" onclick="setStaffRolePreset('hr', 'Сотрудник / Кадры')"
-                            class="py-2 px-1 text-xs font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">💼
-                            HR / Кадры</button>
-                        <button type="button" onclick="setStaffRolePreset('username', 'Telegram Username')"
-                            class="py-2 px-1 text-xs font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">📱
-                            По @username</button>
-                        <button type="button" onclick="setStaffRolePreset('id', 'Telegram ID')"
-                            class="py-2 px-1 text-xs font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">🆔
-                            По Telegram ID</button>
-                    </div>
-                </div>
-
-                <!-- Форма входа на сайте -->
-                <form onsubmit="handleLoginSubmit(event)" autocomplete="off" class="space-y-3.5">
+                <form onsubmit="handleApplicantLogin(event)" autocomplete="off" class="space-y-3.5">
                     <div>
-                        <label id="loginUsernameLabel"
-                            class="block text-xs font-bold uppercase text-slate-400 mb-1">Номер телефона, Логин или
-                            Telegram Username</label>
-                        <input id="loginUsername" type="text" autocomplete="off" autocorrect="off"
-                            placeholder="+7 900 123-45-67, @username, логин или почта..."
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Номер телефона или № анкеты</label>
+                        <input id="appLoginPhone" type="text" placeholder="+7 927 000-00-00 или № 1042..."
                             class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-xs sm:text-sm font-medium"
                             required />
                     </div>
                     <div>
-                        <label id="loginPasswordLabel"
-                            class="block text-xs font-bold uppercase text-slate-400 mb-1">Пароль от личного
-                            кабинета</label>
-                        <input id="loginPassword" type="password" autocomplete="new-password" placeholder="••••••••"
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Пароль (если указывали при регистрации)</label>
+                        <input id="appLoginPassword" type="password" placeholder="•••••••• (необязательно для соискателя)"
                             class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-xs sm:text-sm font-medium" />
-                        <p id="loginPasswordHint" class="text-[10px] text-slate-400 mt-1">Для соискателей: если пароль
-                            не задавали, оставьте пустым — вход по номеру</p>
+                        <span class="text-[10px] text-slate-400 mt-1 block">Если пароль не задавался, оставьте поле пустым</span>
                     </div>
 
-                    <div class="flex items-center justify-between text-xs pt-0.5">
-                        <label
-                            class="flex items-center gap-2 cursor-pointer text-slate-600 dark:text-slate-300 select-none">
-                            <input type="checkbox" id="loginRememberMe" checked
-                                class="w-4 h-4 rounded text-[#1371B9] border-slate-300 dark:border-slate-600 focus:ring-[#1371B9]">
-                            <span class="font-medium">Запомнить данные на этом устройстве</span>
-                        </label>
-                    </div>
+                    <div id="appLoginErrorMsg" class="hidden text-xs text-red-500 font-semibold p-3 rounded-xl bg-red-500/10 border border-red-500/20"></div>
 
-                    <div id="loginErrorMsg"
-                        class="hidden text-xs text-red-500 font-semibold p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                    </div>
-
-                    <div class="flex gap-2 pt-1">
-                        <button type="button" onclick="closeLoginModal()"
-                            class="w-1/3 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs sm:text-sm rounded-xl transition">
-                            Закрыть
-                        </button>
-                        <button type="submit" id="btnLoginSubmit"
-                            class="flex-1 py-3.5 bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition">
-                            Войти в личный кабинет соискателя
-                        </button>
-                    </div>
+                    <button type="submit" id="btnAppLoginSubmit"
+                        class="w-full py-3.5 bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition">
+                        Войти в личный кабинет соискателя
+                    </button>
                 </form>
 
-                <!-- Интерактивная шпаргалка с инструкциями прямо в окне входа -->
-                <div class="pt-2 border-t border-slate-200 dark:border-slate-700/80">
-                    <button type="button" onclick="toggleAuthHelp()"
-                        class="w-full text-left flex items-center justify-between text-xs font-bold text-[#1371B9] hover:text-blue-700 dark:text-sky-400 transition py-1">
-                        <span class="flex items-center gap-1.5">
-                            <span class="text-sm">📖</span>
-                            <span>Инструкция: как задать пароль и войти?</span>
-                        </span>
-                        <span id="authHelpChevron"
-                            class="text-xs font-bold transform transition-transform duration-200">▼</span>
+                <!-- Вход через Telegram -->
+                <div class="pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <button type="button" onclick="handleTelegramQuickAuth()" id="btnTgQuickAuth"
+                        class="w-full py-2.5 px-4 rounded-xl bg-[#229ED9]/15 hover:bg-[#229ED9]/25 text-[#1371B9] dark:text-sky-300 font-bold text-xs flex items-center justify-center gap-2 border border-[#229ED9]/30 transition">
+                        <span>✈️ Быстрый вход через Telegram-аккаунт</span>
                     </button>
-                    <div id="authHelpContent"
-                        class="hidden mt-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 space-y-2.5">
-                        <div class="flex items-start gap-2">
-                            <span class="text-base shrink-0">👤</span>
-                            <div>
-                                <span class="font-bold text-slate-800 dark:text-slate-100">Соискателю
-                                    (Кандидату):</span>
-                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Логином является ваш
-                                    <b>номер телефона</b> (например, <code>+79270000000</code>) или <b>номер анкеты</b>
-                                    (например: <code>1042</code>). Пароль — тот, что вы придумали во вкладке
-                                    «Регистрация соискателя». Если пароль не указывали, оставьте поле пароля пустым —
-                                    система пустит по номеру.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex items-start gap-2">
-                            <span class="text-base shrink-0">💼</span>
-                            <div>
-                                <span class="font-bold text-slate-800 dark:text-slate-100">Сотруднику / Кадрам /
-                                    Инженеру:</span>
-                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">В качестве логина можно
-                                    использовать ваш <b>Telegram @username</b> (например, <code>@its_darksold1</code>),
-                                    <b>Email</b>, <b>Telegram ID</b> (<code>7657422832</code>) или роль
-                                    <code>hr</code>/<code>admin</code>. Чтобы задать или сменить пароль: откройте бота
-                                    <a href="https://t.me/UetFeedback_bot" target="_blank"
-                                        class="text-[#1371B9] dark:text-sky-400 font-bold underline">@UetFeedback_bot</a>
-                                    и отправьте команду <code>/password МойПароль</code>. Бот автоматически привяжет ваш
-                                    @username и пароль!</p>
-                            </div>
-                        </div>
-                        <div class="flex items-start gap-2">
-                            <span class="text-base shrink-0">👑</span>
-                            <div>
-                                <span class="font-bold text-slate-800 dark:text-slate-100">Главному Администратору
-                                    (SuperAdmin):</span>
-                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Вход по юзернейму
-                                    <code>@its_darksold1</code>, логину <code>admin</code> или вашему Telegram ID и
-                                    паролю. Доступны закрытый пульт, права доступа, ИИ-шлюз и управление сервером.</p>
-                            </div>
-                        </div>
+                    <div class="text-center pt-2">
+                        <button type="button" onclick="switchAuthTab('register')" class="text-xs text-slate-500 hover:text-[#1371B9] underline">Еще нет анкеты? Заполнить за 2 минуты →</button>
                     </div>
                 </div>
             </div>
 
-            <!-- ================= ВКЛАДКА 2: РЕГИСТРАЦИЯ СОИСКАТЕЛЯ ================= -->
-            <div id="authContentRegister" class="space-y-4 hidden">
-
-                <!-- Инструкция по порядку регистрации соискателя -->
-                <div
-                    class="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
-                    <div class="font-bold text-xs text-[#1371B9] dark:text-blue-400 flex items-center gap-1.5">
-                        <span>ℹ️ Инструкция по регистрации соискателя за 3 шага:</span>
+            <!-- ================= ВКЛАДКА 2: ВХОД ДЛЯ СОТРУДНИКОВ И АДМИНИСТРАЦИИ ================= -->
+            <div id="authContentStaff" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-400 mb-2">Выберите роль для быстрого входа:</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="setPresetRole('superadmin')" id="roleCardSuper"
+                            class="p-2.5 rounded-xl border border-purple-500/30 bg-purple-50/50 dark:bg-purple-950/20 hover:border-purple-500 text-left transition">
+                            <span class="text-base block">👑</span>
+                            <span class="text-xs font-bold block text-purple-700 dark:text-purple-300">Владелец</span>
+                            <span class="text-[10px] text-slate-400 block truncate">@its_darksold1</span>
+                        </button>
+                        <button type="button" onclick="setPresetRole('hr')" id="roleCardHr"
+                            class="p-2.5 rounded-xl border border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20 hover:border-blue-500 text-left transition">
+                            <span class="text-base block">💼</span>
+                            <span class="text-xs font-bold block text-[#1371B9] dark:text-blue-300">Кадры (HR)</span>
+                            <span class="text-[10px] text-slate-400 block truncate">Отдел кадров</span>
+                        </button>
+                        <button type="button" onclick="setPresetRole('tech')" id="roleCardTech"
+                            class="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 hover:border-emerald-500 text-left transition">
+                            <span class="text-base block">🛠</span>
+                            <span class="text-xs font-bold block text-emerald-700 dark:text-emerald-300">Тех-Админ</span>
+                            <span class="text-[10px] text-slate-400 block truncate">Инженер / Сервер</span>
+                        </button>
                     </div>
-                    <ul class="text-[11px] text-slate-600 dark:text-slate-300 space-y-1 pl-4 list-disc">
-                        <li><b>Шаг 1:</b> Введите ФИО и телефон — на них формируется официальный тикет соискателя в
-                            кадровой службе.</li>
-                        <li><b>Шаг 2:</b> Выберите специальность и задайте пароль для входа в личный кабинет.</li>
-                        <li><b>Шаг 3:</b> Нажмите «Зарегистрироваться» — система сразу авторизует вас и откроет
-                            заполнение 16 шагов анкеты.</li>
-                    </ul>
                 </div>
 
-                <!-- Быстрая регистрация через бота -->
-                <div
-                    class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 space-y-2">
-                    <div
-                        class="font-bold text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
-                        <span>✈️ Быстро в Telegram-боте</span>
-                        <span
-                            class="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">Удобно</span>
+                <form onsubmit="handleStaffLogin(event)" autocomplete="off" class="space-y-3.5">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Служебный логин, роль или @username</label>
+                        <input id="staffLoginUsername" type="text" placeholder="admin, hr, tech или @its_darksold1..."
+                            class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-purple-500 text-xs sm:text-sm font-medium"
+                            required />
                     </div>
-                    <p class="text-[11px] text-emerald-700 dark:text-emerald-400">
-                        Бот задаст вопросы в диалоговом режиме и сразу запишет вас на собеседование.
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Служебный пароль</label>
+                        <input id="staffLoginPassword" type="password" placeholder="••••••••"
+                            class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-purple-500 text-xs sm:text-sm font-medium"
+                            required />
+                    </div>
+
+                    <div id="staffLoginErrorMsg" class="hidden text-xs text-red-500 font-semibold p-3 rounded-xl bg-red-500/10 border border-red-500/20"></div>
+
+                    <button type="submit" id="btnStaffLoginSubmit"
+                        class="w-full py-3.5 bg-gradient-to-r from-purple-600 to-[#1371B9] hover:brightness-110 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition">
+                        Войти в служебную панель
+                    </button>
+                </form>
+
+                <!-- БЛОК МГНОВЕННОЙ ОТПРАВКИ ШПАРГАЛКИ В ТЕЛЕГРАМ ВЛАДЕЛЬЦУ -->
+                <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                            <span>📲 Забыли пароль или логин?</span>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600">Telegram</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Нажмите кнопку — бот мгновенно отправит полную памятку со всеми паролями и ролями лично вам в Telegram (@its_darksold1).
                     </p>
-                    <a href="https://t.me/UetFeedback_bot?start=survey" target="_blank"
-                        class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
-                        <span>Открыть @UetFeedback_bot в Telegram</span>
-                        <span>↗</span>
-                    </a>
+                    <button type="button" onclick="sendInstructionToTg()" id="btnSendTgInstruction"
+                        class="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+                        <span>📩 Отправить шпаргалку с паролями мне в Telegram</span>
+                    </button>
+                    <div id="tgInstructionStatus" class="hidden text-[11px] text-emerald-600 dark:text-emerald-400 font-bold text-center"></div>
                 </div>
 
-                <!-- Разделитель -->
-                <div class="relative flex items-center justify-center my-2">
-                    <div class="border-t border-slate-200 dark:border-slate-700 w-full"></div>
-                    <span
-                        class="bg-white dark:bg-[#112240] px-3 text-[11px] text-slate-400 font-semibold uppercase shrink-0">или
-                        регистрация на сайте</span>
+                <!-- Раскрывающаяся шпаргалка -->
+                <div class="pt-1">
+                    <button type="button" onclick="toggleAuthHelp()"
+                        class="w-full text-left flex items-center justify-between text-xs font-bold text-[#1371B9] hover:text-blue-700 dark:text-sky-400 transition py-1">
+                        <span>📖 Как сменить пароль через бота?</span>
+                        <span id="authHelpChevron" class="text-xs font-bold">▼</span>
+                    </button>
+                    <div id="authHelpContent" class="hidden mt-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 space-y-1.5">
+                        <p>1. Откройте бота <a href="https://t.me/UetFeedback_bot" target="_blank" class="underline font-bold text-[#1371B9]">@UetFeedback_bot</a>.</p>
+                        <p>2. Отправьте команду: <code>/password НовыйПароль</code>.</p>
+                        <p>3. Бот сохранит пароль и привяжет его к вашему @username для входа на сайте.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= ВКЛАДКА 3: ОНЛАЙН-РЕГИСТРАЦИЯ СОИСКАТЕЛЯ ================= -->
+            <div id="authContentRegister" class="space-y-4 hidden">
+                <div class="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-xs text-slate-700 dark:text-slate-300">
+                    <p class="font-bold text-emerald-700 dark:text-emerald-400 mb-1">Регистрация в кадровой системе:</p>
+                    <p class="text-[11px]">После заполнения формы откроется интерактивная анкета из 16 шагов с сохранением всех ответов.</p>
                 </div>
 
-                <!-- Форма онлайн-регистрации на сайте -->
                 <form onsubmit="handleRegisterSubmit(event)" class="space-y-3">
                     <div>
                         <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Ваше ФИО *</label>
@@ -1864,62 +2139,36 @@
                             required />
                     </div>
                     <div>
-                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Интересующая
-                            вакансия</label>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Интересующая вакансия</label>
                         <select id="regVacancy"
                             class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm">
-                            <option value="Водитель трамвая (обучение со стипендией)">Водитель трамвая (Вагон «Львёнок»,
-                                обучение 2 мес., стипендия)</option>
+                            <option value="Водитель трамвая (обучение со стипендией)">Водитель трамвая (Вагон «Львёнок», обучение 2 мес., стипендия)</option>
                             <option value="Водитель троллейбуса">Водитель троллейбуса (Заволжское депо)</option>
-                            <option value="Слесарь по ремонту подвижного состава">Слесарь-электрик по ремонту подвижного
-                                состава</option>
-                            <option value="Монтер пути / Контактник">Монтер пути / Электромонтер контактной сети
-                            </option>
+                            <option value="Слесарь по ремонту подвижного состава">Слесарь-электрик по ремонту подвижного состава</option>
+                            <option value="Монтер пути / Контактник">Монтер пути / Электромонтер контактной сети</option>
                             <option value="Другая специальность">Другая специальность / Резерв</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Пароль для личного
-                            кабинета</label>
-                        <input id="regPassword" type="password" placeholder="Придумайте пароль (от 3 символов)..."
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Придумайте пароль (необязательно)</label>
+                        <input id="regPassword" type="password" placeholder="От 3 символов..."
                             class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm" />
                     </div>
 
                     <div class="flex items-start gap-2 pt-1">
-                        <input id="regConsentCheck" type="checkbox" checked required
-                            class="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500">
+                        <input id="regConsentCheck" type="checkbox" checked required class="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500">
                         <label for="regConsentCheck" class="text-[11px] text-slate-500 dark:text-slate-400">
-                            Я даю согласие на обработку персональных данных в соответствии со ст. 9 ФЗ-152 и правилами
-                            МУП «УЭТ».
+                            Я даю согласие на обработку персональных данных (ФЗ-152) МУП «УЭТ».
                         </label>
                     </div>
 
-                    <div class="flex items-center justify-between text-xs pt-0.5">
-                        <label
-                            class="flex items-center gap-2 cursor-pointer text-slate-600 dark:text-slate-300 select-none">
-                            <input type="checkbox" id="regRememberMe" checked
-                                class="w-4 h-4 rounded text-emerald-600 border-slate-300 dark:border-slate-600 focus:ring-emerald-500">
-                            <span class="font-medium">Запомнить данные для автоматического входа</span>
-                        </label>
-                    </div>
+                    <div id="regErrorMsg" class="hidden text-xs text-red-500 font-semibold p-3 rounded-xl bg-red-500/10 border border-red-500/20"></div>
+                    <div id="regSuccessMsg" class="hidden text-xs text-emerald-600 font-semibold p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20"></div>
 
-                    <div id="regErrorMsg"
-                        class="hidden text-xs text-red-500 font-semibold p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                    </div>
-                    <div id="regSuccessMsg"
-                        class="hidden text-xs text-emerald-600 dark:text-emerald-400 font-semibold p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    </div>
-
-                    <div class="flex gap-2 pt-1">
-                        <button type="button" onclick="closeLoginModal()"
-                            class="w-1/3 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs sm:text-sm rounded-xl transition">
-                            Отмена
-                        </button>
-                        <button type="submit" id="btnRegSubmit"
-                            class="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition">
-                            Зарегистрироваться
-                        </button>
-                    </div>
+                    <button type="submit" id="btnRegSubmit"
+                        class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition">
+                        Зарегистрироваться и заполнить анкету
+                    </button>
                 </form>
             </div>
 
@@ -2167,6 +2416,7 @@
             renderSurveyCurrentStep();
             renderCabinetView();
             renderSurveyAllQuestions();
+            loadCustomizationSettings();
             if (window.lucide && typeof lucide.createIcons === 'function') {
                 lucide.createIcons();
             }
@@ -2295,118 +2545,191 @@
         // =========================================================================
 
         function switchAuthTab(tab) {
-            const btnLogin = document.getElementById('authTabBtnLogin');
+            const btnApp = document.getElementById('authTabBtnApplicant');
+            const btnStaff = document.getElementById('authTabBtnStaff');
             const btnReg = document.getElementById('authTabBtnRegister');
-            const contentLogin = document.getElementById('authContentLogin');
+            const contentApp = document.getElementById('authContentApplicant');
+            const contentStaff = document.getElementById('authContentStaff');
             const contentReg = document.getElementById('authContentRegister');
-            const errLogin = document.getElementById('loginErrorMsg');
-            const errReg = document.getElementById('regErrorMsg');
-            const succReg = document.getElementById('regSuccessMsg');
 
-            if (errLogin) errLogin.classList.add('hidden');
-            if (errReg) errReg.classList.add('hidden');
-            if (succReg) succReg.classList.add('hidden');
+            const activeClass = 'py-2.5 px-2 rounded-xl transition bg-[#1371B9] text-white shadow-sm flex items-center justify-center gap-1';
+            const inactiveClass = 'py-2.5 px-2 rounded-xl transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1';
 
-            if (tab === 'register') {
-                btnLogin.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1.5';
-                btnReg.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs transition bg-emerald-600 text-white shadow-sm flex items-center justify-center gap-1.5';
-                contentLogin.classList.add('hidden');
-                contentReg.classList.remove('hidden');
+            if (tab === 'login') tab = 'applicant';
+
+            if (btnApp) btnApp.className = tab === 'applicant' ? activeClass : inactiveClass;
+            if (btnStaff) btnStaff.className = tab === 'staff' ? activeClass : inactiveClass;
+            if (btnReg) btnReg.className = tab === 'register' ? (activeClass.replace('bg-[#1371B9]', 'bg-emerald-600')) : inactiveClass;
+
+            if (contentApp) contentApp.classList.toggle('hidden', tab !== 'applicant');
+            if (contentStaff) contentStaff.classList.toggle('hidden', tab !== 'staff');
+            if (contentReg) contentReg.classList.toggle('hidden', tab !== 'register');
+
+            if (tab === 'applicant') {
+                setTimeout(() => document.getElementById('appLoginPhone')?.focus(), 50);
+            } else if (tab === 'staff') {
+                setTimeout(() => document.getElementById('staffLoginUsername')?.focus(), 50);
+            } else if (tab === 'register') {
                 setTimeout(() => document.getElementById('regFullName')?.focus(), 50);
-            } else {
-                btnLogin.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs transition bg-[#1371B9] text-white shadow-sm flex items-center justify-center gap-1.5';
-                btnReg.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center gap-1.5';
-                contentLogin.classList.remove('hidden');
-                contentReg.classList.add('hidden');
-                setTimeout(() => document.getElementById('loginUsername')?.focus(), 50);
             }
         }
 
-        let currentLoginRole = 'applicant';
+        function setPresetRole(role) {
+            const uInput = document.getElementById('staffLoginUsername');
+            const pInput = document.getElementById('staffLoginPassword');
+            const cSuper = document.getElementById('roleCardSuper');
+            const cHr = document.getElementById('roleCardHr');
+            const cTech = document.getElementById('roleCardTech');
 
-        function selectLoginRole(role) {
-            currentLoginRole = role;
-            const btnApp = document.getElementById('roleBtnApplicant');
-            const btnStaff = document.getElementById('roleBtnStaff');
-            const btnAdmin = document.getElementById('roleBtnAdmin');
-            const staffBox = document.getElementById('staffPresetsBox');
-            const uInput = document.getElementById('loginUsername');
-            const uLabel = document.getElementById('loginUsernameLabel');
-            const pInput = document.getElementById('loginPassword');
-            const pLabel = document.getElementById('loginPasswordLabel');
-            const pHint = document.getElementById('loginPasswordHint');
-            const submitBtn = document.getElementById('btnLoginSubmit');
-            const errEl = document.getElementById('loginErrorMsg');
+            [cSuper, cHr, cTech].forEach(c => {
+                if (c) c.classList.remove('ring-2', 'ring-purple-500', 'ring-blue-500', 'ring-emerald-500');
+            });
+
+            if (role === 'superadmin') {
+                if (uInput) uInput.value = 'admin';
+                if (pInput) pInput.value = 'uet2026super';
+                if (cSuper) cSuper.classList.add('ring-2', 'ring-purple-500');
+            } else if (role === 'hr') {
+                if (uInput) uInput.value = 'hr';
+                if (pInput) pInput.value = 'uet2026hr';
+                if (cHr) cHr.classList.add('ring-2', 'ring-blue-500');
+            } else if (role === 'tech') {
+                if (uInput) uInput.value = 'tech';
+                if (pInput) pInput.value = 'uet2026';
+                if (cTech) cTech.classList.add('ring-2', 'ring-emerald-500');
+            }
+            if (pInput) setTimeout(() => pInput.focus(), 50);
+        }
+
+        async function handleApplicantLogin(e) {
+            e.preventDefault();
+            const phone = document.getElementById('appLoginPhone').value.trim();
+            const password = document.getElementById('appLoginPassword').value.trim();
+            const errEl = document.getElementById('appLoginErrorMsg');
+            const submitBtn = document.getElementById('btnAppLoginSubmit');
 
             if (errEl) errEl.classList.add('hidden');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Вход в личный кабинет...';
+            }
 
-            const activeClass = 'py-2 px-1 text-center rounded-xl font-bold text-xs transition bg-[#1371B9] text-white shadow-sm flex flex-col items-center justify-center gap-0.5';
-            const inactiveClass = 'py-2 px-1 text-center rounded-xl font-bold text-xs transition text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex flex-col items-center justify-center gap-0.5';
-
-            if (btnApp) btnApp.className = role === 'applicant' ? activeClass : inactiveClass;
-            if (btnStaff) btnStaff.className = role === 'staff' ? activeClass : inactiveClass;
-            if (btnAdmin) btnAdmin.className = role === 'superadmin' ? activeClass : inactiveClass;
-
-            if (role === 'staff') {
-                if (staffBox) staffBox.classList.remove('hidden');
-                if (uLabel) uLabel.innerText = 'Должность, роль или Telegram ID';
-                if (uInput) {
-                    uInput.placeholder = 'hr, dispatcher, ваш Telegram ID или email...';
-                    uInput.required = false;
+            try {
+                const resp = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: phone,
+                        password: password,
+                        role: 'applicant'
+                    })
+                });
+                const res = await resp.json();
+                if (res.ok) {
+                    sessionStorage.setItem('uet_session', JSON.stringify(res));
+                    applyAuthSuccess(res);
+                    closeLoginModal();
+                    switchTab('cabinet');
+                } else {
+                    if (errEl) {
+                        errEl.innerText = res.error || 'Анкета с таким номером телефона не найдена. Пожалуйста, проверьте номер или зарегистрируйтесь.';
+                        errEl.classList.remove('hidden');
+                    }
                 }
-                if (pLabel) pLabel.innerText = 'Ваш персональный пароль';
-                if (pHint) pHint.innerText = 'Пароль, выданный администратором или заданный в боте через команду /password';
-                if (submitBtn) submitBtn.innerText = 'Войти как сотрудник';
-            } else if (role === 'superadmin') {
-                if (staffBox) staffBox.classList.add('hidden');
-                if (uLabel) uLabel.innerText = 'Логин администратора';
-                if (uInput) {
-                    uInput.value = 'admin';
-                    uInput.placeholder = 'admin';
-                    uInput.required = true;
+            } catch (err) {
+                if (errEl) {
+                    errEl.innerText = 'Ошибка связи с сервером. Попробуйте еще раз.';
+                    errEl.classList.remove('hidden');
                 }
-                if (pLabel) pLabel.innerText = 'Мастер-пароль администратора';
-                if (pHint) pHint.innerText = 'Служебный мастер-пароль безопасности сервера';
-                if (submitBtn) submitBtn.innerText = 'Войти как Администратор';
-            } else {
-                // applicant
-                if (staffBox) staffBox.classList.add('hidden');
-                if (uLabel) uLabel.innerText = 'Номер телефона или номер анкеты';
-                if (uInput) {
-                    uInput.placeholder = '+7 900 123-45-67 или № 1042...';
-                    uInput.required = true;
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = 'Войти в личный кабинет соискателя';
                 }
-                if (pLabel) pLabel.innerText = 'Пароль от личного кабинета';
-                if (pHint) pHint.innerText = 'Для соискателей: если пароль не задавали, оставьте пустым — вход по номеру';
-                if (submitBtn) submitBtn.innerText = 'Войти в личный кабинет соискателя';
             }
         }
 
-        function setStaffRolePreset(presetKey, title) {
-            const uInput = document.getElementById('loginUsername');
-            const pInput = document.getElementById('loginPassword');
-            const pHint = document.getElementById('loginPasswordHint');
+        async function handleStaffLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('staffLoginUsername').value.trim();
+            const password = document.getElementById('staffLoginPassword').value.trim();
+            const errEl = document.getElementById('staffLoginErrorMsg');
+            const submitBtn = document.getElementById('btnStaffLoginSubmit');
 
-            if (presetKey === 'id') {
-                if (uInput) {
-                    uInput.value = '';
-                    uInput.placeholder = 'Введите ваш цифровой Telegram ID...';
-                    uInput.focus();
+            if (errEl) errEl.classList.add('hidden');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Проверка учетных данных...';
+            }
+
+            try {
+                const resp = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        role: 'staff'
+                    })
+                });
+                const res = await resp.json();
+                if (res.ok) {
+                    sessionStorage.setItem('uet_session', JSON.stringify(res));
+                    applyAuthSuccess(res);
+                    closeLoginModal();
+                    if (res.role === 'superadmin' || res.role === 'super') {
+                        switchTab('tech');
+                    } else if (res.role === 'hr') {
+                        switchTab('applicants');
+                    } else {
+                        switchTab('applicants');
+                    }
+                } else {
+                    if (errEl) {
+                        errEl.innerText = res.error || 'Неверный служебный логин или пароль.';
+                        errEl.classList.remove('hidden');
+                    }
                 }
-                if (pHint) pHint.innerText = 'Укажите ваш Telegram ID и персональный пароль';
-            } else if (presetKey === 'username') {
-                if (uInput) {
-                    uInput.value = '';
-                    uInput.placeholder = '@its_darksold1 или ваш Telegram username...';
-                    uInput.focus();
+            } catch (err) {
+                if (errEl) {
+                    errEl.innerText = 'Ошибка связи с сервером. Попробуйте еще раз.';
+                    errEl.classList.remove('hidden');
                 }
-                if (pHint) pHint.innerText = 'Введите ваш @username в Telegram и персональный пароль:';
-            } else {
-                if (uInput) {
-                    uInput.value = presetKey;
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = 'Войти в служебную панель';
                 }
-                if (pHint) pHint.innerText = `Выбрана роль: ${title}. Введите ваш пароль:`;
-                if (pInput) setTimeout(() => pInput.focus(), 50);
+            }
+        }
+
+        async function sendInstructionToTg() {
+            const btn = document.getElementById('btnSendTgInstruction');
+            const statusEl = document.getElementById('tgInstructionStatus');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = '⏳ Отправка памятки в Telegram...';
+            }
+            try {
+                const resp = await fetch('/api/super/send_login_instruction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const res = await resp.json();
+                if (statusEl) {
+                    statusEl.innerText = res.message || '✅ Шпаргалка успешно отправлена вам в Telegram (@its_darksold1)!';
+                    statusEl.classList.remove('hidden');
+                }
+            } catch (err) {
+                if (statusEl) {
+                    statusEl.innerText = '⚠️ Ошибка при отправке. Проверьте, запущен ли бот.';
+                    statusEl.classList.remove('hidden');
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '📩 Отправить шпаргалку с паролями мне в Telegram';
+                }
             }
         }
 
@@ -2701,6 +3024,293 @@
                 alert('Не удалось связаться с сервером. Попробуйте еще раз.');
             } finally {
                 if (btn) { btn.disabled = false; btn.innerText = 'Ответить соискателю'; }
+            }
+        }
+
+        // =========================================================================
+        // КАСТОМИЗАЦИЯ ТЕКСТОВ И КНОПОК САЙТА (CONTENT CUSTOMIZER)
+        // =========================================================================
+
+        let cachedCustomizationData = {};
+
+        async function loadCustomizationSettings() {
+            try {
+                const resp = await fetch('/api/content/customization');
+                const res = await resp.json();
+                if (res.ok && res.data) {
+                    cachedCustomizationData = res.data;
+                    applyDynamicContentToDom(res.data);
+                    fillCustomizationForm(res.data);
+                }
+            } catch (err) {
+                console.warn('Не удалось загрузить кастомизацию текстов:', err);
+            }
+        }
+
+        function applyDynamicContentToDom(data) {
+            if (!data) return;
+            // 1. Hero
+            const badgeEl = document.getElementById('heroRecruitmentBadgeText');
+            if (badgeEl && data.hero_badge) badgeEl.innerText = data.hero_badge;
+
+            const titleEl = document.getElementById('heroMainTitle');
+            if (titleEl && data.hero_title) titleEl.innerText = data.hero_title;
+
+            const subEl = document.getElementById('heroSubtitle');
+            if (subEl && data.hero_subtitle) subEl.innerText = data.hero_subtitle;
+
+            // 2. Advantages
+            if (document.getElementById('adv1Val') && data.adv1_val) document.getElementById('adv1Val').innerText = data.adv1_val;
+            if (document.getElementById('adv1Label') && data.adv1_label) document.getElementById('adv1Label').innerText = data.adv1_label;
+
+            if (document.getElementById('adv2Val') && data.adv2_val) document.getElementById('adv2Val').innerText = data.adv2_val;
+            if (document.getElementById('adv2Label') && data.adv2_label) document.getElementById('adv2Label').innerText = data.adv2_label;
+
+            if (document.getElementById('adv3Val') && data.adv3_val) document.getElementById('adv3Val').innerText = data.adv3_val;
+            if (document.getElementById('adv3Label') && data.adv3_label) document.getElementById('adv3Label').innerText = data.adv3_label;
+
+            if (document.getElementById('adv4Val') && data.adv4_val) document.getElementById('adv4Val').innerText = data.adv4_val;
+            if (document.getElementById('adv4Label') && data.adv4_label) document.getElementById('adv4Label').innerText = data.adv4_label;
+
+            // 3. CTA Buttons
+            if (document.getElementById('ctaSurveyBtnText') && data.cta_survey_btn) document.getElementById('ctaSurveyBtnText').innerText = data.cta_survey_btn;
+            if (document.getElementById('ctaAskBtnText') && data.cta_ask_btn) document.getElementById('ctaAskBtnText').innerText = data.cta_ask_btn;
+            if (document.getElementById('ctaStatusBtnText') && data.cta_status_btn) document.getElementById('ctaStatusBtnText').innerText = data.cta_status_btn;
+        }
+
+        function fillCustomizationForm(data) {
+            const fields = [
+                'hero_badge', 'hero_title', 'hero_subtitle',
+                'adv1_val', 'adv1_label', 'adv2_val', 'adv2_label',
+                'adv3_val', 'adv3_label', 'adv4_val', 'adv4_label',
+                'cta_survey_btn', 'cta_ask_btn', 'cta_status_btn',
+                'contact_phone', 'contact_email', 'contact_address', 'contact_hours',
+                'bot_greeting'
+            ];
+            fields.forEach(f => {
+                const input = document.getElementById(`cust_${f}`);
+                if (input && data[f] !== undefined) {
+                    input.value = data[f];
+                }
+            });
+        }
+
+        async function saveCustomizationSettings() {
+            const btn = document.getElementById('btnSaveCustomization');
+            const alertBox = document.getElementById('custAlertBox');
+            const alertMsg = document.getElementById('custAlertMsg');
+
+            const payload = {};
+            const fields = [
+                'hero_badge', 'hero_title', 'hero_subtitle',
+                'adv1_val', 'adv1_label', 'adv2_val', 'adv2_label',
+                'adv3_val', 'adv3_label', 'adv4_val', 'adv4_label',
+                'cta_survey_btn', 'cta_ask_btn', 'cta_status_btn',
+                'contact_phone', 'contact_email', 'contact_address', 'contact_hours',
+                'bot_greeting'
+            ];
+            fields.forEach(f => {
+                const el = document.getElementById(`cust_${f}`);
+                if (el) payload[f] = el.value.trim();
+            });
+
+            if (btn) { btn.disabled = true; btn.innerText = 'Сохранение...'; }
+
+            try {
+                const resp = await fetch('/api/content/customization', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const res = await resp.json();
+                if (res.ok) {
+                    applyDynamicContentToDom(payload);
+                    if (alertBox && alertMsg) {
+                        alertBox.className = 'mb-6 p-4 rounded-2xl text-xs font-semibold flex items-center justify-between gap-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+                        alertMsg.innerText = '✅ Изменения успешно сохранены в базе данных и применены на сайте!';
+                        alertBox.classList.remove('hidden');
+                        setTimeout(() => alertBox.classList.add('hidden'), 5000);
+                    }
+                } else {
+                    alert(res.error || 'Ошибка при сохранении настроек.');
+                }
+            } catch (err) {
+                alert('Не удалось связаться с сервером. Попробуйте еще раз.');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerText = 'Сохранить и применить'; }
+            }
+        }
+
+        function resetCustomizationDefaults() {
+            if (!confirm('Вы уверены, что хотите сбросить все тексты и кнопки к стандартным заводским значениям?')) return;
+            const defaults = {
+                hero_badge: 'Набор в новую группу обучения водителей',
+                hero_title: 'Работа в МУП «Ульяновскэлектротранс»',
+                hero_subtitle: 'Официальное трудоустройство по ТК РФ, заработная плата до 100 000 ₽, оплачиваемый отпуск до 40 дней, стабильный соцпакет и компенсация 50% аренды жилья иногородним.',
+                adv1_val: 'до 100к ₽',
+                adv1_label: 'Заработная плата ТК РФ',
+                adv2_val: '2–3 мес.',
+                adv2_label: 'Обучение со стипендией',
+                adv3_val: '40 дней',
+                adv3_label: 'Оплачиваемый отпуск + 2/2',
+                adv4_val: '50%',
+                adv4_label: 'Компенсация жилья / Общежитие',
+                cta_survey_btn: 'Заполнить анкету на работу',
+                cta_ask_btn: 'Задать вопрос',
+                cta_status_btn: 'Проверить статус заявки',
+                contact_phone: '+7 (8422) 58-46-60',
+                contact_email: 'hr@uet73.ru',
+                contact_address: 'г. Ульяновск, ул. Радищева, д. 144а',
+                contact_hours: 'Пн–Пт с 8:00 до 17:00',
+                bot_greeting: 'Добро пожаловать в официальный кадровый бот МУП «Ульяновскэлектротранс»!'
+            };
+            fillCustomizationForm(defaults);
+            saveCustomizationSettings();
+        }
+
+        // =========================================================================
+        // ЦЕНТР РАССЫЛОК (BROADCAST HUB)
+        // =========================================================================
+
+        let currentBroadcastMode = 'me'; // 'me' | 'hr' | 'all'
+
+        function selectBroadcastMode(mode) {
+            currentBroadcastMode = mode;
+            const cardMe = document.getElementById('bModeCardMe');
+            const cardHr = document.getElementById('bModeCardHr');
+            const cardAll = document.getElementById('bModeCardAll');
+            const submitBtnText = document.getElementById('btnSubmitBroadcastText');
+
+            const activeStyle = 'cursor-pointer p-4 rounded-2xl border-2 border-[#1371B9] bg-blue-50/50 dark:bg-blue-950/30 transition flex flex-col justify-between';
+            const inactiveStyle = 'cursor-pointer p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 transition flex flex-col justify-between';
+
+            if (cardMe) cardMe.className = mode === 'me' ? activeStyle : inactiveStyle;
+            if (cardHr) cardHr.className = mode === 'hr' ? activeStyle : inactiveStyle;
+            if (cardAll) cardAll.className = mode === 'all' ? activeStyle : inactiveStyle;
+
+            if (submitBtnText) {
+                if (mode === 'me') submitBtnText.innerText = '🚀 Отправить рассылку (Только мне — Тест)';
+                else if (mode === 'hr') submitBtnText.innerText = '🚀 Отправить в чат Отдела Кадров';
+                else submitBtnText.innerText = '🚀 Запустить боевую рассылку (Всем соискателям)';
+            }
+        }
+
+        function setBroadcastTemplate(key) {
+            const titleInput = document.getElementById('broadcastTitleInput');
+            const textInput = document.getElementById('broadcastTextInput');
+
+            if (key === 'driver_recruitment') {
+                if (titleInput) titleInput.value = '🚋 Набор в новую группу водителей трамвая «Львёнок»';
+                if (textInput) textInput.value = 'Уважаемые соискатели!\n\nМУП «Ульяновскэлектротранс» открывает набор в новую группу профессионального обучения водителей современных трамваев «Львёнок».\n\n<b>Условия:</b>\n• Стипендия на время обучения\n• Заработная плата до <b>100 000 ₽</b>\n• Оплачиваемый отпуск до 40 дней\n• Компенсация 50% аренды жилья иногородним\n\nПодайте анкету онлайн или задайте вопрос на нашем кадровом портале!';
+            } else if (key === 'maintenance') {
+                if (titleInput) titleInput.value = '⚠️ Плановые регламентные работы на сервере';
+                if (textInput) textInput.value = 'Уважаемые пользователи и соискатели!\n\nСообщаем, что на серверах кадровой службы МУП «Ульяновскэлектротранс» проводятся плановые регламентные работы по обновлению защищенной базы данных.\n\nВсе ранее поданные анкеты находятся в полной безопасности. По срочным вопросам работает отдел кадров: <b>+7 (8422) 58-46-60</b>.';
+            } else if (key === 'salary_increase') {
+                if (titleInput) titleInput.value = '💼 Новые открытые вакансии в МУП «Ульяновскэлектротранс»';
+                if (textInput) textInput.value = 'Открыт дополнительный набор квалифицированных специалистов:\n\n• <b>Электромонтер контактной сети</b> (от 65 000 ₽)\n• <b>Слесарь по ремонту подвижного состава</b> (от 60 000 ₽)\n• <b>Водитель троллейбуса</b> (от 75 000 ₽)\n\nОфициальное трудоустройство по ТК РФ, полный соцпакет.';
+            }
+            updateBroadcastPreview();
+        }
+
+        function clearBroadcastForm() {
+            const titleInput = document.getElementById('broadcastTitleInput');
+            const textInput = document.getElementById('broadcastTextInput');
+            if (titleInput) titleInput.value = '';
+            if (textInput) textInput.value = '';
+            updateBroadcastPreview();
+        }
+
+        function updateBroadcastPreview() {
+            const titleInput = document.getElementById('broadcastTitleInput');
+            const textInput = document.getElementById('broadcastTextInput');
+            const previewTitle = document.getElementById('previewBroadcastTitle');
+            const previewBody = document.getElementById('previewBroadcastBody');
+            const withBtn = document.getElementById('broadcastWithButton')?.checked;
+            const btnContainer = document.getElementById('previewBroadcastBtnContainer');
+
+            const t = titleInput ? titleInput.value.trim() : '';
+            const b = textInput ? textInput.value.trim() : '';
+
+            if (previewTitle) previewTitle.innerText = t || 'Тема рассылки';
+            if (previewBody) {
+                previewBody.innerHTML = b ? b.replace(/\n/g, '<br>') : 'Текст сообщения появится здесь в реальном времени...';
+            }
+            if (btnContainer) {
+                btnContainer.classList.toggle('hidden', !withBtn);
+            }
+        }
+
+        async function submitBroadcast() {
+            const titleInput = document.getElementById('broadcastTitleInput');
+            const textInput = document.getElementById('broadcastTextInput');
+            const withBtn = document.getElementById('broadcastWithButton')?.checked;
+            const submitBtn = document.getElementById('btnSubmitBroadcast');
+            const statusInfo = document.getElementById('broadcastStatusInfo');
+            const resultBox = document.getElementById('broadcastResultBox');
+
+            const title = titleInput ? titleInput.value.trim() : '';
+            const text = textInput ? textInput.value.trim() : '';
+
+            if (!text) {
+                alert('Пожалуйста, введите текст сообщения для рассылки.');
+                return;
+            }
+
+            if (currentBroadcastMode === 'all') {
+                const confirmed = confirm('⚠️ ВНИМАНИЕ: Вы выбрали режим БОЕВОЙ рассылки ВСЕМ соискателям в базе данных. Вы уверены, что хотите запустить рассылку?');
+                if (!confirmed) return;
+            }
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = '⏳ Отправка рассылки через Telegram Bot API...';
+            }
+            if (statusInfo) statusInfo.innerText = 'Идет отправка сообщений...';
+
+            try {
+                const resp = await fetch('/api/broadcast/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: currentBroadcastMode,
+                        title: title,
+                        text: text,
+                        with_button: withBtn
+                    })
+                });
+                const res = await resp.json();
+
+                if (res.ok) {
+                    if (resultBox) {
+                        resultBox.classList.remove('hidden');
+                        document.getElementById('bStatTotal').innerText = res.total || 1;
+                        document.getElementById('bStatDelivered').innerText = res.delivered || 0;
+                        document.getElementById('bStatFailed').innerText = res.failed || 0;
+                        document.getElementById('bStatNote').innerText = res.message || 'Рассылка успешно выполнена.';
+                        const badge = document.getElementById('broadcastResultBadge');
+                        if (badge) {
+                            if (res.delivered > 0) {
+                                badge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300';
+                                badge.innerText = `Успешно доставлено: ${res.delivered}`;
+                            } else {
+                                badge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300';
+                                badge.innerText = 'Доставлено 0 получателям';
+                            }
+                        }
+                    }
+                    if (statusInfo) statusInfo.innerText = `✅ Завершено! Доставлено: ${res.delivered}, ошибок: ${res.failed}.`;
+                } else {
+                    alert(res.error || 'Ошибка при отправке рассылки.');
+                    if (statusInfo) statusInfo.innerText = 'Ошибка отправки рассылки.';
+                }
+            } catch (err) {
+                alert('Не удалось связаться с сервером.');
+                if (statusInfo) statusInfo.innerText = 'Сбой сетевого соединения.';
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    selectBroadcastMode(currentBroadcastMode);
+                }
             }
         }
 
@@ -3186,7 +3796,7 @@
         // =========================================================================
 
         function switchTab(tabName) {
-            const staffTabs = ['vacancies', 'applicants', 'inquiries', 'questions', 'security', 'tech', 'admins', 'ai'];
+            const staffTabs = ['vacancies', 'applicants', 'inquiries', 'questions', 'security', 'tech', 'admins', 'ai', 'customization', 'broadcast'];
             if (staffTabs.includes(tabName)) {
                 if (!['hr', 'tech', 'superadmin', 'depot'].includes(state.role)) {
                     alert('Доступ ограничен. Данный раздел предназначен только для уполномоченных сотрудников отдела кадров и администраторов МУП «УЭТ».');
@@ -3207,6 +3817,8 @@
                 'status': document.getElementById('tabContentStatus'),
                 'cabinet': document.getElementById('tabContentCabinet'),
                 'inquiries': document.getElementById('tabContentInquiries'),
+                'customization': document.getElementById('tabContentCustomization'),
+                'broadcast': document.getElementById('tabContentBroadcast'),
                 'vacancies': document.getElementById('tabContentVacancies'),
                 'applicants': document.getElementById('tabContentApplicants'),
                 'questions': document.getElementById('tabContentQuestions'),
@@ -3222,6 +3834,9 @@
                 }
             });
 
+            if (tabName === 'customization') loadCustomizationSettings();
+            if (tabName === 'broadcast') updateBroadcastPreview();
+
             // Обновление кнопок в ЕДИНОМ меню
             const topBtns = [
                 { id: 'topBtnLanding', tab: 'landing' },
@@ -3230,6 +3845,8 @@
                 { id: 'topBtnCabinet', tab: 'cabinet' },
                 { id: 'topBtnApplicants', tab: 'applicants' },
                 { id: 'topBtnInquiries', tab: 'inquiries' },
+                { id: 'topBtnCustomization', tab: 'customization' },
+                { id: 'topBtnBroadcast', tab: 'broadcast' },
                 { id: 'topBtnVacancies', tab: 'vacancies' },
                 { id: 'topBtnQuestions', tab: 'questions' },
                 { id: 'topBtnSecurity', tab: 'security' },

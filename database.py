@@ -235,6 +235,10 @@ class ResumeDB:
                 cursor.execute("ALTER TABLE inquiries ADD COLUMN is_test INTEGER DEFAULT 0")
             if "consent_timestamp" not in inq_cols:
                 cursor.execute("ALTER TABLE inquiries ADD COLUMN consent_timestamp TEXT DEFAULT ''")
+            if "email" not in inq_cols:
+                cursor.execute("ALTER TABLE inquiries ADD COLUMN email TEXT DEFAULT ''")
+            if "reply_channel" not in inq_cols:
+                cursor.execute("ALTER TABLE inquiries ADD COLUMN reply_channel TEXT DEFAULT 'tg'")
 
             # Миграции полей администраторов (веб-пароль, телефон, имя)
             cursor.execute("PRAGMA table_info(admins)")
@@ -247,6 +251,8 @@ class ResumeDB:
                 cursor.execute("ALTER TABLE admins ADD COLUMN full_name TEXT")
             if "email" not in admin_cols:
                 cursor.execute("ALTER TABLE admins ADD COLUMN email TEXT DEFAULT ''")
+            if "username" not in admin_cols:
+                cursor.execute("ALTER TABLE admins ADD COLUMN username TEXT DEFAULT ''")
 
             # 6. Таблица кулдауна обращений (антифлуд)
             cursor.execute(
@@ -1184,12 +1190,34 @@ class ResumeDB:
             cursor.execute("UPDATE admins SET full_name = ? WHERE user_id = ?", (full_name.strip(), user_id))
             return cursor.rowcount > 0
 
+    def set_admin_username(self, user_id: int, username: str) -> bool:
+        """Сохранение или привязка Telegram юзернейма сотрудника (без @ или с @)."""
+        clean_user = username.strip().lstrip("@").lower()
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE admins SET username = ? WHERE user_id = ?", (clean_user, user_id))
+            if cursor.rowcount == 0:
+                cursor.execute(
+                    "INSERT INTO admins (user_id, role, notify_dm, username) VALUES (?, 'applicant', 1, ?)",
+                    (user_id, clean_user),
+                )
+            conn.commit()
+            return True
+
+    def get_admin_username(self, user_id: int) -> str:
+        """Получение юзернейма сотрудника."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT username FROM admins WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+            return str(row[0]) if row and row[0] else ""
+
     def get_admin_details(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Полная карточка сотрудника из базы."""
         with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT user_id, role, notify_dm, web_password, phone, full_name, added_at FROM admins WHERE user_id = ?",
+                "SELECT user_id, role, notify_dm, web_password, phone, full_name, added_at, email, username FROM admins WHERE user_id = ?",
                 (user_id,),
             )
             row = cursor.fetchone()
@@ -1204,6 +1232,8 @@ class ResumeDB:
                 "phone": row[4] or "",
                 "full_name": row[5] or "",
                 "added_at": row[6] or "",
+                "email": row[7] or "",
+                "username": row[8] or "",
             }
 
     def sync_system_admins(self, super_id: int, tech_id: int) -> None:
@@ -1220,6 +1250,14 @@ class ResumeDB:
             cursor.execute("SELECT notify_dm FROM admins WHERE user_id = ?", (user_id,))
             row = cursor.fetchone()
             return bool(row[0]) if row else True
+
+    def set_admin_notify_status(self, user_id: int, enabled: bool) -> bool:
+        """Явная установка статуса дублирования в ЛС."""
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            val = 1 if enabled else 0
+            cursor.execute("UPDATE admins SET notify_dm = ? WHERE user_id = ?", (val, user_id))
+            return cursor.rowcount > 0
 
     def toggle_admin_notify(self, user_id: int) -> bool:
         """Переключение персонального статуса ЛС-уведомлений."""
@@ -1351,6 +1389,8 @@ class ResumeDB:
         vacancy: str = "",
         is_test: bool = False,
         consent_timestamp: Optional[str] = None,
+        email: str = "",
+        reply_channel: str = "tg",
     ) -> int:
         target_setting = self.get_setting("active_db_target", "resumes.db")
         use_test = is_test or (target_setting == "resumes_test.db")
@@ -1360,9 +1400,9 @@ class ResumeDB:
             cursor.execute(
                 """
                 INSERT INTO inquiries (
-                    ticket_id, platform, user_id, full_name, phone, vacancy, question_text, is_test, consent_timestamp
+                    ticket_id, platform, user_id, full_name, phone, vacancy, question_text, is_test, consent_timestamp, email, reply_channel
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     ticket_id,
@@ -1374,6 +1414,8 @@ class ResumeDB:
                     question_text,
                     1 if use_test else 0,
                     consent_timestamp or "",
+                    email or "",
+                    reply_channel or "tg",
                 ),
             )
             cursor.execute(
@@ -1393,7 +1435,7 @@ class ResumeDB:
             cursor.execute(
                 """
                 SELECT inquiry_id, ticket_id, platform, user_id, full_name, phone, vacancy,
-                       question_text, status, admin_reply, created_at, closed_at
+                       question_text, status, admin_reply, created_at, closed_at, email, reply_channel
                 FROM inquiries WHERE inquiry_id = ?
                 """,
                 (inquiry_id,),

@@ -279,11 +279,17 @@ async def cmd_set_password_entry(event: types.Message | types.CallbackQuery) -> 
         .split(maxsplit=1)
     )
     # Если вызов по кнопке или без аргументов — показываем статус и инструкцию
+    tg_user = event.from_user
+    u_username = tg_user.username.lstrip("@").lower() if tg_user.username else ""
+    if u_username:
+        db.set_admin_username(user_id, u_username)
+
     if is_callback or len(parts) < 2 or not parts[1].strip():
         cur_pwd = db.get_admin_password(user_id)
         cur_email = db.get_admin_email(user_id)
+        cur_uname = db.get_admin_username(user_id) or u_username
         is_staff = is_any_staff(user_id)
-        role_desc = "Сотрудник депо / Кадровик" if is_staff else "Соискатель / Личный кабинет"
+        role_desc = "Главный администратор" if user_id == CONFIG.get("SUPER_ADMIN_ID") else ("Сотрудник депо / Кадровик" if is_staff else "Соискатель / Личный кабинет")
 
         cur_status = (
             f"🔑 <b>Ваш текущий пароль:</b> <code>{cur_pwd}</code>\n" if cur_pwd else "⚠️ <b>Пароль ещё не задан!</b>\n"
@@ -291,7 +297,12 @@ async def cmd_set_password_entry(event: types.Message | types.CallbackQuery) -> 
         email_status = (
             f"📧 <b>Привязанный Email:</b> <code>{cur_email}</code>\n"
             if cur_email
-            else "📧 <i>Почта не привязана (можно привязать в ЛК)</i>\n"
+            else "📧 <i>Почта: не указана (можно войти по логину или ID)</i>\n"
+        )
+        uname_status = (
+            f"📱 <b>Ваш Telegram Username:</b> @{cur_uname}\n"
+            if cur_uname
+            else "📱 <i>Telegram Username: не задан в профиле TG</i>\n"
         )
 
         web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
@@ -300,18 +311,22 @@ async def cmd_set_password_entry(event: types.Message | types.CallbackQuery) -> 
         builder.adjust(1)
 
         text = (
-            "🔐 <b>ЛИЧНЫЙ КАБИНЕТ И ПАРОЛЬ ДЛЯ САЙТА</b>\n"
+            "🔐 <b>ДОСТУП К ВЕБ-ПОРТАЛУ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👤 <b>Ваш логин:</b> <code>{user_id}</code>\n"
-            f"🏷 <b>Категория доступа:</b> <i>{role_desc}</i>\n"
+            "Вы можете входить на сайт по любому из этих идентификаторов:\n"
+            f"• 👤 <b>Telegram ID:</b> <code>{user_id}</code>\n"
+            f"• 📱 <b>Юзернейм:</b> <code>@{cur_uname or 'не_задан'}</code>\n"
+            f"• 🏷 <b>Уровень доступа:</b> <i>{role_desc}</i>\n"
             f"{cur_status}"
-            f"{email_status}\n"
-            "Чтобы задать или сменить пароль для входа на сайте, отправьте:\n"
-            "👉 <code>/password ВАШ_ПАРОЛЬ</code>\n\n"
+            f"{email_status}"
+            f"{uname_status}\n"
+            "📋 <b>КАК ЗАДАТЬ ИЛИ СМЕНИТЬ ПАРОЛЬ:</b>\n"
+            "Отправьте боту команду:\n"
+            "👉 <code>/password ВАШ_НОВЫЙ_ПАРОЛЬ</code>\n\n"
             "<i>(Например: <code>/password uet2026</code> или <code>/password tram73</code>)</i>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             f"🌐 <b>Адрес сайта:</b> <a href='{web_url}'>{web_url}</a>\n"
-            "<i>После установки пароля вы сможете входить на сайт в защищенный контур.</i>"
+            "<i>После установки пароля вы сможете входить на сайт как по логину/юзернейму, так и по Telegram ID.</i>"
         )
         await safe_answer(message, text, reply_markup=builder.as_markup(), parse_mode="HTML")
         return
@@ -322,6 +337,8 @@ async def cmd_set_password_entry(event: types.Message | types.CallbackQuery) -> 
         return
 
     db.set_admin_password(user_id, new_pwd)
+    if u_username:
+        db.set_admin_username(user_id, u_username)
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
     builder = InlineKeyboardBuilder()
@@ -332,10 +349,10 @@ async def cmd_set_password_entry(event: types.Message | types.CallbackQuery) -> 
         "✅ <b>Пароль для веб-панели успешно установлен!</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"🔑 <b>Ваш пароль:</b> <code>{new_pwd}</code>\n"
-        f"👤 <b>Ваш логин:</b> <code>{user_id}</code>\n"
+        f"👤 <b>Ваш логин:</b> <code>{user_id}</code>" + (f" или <code>@{u_username}</code>\n" if u_username else "\n") +
         f"🌐 <b>Адрес панели (SSL):</b> <a href='{web_url}'>{web_url}</a>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "<i>На сайте выберите вкладку «По паролю» и введите этот пароль для входа. Либо откройте Mini App по кнопке ниже:</i>"
+        "<i>На сайте выберите вкладку «По паролю», укажите логин/юзернейм и введите этот пароль. Либо откройте Mini App по кнопке ниже:</i>"
     )
     await safe_answer(message, text, reply_markup=builder.as_markup(), parse_mode="HTML")
 

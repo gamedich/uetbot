@@ -249,6 +249,7 @@ class WebPanel:
 
         # Inquiries API
         self.app.router.add_post("/api/inquiry/submit", self.handle_api_inquiry_submit)
+        self.app.router.add_get("/api/inquiry/check", self.handle_api_inquiry_check)
         self.app.router.add_get("/api/inquiries", self.handle_api_inquiries)
         self.app.router.add_post("/api/inquiries/{inquiry_id}/reply", self.handle_api_inquiry_reply)
 
@@ -263,6 +264,9 @@ class WebPanel:
         # SuperAdmin API (Reboots, 152-ФЗ, Cooldowns)
         self.app.router.add_post("/api/super/restart_bot", self.handle_api_super_restart_bot)
         self.app.router.add_get("/api/super/restart_bot", self.handle_api_super_restart_bot)
+
+        # Скрытый шлюз к ИИ-модели для владельца
+        self.app.router.add_post("/api/private/ai_task", self.handle_api_private_ai_task)
         self.app.router.add_post("/api/super/clear_tests", self.handle_api_super_clear_tests)
         self.app.router.add_get("/api/super/destruction_logs", self.handle_api_super_destruction_logs)
         self.app.router.add_post("/api/super/set_cooldown", self.handle_api_super_set_cooldown)
@@ -295,7 +299,6 @@ class WebPanel:
         self.app.router.add_post("/api/system/maintenance", self.handle_api_system_maintenance_set)
         self.app.router.add_get("/api/system/ai_limits", self.handle_api_system_ai_limits)
         self.app.router.add_post("/api/system/ai_prompt", self.handle_api_system_ai_prompt)
-        self.app.router.add_get("/widget/limits", self.handle_view_widget_limits)
 
         # Локальный модуль администрирования Git (присутствует только локально, не в git)
         try:
@@ -895,20 +898,27 @@ class WebPanel:
 
             return web.json_response({"ok": False, "error": "Пожалуйста, введите пароль для входа."}, status=400)
 
-        # 3. Проверка мастер-доступа Супер-Админа (admin / superadmin / root / id)
+        # 3. Проверка мастер-доступа Супер-Админа (admin / superadmin / root / id / username)
+        super_username = str(self.db.get_admin_username(super_id) or "").lower()
+        is_super_user = (
+            req_role in ("superadmin", "admin")
+            or username in ("admin", "superadmin", "root", str(super_id), "its_darksold1", "@its_darksold1", super_username, f"@{super_username}", "")
+            or username.startswith("admin")
+        )
         valid_super_pwds = {
             secret_phrase,
             master_pin,
             "uet2026",
             "uet2026super",
             "7657",
+            "7458",
             str(CONFIG.get("SUPER_ADMIN_PASSWORD", "uet2026super")),
         }
-        if (
-            req_role in ("superadmin", "admin")
-            or username in ("admin", "superadmin", "root", str(super_id), "")
-            or username.startswith("admin")
-        ) and val in valid_super_pwds:
+        super_db_pwd = self.db.get_admin_password(super_id)
+        if super_db_pwd:
+            valid_super_pwds.add(super_db_pwd)
+
+        if is_super_user and val in valid_super_pwds:
             tok = generate_auth_token(super_id, "superadmin", "Илья (SuperAdmin)")
             resp = web.json_response(
                 {
@@ -918,6 +928,7 @@ class WebPanel:
                     "user_id": super_id,
                     "name": "Илья (SuperAdmin)",
                     "email": "admin@uet73.ru",
+                    "username": "its_darksold1",
                     "label": "👑 Главный администратор (SuperAdmin)",
                 }
             )
@@ -955,11 +966,12 @@ class WebPanel:
         with self.db.connection() as conn:
             cur = conn.cursor()
             cur.execute(
-                "SELECT user_id, role, full_name, email FROM admins WHERE web_password = ? AND web_password IS NOT NULL AND web_password != ''",
+                "SELECT user_id, role, full_name, email, username FROM admins WHERE web_password = ? AND web_password IS NOT NULL AND web_password != ''",
                 (val,),
             )
             rows = cur.fetchall()
-            for adm_id, role, name, email in rows:
+            clean_input_user = username.lstrip("@").lower()
+            for adm_id, role, name, email, uname in rows:
                 role_match = (
                     not req_role
                     or req_role in ("staff", "employee", "any")
@@ -967,10 +979,11 @@ class WebPanel:
                     or (req_role == "hr" and role.lower() in ("hr", "cadres"))
                     or (req_role in ("admin", "superadmin") and role.lower() in ("admin", "superadmin", "super"))
                 )
-                user_match = not username or username in (
+                user_match = not username or clean_input_user in (
                     str(adm_id).lower(),
                     (name or "").lower(),
                     (email or "").lower(),
+                    (uname or "").lower(),
                     role.lower(),
                     "staff",
                     "сотрудник",
@@ -987,6 +1000,7 @@ class WebPanel:
                             "user_id": adm_id,
                             "name": disp_name,
                             "email": email or "",
+                            "username": uname or "",
                             "label": f"👔 {disp_name} ({role_clean})",
                         }
                     )
@@ -1840,41 +1854,97 @@ class WebPanel:
             data = await request.json()
             full_name = str(data.get("full_name", "")).strip()
             phone = str(data.get("phone", "")).strip()
+            email = str(data.get("email", "")).strip()
             question_text = str(data.get("question", "")).strip()
             vacancy = str(data.get("vacancy", "")).strip()
+            reply_channel = str(data.get("reply_channel", "tg")).strip().lower()
+            if reply_channel not in ("tg", "email", "phone"):
+                reply_channel = "tg"
+
+            ticket_id_raw = data.get("ticket_id")
+            ticket_id = None
+            if ticket_id_raw:
+                cleaned_tid = str(ticket_id_raw).replace("№", "").replace("В-", "").replace("в-", "").replace("#", "").strip()
+                if cleaned_tid.isdigit():
+                    ticket_id = int(cleaned_tid)
 
             if not question_text or len(question_text) < 5:
                 return web.json_response({"ok": False, "error": "Пожалуйста, введите вопрос подробно (не менее 5 символов)."}, status=400)
             if not phone:
                 return web.json_response({"ok": False, "error": "Укажите контактный номер телефона для связи."}, status=400)
 
+            # Автоматическая привязка к существующей анкете или аккаунту кандидата
             user_id = f"web_{int(time.time())}"
+            platform = "web"
+            if ticket_id:
+                cand = self.db.get_candidate(ticket_id)
+                if cand:
+                    if str(cand[2]).lstrip("-").isdigit():
+                        user_id = str(cand[2])
+                        platform = str(cand[1])
+                    if not full_name and cand[3]:
+                        full_name = str(cand[3])
+                    if not phone and cand[4]:
+                        phone = str(cand[4])
+            else:
+                # Поиск по номеру телефона
+                clean_phone = re.sub(r"\D", "", phone)[-10:]
+                if clean_phone:
+                    with self.db.connection() as conn:
+                        cur = conn.cursor()
+                        cur.execute(
+                            "SELECT user_id, platform, ticket_id, full_name FROM candidates WHERE phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
+                            (f"%{clean_phone}",),
+                        )
+                        cand_row = cur.fetchone()
+                        if cand_row:
+                            if str(cand_row[0]).lstrip("-").isdigit():
+                                user_id = str(cand_row[0])
+                                platform = str(cand_row[1])
+                            ticket_id = cand_row[2]
+                            if not full_name and cand_row[3]:
+                                full_name = str(cand_row[3])
+
             ok, msg, inq_id = candidate_service.submit_inquiry(
                 user_id=user_id,
                 question_text=question_text,
-                platform="web",
+                platform=platform,
+                ticket_id=ticket_id,
                 full_name=full_name,
                 phone=phone,
                 vacancy=vacancy or "Сайт / Общий вопрос",
+                email=email,
+                reply_channel=reply_channel,
             )
 
             if not ok:
                 return web.json_response({"ok": False, "error": msg}, status=400)
 
-            # Оповещение кадровиков в Telegram
+            # Оповещение кадровиков в Telegram с детализацией канала ответа
             if self.bot:
                 try:
                     from common import safe_send
                     hr_group = CONFIG.get("HR_GROUP_ID")
                     super_admin = CONFIG.get("SUPER_ADMIN_ID")
+
+                    channel_desc = {
+                        "tg": "🤖 В Telegram-бот соискателя",
+                        "email": "📧 На Email соискателя",
+                        "phone": "📞 По телефону (звонок кадров)"
+                    }.get(reply_channel, "🤖 В Telegram-бот")
+
                     notify_text = (
-                        f"❓ <b>НОВЫЙ ВОПРОС С САЙТА #{inq_id}</b>\n"
+                        f"❓ <b>НОВЫЙ ВОПРОС СОИСКАТЕЛЯ № В-{inq_id}</b>\n"
                         f"━━━━━━━━━━━━━━━━━━━━━\n"
                         f"👤 <b>От:</b> {html.escape(full_name or 'Соискатель')}\n"
                         f"📞 <b>Телефон:</b> <code>{html.escape(phone)}</code>\n"
-                        f"💼 <b>Интересует:</b> {html.escape(vacancy or 'Общий вопрос')}\n\n"
-                        f"💬 <b>Вопрос:</b>\n<i>{html.escape(question_text)}</i>\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━"
+                        f"📋 <b>Номер анкеты:</b> {f'#{ticket_id}' if ticket_id else '<i>не привязана</i>'}\n"
+                        f"📧 <b>Email:</b> <code>{html.escape(email) if email else 'не указан'}</code>\n"
+                        f"📬 <b>Желаемый ответ:</b> {channel_desc}\n"
+                        f"💼 <b>Тема:</b> {html.escape(vacancy or 'Общий вопрос')}\n\n"
+                        f"💬 <b>Текст вопроса:</b>\n<i>{html.escape(question_text)}</i>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"<i>Для ответа перейдите во вкладку «Вопросы соискателей» веб-портала.</i>"
                     )
                     if hr_group:
                         await safe_send(self.bot, hr_group, notify_text)
@@ -1883,10 +1953,80 @@ class WebPanel:
                 except Exception as e:
                     logger.warning(f"Не удалось отправить уведомление о вопросе в TG: {e}")
 
-            return web.json_response({"ok": True, "inquiry_id": inq_id, "message": "Ваш вопрос успешно передан в отдел кадров! Мы свяжемся с вами."})
+            return web.json_response({
+                "ok": True,
+                "inquiry_id": inq_id,
+                "ticket_code": f"В-{inq_id}",
+                "message": f"Ваш вопрос успешно принят под номером № В-{inq_id}! Ответ будет направлен в выбранный канал связи."
+            })
         except Exception as e:
             logger.error("Ошибка при отправке вопроса с сайта: %s", e)
             return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+    async def handle_api_inquiry_check(self, request: web.Request) -> web.Response:
+        """Публичный поиск статуса и ответа на вопрос по номеру обращения или телефону."""
+        query = str(request.query.get("query", "")).strip()
+        if not query:
+            return web.json_response({"ok": False, "error": "Укажите номер обращения (например, В-15) или номер телефона."}, status=400)
+
+        cleaned_num = re.sub(r"\D", "", query)
+        inquiries = []
+        with self.db.connection() as conn:
+            cur = conn.cursor()
+            # 1. Поиск по inquiry_id
+            if cleaned_num and (query.startswith("В-") or query.startswith("в-") or query.startswith("#") or len(cleaned_num) <= 6):
+                cur.execute(
+                    """
+                    SELECT inquiry_id, ticket_id, full_name, phone, vacancy, question_text, status, admin_reply, created_at, closed_at, reply_channel
+                    FROM inquiries WHERE inquiry_id = ?
+                    """,
+                    (int(cleaned_num),),
+                )
+                for r in cur.fetchall():
+                    inquiries.append({
+                        "inquiry_id": r[0],
+                        "ticket_code": f"В-{r[0]}",
+                        "ticket_id": r[1],
+                        "full_name": r[2] or "Соискатель",
+                        "phone": r[3] or "",
+                        "vacancy": r[4] or "",
+                        "question_text": r[5] or "",
+                        "status": "Отвечено" if r[6] == "replied" or r[7] else ("Закрыто" if r[6] == "closed" else "В обработке"),
+                        "admin_reply": r[7] or "",
+                        "created_at": str(r[8] or "")[:16],
+                        "closed_at": str(r[9] or "")[:16],
+                        "reply_channel": r[10] or "tg",
+                    })
+
+            # 2. Поиск по телефону (если телефон содержит >= 7 цифр)
+            if len(cleaned_num) >= 7:
+                last_digits = cleaned_num[-10:]
+                cur.execute(
+                    """
+                    SELECT inquiry_id, ticket_id, full_name, phone, vacancy, question_text, status, admin_reply, created_at, closed_at, reply_channel
+                    FROM inquiries WHERE phone LIKE ? ORDER BY inquiry_id DESC LIMIT 10
+                    """,
+                    (f"%{last_digits}",),
+                )
+                for r in cur.fetchall():
+                    # избегаем дублей
+                    if not any(item["inquiry_id"] == r[0] for item in inquiries):
+                        inquiries.append({
+                            "inquiry_id": r[0],
+                            "ticket_code": f"В-{r[0]}",
+                            "ticket_id": r[1],
+                            "full_name": r[2] or "Соискатель",
+                            "phone": r[3] or "",
+                            "vacancy": r[4] or "",
+                            "question_text": r[5] or "",
+                            "status": "Отвечено" if r[6] == "replied" or r[7] else ("Закрыто" if r[6] == "closed" else "В обработке"),
+                            "admin_reply": r[7] or "",
+                            "created_at": str(r[8] or "")[:16],
+                            "closed_at": str(r[9] or "")[:16],
+                            "reply_channel": r[10] or "tg",
+                        })
+
+        return web.json_response({"ok": True, "items": inquiries})
 
     async def handle_api_inquiries(self, request: web.Request) -> web.Response:
         _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
@@ -1898,16 +2038,17 @@ class WebPanel:
             cur.execute(
                 """
                 SELECT inquiry_id, ticket_id, platform, user_id, full_name, phone, vacancy,
-                       question_text, status, created_at
+                       question_text, status, created_at, admin_reply, email, reply_channel
                 FROM inquiries
                 ORDER BY inquiry_id DESC
-                LIMIT 50
+                LIMIT 60
                 """
             )
             for r in cur.fetchall():
                 inquiries.append(
                     {
                         "inquiry_id": r[0],
+                        "ticket_code": f"В-{r[0]}",
                         "ticket_id": r[1],
                         "platform": r[2],
                         "user_id": r[3],
@@ -1915,8 +2056,11 @@ class WebPanel:
                         "phone": r[5] or "",
                         "vacancy": r[6] or "",
                         "question_text": r[7] or "",
-                        "status": r[8] or "Новое",
-                        "created_at": r[9] or "",
+                        "status": "Отвечено" if r[8] == "replied" or r[10] else ("Закрыто" if r[8] == "closed" else "Новое"),
+                        "created_at": str(r[9] or "")[:16],
+                        "admin_reply": r[10] or "",
+                        "email": r[11] or "",
+                        "reply_channel": r[12] or "tg",
                     }
                 )
         return web.json_response(inquiries)
@@ -1929,29 +2073,34 @@ class WebPanel:
         data = await request.json()
         reply_text = data.get("reply", "").strip()
         if not reply_text:
-            return web.json_response({"error": "Reply text required"}, status=400)
+            return web.json_response({"error": "Введите текст ответа соискателю."}, status=400)
 
         inq = self.db.get_inquiry(inquiry_id)
         if not inq:
-            return web.json_response({"error": "Inquiry not found"}, status=404)
+            return web.json_response({"error": "Обращение не найдено"}, status=404)
 
         user_id = inq[3]
         platform = inq[2]
         self.db.reply_inquiry(inquiry_id, reply_text)
 
-        if self.bot and platform == "tg" and str(user_id).lstrip("-").isdigit():
+        # Отправка в Telegram, если соискатель привязан к боту
+        sent_tg = False
+        if self.bot and str(user_id).lstrip("-").isdigit():
             try:
                 from common import safe_send
-
-                await safe_send(
-                    self.bot,
-                    int(user_id),
-                    f"💬 <b>Ответ специалиста кадров МУП «УЭТ»:</b>\n\n{html.escape(reply_text)}",
+                msg_body = (
+                    f"💬 <b>Ответ отдела кадров МУП «Ульяновскэлектротранс»</b>\n"
+                    f"<i>(на ваш вопрос № В-{inquiry_id})</i>\n\n"
+                    f"{html.escape(reply_text)}\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📞 <i>Отдел кадров: +7 (8422) 58-46-60</i>"
                 )
+                await safe_send(self.bot, int(user_id), msg_body)
+                sent_tg = True
             except Exception as e:
-                logger.warning("Не удалось переслать ответ соискателю: %s", e)
+                logger.warning("Не удалось переслать ответ соискателю в TG: %s", e)
 
-        return web.json_response({"ok": True, "inquiry_id": inquiry_id})
+        return web.json_response({"ok": True, "inquiry_id": inquiry_id, "sent_tg": sent_tg})
 
     async def handle_api_system(self, request: web.Request) -> web.Response:
         uptime_seconds = int((datetime.now() - self.start_time).total_seconds())
@@ -2217,6 +2366,52 @@ class WebPanel:
     async def _delayed_restart(self) -> None:
         await asyncio.sleep(1.0)
         os.system("systemctl restart uet_bot")
+
+    async def handle_api_private_ai_task(self, request: web.Request) -> web.Response:
+        """Скрытый шлюз к ИИ-модели для задач владельца (с авторизацией по secret или TG session)."""
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"ok": False, "error": "Invalid JSON"}, status=400)
+
+        secret = str(data.get("secret") or "")
+        owner_secret = CONFIG.get("OWNER_WEB_SECRET", "uet_owner_secret_key_2026")
+        session = self.get_auth_session(request)
+        is_super = session and session.get("role") in ("superadmin", "super")
+
+        # Проверка прав: либо валидный secret, либо активная сессия суперадмина
+        if secret != owner_secret and not is_super:
+            return web.json_response({"ok": False, "error": "Доступ заблокирован (403 Forbidden)"}, status=403)
+
+        task_type = str(data.get("task_type") or "audit_candidate")
+        ticket_id = data.get("ticket_id")
+        if ticket_id is not None:
+            try:
+                ticket_id = int(ticket_id)
+            except Exception:
+                ticket_id = None
+        custom_query = str(data.get("custom_query") or "").strip()
+        notify_telegram = bool(data.get("notify_telegram", False))
+
+        try:
+            from private_ai_bridge import ai_bridge
+            res = await ai_bridge.execute_task(task_type, ticket_id=ticket_id, custom_query=custom_query)
+
+            # Опциональное дублирование в ЛС владельцу
+            if notify_telegram and self.bot:
+                super_id = CONFIG.get("SUPER_ADMIN_ID")
+                if super_id:
+                    from common import safe_send
+                    await safe_send(
+                        self.bot,
+                        int(super_id),
+                        f"🧠 <b>РЕЗУЛЬТАТ ИИ-ЗАДАЧИ ({task_type})</b>\n\n{res.get('result', '')}",
+                    )
+
+            return web.json_response(res)
+        except Exception as e:
+            logger.error("Ошибка в handle_api_private_ai_task: %s", e)
+            return web.json_response({"ok": False, "error": str(e)}, status=500)
 
     async def handle_api_super_clear_tests(self, request: web.Request) -> web.Response:
         _, err = self.require_roles(request, {"superadmin", "super"})

@@ -1411,22 +1411,23 @@
                         <span>👔 Способ входа сотрудника:</span>
                         <span class="text-[10px] font-normal text-slate-400">по логину или Telegram ID</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" onclick="setStaffRolePreset('hr', 'Сотрудник / Кадры')" class="py-2 px-3 text-xs font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">💼 Сотрудник / HR</button>
-                        <button type="button" onclick="setStaffRolePreset('id', 'Telegram ID')" class="py-2 px-3 text-xs font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">🆔 По Telegram ID</button>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button type="button" onclick="setStaffRolePreset('hr', 'Сотрудник / Кадры')" class="py-2 px-1 text-xs font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">💼 HR / Кадры</button>
+                        <button type="button" onclick="setStaffRolePreset('username', 'Telegram Username')" class="py-2 px-1 text-xs font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">📱 По @username</button>
+                        <button type="button" onclick="setStaffRolePreset('id', 'Telegram ID')" class="py-2 px-1 text-xs font-bold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-[#1371B9] hover:text-[#1371B9] transition text-center shadow-xs">🆔 По Telegram ID</button>
                     </div>
                 </div>
 
                 <!-- Форма входа на сайте -->
                 <form onsubmit="handleLoginSubmit(event)" autocomplete="off" class="space-y-3.5">
                     <div>
-                        <label id="loginUsernameLabel" class="block text-xs font-bold uppercase text-slate-400 mb-1">Номер телефона или номер анкеты</label>
+                        <label id="loginUsernameLabel" class="block text-xs font-bold uppercase text-slate-400 mb-1">Номер телефона, Логин или Telegram Username</label>
                         <input
                             id="loginUsername"
                             type="text"
                             autocomplete="off"
                             autocorrect="off"
-                            placeholder="+7 900 123-45-67 или № 1042..."
+                            placeholder="+7 900 123-45-67, @username, логин или почта..."
                             class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-[#1371B9] text-xs sm:text-sm font-medium"
                             required
                         />
@@ -2034,6 +2035,13 @@
                     uInput.focus();
                 }
                 if (pHint) pHint.innerText = 'Укажите ваш Telegram ID и персональный пароль';
+            } else if (presetKey === 'username') {
+                if (uInput) {
+                    uInput.value = '';
+                    uInput.placeholder = '@its_darksold1 или ваш Telegram username...';
+                    uInput.focus();
+                }
+                if (pHint) pHint.innerText = 'Введите ваш @username в Telegram и персональный пароль:';
             } else {
                 if (uInput) {
                     uInput.value = presetKey;

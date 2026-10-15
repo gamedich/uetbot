@@ -295,6 +295,8 @@ class CandidateService:
         is_test: bool = False,
         consent_timestamp: Optional[str] = None,
         cooldown_seconds: Optional[int] = None,
+        email: str = "",
+        reply_channel: str = "tg",
     ) -> Tuple[bool, str, Optional[int]]:
         """
         Обработка вопроса соискателя кадровой службе (/ask):
@@ -325,6 +327,8 @@ class CandidateService:
             vacancy=vacancy,
             is_test=is_test,
             consent_timestamp=consent_timestamp,
+            email=email,
+            reply_channel=reply_channel,
         )
         return True, "Вопрос принят", inquiry_id
 

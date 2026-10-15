@@ -43,7 +43,7 @@ from aiogram.types import (
 )
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
-from config import CONFIG, update_env_variable
+from config import CONFIG, update_env_variable, validate_config
 from database import ResumeDB
 from texts import clean_html
 
@@ -1194,22 +1194,17 @@ async def send_photo_to_candidate(user_id: str, photo_bytes: bytes, caption: str
 
 async def setup_bot_commands(bot_instance: Bot) -> None:
     """Установка контекстных выпадающих меню команд Telegram (по ролям и чатам)."""
-    # 1. Меню по умолчанию для соискателей в личном диалоге (по ТЗ МУП «УЭТ»)
+    # 1. Меню по умолчанию для соискателей в личном диалоге (чистый лаконичный список)
     candidate_commands = [
-        BotCommand(command="start", description="Главное меню / Перезапуск"),
-        BotCommand(command="menu", description="Главное меню"),
-        BotCommand(command="apply", description="Заполнить анкету на работу (16 шагов)"),
-        BotCommand(command="my", description="Моя анкета / Статус рассмотрения"),
-        BotCommand(command="training", description="Информация об обучении со стипендией"),
-        BotCommand(command="privacy", description="Политика обработки данных (152-ФЗ)"),
-        BotCommand(command="mydata", description="Выгрузка персональных данных (152-ФЗ)"),
-        BotCommand(command="revoke", description="Отозвать согласие и удалить анкету"),
-        BotCommand(command="stop", description="Завершить диалог с кадровиком"),
-        BotCommand(command="cancel", description="Отменить текущее действие"),
-        BotCommand(command="ask", description="Задать вопрос специалисту кадров"),
-        BotCommand(command="faq", description="Частые вопросы (зарплата, жилье)"),
-        BotCommand(command="contacts", description="Контакты и телефоны депо"),
-        BotCommand(command="help", description="Справка по всем командам"),
+        BotCommand(command="start", description="🏠 Главное меню / Перезапуск"),
+        BotCommand(command="apply", description="📝 Заполнить анкету на работу"),
+        BotCommand(command="my", description="📊 Моя анкета / Статус"),
+        BotCommand(command="training", description="🚋 Обучение"),
+        BotCommand(command="ask", description="💬 Задать вопрос специалисту кадров"),
+        BotCommand(command="contacts", description="📞 Контакты депо и администрации"),
+        BotCommand(command="privacy", description="🔒 Защита данных (152-ФЗ)"),
+        BotCommand(command="revoke", description="🗑 Отозвать согласие и удалить данные"),
+        BotCommand(command="help", description="ℹ️ Справка"),
     ]
     try:
         await bot_instance.set_my_commands(candidate_commands, scope=BotCommandScopeDefault())
@@ -1218,11 +1213,11 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
 
     # 2. Меню для групп и супергрупп (кадровый чат)
     group_commands = [
-        BotCommand(command="hr", description="Кадровая панель управления"),
-        BotCommand(command="set_group", description="Привязать кадровый чат для анкет"),
-        BotCommand(command="sync", description="Синхронизировать кадровиков чата"),
-        BotCommand(command="kick", description="Исключить сотрудника (в ответ)"),
-        BotCommand(command="help", description="Справка по командам чата"),
+        BotCommand(command="hr", description="📋 Кадровая панель управления"),
+        BotCommand(command="set_group", description="📌 Привязать чат для анкет"),
+        BotCommand(command="sync", description="🔄 Синхронизировать кадровиков"),
+        BotCommand(command="kick", description="🚫 Исключить сотрудника (в ответ)"),
+        BotCommand(command="help", description="ℹ️ Справка по командам чата"),
     ]
     try:
         await bot_instance.set_my_commands(group_commands, scope=BotCommandScopeAllGroupChats())
@@ -1232,13 +1227,13 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
     # 3. Полное меню для SuperAdmin
     super_commands = [
         BotCommand(command="panel", description="🌐 Веб-панель управления"),
+        BotCommand(command="to", description="🛠 Вкл/Выкл режим ТО"),
         BotCommand(command="password", description="🔑 Пароль от веб-панели"),
-        BotCommand(command="hr", description="📋 Кадровая панель (соискатели, воронка)"),
-        BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД, аптайм)"),
+        BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
+        BotCommand(command="tech", description="⚙️ Панель инженера (ОЗУ, БД, логи)"),
         BotCommand(command="admins", description="👥 Управление доступом и ролями"),
         BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
         BotCommand(command="start", description="🏠 Главное меню"),
-        BotCommand(command="help", description="ℹ️ Справочник администратора"),
     ]
     super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
     if super_id and super_id > 0:
@@ -1247,13 +1242,13 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
         except Exception as e:
             logger.debug("Не удалось установить команды для SuperAdmin %s: %s", super_id, e)
 
-    # 4. Меню строго для инженера (Tech) — только панель инженера, без кадровых анкет и без выдачи прав
+    # 4. Меню строго для инженера (Tech)
     tech_commands = [
         BotCommand(command="panel", description="🌐 Веб-панель инженера"),
+        BotCommand(command="to", description="🛠 Вкл/Выкл режим ТО"),
         BotCommand(command="password", description="🔑 Пароль от веб-панели"),
-        BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД, аптайм)"),
+        BotCommand(command="tech", description="⚙️ Панель инженера (ОЗУ, БД, логи)"),
         BotCommand(command="start", description="🏠 Главное меню"),
-        BotCommand(command="help", description="ℹ️ Справочник инженера"),
     ]
     tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
     all_tech_ids = {tech_id} if tech_id and tech_id != super_id else set()
@@ -1276,7 +1271,6 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
         BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
         BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
         BotCommand(command="start", description="🏠 Главное меню"),
-        BotCommand(command="help", description="ℹ️ Справка кадровой службы"),
     ]
     try:
         for adm_id, role in db.get_all_admins():
@@ -1370,22 +1364,22 @@ async def sync_user_commands(
                 if actual_role == "superadmin":
                     target_commands = [
                         BotCommand(command="panel", description="🌐 Веб-панель управления"),
+                        BotCommand(command="to", description="🛠 Вкл/Выкл режим ТО"),
                         BotCommand(command="password", description="🔑 Пароль от веб-панели"),
                         BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
-                        BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД)"),
+                        BotCommand(command="tech", description="⚙️ Панель инженера (ОЗУ, БД, логи)"),
                         BotCommand(command="admins", description="👥 Управление доступом"),
                         BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
                         BotCommand(command="start", description="🏠 Главное меню"),
-                        BotCommand(command="help", description="ℹ️ Справочник администратора"),
                     ]
                     btn_text = "🌐 Панель"
                 elif actual_role == "tech":
                     target_commands = [
                         BotCommand(command="panel", description="🌐 Веб-панель инженера"),
+                        BotCommand(command="to", description="🛠 Вкл/Выкл режим ТО"),
                         BotCommand(command="password", description="🔑 Пароль от веб-панели"),
-                        BotCommand(command="tech", description="🛠 Панель инженера (ОЗУ, БД)"),
+                        BotCommand(command="tech", description="⚙️ Панель инженера (ОЗУ, БД, логи)"),
                         BotCommand(command="start", description="🏠 Главное меню"),
-                        BotCommand(command="help", description="ℹ️ Справочник инженера"),
                     ]
                     btn_text = "🛠 Панель"
                 elif actual_role == "hr":
@@ -1395,16 +1389,14 @@ async def sync_user_commands(
                         BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
                         BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
                         BotCommand(command="start", description="🏠 Главное меню"),
-                        BotCommand(command="help", description="ℹ️ Справка кадровой службы"),
                     ]
                     btn_text = "📋 Панель"
                 elif actual_role == "depot":
                     target_commands = [
-                        BotCommand(command="ref", description="🚋 Реферальная программа депо"),
                         BotCommand(command="start", description="🏠 Главное меню"),
-                        BotCommand(command="help", description="ℹ️ Справка"),
+                        BotCommand(command="help", description="ℹ️ Справка депо"),
                     ]
-                    btn_text = "🚋 Рефералы"
+                    btn_text = "🚋 Кабинет"
 
                 if target_commands:
                     try:

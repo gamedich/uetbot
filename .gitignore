@@ -11,7 +11,10 @@
 
 # --- Приватные модули владельца и инженерии ---
 private_admin.py
+private_ai_bridge.py
 private_*.py
+web/private_ai.html
+templates/private_*.html
 handlers/tech.py
 tech.py
 run_tests.py

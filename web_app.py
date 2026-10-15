@@ -1433,6 +1433,15 @@ class WebPanel:
                          f"Пожалуйста, обратитесь в отдел кадров: {CONFIG.get('HR_PHONE', '8 (8422) 58-46-60')}."
             }, status=503)
 
+        env_mode = CONFIG.get("ENVIRONMENT", "TEST")
+        # В режиме PROD запретить подачу анкеты администраторам
+        session = self.get_auth_session(request)
+        if session and session.get("role") in ("superadmin", "super", "tech", "hr", "admin") and env_mode == "PROD":
+            return web.json_response({
+                "ok": False,
+                "error": "В боевом режиме (PROD) подача анкеты со служебного административного аккаунта заблокирована."
+            }, status=403)
+
         try:
             data = await request.json()
             full_name = (data.get("full_name") or "").strip()

@@ -200,7 +200,7 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         return
 
     welcome_text = texts.START_WELCOME
-    if is_maintenance_active() and not is_admin:
+    if is_maintenance_active():
         m_info = db.get_setting("maintenance_details", "")
         time_note = f"\n⏱ <i>Ориентировочное время:</i> {m_info}" if m_info else ""
         welcome_text = (
@@ -790,7 +790,7 @@ async def run_candidate_survey(
         user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
     )
 
-    if is_maintenance_active() and not is_admin:
+    if is_maintenance_active():
         m_info = db.get_setting("maintenance_details", "")
         time_hint = f"\n⏱ <i>Ориентировочное время завершения:</i> {m_info}" if m_info else ""
         back_kb = InlineKeyboardBuilder()
@@ -806,9 +806,23 @@ async def run_candidate_survey(
         )
         return
 
+    # В режиме PROD администраторам запрещено подавать анкеты от своего имени
+    env_mode = CONFIG.get("ENVIRONMENT", "TEST")
+    if is_admin and env_mode == "PROD" and not force:
+        await send_or_edit(
+            "🛡 <b>Ограничение промышленного контура (PROD)</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "Вы авторизованы как администратор / сотрудник кадровой службы предприятия.\n"
+            "В боевом режиме (PROD) подача соискательских анкет с административных аккаунтов "
+            "заблокирована в целях защиты чистоты кадрового реестра (152-ФЗ РФ).\n\n"
+            "💡 <i>Для тестирования переключите режим на TEST через /tech или панель управления.</i>"
+        )
+        return
+
     # Сервисная проверка права подачи анкеты (ЧС, дубликат, кулдаун)
     can_apply, reason, info = candidate_service.check_can_apply(user_id, platform="tg")
-    if not can_apply and not (force or (is_admin and CONFIG.get("ENVIRONMENT") == "TEST")):
+    allow_bypass = force or (is_admin and env_mode == "TEST")
+    if not can_apply and not allow_bypass:
         if reason == "banned":
             await send_or_edit(
                 "⛔ <b>Подача анкеты недоступна</b>\n\n"

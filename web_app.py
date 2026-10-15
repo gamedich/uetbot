@@ -58,6 +58,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 DASHBOARD_HTML_PATH = TEMPLATES_DIR / "dashboard.html"
 APPLY_HTML_PATH = TEMPLATES_DIR / "apply.html"
 KADRY_HTML_PATH = TEMPLATES_DIR / "kadry.html"
+DOCS_DIR = Path(__file__).resolve().parent / "docs"
 
 
 @web.middleware
@@ -219,6 +220,11 @@ class WebPanel:
         self.app.router.add_get("/apply", self.handle_apply_page)
         self.app.router.add_get("/candidate/form", self.handle_apply_page)
         self.app.router.add_get("/kadry", self.handle_kadry_page)
+        self.app.router.add_get("/docs", self.handle_docs_page)
+        self.app.router.add_get("/docs/", self.handle_docs_page)
+        self.app.router.add_get("/docs/index.html", self.handle_docs_page)
+        self.app.router.add_get("/docs/presentation.md", self.handle_presentation_page)
+        self.app.router.add_get("/presentation", self.handle_presentation_page)
 
         # Vacancies & Candidate Apply API
         self.app.router.add_get("/api/vacancies", self.handle_api_vacancies)
@@ -352,6 +358,30 @@ class WebPanel:
     async def handle_kadry_page(self, request: web.Request) -> web.Response:
         """Модульная дизайн-система и адаптивная навигация HR-платформы «КАДРЫ» (служебный рабочий кабинет)."""
         return await self.handle_dashboard_page(request)
+
+    async def handle_docs_page(self, request: web.Request) -> web.Response:
+        """Официальный сайт документации и презентации UETBot 2.0.0."""
+        docs_file = DOCS_DIR / "index.html"
+        if docs_file.exists():
+            return web.Response(
+                text=docs_file.read_text(encoding="utf-8"),
+                content_type="text/html",
+                charset="utf-8",
+                headers={"Cache-Control": "public, max-age=300"},
+            )
+        return web.Response(text="<h1>Документация не найдена</h1>", status=404, content_type="text/html")
+
+    async def handle_presentation_page(self, request: web.Request) -> web.Response:
+        """Markdown-документ презентации экосистемы UETBot 2.0.0."""
+        pres_file = DOCS_DIR / "presentation.md"
+        if pres_file.exists():
+            return web.Response(
+                text=pres_file.read_text(encoding="utf-8"),
+                content_type="text/markdown",
+                charset="utf-8",
+                headers={"Cache-Control": "public, max-age=300"},
+            )
+        return web.Response(text="Презентация не найдена", status=404, content_type="text/plain")
 
     async def handle_api_candidate_lookup(self, request: web.Request) -> web.Response:
         """Поиск статуса анкеты соискателем по номеру заявки, номеру телефона или ФИО (в обоих контурах: PROD и TEST)."""

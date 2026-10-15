@@ -223,6 +223,10 @@
                                 <span>Заполнить анкету на работу</span>
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                             </button>
+                            <button onclick="openQuestionModal()" class="px-5 py-3.5 rounded-2xl bg-sky-500/20 hover:bg-sky-500/30 text-white font-bold border border-sky-400/30 backdrop-blur-sm transition flex items-center gap-2">
+                                <svg class="w-4 h-4 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                                <span>Задать вопрос</span>
+                            </button>
                             <button onclick="switchTab('cabinet')" class="px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white font-medium border border-white/20 transition flex items-center gap-2">
                                 <span>Проверить статус заявки</span>
                             </button>
@@ -287,7 +291,7 @@
                                     <span class="text-xs px-2 py-0.5 bg-sky-500 text-white rounded-md">Online</span>
                                 </a>
                                 <a href="https://vk.com/uet73" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-3 rounded-2xl bg-blue-600/10 border border-blue-600/20 text-blue-600 dark:text-blue-400 font-semibold text-sm hover:bg-blue-600/20 transition">
-                                    <span>ВКонтакте • Бот УЭТ</span>
+                                    <span>ВКонтакте пока не работает внимание! • Бот УЭТ</span>
                                     <span class="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-md">Online</span>
                                 </a>
                                 <div class="flex items-center justify-between p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 font-semibold text-sm">
@@ -313,10 +317,16 @@
                                 Ответим на любые вопросы об обучении, графике смен, стипендии и общежитии.
                             </p>
                         </div>
-                        <a href="tel:+79510990060" class="flex items-center gap-2 bg-black/20 hover:bg-black/30 transition px-4 py-3 rounded-2xl font-mono text-sm font-bold w-fit">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                            <span>+7 (951) 099-00-60</span>
-                        </a>
+                        <div class="flex flex-wrap items-center gap-2 pt-2">
+                            <a href="tel:+79510990060" class="flex items-center gap-2 bg-black/20 hover:bg-black/30 transition px-3.5 py-2.5 rounded-2xl font-mono text-xs font-bold">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                <span>+7 (951) 099-00-60</span>
+                            </a>
+                            <button onclick="openQuestionModal()" class="flex items-center gap-1.5 bg-white text-slate-900 hover:bg-orange-50 font-bold px-3.5 py-2.5 rounded-2xl text-xs shadow transition">
+                                <svg class="w-4 h-4 text-[#F26E22]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                                <span>Задать вопрос</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1357,6 +1367,61 @@
         </div>
     </div>
 
+    <!-- МОДАЛЬНОЕ ОКНО: ЗАДАТЬ ВОПРОС ОТДЕЛУ КАДРОВ -->
+    <div id="askQuestionModal" class="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-[#112240] rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-700 animate-card-in">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="p-2 rounded-xl bg-orange-500/10 text-[#F26E22] text-xl">💬</span>
+                    <div>
+                        <h3 class="font-extrabold text-lg text-slate-900 dark:text-white">Вопрос в отдел кадров</h3>
+                        <p class="text-[11px] text-slate-500">МУП «Ульяновскэлектротранс»</p>
+                    </div>
+                </div>
+                <button onclick="closeQuestionModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-2 rounded-xl text-xl">✕</button>
+            </div>
+
+            <div id="questionSuccessMsg" class="hidden p-4 mb-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs text-center font-bold">
+                ✅ Ваш вопрос успешно отправлен сотрудникам кадров!
+            </div>
+            <div id="questionErrorMsg" class="hidden p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs"></div>
+
+            <form id="askQuestionForm" onsubmit="submitQuestionForm(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Ваше ФИО / Имя</label>
+                    <input id="qFullName" type="text" placeholder="Иванов Иван Иванович" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:border-[#1371B9] outline-none transition" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Контактный телефон <span class="text-red-500">*</span></label>
+                    <input id="qPhone" type="tel" required placeholder="+7 (999) 000-00-00" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:border-[#1371B9] outline-none transition" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Интересующая вакансия или тема</label>
+                    <select id="qVacancy" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:border-[#1371B9] outline-none transition">
+                        <option value="Водитель трамвая">Водитель трамвая (обучение / вакансия)</option>
+                        <option value="Водитель троллейбуса">Водитель троллейбуса</option>
+                        <option value="Кондуктор">Кондуктор</option>
+                        <option value="Слесарь / Электрик">Слесарь / Электромеханик депо</option>
+                        <option value="Стипендия и общежитие">Вопрос по стипендии и общежитию</option>
+                        <option value="Другой вопрос">Другой кадровый вопрос</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Текст вопроса <span class="text-red-500">*</span></label>
+                    <textarea id="qText" required rows="3" placeholder="Задайте ваш вопрос: график, условия обучения, документы для приема..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:border-[#1371B9] outline-none transition"></textarea>
+                </div>
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeQuestionModal()" class="w-1/3 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition">
+                        Отмена
+                    </button>
+                    <button type="submit" id="btnSubmitQuestion" class="flex-1 py-3 bg-gradient-to-r from-[#F26E22] to-amber-500 hover:brightness-110 text-slate-950 font-extrabold rounded-xl text-xs shadow-md transition">
+                        Отправить вопрос в кадры
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- СКРИПТ КЛИЕНТСКОЙ ЛОГИКИ: 16 ШАГОВ, АВТОРИЗАЦИЯ, КОНСОЛИ НАСТРОЕК -->
     <script>
         // Состояние приложения
@@ -1687,6 +1752,81 @@
             } else {
                 content.classList.add('hidden');
                 if (chevron) chevron.innerText = '▼';
+            }
+        }
+
+        // Управление модальным окном вопроса соискателя
+        function openQuestionModal() {
+            const modal = document.getElementById('askQuestionModal');
+            const errEl = document.getElementById('questionErrorMsg');
+            const okEl = document.getElementById('questionSuccessMsg');
+            if (errEl) errEl.classList.add('hidden');
+            if (okEl) okEl.classList.add('hidden');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeQuestionModal() {
+            const modal = document.getElementById('askQuestionModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        async function submitQuestionForm(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitQuestion');
+            const errEl = document.getElementById('questionErrorMsg');
+            const okEl = document.getElementById('questionSuccessMsg');
+            if (errEl) errEl.classList.add('hidden');
+            if (okEl) okEl.classList.add('hidden');
+
+            const fullName = document.getElementById('qFullName')?.value.trim() || '';
+            const phone = document.getElementById('qPhone')?.value.trim() || '';
+            const vacancy = document.getElementById('qVacancy')?.value || '';
+            const question = document.getElementById('qText')?.value.trim() || '';
+
+            if (!phone) {
+                if (errEl) { errEl.innerText = 'Пожалуйста, укажите номер телефона.'; errEl.classList.remove('hidden'); }
+                return;
+            }
+            if (!question || question.length < 5) {
+                if (errEl) { errEl.innerText = 'Пожалуйста, введите текст вопроса подробнее (от 5 символов).'; errEl.classList.remove('hidden'); }
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Отправка вопроса...';
+            }
+
+            try {
+                const resp = await fetch('/api/inquiry/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ full_name: fullName, phone: phone, vacancy: vacancy, question: question })
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    if (okEl) {
+                        okEl.innerText = data.message || '✅ Ваш вопрос успешно отправлен сотрудникам кадров!';
+                        okEl.classList.remove('hidden');
+                    }
+                    document.getElementById('askQuestionForm')?.reset();
+                    setTimeout(() => closeQuestionModal(), 2800);
+                } else {
+                    if (errEl) {
+                        errEl.innerText = data.error || 'Ошибка отправки вопроса. Попробуйте еще раз.';
+                        errEl.classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                if (errEl) {
+                    errEl.innerText = 'Не удалось связаться с сервером. Повторите попытку позже.';
+                    errEl.classList.remove('hidden');
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Отправить вопрос в кадры';
+                }
             }
         }
 

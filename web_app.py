@@ -248,6 +248,7 @@ class WebPanel:
         self.app.router.add_post("/api/candidate/create", self.handle_api_candidate_create)
 
         # Inquiries API
+        self.app.router.add_post("/api/inquiry/submit", self.handle_api_inquiry_submit)
         self.app.router.add_get("/api/inquiries", self.handle_api_inquiries)
         self.app.router.add_post("/api/inquiries/{inquiry_id}/reply", self.handle_api_inquiry_reply)
 
@@ -1832,6 +1833,59 @@ class WebPanel:
         except Exception as e:
             logger.error("Исключение в handle_api_apply_candidate: %s", e)
             return web.json_response({"error": str(e)}, status=500)
+
+    async def handle_api_inquiry_submit(self, request: web.Request) -> web.Response:
+        try:
+            data = await request.json()
+            full_name = str(data.get("full_name", "")).strip()
+            phone = str(data.get("phone", "")).strip()
+            question_text = str(data.get("question", "")).strip()
+            vacancy = str(data.get("vacancy", "")).strip()
+
+            if not question_text or len(question_text) < 5:
+                return web.json_response({"ok": False, "error": "Пожалуйста, введите вопрос подробно (не менее 5 символов)."}, status=400)
+            if not phone:
+                return web.json_response({"ok": False, "error": "Укажите контактный номер телефона для связи."}, status=400)
+
+            user_id = f"web_{int(time.time())}"
+            ok, msg, inq_id = candidate_service.submit_inquiry(
+                user_id=user_id,
+                question_text=question_text,
+                platform="web",
+                full_name=full_name,
+                phone=phone,
+                vacancy=vacancy or "Сайт / Общий вопрос",
+            )
+
+            if not ok:
+                return web.json_response({"ok": False, "error": msg}, status=400)
+
+            # Оповещение кадровиков в Telegram
+            if self.bot:
+                try:
+                    from common import safe_send
+                    hr_group = CONFIG.get("HR_GROUP_ID")
+                    super_admin = CONFIG.get("SUPER_ADMIN_ID")
+                    notify_text = (
+                        f"❓ <b>НОВЫЙ ВОПРОС С САЙТА #{inq_id}</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"👤 <b>От:</b> {html.escape(full_name or 'Соискатель')}\n"
+                        f"📞 <b>Телефон:</b> <code>{html.escape(phone)}</code>\n"
+                        f"💼 <b>Интересует:</b> {html.escape(vacancy or 'Общий вопрос')}\n\n"
+                        f"💬 <b>Вопрос:</b>\n<i>{html.escape(question_text)}</i>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━"
+                    )
+                    if hr_group:
+                        await safe_send(self.bot, hr_group, notify_text)
+                    elif super_admin:
+                        await safe_send(self.bot, super_admin, notify_text)
+                except Exception as e:
+                    logger.warning(f"Не удалось отправить уведомление о вопросе в TG: {e}")
+
+            return web.json_response({"ok": True, "inquiry_id": inq_id, "message": "Ваш вопрос успешно передан в отдел кадров! Мы свяжемся с вами."})
+        except Exception as e:
+            logger.error("Ошибка при отправке вопроса с сайта: %s", e)
+            return web.json_response({"ok": False, "error": str(e)}, status=500)
 
     async def handle_api_inquiries(self, request: web.Request) -> web.Response:
         _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})

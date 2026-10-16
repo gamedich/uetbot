@@ -18,6 +18,7 @@ templates/private_*.html
 handlers/tech.py
 tech.py
 run_tests.py
+run_sim.py
 tests/
 test_*.py
 clean_*.py
@@ -27,6 +28,8 @@ local_git.py
 local_git*
 scripts/local_admin_*
 private/
+audit_report.md
+audit_*.md
 
 # --- Персональные данные (152-ФЗ РФ) и дампы БД ---
 *.db

@@ -92,16 +92,8 @@ async def on_hr_user_joined(event: types.ChatMemberUpdated, bot: Bot) -> None:
         await grant_hr_role_and_welcome(event.new_chat_member.user, hr_group, bot)
 
 
-@access_router.message(F.chat.type.in_({"group", "supergroup"}), F.text, ~F.text.startswith("/"))
-async def on_existing_hr_member_message(message: types.Message, bot: Bot) -> None:
-    hr_group = CONFIG.get("HR_GROUP_ID")
-    if not hr_group or message.chat.id != hr_group or message.from_user.is_bot:
-        return
-
-    user_id = message.from_user.id
-    if user_id != CONFIG.get("SUPER_ADMIN_ID"):
-        if db.get_admin_role(user_id) != "hr":
-            await grant_hr_role_and_welcome(message.from_user, hr_group, bot)
+# Автоматическая выдача роли при каждом сообщении отключена:
+# роли выдаются через админку / веб-панель либо при явном вступлении в группу.
 
 
 @access_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION))

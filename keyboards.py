@@ -214,9 +214,9 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     builder.button(text="🟡 В работе", callback_data="admin_list_in_progress")
     builder.button(text="📦 Архив", callback_data="admin_list_archive")
 
-    # 3 ряд — экспорт и обновление
+    # 3 ряд — аналитика воронки (перенесена для HR) и экспорт
+    builder.button(text="📈 Аналитика воронки", callback_data="hr_funnel_analytics")
     builder.button(text="📊 Скачать Excel (/export)", callback_data="hr_export_excel")
-    builder.button(text="🔄 Обновить", callback_data="admin_stats")
 
     # 4 ряд — таймаут и веб-панель
     cur_cd = int(db.get_setting("cooldown_seconds", str(CONFIG.get("COOLDOWN_SECONDS", 1200))))
@@ -229,10 +229,11 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     else:
         builder.button(text="🌐 Веб-панель управления", callback_data="hr_web_panel_info")
 
-    # 5 ряд — персональные уведомления в ЛС (видят все)
+    # 5 ряд — персональные уведомления в ЛС и обновление
     is_enabled = db.get_admin_notify_status(user_id)
     toggle_text = "🔔 Уведы в ЛС: [ВКЛ]" if is_enabled else "🔕 Уведы в ЛС: [ВЫКЛ]"
     builder.button(text=toggle_text, callback_data="toggle_dm_notify")
+    builder.button(text="🔄 Обновить", callback_data="admin_stats")
 
     # Кнопку ТО и массового отключения видит ТОЛЬКО Главный администратор:
     if is_super:
@@ -240,9 +241,9 @@ def make_admin_menu_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
         maint_btn_text = "🟡 ТО: [ВКЛЮЧЕН] ⇄" if is_maint else "🟢 ТО: [ВЫКЛЮЧЕН] ⇄"
         builder.button(text=maint_btn_text, callback_data="tech_toggle_maint")
         builder.button(text="🔕 Выкл всем HR", callback_data="hr_mute_all_dm")
-        builder.adjust(2, 2, 2, 2, 1, 2)
+        builder.adjust(2, 2, 2, 2, 2, 2)
     else:
-        builder.adjust(2, 2, 2, 2, 1)
+        builder.adjust(2, 2, 2, 2, 2)
 
     return builder.as_markup()
 
@@ -294,19 +295,6 @@ def make_faq_keyboard() -> types.InlineKeyboardMarkup:
 def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
-    # 1. Режим проверок и ограничений (152-ФЗ, лимиты)
-    env = CONFIG.get("ENVIRONMENT", "TEST")
-    toggle_env_text = "🛡 Включить PROD (152-ФЗ, лимиты)" if env == "TEST" else "🧪 Включить TEST (без ограничений)"
-    builder.button(text=toggle_env_text, callback_data="tech_toggle_env")
-
-    # 2. Отдельный переключатель физической базы данных
-    cur_db = db.get_setting("active_db_target", "resumes.db")
-    if cur_db == "resumes_test.db":
-        db_btn_text = "🧪 База: [ТЕСТОВАЯ resumes_test.db] ⇄"
-    else:
-        db_btn_text = "📁 База: [БОЕВАЯ resumes.db] ⇄"
-    builder.button(text=db_btn_text, callback_data="tech_toggle_db")
-
     builder.button(text="💾 Управление бэкапами (/backups)", callback_data="tech_manage_backups")
     if is_maintenance_active():
         builder.button(text="🟢 Завершить ТО и уведомить всех ✅", callback_data="tech_maint_resolve")
@@ -321,13 +309,8 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
 
 def make_tests_menu_keyboard() -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="🧪 Отправить анкету из TG", callback_data="test_send_tg")
-    builder.button(text="🧪 Отправить анкету из VK", callback_data="test_send_vk")
-    builder.button(text="❓ Отправить вопрос кандидата", callback_data="test_send_inquiry")
-    builder.button(text="📡 Проверить шлюз ВКонтакте", callback_data="test_ping_vk")
-    builder.button(text="♻️ Сбросить мою анкету (/reset)", callback_data="test_do_reset")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")
-    builder.adjust(1, 1, 1, 1, 1, 1)
+    builder.adjust(1)
     return builder.as_markup()
 
 

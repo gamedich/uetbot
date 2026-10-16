@@ -222,7 +222,7 @@ async def cmd_web_panel_entry(message: types.Message) -> None:
     if not is_admin:
         await safe_answer(
             message,
-            "🚫 <b>Доступ ограничен.</b> Веб-панель предназначена для авторизованных сотрудников предприятия.",
+            texts.WEB_PANEL_ACCESS_DENIED,
             parse_mode="HTML",
         )
         return
@@ -241,15 +241,7 @@ async def cmd_web_panel_entry(message: types.Message) -> None:
     builder.button(text="🖥 Открыть в обычном браузере", url=web_url)
     builder.adjust(1, 1)
 
-    text = (
-        "🌐 <b>СЛУЖЕБНАЯ ВЕБ-ПАНЕЛЬ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 <b>Ваш Telegram ID:</b> <code>{user_id}</code>\n"
-        f"{pwd_note}\n\n"
-        f"🔗 <b>Прямой адрес (HTTPS/SSL):</b> <a href='{web_url}'>{web_url}</a>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "💡 <i>Нажмите «🌐 Запустить Mini App» — панель откроется прямо внутри Telegram!</i>"
-    )
+    text = texts.format_web_panel_entry_text(user_id=user_id, pwd_note=pwd_note, web_url=web_url)
     await safe_answer(message, text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
@@ -324,7 +316,7 @@ async def cmd_set_password_entry(event: types.Message | types.CallbackQuery) -> 
 
     new_pwd = parts[1].strip()
     if len(new_pwd) < 3:
-        await safe_answer(message, "⚠️ Пароль должен содержать не менее 3 символов.")
+        await safe_answer(message, texts.PASSWORD_MIN_LENGTH_ALERT)
         return
 
     db.set_admin_password(user_id, new_pwd)
@@ -336,14 +328,8 @@ async def cmd_set_password_entry(event: types.Message | types.CallbackQuery) -> 
     builder.button(text="🌐 Войти в Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))
     builder.adjust(1)
 
-    text = (
-        "✅ <b>Пароль для веб-панели успешно установлен!</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🔑 <b>Ваш пароль:</b> <code>{new_pwd}</code>\n"
-        f"👤 <b>Ваш логин:</b> <code>{user_id}</code>" + (f" или <code>@{u_username}</code>\n" if u_username else "\n") +
-        f"🌐 <b>Адрес панели (SSL):</b> <a href='{web_url}'>{web_url}</a>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "<i>На сайте выберите вкладку «По паролю», укажите логин/юзернейм и введите этот пароль. Либо откройте Mini App по кнопке ниже:</i>"
+    text = texts.format_password_success_text(
+        new_pwd=new_pwd, user_id=user_id, username=u_username or "", web_url=web_url
     )
     await safe_answer(message, text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
@@ -390,13 +376,7 @@ async def cb_cand_support_start(event: Union[types.CallbackQuery, types.Message]
     await state.set_state(SupportForm.waiting_message)
     builder = InlineKeyboardBuilder()
     builder.button(text="❌ Отмена", callback_data="cand_back_to_menu")
-    prompt_text = (
-        "🚨 <b>ЭКСТРЕННАЯ СВЯЗЬ С ТЕХНИЧЕСКИМ АДМИНИСТРАТОРОМ</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "Если вы столкнулись с техническим сбоем, критической ошибкой в работе бота "
-        "или вам требуется срочная помощь инженера, отправьте описание проблемы <b>одним сообщением</b> ниже.\n\n"
-        "<i>Ваше обращение поступит напрямую дежурному техническому администратору.</i>"
-    )
+    prompt_text = texts.SUPPORT_EMERGENCY_PROMPT
     if isinstance(event, types.CallbackQuery):
         await event.message.edit_text(prompt_text, reply_markup=builder.as_markup(), parse_mode="HTML")
         await event.answer()
@@ -408,7 +388,7 @@ async def cb_cand_support_start(event: Union[types.CallbackQuery, types.Message]
 async def process_support_message(message: types.Message, state: FSMContext, bot: Bot) -> None:
     msg_text = (message.text or "").strip()
     if not msg_text:
-        await safe_answer(message, "⚠️ Пожалуйста, опишите проблему текстом в одном сообщении.")
+        await safe_answer(message, texts.INQUIRY_TEXT_REQUIRED_ALERT)
         return
 
     await state.clear()
@@ -448,8 +428,7 @@ async def process_support_message(message: types.Message, state: FSMContext, bot
 
     await safe_answer(
         message,
-        "✅ <b>Экстренное сообщение передано техническому администратору!</b>\n\n"
-        "Дежурный инженер уведомлен и разбирается с ситуацией. При необходимости специалист свяжется с вами в Telegram.",
+        texts.SUPPORT_DISPATCHED_SUCCESS,
         reply_markup=make_candidate_main_keyboard(user_id=user_id),
         parse_mode="HTML",
     )
@@ -1099,7 +1078,7 @@ async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext) ->
         vac_name = VACANCY_MAP.get(vac_raw, vac_raw)
 
     if not vac_name or vac_name == "other":
-        await callback.answer("⚠️ Вакансия обновлена. Пожалуйста, выберите из списка.", show_alert=True)
+        await callback.answer(texts.VACANCY_SELECT_REQUIRED_ALERT, show_alert=True)
         await callback.message.edit_reply_markup(reply_markup=make_step5_vacancies_kb())
         return
 
@@ -1117,7 +1096,7 @@ async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext) ->
 async def process_custom_vacancy_text(message: types.Message, state: FSMContext) -> None:
     val = (message.text or "").strip()
     if not val:
-        await safe_answer(message, "⚠️ Пожалуйста, впишите желаемую должность текстом.")
+        await safe_answer(message, texts.VACANCY_CUSTOM_REQUIRED_ALERT)
         return
     await state.update_data(vacancy=val)
     await state.set_state(CandidateForm.has_license)
@@ -1932,9 +1911,9 @@ async def process_candidate_live_dialog_msg(message: types.Message, state: FSMCo
             pass
 
     if delivered:
-        await safe_answer(message, "✅ <i>Ваше сообщение передано в отдел кадров.</i>", parse_mode="HTML")
+        await safe_answer(message, texts.INQUIRY_DELIVERY_SUCCESS, parse_mode="HTML")
     else:
-        await safe_answer(message, "⚠️ Не удалось доставить сообщение в отдел кадров.", parse_mode="HTML")
+        await safe_answer(message, texts.INQUIRY_DELIVERY_FAILED, parse_mode="HTML")
 
 
 # ==============================================================================

@@ -154,3 +154,61 @@ async def cb_hr_web_panel_info(callback: types.CallbackQuery) -> None:
         text, reply_markup=builder.as_markup(), parse_mode="HTML", disable_web_page_preview=True
     )
     await callback.answer()
+
+
+@panel_router.callback_query(F.data == "hr_funnel_analytics")
+async def cb_hr_funnel_analytics(callback: types.CallbackQuery) -> None:
+    """Отображение подробной сквозной аналитики воронки найма для специалистов отдела кадров."""
+    allowed, err_text = check_hr_access_or_block(callback.from_user.id, callback.message.chat.id)
+    if not allowed:
+        await callback.message.edit_text(err_text or "🚫 Доступ ограничен.", parse_mode="HTML")
+        return
+
+    from datetime import datetime, timedelta
+    import texts
+
+    now = datetime.now()
+    d24 = (now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+    d7 = (now - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+
+    with db.connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM candidates")
+        total_cands = cur.fetchone()[0] or 0
+
+        cur.execute("SELECT COUNT(*) FROM candidates WHERE created_at >= ?", (d24,))
+        cands_24h = cur.fetchone()[0] or 0
+
+        cur.execute("SELECT COUNT(*) FROM candidates WHERE created_at >= ?", (d7,))
+        cands_7d = cur.fetchone()[0] or 0
+
+        cur.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE '%собесед%' OR status LIKE '%приглаш%'")
+        invited_cnt = cur.fetchone()[0] or 0
+
+        conv_rate = round((invited_cnt / total_cands * 100), 1) if total_cands > 0 else 0.0
+
+        cur.execute("SELECT platform, COUNT(*) FROM candidates GROUP BY platform")
+        sources = dict(cur.fetchall())
+
+        cur.execute("SELECT status, COUNT(*) FROM candidates GROUP BY status")
+        status_counts = dict(cur.fetchall())
+
+    text = texts.format_hr_funnel_analytics(
+        total_cands=total_cands,
+        cands_24h=cands_24h,
+        cands_7d=cands_7d,
+        invited_cnt=invited_cnt,
+        conv_rate=conv_rate,
+        sources=sources,
+        status_counts=status_counts,
+    )
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🔄 Обновить аналитику", callback_data="hr_funnel_analytics")
+    builder.button(text="📊 Выгрузить в Excel (/export)", callback_data="hr_export_excel")
+    builder.button(text="⬅️ Назад в меню HR", callback_data="admin_stats")
+    builder.adjust(1, 1, 1)
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+

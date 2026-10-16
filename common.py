@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import collections
+import html
 import io
 import json
 import logging
@@ -649,19 +650,16 @@ def is_hr_admin(user_id: int) -> bool:
 
 
 def is_depot_admin(user_id: int) -> bool:
-    """Проверка прав сотрудника депо (реферальная программа)."""
-    if user_id == CONFIG.get("SUPER_ADMIN_ID"):
-        return True
-    role = db.get_admin_role(user_id)
-    return role in ("superadmin", "depot")
+    """Проверка прав сотрудника депо (устарело: теперь проверяет суперпользователя)."""
+    return user_id == CONFIG.get("SUPER_ADMIN_ID")
 
 
 def is_any_staff(user_id: int) -> bool:
-    """Проверка прав любого авторизованного сотрудника предприятия."""
+    """Проверка прав любого авторизованного сотрудника предприятия (SuperAdmin, HR, Tech)."""
     if user_id == CONFIG.get("SUPER_ADMIN_ID") or user_id == CONFIG.get("TECH_ADMIN_ID"):
         return True
     role = db.get_admin_role(user_id)
-    return role in ("superadmin", "super", "hr", "tech", "depot")
+    return role in ("superadmin", "super", "hr", "tech")
 
 
 def check_hr_access_or_block(user_id: int, chat_id: int) -> Tuple[bool, Optional[str]]:
@@ -1572,7 +1570,7 @@ async def grant_admin_and_sync(bot_instance: Bot, user_id: int, role: str, passw
     role_names = {
         "hr": "Отдел кадров (HR)",
         "tech": "Технический администратор (Tech)",
-        "depot": "Сотрудник депо (Depot & Рефералы)",
+        "superadmin": "Владелец / Главный администратор (SuperAdmin)",
     }
     role_label = role_names.get(role, role)
     pwd_info = (

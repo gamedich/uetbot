@@ -235,7 +235,7 @@ async def process_candidate_note(message: types.Message, state: FSMContext) -> N
         msg = f"🗑 Заметка к анкете #{ticket_id} удалена."
     else:
         db.update_admin_note(ticket_id, text)
-        msg = f"✅ Заметка к анкете #{ticket_id} сохранена:\n<i>{html.escape(text)}</i>"
+        msg = texts.format_ticket_note_saved(ticket_id, text)
 
     builder = InlineKeyboardBuilder()
     builder.button(text=f"Открыть карточку #{ticket_id}", callback_data=f"view_{ticket_id}")
@@ -274,7 +274,7 @@ async def cmd_admin_note(message: types.Message) -> None:
     builder.button(text=f"Открыть карточку #{t_id}", callback_data=f"view_{t_id}")
     await safe_answer(
         message,
-        f"✅ Заметка к анкете #{t_id} обновлена:\n<i>{html.escape(note_text)}</i>",
+        texts.format_ticket_note_saved(t_id, note_text),
         reply_markup=builder.as_markup(),
         parse_mode="HTML",
     )
@@ -373,9 +373,7 @@ async def cb_delete_ask(callback: types.CallbackQuery) -> None:
     builder.button(text="❌ Отмена", callback_data=f"view_{ticket_id}")
     builder.adjust(1)
     await callback.message.edit_text(
-        f"⚠️ <b>ВНИМАНИЕ! УДАЛЕНИЕ АНКЕТЫ #{ticket_id}</b>\n\n"
-        "Все персональные данные, история обращений и диалогов будут стёрты по ст. 21 152-ФЗ.\n"
-        "Вы уверены?",
+        texts.format_ticket_delete_confirm_prompt(ticket_id),
         reply_markup=builder.as_markup(),
         parse_mode="HTML",
     )

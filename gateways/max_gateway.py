@@ -22,6 +22,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiohttp import ClientSession, ClientTimeout
 
 import texts
+from texts import clean_html
 from common import (
     CONFIG,
     EXTERNAL_SESSIONS,
@@ -89,9 +90,9 @@ async def send_max_message(
     text: str,
     keyboard: Optional[List[List[Dict[str, Any]]]] = None,
 ) -> bool:
-    """Отправка текстового сообщения в МАКС с поддержкой инлайн-клавиатур."""
+    """Отправка текстового сообщения в МАКС с поддержкой инлайн-клавиатур и очисткой разметки."""
     url = f"{api_base}/messages/sendText"
-    params: Dict[str, Any] = {"token": token, "chatId": str(chat_id), "text": text, "parseMode": "HTML"}
+    params: Dict[str, Any] = {"token": token, "chatId": str(chat_id), "text": clean_html(text)}
     if keyboard:
         params["inlineKeyboardMarkup"] = json.dumps(keyboard, ensure_ascii=False)
 

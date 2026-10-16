@@ -2943,8 +2943,8 @@ class WebPanel:
         data = await request.json()
         uid = int(data.get("user_id", 0))
         role = str(data.get("role", "hr")).strip().lower()
-        if role not in ("hr", "tech", "depot"):
-            return web.json_response({"error": "Недопустимая роль"}, status=400)
+        if role not in ("hr", "tech"):
+            return web.json_response({"error": "Недопустимая роль (разрешены только hr и tech)"}, status=400)
         super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
         if uid == super_id:
             return web.json_response({"error": "Роль Главного администратора изменить нельзя"}, status=400)

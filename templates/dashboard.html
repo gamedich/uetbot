@@ -155,27 +155,31 @@
                 </div>
             </div>
 
-            <!-- 2. По центру (Публичное меню соискателя) -->
+            <!-- 2. По центру (Публичное меню соискателя с векторными иконками Lucide) -->
             <nav class="hidden md:flex items-center gap-1.5 text-xs font-semibold overflow-x-auto no-scrollbar">
                 <button onclick="switchTab('landing')" id="topBtnLanding"
-                    class="nav-btn px-3 py-2 rounded-xl transition bg-[#1371B9] text-white font-bold flex items-center gap-1.5 shadow-xs">
+                    class="nav-btn px-3 py-2 rounded-xl transition bg-[#1371B9] text-white font-bold flex items-center gap-1.5 shadow-xs whitespace-nowrap shrink-0">
+                    <i data-lucide="home" class="w-3.5 h-3.5 shrink-0"></i>
                     <span>Главная</span>
                 </button>
                 <button onclick="switchTab('survey16')" id="topBtnSurvey"
-                    class="nav-btn px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    class="nav-btn px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5 shrink-0 text-[#1371B9]"></i>
                     <span>Подать анкету</span>
                 </button>
                 <button onclick="openQuestionModal()" id="topBtnAsk"
-                    class="nav-btn px-3 py-2 rounded-xl transition hover:bg-orange-50 dark:hover:bg-orange-950/40 text-orange-600 dark:text-orange-400 font-bold flex items-center gap-1.5 border border-orange-200/50 dark:border-orange-500/30">
-                    <i data-lucide="help-circle" class="w-3.5 h-3.5 text-orange-500"></i>
+                    class="nav-btn px-3 py-2 rounded-xl transition hover:bg-orange-50 dark:hover:bg-orange-950/40 text-orange-600 dark:text-orange-400 font-bold flex items-center gap-1.5 border border-orange-200/50 dark:border-orange-500/30 whitespace-nowrap shrink-0">
+                    <i data-lucide="help-circle" class="w-3.5 h-3.5 text-orange-500 shrink-0"></i>
                     <span>Задать вопрос</span>
                 </button>
                 <button onclick="switchTab('status')" id="topBtnStatus"
-                    class="nav-btn px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    class="nav-btn px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                    <i data-lucide="activity" class="w-3.5 h-3.5 shrink-0 text-emerald-500"></i>
                     <span>Статус заявки</span>
                 </button>
                 <button onclick="switchTab('cabinet')" id="topBtnCabinet"
-                    class="nav-btn px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    class="nav-btn px-3 py-2 rounded-xl transition hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                    <i data-lucide="user" class="w-3.5 h-3.5 shrink-0 text-blue-500"></i>
                     <span>Личный кабинет</span>
                 </button>
             </nav>
@@ -197,30 +201,21 @@
 
                 <!-- Кнопка "Задать вопрос" на виду для всех -->
                 <button onclick="openQuestionModal('ask')"
-                    class="bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-110 text-white font-bold px-3 py-2 rounded-xl text-xs shadow-sm flex items-center gap-1.5 transition">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
+                    class="bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-110 text-white font-bold px-3 py-2 rounded-xl text-xs shadow-sm flex items-center gap-1.5 transition whitespace-nowrap shrink-0">
+                    <i data-lucide="message-circle" class="w-3.5 h-3.5 shrink-0"></i>
                     <span>Задать вопрос</span>
                 </button>
 
                 <!-- Авторизация гостя: Вход и Регистрация -->
                 <div id="authGuestBlock" class="flex items-center gap-1.5 sm:gap-2">
                     <button onclick="openLoginModal('login')"
-                        class="bg-[#1371B9] hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-xl text-xs shadow-sm flex items-center gap-1.5 transition nav-btn">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                        </svg>
+                        class="bg-[#1371B9] hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-xl text-xs shadow-sm flex items-center gap-1.5 transition nav-btn whitespace-nowrap shrink-0">
+                        <i data-lucide="log-in" class="w-3.5 h-3.5 shrink-0"></i>
                         <span>Вход</span>
                     </button>
                     <button onclick="openRegisterModal()"
-                        class="hidden sm:flex bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-2 rounded-xl text-xs shadow-sm items-center gap-1.5 transition nav-btn">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                        </svg>
+                        class="hidden sm:flex bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-2 rounded-xl text-xs shadow-sm items-center gap-1.5 transition nav-btn whitespace-nowrap shrink-0">
+                        <i data-lucide="user-plus" class="w-3.5 h-3.5 shrink-0"></i>
                         <span>Регистрация</span>
                     </button>
                 </div>
@@ -239,20 +234,14 @@
                     <button onclick="logoutUser()"
                         class="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition shrink-0"
                         title="Выйти из системы">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
                     </button>
                 </div>
 
                 <!-- Кнопка мобильного меню -->
                 <button onclick="toggleMobileNav()" id="mobileMenuBtn"
                     class="md:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 6h16M4 12h16m-7 6h7" />
-                    </svg>
+                    <i data-lucide="menu" class="w-5 h-5"></i>
                 </button>
             </div>
         </div>
@@ -261,23 +250,44 @@
         <div id="serviceNavItems"
             class="hidden bg-slate-100/90 dark:bg-[#0c182e] border-t border-b border-slate-200 dark:border-white/10 px-4 lg:px-8 transition-colors">
             <div class="max-w-7xl mx-auto h-11 flex items-center justify-between gap-4">
-                <!-- Консолидированная лента ролей (без нагромождения кнопок) -->
+                <!-- Консолидированная лента инструментов управления -->
                 <div class="flex items-center gap-2 overflow-x-auto no-scrollbar text-xs font-semibold py-1">
                     <!-- 1. Панель HR (Кадровик) -->
                     <button onclick="switchTab('hr')" id="topBtnHrHub"
-                        class="hidden nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>👔 Панель кадров (HR)</span>
+                        class="hidden nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <i data-lucide="users" class="w-3.5 h-3.5 text-[#1371B9]"></i>
+                        <span>Кандидаты</span>
                         <span id="badgeInquiriesNav" class="hidden px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-orange-500 text-white">0</span>
                     </button>
-                    <!-- 2. Панель Тех-Админа (Инженер) -->
-                    <button onclick="switchTab('tech')" id="topBtnTechHub"
-                        class="hidden nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <span>🛠 Инженерная панель (Tech)</span>
+                    <!-- 2. Вакансии -->
+                    <button onclick="switchTab('vacancies')" id="topBtnVacanciesHub"
+                        class="hidden nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <i data-lucide="briefcase" class="w-3.5 h-3.5 text-emerald-500"></i>
+                        <span>Вакансии (Вкл/Выкл)</span>
                     </button>
-                    <!-- 3. Панель SuperAdmin (Владелец) -->
+                    <!-- 3. Конструктор анкеты -->
+                    <button onclick="switchTab('questions')" id="topBtnQuestionsHub"
+                        class="hidden nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <i data-lucide="sliders" class="w-3.5 h-3.5 text-amber-500"></i>
+                        <span>Конструктор анкеты</span>
+                    </button>
+                    <!-- 4. 152-ФЗ / Регламенты -->
+                    <button onclick="switchTab('security')" id="topBtnSecurityHub"
+                        class="hidden nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-blue-500"></i>
+                        <span>152-ФЗ / Регламенты</span>
+                    </button>
+                    <!-- 5. Инженерная панель (Tech) -->
+                    <button onclick="switchTab('tech')" id="topBtnTechHub"
+                        class="hidden nav-btn px-3 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <i data-lucide="cpu" class="w-3.5 h-3.5 text-amber-600"></i>
+                        <span>Инженерная панель</span>
+                    </button>
+                    <!-- 6. Панель SuperAdmin (Владелец) -->
                     <button onclick="switchTab('owner')" id="topBtnOwnerHub"
-                        class="hidden nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1.5 shadow-2xs">
-                        <span>👑 Центр SuperAdmin</span>
+                        class="hidden nav-btn px-3 py-1.5 rounded-lg transition hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0">
+                        <i data-lucide="crown" class="w-3.5 h-3.5 text-purple-500"></i>
+                        <span>Центр SuperAdmin</span>
                     </button>
                 </div>
 
@@ -1804,8 +1814,7 @@
                     class="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
                     <option value="hr">👔 Отдел кадров (HR)</option>
                     <option value="tech">🛠 Инженер систем (Tech)</option>
-                    <option value="depot">💼 Сотрудник депо / предприятия</option>
-                    <option value="superadmin">👑 SuperAdmin</option>
+                    <option value="superadmin">👑 SuperAdmin (Владелец)</option>
                 </select>
                 <input type="text" id="newAdminPassword" placeholder="Пароль для сайта (необязательно)..."
                     class="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
@@ -2224,47 +2233,65 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ ВОПРОСА В КОНСТРУКТОРЕ -->
+    <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ / РЕДАКТИРОВАНИЯ ВОПРОСА В КОНСТРУКТОРЕ -->
     <div id="addQuestionModal"
         class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
         onclick="handleBackdropClick(event)">
-        <div class="bg-white dark:bg-[#112240] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700"
+        <div class="bg-white dark:bg-[#112240] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700"
             onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold">Добавить шаг опроса в бота</h3>
+                <div class="flex items-center gap-2">
+                    <span class="p-2 rounded-xl bg-amber-500/10 text-amber-500 text-lg">🛠</span>
+                    <div>
+                        <h3 id="modalQuestionTitle" class="text-base font-extrabold text-slate-900 dark:text-white">Конструктор шага анкеты</h3>
+                        <p class="text-[11px] text-slate-500">Синхронизация с ботом и веб-формой</p>
+                    </div>
+                </div>
                 <button onclick="closeAddQuestionModal()"
                     class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition"
                     title="Закрыть">✕</button>
             </div>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1">Номер шага</label>
-                    <input id="newQStep" type="number" value="1"
-                        class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm">
+            <div class="space-y-3.5">
+                <input id="editQIndex" type="hidden" value="-1">
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-1">
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Номер шага</label>
+                        <input id="newQStep" type="number" value="1"
+                            class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Тип ответа</label>
+                        <select id="newQType" onchange="handleQuestionTypeChange()"
+                            class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold">
+                            <option value="Текст">Текстовый ввод</option>
+                            <option value="Выбор (Да/Нет)">Выбор (Да / Нет)</option>
+                            <option value="Список">Выбор из вариантов (кнопки)</option>
+                            <option value="Телефон">Номер телефона</option>
+                            <option value="Дата">Дата рождения</option>
+                            <option value="Выбор вакансии">Выбор вакансии</option>
+                            <option value="ГОСТ / Чекбокс">Согласие 152-ФЗ</option>
+                        </select>
+                    </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1">Текст вопроса соискателю</label>
-                    <input id="newQText" type="text" placeholder="Введите формулировку вопроса..."
-                        class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Текст вопроса соискателю <span class="text-red-500">*</span></label>
+                    <textarea id="newQText" rows="2" placeholder="Введите формулировку вопроса для кандидата..."
+                        class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm outline-none focus:border-[#1371B9] transition"></textarea>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1">Тип ответа</label>
-                    <select id="newQType"
-                        class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm">
-                        <option value="Текст">Текстовый ввод</option>
-                        <option value="Выбор (Да/Нет)">Выбор (Да / Нет)</option>
-                        <option value="Список">Выбор из вариантов</option>
-                        <option value="Телефон">Номер телефона</option>
-                    </select>
+                <div id="qOptionsBlock" class="hidden">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Варианты ответов (кнопки через запятую)</label>
+                    <input id="newQOptions" type="text" placeholder="Вариант 1, Вариант 2, Вариант 3..."
+                        class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm outline-none focus:border-[#1371B9] transition">
+                    <p class="text-[10px] text-slate-400 mt-1">Кандидату в боте будут показаны интерактивные кнопки с этими вариантами.</p>
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="closeAddQuestionModal()"
-                        class="w-1/3 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-sm transition">
+                        class="w-1/3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs sm:text-sm transition">
                         Отмена
                     </button>
                     <button type="button" onclick="saveNewQuestion()"
-                        class="flex-1 py-3 bg-[#1371B9] hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition">
-                        Сохранить
+                        class="flex-1 py-2.5 bg-[#1371B9] hover:bg-blue-700 text-white font-bold rounded-xl text-xs sm:text-sm transition shadow-sm">
+                        💾 Сохранить изменения
                     </button>
                 </div>
             </div>
@@ -3875,6 +3902,9 @@
 
             const hrBtn = document.getElementById('topBtnHrHub');
             const mHrBtn = document.getElementById('mBtnHrHub');
+            const vacBtn = document.getElementById('topBtnVacanciesHub');
+            const questBtn = document.getElementById('topBtnQuestionsHub');
+            const secBtn = document.getElementById('topBtnSecurityHub');
             const techBtn = document.getElementById('topBtnTechHub');
             const mTechBtn = document.getElementById('mBtnTechHub');
             const ownerBtn = document.getElementById('topBtnOwnerHub');
@@ -3883,6 +3913,9 @@
             if (state.role === 'superadmin') {
                 hrBtn?.classList.remove('hidden');
                 mHrBtn?.classList.remove('hidden');
+                vacBtn?.classList.remove('hidden');
+                questBtn?.classList.remove('hidden');
+                secBtn?.classList.remove('hidden');
                 techBtn?.classList.remove('hidden');
                 mTechBtn?.classList.remove('hidden');
                 ownerBtn?.classList.remove('hidden');
@@ -3890,6 +3923,9 @@
             } else if (state.role === 'tech') {
                 hrBtn?.classList.add('hidden');
                 mHrBtn?.classList.add('hidden');
+                vacBtn?.classList.remove('hidden');
+                questBtn?.classList.remove('hidden');
+                secBtn?.classList.remove('hidden');
                 techBtn?.classList.remove('hidden');
                 mTechBtn?.classList.remove('hidden');
                 ownerBtn?.classList.add('hidden');
@@ -3897,6 +3933,9 @@
             } else if (state.role === 'hr' || state.role === 'depot') {
                 hrBtn?.classList.remove('hidden');
                 mHrBtn?.classList.remove('hidden');
+                vacBtn?.classList.remove('hidden');
+                questBtn?.classList.remove('hidden');
+                secBtn?.classList.remove('hidden');
                 techBtn?.classList.add('hidden');
                 mTechBtn?.classList.add('hidden');
                 ownerBtn?.classList.add('hidden');
@@ -3904,10 +3943,17 @@
             } else {
                 hrBtn?.classList.add('hidden');
                 mHrBtn?.classList.add('hidden');
+                vacBtn?.classList.add('hidden');
+                questBtn?.classList.add('hidden');
+                secBtn?.classList.add('hidden');
                 techBtn?.classList.add('hidden');
                 mTechBtn?.classList.add('hidden');
                 ownerBtn?.classList.add('hidden');
                 mOwnerBtn?.classList.add('hidden');
+            }
+
+            if (window.lucide && typeof lucide.createIcons === 'function') {
+                try { lucide.createIcons(); } catch (e) { }
             }
 
             if (isStaff) {
@@ -4188,29 +4234,50 @@
                 }
             });
 
-            // Подсветка основных кнопок в шапке (Соискатель + 3 Hub-кнопки)
-            const isHrActive = hrTabs.includes(tabName);
+            // Подсветка основных кнопок в шапке (Соискатель + Hub-кнопки суб-панели)
+            const isHrActive = tabName === 'applicants' || tabName === 'hr';
+            const isVacActive = tabName === 'vacancies';
+            const isQuestionsActive = tabName === 'questions';
+            const isSecurityActive = tabName === 'security';
             const isTechActive = techTabs.includes(tabName);
             const isOwnerActive = ownerTabs.includes(tabName);
 
             const hrHubBtn = document.getElementById('topBtnHrHub');
+            const vacHubBtn = document.getElementById('topBtnVacanciesHub');
+            const questHubBtn = document.getElementById('topBtnQuestionsHub');
+            const secHubBtn = document.getElementById('topBtnSecurityHub');
             const techHubBtn = document.getElementById('topBtnTechHub');
             const ownerHubBtn = document.getElementById('topBtnOwnerHub');
 
             if (hrHubBtn) {
                 hrHubBtn.className = isHrActive
-                    ? "px-3.5 py-1.5 rounded-lg transition bg-[#1371B9] text-white font-bold flex items-center gap-1.5 shadow-2xs"
-                    : "px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5";
+                    ? "nav-btn px-3.5 py-1.5 rounded-lg transition bg-[#1371B9] text-white font-bold flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0"
+                    : "nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0";
+            }
+            if (vacHubBtn) {
+                vacHubBtn.className = isVacActive
+                    ? "nav-btn px-3.5 py-1.5 rounded-lg transition bg-emerald-600 text-white font-bold flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0"
+                    : "nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0";
+            }
+            if (questHubBtn) {
+                questHubBtn.className = isQuestionsActive
+                    ? "nav-btn px-3.5 py-1.5 rounded-lg transition bg-amber-600 text-white font-bold flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0"
+                    : "nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0";
+            }
+            if (secHubBtn) {
+                secHubBtn.className = isSecurityActive
+                    ? "nav-btn px-3.5 py-1.5 rounded-lg transition bg-blue-600 text-white font-bold flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0"
+                    : "nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0";
             }
             if (techHubBtn) {
                 techHubBtn.className = isTechActive
-                    ? "px-3.5 py-1.5 rounded-lg transition bg-amber-600 text-white font-bold flex items-center gap-1.5 shadow-2xs"
-                    : "px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5";
+                    ? "nav-btn px-3.5 py-1.5 rounded-lg transition bg-amber-700 text-white font-bold flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0"
+                    : "nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 whitespace-nowrap shrink-0";
             }
             if (ownerHubBtn) {
                 ownerHubBtn.className = isOwnerActive
-                    ? "px-3.5 py-1.5 rounded-lg transition bg-purple-700 text-white font-bold flex items-center gap-1.5 shadow-2xs border border-purple-500/50"
-                    : "px-3.5 py-1.5 rounded-lg transition hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1.5 shadow-2xs";
+                    ? "nav-btn px-3.5 py-1.5 rounded-lg transition bg-purple-700 text-white font-bold flex items-center gap-1.5 shadow-2xs border border-purple-500/50 whitespace-nowrap shrink-0"
+                    : "nav-btn px-3.5 py-1.5 rounded-lg transition hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0";
             }
 
             // Кнопки соискателя в верхней панели
@@ -5808,24 +5875,42 @@
             `).join('');
         }
 
+        function handleQuestionTypeChange() {
+            const type = document.getElementById('newQType')?.value;
+            const optBlock = document.getElementById('qOptionsBlock');
+            if (!optBlock) return;
+            if (['Список', 'Выбор', 'Выбор вакансии', 'Выбор (Да/Нет)'].includes(type)) {
+                optBlock.classList.remove('hidden');
+            } else {
+                optBlock.classList.add('hidden');
+            }
+        }
+
         function editQuestionPrompt(step) {
             if (!['hr', 'tech', 'superadmin'].includes(state.role)) {
                 alert('У вас нет прав для изменения настроек анкеты. Доступно только сотрудникам отдела кадров.');
                 return;
             }
-            const q = state.questions.find(item => item.step === step);
-            if (!q) return;
-            const newText = prompt(`Шаг ${step} из ${state.questions.length}:\nВведите новую формулировку вопроса:`, q.text);
-            if (newText && newText.trim()) {
-                q.text = newText.trim();
-                renderQuestions();
-                renderSurveyAllQuestions();
-                fetch('/api/questions', {
-                    method: 'POST',
-                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify(state.questions)
-                }).catch(() => { });
+            const idx = state.questions.findIndex(item => item.step === step);
+            if (idx === -1) return;
+            const q = state.questions[idx];
+
+            const modal = document.getElementById('addQuestionModal');
+            if (!modal) return;
+
+            document.getElementById('editQIndex').value = idx;
+            document.getElementById('modalQuestionTitle').innerText = `Редактирование шага ${step}`;
+            document.getElementById('newQStep').value = q.step;
+            document.getElementById('newQText').value = q.text || '';
+            const typeSel = document.getElementById('newQType');
+            if (typeSel) typeSel.value = q.type || 'Текст';
+            
+            const optInput = document.getElementById('newQOptions');
+            if (optInput) {
+                optInput.value = Array.isArray(q.options) ? q.options.join(', ') : (q.options || '');
             }
+            handleQuestionTypeChange();
+            modal.classList.remove('hidden');
         }
 
         async function deleteQuestionStep(step) {
@@ -5874,8 +5959,13 @@
             }
             const modal = document.getElementById('addQuestionModal');
             if (modal) {
+                document.getElementById('editQIndex').value = '-1';
+                document.getElementById('modalQuestionTitle').innerText = 'Добавить новый шаг анкеты';
                 document.getElementById('newQStep').value = (state.questions?.length || 0) + 1;
                 document.getElementById('newQText').value = '';
+                const optInput = document.getElementById('newQOptions');
+                if (optInput) optInput.value = '';
+                handleQuestionTypeChange();
                 modal.classList.remove('hidden');
             }
         }
@@ -5887,25 +5977,56 @@
 
         async function saveNewQuestion() {
             if (!['hr', 'tech', 'superadmin'].includes(state.role)) {
-                alert('Недостаточно прав для добавления шагов.');
+                alert('Недостаточно прав для изменения шагов.');
                 return;
             }
+            const editIdx = parseInt(document.getElementById('editQIndex').value || '-1', 10);
             const text = document.getElementById('newQText').value.trim();
             const type = document.getElementById('newQType').value;
+            const rawOpts = (document.getElementById('newQOptions')?.value || '').trim();
+            const stepNum = parseInt(document.getElementById('newQStep').value || '1', 10);
+
             if (!text || text.length < 3) {
                 alert('Пожалуйста, введите текст вопроса (минимум 3 символа).');
                 return;
             }
-            const nextStep = (state.questions?.length || 0) + 1;
-            const newQ = {
-                id: nextStep,
-                step: nextStep,
-                text: text,
-                type: type,
-                field: `step${nextStep}_custom`,
-                botSync: true
-            };
-            state.questions.push(newQ);
+
+            const parsedOpts = rawOpts ? rawOpts.split(',').map(s => s.trim()).filter(Boolean) : undefined;
+
+            if (editIdx >= 0 && state.questions[editIdx]) {
+                // Редактирование существующего шага
+                state.questions[editIdx].text = text;
+                state.questions[editIdx].type = type;
+                if (parsedOpts && parsedOpts.length > 0) {
+                    state.questions[editIdx].options = parsedOpts;
+                } else if (['Выбор (Да/Нет)'].includes(type)) {
+                    state.questions[editIdx].options = ['Да', 'Нет'];
+                }
+            } else {
+                // Добавление нового шага
+                const nextStep = stepNum || ((state.questions?.length || 0) + 1);
+                const newQ = {
+                    id: nextStep,
+                    step: nextStep,
+                    text: text,
+                    type: type,
+                    field: `step${nextStep}_custom`,
+                    botSync: true
+                };
+                if (parsedOpts && parsedOpts.length > 0) {
+                    newQ.options = parsedOpts;
+                } else if (type === 'Выбор (Да/Нет)') {
+                    newQ.options = ['Да', 'Нет'];
+                }
+                state.questions.push(newQ);
+            }
+
+            // Аккуратная нормализация шагов 1..N
+            state.questions.forEach((q, i) => {
+                q.step = i + 1;
+                q.id = i + 1;
+            });
+
             renderQuestions();
             renderSurveyAllQuestions();
             updateQuestionsBadges();
@@ -5919,12 +6040,12 @@
                 });
                 const res = await resp.json();
                 if (res.ok) {
-                    alert(`✓ Шаг ${nextStep} успешно добавлен и сохранен в базе!`);
+                    alert('✓ Шаги анкеты успешно сохранены и синхронизированы!');
                 } else {
-                    alert(res.error || 'Ошибка сохранения шага');
+                    alert(res.error || 'Ошибка сохранения шагов');
                 }
             } catch (e) {
-                alert('✓ Новый шаг добавлен');
+                alert('✓ Изменения сохранены локально.');
             }
         }
 
@@ -6410,8 +6531,7 @@
                     const roleSelect = `<select onchange="changeAdminRole(${a.user_id}, this.value)" ${isSuper ? 'disabled' : ''} class="px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
                         <option value="hr" ${a.role === 'hr' ? 'selected' : ''}>👔 HR (Кадры)</option>
                         <option value="tech" ${a.role === 'tech' ? 'selected' : ''}>🛠 Tech (Инженер)</option>
-                        <option value="depot" ${a.role === 'depot' ? 'selected' : ''}>💼 Сотрудник депо / предприятия</option>
-                        ${isSuper ? '<option value="superadmin" selected>👑 SuperAdmin</option>' : '<option value="superadmin">👑 SuperAdmin</option>'}
+                        ${isSuper ? '<option value="superadmin" selected>👑 SuperAdmin (Владелец)</option>' : '<option value="superadmin">👑 SuperAdmin (Владелец)</option>'}
                     </select>`;
 
                     return `

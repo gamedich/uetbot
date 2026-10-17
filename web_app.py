@@ -319,15 +319,6 @@ class WebPanel:
         self.app.router.add_get("/api/system/ai_limits", self.handle_api_system_ai_limits)
         self.app.router.add_post("/api/system/ai_prompt", self.handle_api_system_ai_prompt)
 
-        # Локальный модуль администрирования Git (присутствует только локально, не в git)
-        try:
-            import local_git
-
-            local_git.register_local_git_endpoints(self.app, self)
-        except ImportError:
-            pass
-        except Exception as e:
-            logger.warning("Локальный модуль Git не инициализирован: %s", e)
 
     async def handle_index(self, request: web.Request) -> web.Response:
         """

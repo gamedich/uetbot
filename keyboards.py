@@ -41,7 +41,7 @@ def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
     Закрепленная внизу экрана эргономичная панель быстрых действий (Reply-клавиатура).
     Позволяет соискателю в 1 клик открыть интерактивную форму анкеты или проверить статус.
     """
-    web_url = get_valid_webapp_url()
+    web_url = get_valid_webapp_url("tg")
     return types.ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -67,7 +67,7 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
         [ 💬 Задать вопрос ]    [ 📞 Контакты депо ]
     """
     builder = InlineKeyboardBuilder()
-    web_url = get_valid_webapp_url()
+    web_url = get_valid_webapp_url("tg")
 
     maint_active = is_maintenance_active()
 

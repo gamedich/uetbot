@@ -2514,7 +2514,28 @@
             switchTab('survey16');
         }
 
-        function renderSurveyCurrentStep() {
+                function selectSurveyVacancy(vac) {
+            state.surveyData.step5_vacancy = vac;
+            const inp = document.getElementById("surveyInputCurrent");
+            if (inp) inp.value = vac;
+            renderSurveyCurrentStep();
+        }
+
+        function selectSurveyLicense(lic) {
+            state.surveyData.step6_license = lic;
+            const inp = document.getElementById("surveyInputCurrent");
+            if (inp) inp.value = lic;
+            renderSurveyCurrentStep();
+        }
+
+        function selectSurveyOption(field, val) {
+            state.surveyData[field] = val;
+            const inp = document.getElementById("surveyInputCurrent");
+            if (inp) inp.value = val;
+            renderSurveyCurrentStep();
+        }
+
+function renderSurveyCurrentStep() {
             const stepNum = state.currentSurveyStep;
             const q = surveyQuestions[stepNum - 1];
 
@@ -2571,13 +2592,94 @@
                         </div>
                     </div>
                 `;
-            } else if (q.type === 'select') {
+            } else if (stepNum === 5) {
+                // Шаг 5: Интерактивные карточки профессий (компактный размер, зарплаты, бейджи)
+                const vacList = [
+                    { title: 'Водитель трамвая (обучение со стипендией)', salary: '55 000 — 85 000 ₽', badge: 'Бесплатное обучение + стипендия 20к', desc: 'Управление вагонами 71-911ЕМ «Львёнок» и Tatra. Льготный стаж и досрочная пенсия.', icon: '🚋' },
+                    { title: 'Водитель троллейбуса', salary: '55 000 — 85 000 ₽', badge: 'Заволжское депо №3', desc: 'Перевозки в Заволжском районе, официальное трудоустройство по ТК РФ.', icon: '🚎' },
+                    { title: 'Слесарь по ремонту подвижного состава', salary: '45 000 — 65 000 ₽', badge: 'Техническая служба депо', desc: 'Ремонт и ТО трамваев и троллейбусов в Северном или Засвияжском депо.', icon: '🔧' },
+                    { title: 'Монтер пути / Контактник', salary: '48 000 — 70 000 ₽', badge: 'Служба пути / Энерго', desc: 'Обслуживание путей, контактных сетей и тяговых подстанций.', icon: '⚡' },
+                    { title: 'Кондуктор / Контролер', salary: '32 000 — 45 000 ₽', badge: 'Сменный график 2/2', desc: 'Сбор платы за проезд, проверка билетов, сменный график работы.', icon: '🎫' }
+                ];
+                const currentVal = state.surveyData.step5_vacancy || vacList[0].title;
                 container.innerHTML = `
                     <div class="space-y-3">
                         <label class="block text-xs font-semibold text-slate-400">${q.desc}</label>
-                        <select id="surveyInputCurrent" class="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-sm focus:outline-none focus:border-[#1371B9]">
-                            ${q.options.map(opt => `<option value="${opt}" ${state.surveyData[q.field] === opt ? 'selected' : ''}>${opt}</option>`).join('')}
-                        </select>
+                        <input type="hidden" id="surveyInputCurrent" value="${escapeHtml(currentVal)}" />
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            ${vacList.map(v => {
+                                const isChecked = currentVal === v.title;
+                                return `
+                                    <div onclick="selectSurveyVacancy('${escapeHtml(v.title)}')"
+                                         class="p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3 active:scale-[0.99] ${isChecked ? 'border-[#1371B9] bg-blue-50/70 dark:bg-blue-950/40 text-slate-900 dark:text-white shadow-xs' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:border-slate-300 text-slate-700 dark:text-slate-300'}">
+                                        <div class="text-2xl shrink-0 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-700/60">${v.icon}</div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                <h4 class="font-extrabold text-xs sm:text-sm leading-tight text-slate-900 dark:text-white">${escapeHtml(v.title)}</h4>
+                                                <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${isChecked ? 'border-[#1371B9] bg-[#1371B9]' : 'border-slate-300'}">
+                                                    ${isChecked ? '<span class="w-1.5 h-1.5 rounded-full bg-white"></span>' : ''}
+                                                </span>
+                                            </div>
+                                            <div class="text-xs font-bold text-[#1371B9] dark:text-sky-400 mb-1">${v.salary}</div>
+                                            <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">${v.desc}</p>
+                                            <span class="inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">${v.badge}</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (stepNum === 6) {
+                // Шаг 6: Компактные кнопки водительских категорий
+                const categories = [
+                    'Да (категория B / C — обучение 2 мес.)',
+                    'Да (категория D — обучение 2 мес.)',
+                    'Да (категория Tm / Tb)',
+                    'Нет водительского удостоверения (полный курс с нуля)'
+                ];
+                const currentVal = state.surveyData.step6_license || categories[0];
+                container.innerHTML = `
+                    <div class="space-y-3">
+                        <label class="block text-xs font-semibold text-slate-400">${q.desc}</label>
+                        <input type="hidden" id="surveyInputCurrent" value="${escapeHtml(currentVal)}" />
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${categories.map(c => {
+                                const isChecked = currentVal === c;
+                                return `
+                                    <button type="button" onclick="selectSurveyLicense('${escapeHtml(c)}')"
+                                            class="w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between text-xs font-semibold active:scale-[0.99] ${isChecked ? 'border-[#1371B9] bg-blue-50 dark:bg-blue-950/40 text-[#1371B9] dark:text-sky-300 font-bold shadow-xs' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'}">
+                                        <span class="pr-2">${escapeHtml(c)}</span>
+                                        <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${isChecked ? 'border-[#1371B9] bg-[#1371B9]' : 'border-slate-300'}">
+                                            ${isChecked ? '<span class="w-1.5 h-1.5 rounded-full bg-white"></span>' : ''}
+                                        </span>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (q.type === 'select') {
+                // Интерактивные варианты выбора (удобно нажимать на телефоне и ПК)
+                const currentVal = state.surveyData[q.field] || q.options[0];
+                container.innerHTML = `
+                    <div class="space-y-3">
+                        <label class="block text-xs font-semibold text-slate-400">${q.desc}</label>
+                        <input type="hidden" id="surveyInputCurrent" value="${escapeHtml(currentVal)}" />
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${q.options.map(opt => {
+                                const isChecked = currentVal === opt;
+                                return `
+                                    <button type="button" onclick="selectSurveyOption('${q.field}', '${escapeHtml(opt)}')"
+                                            class="w-full text-left p-3 rounded-xl border-2 transition-all flex items-center justify-between text-xs font-semibold active:scale-[0.99] ${isChecked ? 'border-[#1371B9] bg-blue-50 dark:bg-blue-950/40 text-[#1371B9] dark:text-sky-300 font-bold shadow-xs' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'}">
+                                        <span class="pr-2">${escapeHtml(opt)}</span>
+                                        <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${isChecked ? 'border-[#1371B9] bg-[#1371B9]' : 'border-slate-300'}">
+                                            ${isChecked ? '<span class="w-1.5 h-1.5 rounded-full bg-white"></span>' : ''}
+                                        </span>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
                     </div>
                 `;
             } else {

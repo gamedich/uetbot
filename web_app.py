@@ -58,6 +58,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 DASHBOARD_HTML_PATH = TEMPLATES_DIR / "dashboard.html"
 APPLY_HTML_PATH = TEMPLATES_DIR / "apply.html"
 KADRY_HTML_PATH = TEMPLATES_DIR / "kadry.html"
+TG_MINIAPP_HTML_PATH = TEMPLATES_DIR / "tg_miniapp.html"
 DOCS_DIR = Path(__file__).resolve().parent / "docs"
 
 
@@ -216,6 +217,8 @@ class WebPanel:
 
         self.app.router.add_get("/", self.handle_index)
         self.app.router.add_get("/app", self.handle_index)
+        self.app.router.add_get("/tg", self.handle_tg_page)
+        self.app.router.add_get("/miniapp", self.handle_tg_page)
         self.app.router.add_get("/dashboard", self.handle_dashboard_page)
         self.app.router.add_get("/apply", self.handle_apply_page)
         self.app.router.add_get("/candidate/form", self.handle_apply_page)
@@ -330,15 +333,45 @@ class WebPanel:
 
     async def handle_index(self, request: web.Request) -> web.Response:
         """
-        Единая входная точка веб-сервиса:
-        - Главный портал экосистемы МУП «УЭТ» (dashboard.html):
-          Публичный лендинг, 16 шагов анкеты, проверка статуса, личный кабинет соискателя,
-          а для авторизованных сотрудников — консолидированные хабы HR, Tech и SuperAdmin.
+        Единая входная точка веб-сервиса с поддержкой адаптивных шаблонов:
+        - ?view=tg -> tg_miniapp.html (чистый Telegram Mini App)
+        - ?view=mobile / ?view=apply -> apply.html (мобильный портал)
+        - ?view=kadry / ?view=hr -> kadry.html (служебный кабинет кадров)
+        - по умолчанию -> dashboard.html (универсальный мастер-дашборд с переключателем вьюпорта)
         """
+        view = request.query.get("view", "").strip().lower()
+        if view == "tg":
+            return await self.handle_tg_page(request)
+        elif view in ("mobile", "apply", "phone"):
+            return await self.handle_apply_page(request)
+        elif view in ("kadry", "hr"):
+            return await self.handle_kadry_page(request)
+        elif view in ("pc", "dashboard"):
+            return await self.handle_dashboard_page(request)
+
+        # Умный автодетект: если открыто из нативного клиента Telegram
+        user_agent = request.headers.get("User-Agent", "")
+        if "Telegram" in user_agent or "tgWebAppData" in request.query or "tgWebAppVersion" in request.query:
+            return await self.handle_tg_page(request)
+
         return await self.handle_dashboard_page(request)
 
+    async def handle_tg_page(self, request: web.Request) -> web.Response:
+        """Специализированный нативный шаблон Telegram Mini App (TMA)."""
+        target = TG_MINIAPP_HTML_PATH if TG_MINIAPP_HTML_PATH.exists() else DASHBOARD_HTML_PATH
+        if target.exists():
+            content = target.read_text(encoding="utf-8")
+        else:
+            content = "<h1>Ошибка: Шаблон tg_miniapp.html не найден</h1>"
+        return web.Response(
+            text=content,
+            content_type="text/html",
+            charset="utf-8",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
+        )
+
     async def handle_dashboard_page(self, request: web.Request) -> web.Response:
-        """Служебный дашборд управления предприятием (HR, Tech, SuperAdmin) и единый портал."""
+        """Мастер-дашборд экосистемы МУП «УЭТ» (публичный портал + хабы HR, Tech, SuperAdmin)."""
         if DASHBOARD_HTML_PATH.exists():
             content = DASHBOARD_HTML_PATH.read_text(encoding="utf-8")
         else:
@@ -351,12 +384,32 @@ class WebPanel:
         )
 
     async def handle_apply_page(self, request: web.Request) -> web.Response:
-        """Единый карьерный портал МУП «УЭТ»: презентация предприятия, 16 шагов анкеты, проверка статуса."""
-        return await self.handle_dashboard_page(request)
+        """Карьерный портал соискателя МУП «УЭТ»: мобильная и десктопная адаптация."""
+        target = APPLY_HTML_PATH if APPLY_HTML_PATH.exists() else DASHBOARD_HTML_PATH
+        if target.exists():
+            content = target.read_text(encoding="utf-8")
+        else:
+            content = "<h1>Ошибка: Шаблон apply.html не найден</h1>"
+        return web.Response(
+            text=content,
+            content_type="text/html",
+            charset="utf-8",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
+        )
 
     async def handle_kadry_page(self, request: web.Request) -> web.Response:
-        """Модульная дизайн-система и адаптивная навигация HR-платформы «КАДРЫ» (служебный рабочий кабинет)."""
-        return await self.handle_dashboard_page(request)
+        """Служебный рабочий кабинет сотрудников и отдела кадров «КАДРЫ»."""
+        target = KADRY_HTML_PATH if KADRY_HTML_PATH.exists() else DASHBOARD_HTML_PATH
+        if target.exists():
+            content = target.read_text(encoding="utf-8")
+        else:
+            content = "<h1>Ошибка: Шаблон kadry.html не найден</h1>"
+        return web.Response(
+            text=content,
+            content_type="text/html",
+            charset="utf-8",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
+        )
 
     async def handle_docs_page(self, request: web.Request) -> web.Response:
         """Официальный сайт документации и презентации UETBot 2.0.0."""

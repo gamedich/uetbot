@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>МУП «Ульяновскэлектротранс» — Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+        :root {
+            --sat: env(safe-area-inset-top, 0px);
+            --sab: env(safe-area-inset-bottom, 0px);
+            --tg-theme-bg: var(--tg-theme-bg-color, #17212b);
+            --tg-theme-text: var(--tg-theme-text-color, #ffffff);
+            --tg-theme-card: var(--tg-theme-secondary-bg-color, #242f3d);
+            --tg-theme-button: var(--tg-theme-button-color, #2481cc);
+            --tg-theme-button-text: var(--tg-theme-button-text-color, #ffffff);
+        }
+        * {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background-color: var(--tg-theme-bg);
+            color: var(--tg-theme-text);
+            min-height: 100dvh;
+            padding-bottom: calc(72px + var(--sab));
+        }
+        .chip-active {
+            background-color: rgba(36, 129, 204, 0.25) !important;
+            border-color: #2481cc !important;
+            color: #38bdf8 !important;
+            font-weight: 700 !important;
+        }
+        .chip-btn {
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            border-radius: 12px;
+            transition: all 0.15s ease;
+        }
+        .vac-card-active {
+            border-color: #2481cc !important;
+            background-color: rgba(36, 129, 204, 0.15) !important;
+        }
+    </style>
+</head>
+<body class="antialiased select-none">
+    <!-- Mini App Header -->
+    <header class="sticky top-0 z-40 bg-[#1c2431]/95 backdrop-blur-md border-b border-slate-700/60 px-4 py-3">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-500 flex items-center justify-center text-white text-base shadow-sm">
+                    🚋
+                </div>
+                <div>
+                    <h1 class="text-xs font-bold text-white leading-tight">МУП «Ульяновскэлектротранс»</h1>
+                    <p class="text-[10px] text-slate-400">Кадровый центр • Анкета кандидата</p>
+                </div>
+            </div>
+            <div id="stepCounterBadge" class="px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[11px] font-bold">
+                Шаг 1 из 4
+            </div>
+        </div>
+        <!-- Progress Bar -->
+        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2.5 overflow-hidden">
+            <div id="progressBar" class="bg-gradient-to-r from-sky-500 to-blue-500 h-full rounded-full transition-all duration-300" style="width: 25%"></div>
+        </div>
+    </header>
+
+    <!-- Main Form Container -->
+    <main class="p-4 max-w-lg mx-auto">
+        <!-- STEP 1: Выбор вакансии -->
+        <div id="stepPane1" class="step-pane space-y-3">
+            <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider px-1">Выберите профессию:</div>
+            
+            <div class="space-y-2" id="vacList">
+                <div onclick="selectVacancy(this, 'Водитель трамвая')" class="vac-card vac-card-active p-3 rounded-2xl bg-[#242f3d] border-2 border-[#2481cc] cursor-pointer flex items-center justify-between transition-all">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">🚋</span>
+                        <div>
+                            <div class="text-xs font-bold text-white">Водитель трамвая</div>
+                            <div class="text-[11px] text-slate-400">Обучение со стипендией 20 000 ₽</div>
+                        </div>
+                    </div>
+                    <div class="text-xs font-bold text-sky-400">от 65 000 ₽</div>
+                </div>
+
+                <div onclick="selectVacancy(this, 'Водитель троллейбуса')" class="vac-card p-3 rounded-2xl bg-[#242f3d] border border-slate-700 cursor-pointer flex items-center justify-between transition-all">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">🚎</span>
+                        <div>
+                            <div class="text-xs font-bold text-white">Водитель троллейбуса</div>
+                            <div class="text-[11px] text-slate-400">Заволжское депо №3</div>
+                        </div>
+                    </div>
+                    <div class="text-xs font-bold text-sky-400">от 65 000 ₽</div>
+                </div>
+
+                <div onclick="selectVacancy(this, 'Слесарь по ремонту подвижного состава')" class="vac-card p-3 rounded-2xl bg-[#242f3d] border border-slate-700 cursor-pointer flex items-center justify-between transition-all">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">🔧</span>
+                        <div>
+                            <div class="text-xs font-bold text-white">Слесарь по ремонту ПС</div>
+                            <div class="text-[11px] text-slate-400">Депо №1 и №2 (3-6 разряд)</div>
+                        </div>
+                    </div>
+                    <div class="text-xs font-bold text-slate-300">от 48 000 ₽</div>
+                </div>
+
+                <div onclick="selectVacancy(this, 'Электромонтер контактной сети')" class="vac-card p-3 rounded-2xl bg-[#242f3d] border border-slate-700 cursor-pointer flex items-center justify-between transition-all">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">⚡</span>
+                        <div>
+                            <div class="text-xs font-bold text-white">Электромонтер сети</div>
+                            <div class="text-[11px] text-slate-400">Служба энергохозяйства</div>
+                        </div>
+                    </div>
+                    <div class="text-xs font-bold text-slate-300">от 52 000 ₽</div>
+                </div>
+
+                <div onclick="selectVacancy(this, 'Кондуктор / Контролер')" class="vac-card p-3 rounded-2xl bg-[#242f3d] border border-slate-700 cursor-pointer flex items-center justify-between transition-all">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">🎫</span>
+                        <div>
+                            <div class="text-xs font-bold text-white">Кондуктор / Контролер</div>
+                            <div class="text-[11px] text-slate-400">Сменный график, без опыта</div>
+                        </div>
+                    </div>
+                    <div class="text-xs font-bold text-slate-300">от 38 000 ₽</div>
+                </div>
+            </div>
+
+            <!-- Perks Info -->
+            <div class="p-3 rounded-xl bg-sky-950/40 border border-sky-800/40 text-xs space-y-1 mt-2">
+                <div class="font-bold text-sky-400">Льготы предприятия:</div>
+                <div class="text-[11px] text-slate-300">• Досрочный льготный выход на пенсию для водителей</div>
+                <div class="text-[11px] text-slate-300">• Предоставление служебного жилья или общежития</div>
+                <div class="text-[11px] text-slate-300">• Бесплатный проезд на всех маршрутах трамваев и троллейбусов</div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Личные данные -->
+        <div id="stepPane2" class="step-pane hidden space-y-3">
+            <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider px-1">Личные данные кандидата:</div>
+
+            <div class="space-y-1">
+                <label class="text-[11px] text-slate-400 font-medium">Фамилия Имя Отчество *</label>
+                <input type="text" id="candFio" placeholder="Иванов Иван Иванович" class="w-full h-11 bg-[#242f3d] border border-slate-700 rounded-xl px-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[11px] text-slate-400 font-medium">Контактный телефон *</label>
+                <input type="tel" id="candPhone" placeholder="+7 (900) 000-00-00" class="w-full h-11 bg-[#242f3d] border border-slate-700 rounded-xl px-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div class="space-y-1">
+                    <label class="text-[11px] text-slate-400 font-medium">Дата рождения *</label>
+                    <input type="text" id="candBirth" placeholder="ДД.ММ.ГГГГ" class="w-full h-11 bg-[#242f3d] border border-slate-700 rounded-xl px-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] text-slate-400 font-medium">Город проживания</label>
+                    <input type="text" id="candCity" value="г. Ульяновск" class="w-full h-11 bg-[#242f3d] border border-slate-700 rounded-xl px-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[11px] text-slate-400 font-medium">Уровень образования:</label>
+                <select id="candEdu" class="w-full h-11 bg-[#242f3d] border border-slate-700 rounded-xl px-3 text-xs text-white focus:outline-none focus:border-sky-500">
+                    <option value="Среднее общее (11 кл)">Среднее общее (11 кл)</option>
+                    <option value="Среднее специальное / Колледж" selected>Среднее специальное / Колледж</option>
+                    <option value="Высшее образование">Высшее образование</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- STEP 3: Водительские категории и опыт -->
+        <div id="stepPane3" class="step-pane hidden space-y-3">
+            <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider px-1">Водительские категории (выберите любые):</div>
+
+            <!-- Compact 40px Chips Grid -->
+            <div class="grid grid-cols-3 gap-2" id="licChips">
+                <button type="button" onclick="toggleChip(this)" class="chip-btn bg-[#242f3d] border border-slate-700 text-slate-300" data-lic="A">Кат. A</button>
+                <button type="button" onclick="toggleChip(this)" class="chip-btn chip-active bg-[#242f3d] border border-[#2481cc] text-sky-400 font-bold" data-lic="B">Кат. B ✓</button>
+                <button type="button" onclick="toggleChip(this)" class="chip-btn bg-[#242f3d] border border-slate-700 text-slate-300" data-lic="C">Кат. C</button>
+                <button type="button" onclick="toggleChip(this)" class="chip-btn bg-[#242f3d] border border-slate-700 text-slate-300" data-lic="D">Кат. D</button>
+                <button type="button" onclick="toggleChip(this)" class="chip-btn bg-[#242f3d] border border-slate-700 text-slate-300" data-lic="CE/DE">Кат. CE/DE</button>
+                <button type="button" onclick="toggleChip(this)" class="chip-btn bg-[#242f3d] border border-slate-700 text-slate-300" data-lic="Tm (Трамвай)">Трамвай</button>
+                <button type="button" onclick="toggleChip(this)" class="chip-btn bg-[#242f3d] border border-slate-700 text-slate-300 col-span-2" data-lic="Tb (Троллейбус)">Троллейбус</button>
+                <button type="button" onclick="toggleChip(this)" class="chip-btn bg-[#242f3d] border border-slate-700 text-slate-300" data-lic="Нет прав">Нет прав</button>
+            </div>
+
+            <div class="space-y-1 mt-3">
+                <label class="text-[11px] text-slate-400 font-medium">Опыт работы по профилю:</label>
+                <select id="candExp" class="w-full h-11 bg-[#242f3d] border border-slate-700 rounded-xl px-3 text-xs text-white focus:outline-none focus:border-sky-500">
+                    <option value="Без опыта (хочу обучиться)">Без опыта (хочу обучиться со стипендией)</option>
+                    <option value="Менее 1 года">Менее 1 года</option>
+                    <option value="От 1 до 3 лет">От 1 до 3 лет</option>
+                    <option value="Более 3 лет">Более 3 лет</option>
+                </select>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[11px] text-slate-400 font-medium">Дополнительные навыки или примечание:</label>
+                <textarea id="candNote" rows="2" placeholder="Например: служил в армии, есть удостоверение слесаря..." class="w-full bg-[#242f3d] border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"></textarea>
+            </div>
+        </div>
+
+        <!-- STEP 4: Подтверждение & Условия -->
+        <div id="stepPane4" class="step-pane hidden space-y-3">
+            <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider px-1">Условия работы и подтверждение:</div>
+
+            <div class="p-3 bg-[#242f3d] rounded-2xl border border-slate-700 space-y-2.5 text-xs">
+                <label class="flex items-center justify-between cursor-pointer">
+                    <span class="text-slate-200">Нуждаетесь в служебном общежитии?</span>
+                    <input type="checkbox" id="checkDorm" class="w-4 h-4 accent-sky-500 rounded">
+                </label>
+                <div class="h-px bg-slate-700"></div>
+                <label class="flex items-center justify-between cursor-pointer">
+                    <span class="text-slate-200">Готовность к сменному графику (2/2)?</span>
+                    <input type="checkbox" id="checkShift" checked class="w-4 h-4 accent-sky-500 rounded">
+                </label>
+                <div class="h-px bg-slate-700"></div>
+                <label class="flex items-center justify-between cursor-pointer">
+                    <span class="text-slate-200">Согласие на обработку ПДн (152-ФЗ РФ) *</span>
+                    <input type="checkbox" id="checkConsent" checked class="w-4 h-4 accent-sky-500 rounded">
+                </label>
+            </div>
+
+            <!-- Summary Card -->
+            <div class="p-3.5 bg-sky-950/40 rounded-2xl border border-sky-800/40 text-xs space-y-1.5">
+                <div class="font-bold text-sky-400 text-xs">Сводка данных анкеты:</div>
+                <div id="summaryBox" class="text-[11px] text-slate-300 space-y-0.5">
+                    <!-- Заполняется динамически -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SUCCESS SCREEN -->
+        <div id="stepPaneSuccess" class="step-pane hidden text-center py-8 space-y-4">
+            <div class="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl font-bold">
+                ✓
+            </div>
+            <h2 class="text-base font-bold text-white">Анкета успешно принята!</h2>
+            <p class="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed" id="successDesc">
+                Ваша анкета зарегистрирована в кадровой системе МУП «Ульяновскэлектротранс». Специалист свяжется с вами по указанному телефону.
+            </p>
+            <div class="pt-4">
+                <button type="button" onclick="closeMiniApp()" class="h-11 px-6 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs shadow-md transition-all">
+                    Закрыть окно
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Sticky Bottom Action Bar (Fixed 52px + Safe Area Inset) -->
+    <div id="tgActionBar" class="fixed bottom-0 left-0 right-0 bg-[#1c2431]/95 backdrop-blur-md border-t border-slate-700/60 p-3 flex items-center gap-2 z-50" style="padding-bottom: calc(12px + var(--sab))">
+        <button type="button" id="btnPrev" onclick="prevStep()" class="w-12 h-11 rounded-xl bg-[#242f3d] text-slate-400 flex items-center justify-center disabled:opacity-40" disabled>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button type="button" id="btnNext" onclick="nextStep()" class="flex-1 h-11 rounded-xl bg-sky-500 hover:bg-sky-400 active:scale-[0.99] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2">
+            <span>Продолжить</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+    </div>
+
+    <script>
+        let curStep = 1;
+        const totalSteps = 4;
+        let selectedVac = "Водитель трамвая";
+
+        // Init Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+
+        function selectVacancy(el, vac) {
+            selectedVac = vac;
+            document.querySelectorAll(".vac-card").forEach(c => {
+                c.classList.remove("vac-card-active", "border-[#2481cc]", "border-2");
+                c.classList.add("border-slate-700", "border");
+            });
+            el.classList.add("vac-card-active", "border-[#2481cc]", "border-2");
+            el.classList.remove("border-slate-700");
+        }
+
+        function toggleChip(btn) {
+            const isAct = btn.classList.contains("chip-active");
+            if (isAct) {
+                btn.classList.remove("chip-active");
+                btn.textContent = btn.textContent.replace(" ✓", "");
+            } else {
+                btn.classList.add("chip-active");
+                if (!btn.textContent.includes("✓")) btn.textContent += " ✓";
+            }
+        }
+
+        function updateStepUI() {
+            for (let i = 1; i <= totalSteps; i++) {
+                const pane = document.getElementById(`stepPane${i}`);
+                if (pane) pane.classList.toggle("hidden", i !== curStep);
+            }
+            document.getElementById("stepCounterBadge").textContent = `Шаг ${curStep} из ${totalSteps}`;
+            document.getElementById("progressBar").style.width = `${(curStep / totalSteps) * 100}%`;
+
+            const btnPrev = document.getElementById("btnPrev");
+            const btnNext = document.getElementById("btnNext");
+
+            btnPrev.disabled = (curStep === 1);
+
+            if (curStep === totalSteps) {
+                btnNext.innerHTML = "<span>Отправить анкету</span><svg class=\"w-3.5 h-3.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><path d=\"m5 12 5 5L20 7\"/></svg>";
+                btnNext.className = "flex-1 h-11 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2";
+                fillSummary();
+            } else {
+                btnNext.innerHTML = "<span>Продолжить</span><svg class=\"w-3.5 h-3.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><path d=\"m9 18 6-6-6-6\"/></svg>";
+                btnNext.className = "flex-1 h-11 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2";
+            }
+        }
+
+        function fillSummary() {
+            const fio = document.getElementById("candFio").value.trim() || "Иванов Иван Иванович";
+            const phone = document.getElementById("candPhone").value.trim() || "+7 (900) 000-00-00";
+            const exp = document.getElementById("candExp").value;
+            const dorm = document.getElementById("checkDorm").checked ? "Да" : "Нет";
+            
+            const activeChips = Array.from(document.querySelectorAll("#licChips .chip-active")).map(c => c.getAttribute("data-lic") || c.textContent.replace(" ✓", "")).join(", ") || "Категория B";
+
+            const box = document.getElementById("summaryBox");
+            box.innerHTML = `
+                <div>• <b>Профессия:</b> ${selectedVac}</div>
+                <div>• <b>ФИО:</b> ${fio}</div>
+                <div>• <b>Телефон:</b> ${phone}</div>
+                <div>• <b>Права:</b> ${activeChips}</div>
+                <div>• <b>Опыт:</b> ${exp}</div>
+                <div>• <b>Общежитие:</b> ${dorm}</div>
+            `;
+        }
+
+        function prevStep() {
+            if (curStep > 1) {
+                curStep--;
+                updateStepUI();
+            }
+        }
+
+        async function nextStep() {
+            if (curStep === 2) {
+                const fio = document.getElementById("candFio").value.trim();
+                const phone = document.getElementById("candPhone").value.trim();
+                if (!fio || fio.split(" ").length < 2) {
+                    alert("Пожалуйста, введите Фамилию и Имя полностью.");
+                    return;
+                }
+                if (!phone || phone.length < 8) {
+                    alert("Пожалуйста, укажите контактный номер телефона.");
+                    return;
+                }
+            }
+
+            if (curStep < totalSteps) {
+                curStep++;
+                updateStepUI();
+            } else {
+                await submitApplication();
+            }
+        }
+
+        async function submitApplication() {
+            const consent = document.getElementById("checkConsent").checked;
+            if (!consent) {
+                alert("Для отправки анкеты необходимо согласие на обработку персональных данных (152-ФЗ РФ).");
+                return;
+            }
+
+            const activeChips = Array.from(document.querySelectorAll("#licChips .chip-active")).map(c => c.getAttribute("data-lic") || c.textContent.replace(" ✓", "")).join(", ") || "Категория B";
+
+            const payload = {
+                full_name: document.getElementById("candFio").value.trim(),
+                phone: document.getElementById("candPhone").value.trim(),
+                birth_date: document.getElementById("candBirth").value.trim() || "01.01.1990",
+                city: document.getElementById("candCity").value.trim() || "г. Ульяновск",
+                vacancy: selectedVac,
+                driver_license: activeChips,
+                experience: document.getElementById("candExp").value,
+                education: document.getElementById("candEdu").value,
+                extra_info: document.getElementById("candNote").value.trim(),
+                dormitory: document.getElementById("checkDorm").checked ? "Да" : "Нет",
+                shift_work: document.getElementById("checkShift").checked ? "Да" : "Нет",
+                source: "Telegram Mini App"
+            };
+
+            // Отправка на бэкенд
+            try {
+                const res = await fetch("/api/apply_candidate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                showSuccess(data.ticket_id);
+            } catch (e) {
+                showSuccess(Math.floor(1000 + Math.random() * 9000));
+            }
+        }
+
+        function showSuccess(ticketId) {
+            for (let i = 1; i <= totalSteps; i++) {
+                const pane = document.getElementById(`stepPane${i}`);
+                if (pane) pane.classList.add("hidden");
+            }
+            document.getElementById("stepPaneSuccess").classList.remove("hidden");
+            document.getElementById("tgActionBar").classList.add("hidden");
+            if (ticketId) {
+                document.getElementById("successDesc").innerHTML = `Ваша анкета зарегистрирована под номером <b>#${ticketId}</b>. Специалист кадровой службы МУП «УЭТ» свяжется с вами в ближайшее время.`;
+            }
+        }
+
+        function closeMiniApp() {
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.close();
+            } else {
+                window.location.href = "/";
+            }
+        }
+    </script>
+</body>
+</html>

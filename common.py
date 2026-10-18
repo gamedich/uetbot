@@ -1117,8 +1117,8 @@ async def _route_ticket_to_hr(
     else:
         logger.warning("Кадровый чат HR_GROUP_ID не привязан! Маршрутизация в ЛС сотрудникам.")
 
-    # 2. Составляем список получателей (кадровики с DM-уведомлениями)
-    target_users: set[int] = {adm for adm in db.get_hr_admins_with_dm_enabled() if adm > 0}
+    # 2. Доставка в ЛС сотрудникам HR принудительно отключена по регламенту (все заявки идут в кадровый чат)
+    target_users: set[int] = set()
 
     env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
     is_prod = env_mode in ("PROD", "PRODUCTION")

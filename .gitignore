@@ -17,9 +17,9 @@ web/private_ai.html
 templates/private_*.html
 handlers/tech.py
 tech.py
+# tests/ (включено для автотестов CI/CD)
 run_tests.py
-tests/
-test_*.py
+test_scratch_*.py
 clean_*.py
 fix_*.py
 update_*.py

@@ -1223,9 +1223,9 @@ class WebPanel:
                     f"🌐 <b>Источник:</b> Веб-портал МУП «УЭТ» (Онлайн-регистрация)"
                 )
                 from common import route_new_candidate_ticket
-                from keyboards import get_ticket_control_inline_keyboard
+                from keyboards import make_ticket_keyboard
 
-                await route_new_candidate_ticket(self.bot, card_msg, get_ticket_control_inline_keyboard(ticket_id))
+                await route_new_candidate_ticket(self.bot, card_msg, make_ticket_keyboard(ticket_id))
             except Exception as e:
                 logger.warning("Не удалось отправить TG-уведомление о регистрации соискателя: %s", e)
 

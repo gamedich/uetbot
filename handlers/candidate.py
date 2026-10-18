@@ -136,9 +136,25 @@ async def cmd_candidate_stop_dialog(message: types.Message, bot: Bot) -> None:
 @candidate_router.message(Command("help"))
 @candidate_router.message(StateFilter(None), F.text.lower().in_(["help", "помощь", "справка", "команды", "хелп"]))
 async def cmd_help(message: types.Message, state: Optional[FSMContext] = None) -> None:
-    """Справочник всех команд бота с учетом роли пользователя."""
+    """Справочник всех команд бота с учетом роли пользователя и типа чата."""
     if state:
         await state.clear()
+
+    # В кадровых группах выводим только служебные команды группы
+    if message.chat.type in ["group", "supergroup"]:
+        group_help = (
+            "👥 <b>СПРАВКА ПО РАБОЧЕМУ ЧАТУ КАДРОВОЙ СЛУЖБЫ:</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "• <code>/hr</code> — Кадровая панель управления (анкеты, статусы, фильтры)\n"
+            "• <code>/id</code> — Узнать Telegram ID текущего чата и ваш ID\n"
+            "• <code>/set_group</code> — Привязать этот чат для приёма анкет (администраторы)\n"
+            "• <code>/sync</code> — Двухсторонняя синхронизация состава кадровиков\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Для подачи анкеты соискателя перейдите в личный диалог с ботом.</i>"
+        )
+        await safe_answer(message, group_help, parse_mode="HTML")
+        return
+
     user_id = message.from_user.id
     is_tech = is_tech_admin(user_id)
     is_hr = is_hr_admin(user_id)
@@ -166,6 +182,18 @@ async def cmd_id(message: types.Message) -> None:
 @candidate_router.message(Command("start", "menu"))
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
     """Точка входа и перезапуск интерактивного меню."""
+    # Защита от запуска анкеты соискателя в кадровой группе:
+    if message.chat.type in ["group", "supergroup"]:
+        me = await message.bot.get_me()
+        await safe_answer(
+            message,
+            f"👋 <b>Здравствуйте!</b>\n\n"
+            f"Для работы с ботом и подачи анкеты соискателя напишите боту в личные сообщения: @{me.username}\n\n"
+            f"<i>В кадровой группе доступны служебные команды: <code>/hr</code> (панель), <code>/id</code>, <code>/set_group</code>, <code>/sync</code>.</i>",
+            parse_mode="HTML",
+        )
+        return
+
     # Ловим реферальную ссылку водителя: /start ref_1042
     ref_tab = None
     if message.text:
@@ -178,7 +206,6 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     if ref_tab:
         await state.update_data(referrer_tab=ref_tab)
     user_id = message.from_user.id
-    user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
 
     if db.is_blocked(user_id, super_admin_id=CONFIG.get("SUPER_ADMIN_ID")):
         await safe_answer(
@@ -205,6 +232,19 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
         ) + texts.START_WELCOME
 
+    # 1. Устанавливаем нижнюю эргономичную клавиатуру быстрого доступа (Reply-кнопки):
+    from keyboards import make_candidate_persistent_reply_keyboard
+
+    try:
+        await message.answer(
+            "🎛 <b>Панель быстрых действий активирована.</b>",
+            reply_markup=make_candidate_persistent_reply_keyboard(),
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        logger.debug("Не удалось отправить persistent reply keyboard: %s", e)
+
+    # 2. Выводим официальное приветственное меню с инлайн-кнопками:
     await safe_answer(
         message,
         welcome_text,
@@ -464,6 +504,15 @@ async def process_support_message(message: types.Message, state: FSMContext, bot
 @candidate_router.message(Command("my", "status", "stat"))
 @candidate_router.message(F.text.lower().in_(["📊 мой статус", "мой статус", "статус", "моя анкета"]))
 async def cb_cand_my_application(event: Union[types.CallbackQuery, types.Message]) -> None:
+    if isinstance(event, types.Message) and event.chat.type in ["group", "supergroup"]:
+        await safe_answer(
+            event,
+            "📑 <b>Просмотр статуса анкеты соискателя доступен только в личном диалоге с ботом</b> "
+            "в целях защиты персональных данных (152-ФЗ РФ). Пожалуйста, напишите боту в ЛС.",
+            parse_mode="HTML",
+        )
+        return
+
     user_id = event.from_user.id
     if db.is_blocked(user_id, super_admin_id=CONFIG.get("SUPER_ADMIN_ID")):
         if isinstance(event, types.CallbackQuery):
@@ -767,7 +816,18 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
 async def cmd_apply(event: Union[types.Message, types.CallbackQuery], state: FSMContext) -> None:
     user_id = event.from_user.id
     if isinstance(event, types.Message):
-        web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+        if event.chat.type in ["group", "supergroup"]:
+            await safe_answer(
+                event,
+                "📝 <b>Подача анкеты соискателя доступна только в личном диалоге с ботом.</b>\n"
+                "Пожалуйста, напишите боту в личные сообщения.",
+                parse_mode="HTML",
+            )
+            return
+
+        from keyboards import get_valid_webapp_url
+
+        web_url = get_valid_webapp_url()
         builder = InlineKeyboardBuilder()
         builder.button(text="🌐 Заполнить анкету на сайте", web_app=types.WebAppInfo(url=web_url))
         builder.button(text="📝 Заполнить в Telegram", callback_data="cand_start_apply")

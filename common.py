@@ -886,6 +886,7 @@ async def safe_answer(
             logger.warning("Flood control в safe_answer: сон %s сек", e.retry_after)
             await asyncio.sleep(e.retry_after)
         except TelegramBadRequest as e:
+            logger.warning("TelegramBadRequest в safe_answer: %s", e)
             msg_lower = (e.message or "").lower()
             if "too long" in msg_lower:
                 short_t = text[:2000] + "\n... (сообщение сокращено)"
@@ -893,10 +894,16 @@ async def safe_answer(
                     await message.answer(short_t, **kwargs)
                     return True
                 except Exception:
-                    return False
-            # Фоллбэк: снятие HTML-тегов при синтаксической ошибке разметки
+                    pass
+            # Фоллбэк 1: снятие HTML-тегов с сохранением кнопок
+            clean_t = re.sub(r"<[^>]+>", "", text)
             try:
-                clean_t = re.sub(r"<[^>]+>", "", text)
+                await message.answer(clean_t, **kwargs)
+                return True
+            except Exception:
+                pass
+            # Фоллбэк 2: если ошибка была в кнопках (например BUTTON_URL_INVALID), отправляем без кнопок
+            try:
                 await message.answer(clean_t)
                 return True
             except Exception:
@@ -1315,10 +1322,9 @@ async def setup_bot_commands(bot_instance: Bot) -> None:
     # 2. Меню для групп и супергрупп (кадровый чат)
     group_commands = [
         BotCommand(command="hr", description="📋 Кадровая панель управления"),
+        BotCommand(command="id", description="🆔 Узнать ID чата и свой ID"),
         BotCommand(command="set_group", description="📌 Привязать чат для анкет"),
         BotCommand(command="sync", description="🔄 Синхронизировать кадровиков"),
-        BotCommand(command="kick", description="🚫 Исключить сотрудника (в ответ)"),
-        BotCommand(command="help", description="ℹ️ Справка по командам чата"),
     ]
     try:
         await bot_instance.set_my_commands(group_commands, scope=BotCommandScopeAllGroupChats())

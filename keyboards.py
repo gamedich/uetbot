@@ -22,18 +22,36 @@ from common import (
 )
 
 
+def get_valid_webapp_url(path: str = "") -> str:
+    """
+    Возвращает строго валидный HTTPS URL для Telegram WebApp.
+    Telegram Bot API блокирует любые http:// ссылки для WebAppInfo ошибкой BUTTON_URL_INVALID.
+    """
+    url = str(CONFIG.get("WEB_APP_URL") or "").strip()
+    if not url.startswith("https://"):
+        url = "https://213.226.124.135.sslip.io/"
+    url = url.rstrip("/")
+    if path:
+        return f"{url}/{path.lstrip('/')}"
+    return url
+
+
 def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
     """
     Закрепленная внизу экрана эргономичная панель быстрых действий (Reply-клавиатура).
     Позволяет соискателю в 1 клик открыть интерактивную форму анкеты или проверить статус.
     """
-    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+    web_url = get_valid_webapp_url()
     return types.ReplyKeyboardMarkup(
         keyboard=[
             [
                 types.KeyboardButton(text="🌐 Заполнить анкету на сайте", web_app=types.WebAppInfo(url=web_url)),
                 types.KeyboardButton(text="📊 Мой статус"),
-            ]
+            ],
+            [
+                types.KeyboardButton(text="💬 Задать вопрос"),
+                types.KeyboardButton(text="📞 Контакты депо"),
+            ],
         ],
         resize_keyboard=True,
         is_persistent=True,
@@ -49,7 +67,7 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
         [ 💬 Задать вопрос ]    [ 📞 Контакты депо ]
     """
     builder = InlineKeyboardBuilder()
-    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+    web_url = get_valid_webapp_url()
 
     maint_active = is_maintenance_active()
 
@@ -75,7 +93,7 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
     is_hr = bool(user_id and (user_id == super_id or is_hr_admin(user_id)))
 
     if is_tech or is_hr:
-        builder.button(text="👔 Служебный кабинет", web_app=types.WebAppInfo(url=f"{web_url.rstrip('/')}/dashboard"))
+        builder.button(text="👔 Служебный кабинет", web_app=types.WebAppInfo(url=get_valid_webapp_url("dashboard")))
         builder.adjust(1, 2, 2, 1)
     else:
         builder.adjust(1, 2, 2)
@@ -626,3 +644,8 @@ def make_revoke_confirm_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_back_to_menu")
     builder.adjust(1, 1)
     return builder.as_markup()
+
+
+# Псевдоним для обратной совместимости
+get_ticket_control_inline_keyboard = make_ticket_keyboard
+

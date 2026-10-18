@@ -18,13 +18,14 @@ logger = logging.getLogger("UET_CONFIG")
 
 # Базовые директории проекта
 BASE_DIR: Path = Path(__file__).resolve().parent
-ENV_PATH: Path = BASE_DIR / ".env"
+# Определение и загрузка файла окружения (12-Factor App)
+env_file_name = os.getenv("ENV_FILE", ".env.test" if (BASE_DIR / ".env.test").exists() else ".env")
+ENV_PATH: Path = BASE_DIR / env_file_name if not os.path.isabs(env_file_name) else Path(env_file_name)
 
-# Автоматическая загрузка .env
 if ENV_PATH.exists():
-    load_dotenv(dotenv_path=ENV_PATH)
+    load_dotenv(dotenv_path=ENV_PATH, override=True)
 else:
-    load_dotenv()
+    load_dotenv(override=True)
 
 
 # ==============================================================================

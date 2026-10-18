@@ -56,6 +56,7 @@ logger = logging.getLogger("UET_WEB_APP")
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DASHBOARD_HTML_PATH = TEMPLATES_DIR / "dashboard.html"
+SHOWCASE_HTML_PATH = TEMPLATES_DIR / "showcase.html"
 APPLY_HTML_PATH = TEMPLATES_DIR / "apply.html"
 KADRY_HTML_PATH = TEMPLATES_DIR / "kadry.html"
 TG_MINIAPP_HTML_PATH = TEMPLATES_DIR / "tg_miniapp.html"
@@ -217,9 +218,11 @@ class WebPanel:
 
         self.app.router.add_get("/", self.handle_index)
         self.app.router.add_get("/app", self.handle_index)
+        self.app.router.add_get("/dashboard", self.handle_dashboard_page)
+        self.app.router.add_get("/showcase", self.handle_showcase_page)
+        self.app.router.add_get("/demo", self.handle_showcase_page)
         self.app.router.add_get("/tg", self.handle_tg_page)
         self.app.router.add_get("/miniapp", self.handle_tg_page)
-        self.app.router.add_get("/dashboard", self.handle_dashboard_page)
         self.app.router.add_get("/apply", self.handle_apply_page)
         self.app.router.add_get("/candidate/form", self.handle_apply_page)
         self.app.router.add_get("/kadry", self.handle_kadry_page)

@@ -1045,7 +1045,7 @@ async def process_phone_contact(message: types.Message, state: FSMContext) -> No
     if not phone.startswith("+"):
         phone = "+" + phone
     await state.update_data(phone=phone)
-    await message.answer("✅ Номер телефона успешно получен.", reply_markup=types.ReplyKeyboardRemove())
+    await safe_answer(message, "✅ Номер телефона успешно получен.", reply_markup=types.ReplyKeyboardRemove())
     await state.set_state(CandidateForm.city)
     await safe_answer(
         message,

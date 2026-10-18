@@ -15,6 +15,7 @@ import logging
 import os
 import secrets
 import sqlite3
+import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
@@ -59,29 +60,43 @@ class ResumeDB:
             if parent:
                 os.makedirs(parent, exist_ok=True)
 
+        self._local = threading.local()
+
         self._init_and_migrate_db(is_test=False)
         self._init_and_migrate_db(is_test=True)
 
-    def _raw_connect(self, is_test: bool = False) -> sqlite3.Connection:
-        """Создание низкоуровневого соединения к SQLite с параметрами WAL."""
-        target = self.test_db_path if is_test else self.db_path
-        conn = sqlite3.connect(target, timeout=30.0)
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA busy_timeout=30000;")
-        conn.execute("PRAGMA synchronous=NORMAL;")
-        conn.execute("PRAGMA cache_size=-64000;")
-        conn.execute("PRAGMA temp_store=MEMORY;")
+    def _get_thread_connection(self, is_test: bool = False) -> sqlite3.Connection:
+        """Получение или создание переиспользуемого соединения для текущего потока (Thread-local caching)."""
+        attr_name = "test_conn" if is_test else "prod_conn"
+        conn = getattr(self._local, attr_name, None)
+        if conn is None:
+            target = self.test_db_path if is_test else self.db_path
+            conn = sqlite3.connect(target, timeout=30.0, check_same_thread=False)
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA busy_timeout=30000;")
+            conn.execute("PRAGMA synchronous=NORMAL;")
+            conn.execute("PRAGMA cache_size=-64000;")
+            conn.execute("PRAGMA temp_store=MEMORY;")
+            setattr(self._local, attr_name, conn)
         return conn
 
     @contextlib.contextmanager
     def connection(self, is_test: bool = False) -> Generator[sqlite3.Connection, None, None]:
-        """Контекстный менеджер безопасного подключения к SQLite с транзакцией и закрытием соединения."""
-        conn = self._raw_connect(is_test=is_test)
+        """Контекстный менеджер подключения к SQLite с транзакцией и переиспользованием соединений."""
+        conn = self._get_thread_connection(is_test=is_test)
         try:
             with conn:
                 yield conn
-        finally:
-            conn.close()
+        except sqlite3.OperationalError as e:
+            # При сбросе соединения или дисковом сбое пересоздаем thread-local соединение
+            if "disk I/O" in str(e) or "database is locked" in str(e):
+                attr_name = "test_conn" if is_test else "prod_conn"
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                setattr(self._local, attr_name, None)
+            raise
 
     @contextlib.contextmanager
     def _get_connection(self, is_test: bool = False) -> Generator[sqlite3.Connection, None, None]:

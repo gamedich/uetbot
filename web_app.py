@@ -361,36 +361,17 @@ class WebPanel:
 
     async def handle_tg_page(self, request: web.Request) -> web.Response:
         """Специализированный нативный шаблон Telegram Mini App (TMA)."""
-        target = TG_MINIAPP_HTML_PATH if TG_MINIAPP_HTML_PATH.exists() else DASHBOARD_HTML_PATH
-        if target.exists():
-            content = target.read_text(encoding="utf-8")
-        else:
-            content = "<h1>Ошибка: Шаблон tg_miniapp.html не найден</h1>"
-        return web.Response(
-            text=content,
-            content_type="text/html",
-            charset="utf-8",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
-        )
+        return await self.handle_dashboard_page(request)
 
     async def handle_showcase_page(self, request: web.Request) -> web.Response:
         """Интерактивная витрина и эмулятор адаптивных шаблонов."""
-        target = SHOWCASE_HTML_PATH if SHOWCASE_HTML_PATH.exists() else DASHBOARD_HTML_PATH
-        if target.exists():
-            content = target.read_text(encoding="utf-8")
-        else:
-            content = "<h1>Ошибка: Шаблон showcase.html не найден</h1>"
-        return web.Response(
-            text=content,
-            content_type="text/html",
-            charset="utf-8",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
-        )
+        return await self.handle_dashboard_page(request)
 
     async def handle_dashboard_page(self, request: web.Request) -> web.Response:
         """Мастер-дашборд экосистемы МУП «УЭТ» (публичный портал + хабы HR, Tech, SuperAdmin)."""
-        if DASHBOARD_HTML_PATH.exists():
-            content = DASHBOARD_HTML_PATH.read_text(encoding="utf-8")
+        target = DASHBOARD_HTML_PATH if DASHBOARD_HTML_PATH.exists() else APPLY_HTML_PATH
+        if target.exists():
+            content = target.read_text(encoding="utf-8")
         else:
             content = "<h1>Ошибка: Шаблон dashboard.html не найден</h1>"
         return web.Response(
@@ -402,31 +383,11 @@ class WebPanel:
 
     async def handle_apply_page(self, request: web.Request) -> web.Response:
         """Карьерный портал соискателя МУП «УЭТ»: мобильная и десктопная адаптация."""
-        target = APPLY_HTML_PATH if APPLY_HTML_PATH.exists() else DASHBOARD_HTML_PATH
-        if target.exists():
-            content = target.read_text(encoding="utf-8")
-        else:
-            content = "<h1>Ошибка: Шаблон apply.html не найден</h1>"
-        return web.Response(
-            text=content,
-            content_type="text/html",
-            charset="utf-8",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
-        )
+        return await self.handle_dashboard_page(request)
 
     async def handle_kadry_page(self, request: web.Request) -> web.Response:
         """Служебный рабочий кабинет сотрудников и отдела кадров «КАДРЫ»."""
-        target = KADRY_HTML_PATH if KADRY_HTML_PATH.exists() else DASHBOARD_HTML_PATH
-        if target.exists():
-            content = target.read_text(encoding="utf-8")
-        else:
-            content = "<h1>Ошибка: Шаблон kadry.html не найден</h1>"
-        return web.Response(
-            text=content,
-            content_type="text/html",
-            charset="utf-8",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
-        )
+        return await self.handle_dashboard_page(request)
 
     async def handle_docs_page(self, request: web.Request) -> web.Response:
         """Официальный сайт документации и презентации UETBot 2.0.0."""
@@ -603,7 +564,11 @@ class WebPanel:
         elif role in ("hr", "tech", "depot"):
             current_role = self.db.get_admin_role(uid)
             if not current_role or current_role in ("none", "candidate", "revoked"):
-                if not (str(uid) == "73002" and role == "hr"):
+                if not (
+                    (str(uid) == "73002" and role == "hr")
+                    or (str(uid) == "73003" and role == "tech")
+                    or str(uid) in (super_id, tech_id, "7657422832")
+                ):
                     return None
 
         return session
@@ -619,6 +584,13 @@ class WebPanel:
             )
 
         role = session.get("role", "")
+        uid = str(session.get("uid", ""))
+        super_id = str(CONFIG.get("SUPER_ADMIN_ID", 7657422832))
+
+        # Superadmin имеет полный доступ ко всем функциям и пультам
+        if role in ("superadmin", "super") or uid in (super_id, "7657422832"):
+            return session, None
+
         norm_role = "superadmin" if role == "super" else role
         norm_allowed = {("superadmin" if r == "super" else r) for r in allowed_roles}
         if norm_role not in norm_allowed:
@@ -1061,6 +1033,35 @@ class WebPanel:
                     "name": "Раиса Ивановна (HR)",
                     "email": "hr@uet73.ru",
                     "label": "👔 Отдел кадров (HR)",
+                }
+            )
+            resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")
+            return resp
+
+        # 4.1. Проверка мастер-доступа Технического отдела (tech / инженер)
+        valid_tech_pwds = {
+            "tech",
+            "uet2026",
+            "tech2026",
+            "uet2026tech",
+            secret_phrase,
+            master_pin,
+        }
+        if (
+            req_role == "tech"
+            or username in ("tech", "инженер", "тех", "it", "инженер-техник", "")
+            or username.startswith("tech")
+        ) and val in valid_tech_pwds:
+            tok = generate_auth_token(73003, "tech", "Дежурный Инженер (Tech)")
+            resp = web.json_response(
+                {
+                    "ok": True,
+                    "token": tok,
+                    "role": "tech",
+                    "user_id": 73003,
+                    "name": "Дежурный Инженер (Tech)",
+                    "email": "tech@uet73.ru",
+                    "label": "🛠 Технический отдел (Tech)",
                 }
             )
             resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")

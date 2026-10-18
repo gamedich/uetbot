@@ -266,17 +266,17 @@
                     </button>
 
                     <!-- Служебные пульты для персонала -->
-                    <div id="topStaffNavBlock" class="flex items-center gap-1 pl-2 border-l border-slate-200 dark:border-slate-700">
-                        <button onclick="switchTab('hrHub')" id="topBtnHr" class="px-2.5 py-1.5 rounded-xl transition bg-blue-500/10 text-[#1371B9] dark:text-sky-300 font-bold hover:bg-blue-500/20 flex items-center gap-1">
+                    <div id="topStaffNavBlock" class="hidden flex items-center gap-1 pl-2 border-l border-slate-200 dark:border-slate-700">
+                        <button onclick="switchTab('hrHub')" id="topBtnHr" class="hidden px-2.5 py-1.5 rounded-xl transition bg-blue-500/10 text-[#1371B9] dark:text-sky-300 font-bold hover:bg-blue-500/20 flex items-center gap-1">
                             <span>👥 HR</span>
                         </button>
-                        <button onclick="switchTab('techHub')" id="topBtnTech" class="px-2.5 py-1.5 rounded-xl transition bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold hover:bg-amber-500/20 flex items-center gap-1">
+                        <button onclick="switchTab('techHub')" id="topBtnTech" class="hidden px-2.5 py-1.5 rounded-xl transition bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold hover:bg-amber-500/20 flex items-center gap-1">
                             <span>🛠 Tech</span>
                         </button>
-                        <button onclick="switchTab('adminHub')" id="topBtnAdmins" class="px-2.5 py-1.5 rounded-xl transition bg-purple-500/10 text-purple-600 dark:text-purple-300 font-bold hover:bg-purple-500/20 flex items-center gap-1">
+                        <button onclick="switchTab('adminHub')" id="topBtnAdmins" class="hidden px-2.5 py-1.5 rounded-xl transition bg-purple-500/10 text-purple-600 dark:text-purple-300 font-bold hover:bg-purple-500/20 flex items-center gap-1">
                             <span>🛡 Админы</span>
                         </button>
-                        <button onclick="switchTab('ownerHub')" id="topBtnOwner" class="px-2.5 py-1.5 rounded-xl transition bg-rose-500/15 text-rose-600 dark:text-rose-400 font-black hover:bg-rose-500/25 flex items-center gap-1 border border-rose-500/30">
+                        <button onclick="switchTab('ownerHub')" id="topBtnOwner" class="hidden px-2.5 py-1.5 rounded-xl transition bg-rose-500/15 text-rose-600 dark:text-rose-400 font-black hover:bg-rose-500/25 flex items-center gap-1 border border-rose-500/30">
                             <span>👑 Меня</span>
                         </button>
                     </div>
@@ -334,18 +334,18 @@
                 </button>
 
                 <!-- Служебные пульты -->
-                <div class="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
+                <div id="mobStaffNavBlock" class="hidden pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
                     <div class="text-[10px] font-bold uppercase text-slate-400 px-2">Центр управления</div>
-                    <button onclick="switchTab('hrHub'); toggleMobileNav();" class="w-full text-left p-2 rounded-xl text-blue-600 dark:text-sky-300 font-bold flex items-center gap-2">
+                    <button id="mobBtnHr" onclick="switchTab('hrHub'); toggleMobileNav();" class="hidden w-full text-left p-2 rounded-xl text-blue-600 dark:text-sky-300 font-bold flex items-center gap-2">
                         <span>👥</span> <span>Кадровая воронка (HR)</span>
                     </button>
-                    <button onclick="switchTab('techHub'); toggleMobileNav();" class="w-full text-left p-2 rounded-xl text-amber-600 dark:text-amber-400 font-bold flex items-center gap-2">
+                    <button id="mobBtnTech" onclick="switchTab('techHub'); toggleMobileNav();" class="hidden w-full text-left p-2 rounded-xl text-amber-600 dark:text-amber-400 font-bold flex items-center gap-2">
                         <span>🛠</span> <span>Инженерный пульт (Tech)</span>
                     </button>
-                    <button onclick="switchTab('adminHub'); toggleMobileNav();" class="w-full text-left p-2 rounded-xl text-purple-600 dark:text-purple-300 font-bold flex items-center gap-2">
+                    <button id="mobBtnAdmins" onclick="switchTab('adminHub'); toggleMobileNav();" class="hidden w-full text-left p-2 rounded-xl text-purple-600 dark:text-purple-300 font-bold flex items-center gap-2">
                         <span>🛡</span> <span>Администраторы и пароли</span>
                     </button>
-                    <button onclick="switchTab('ownerHub'); toggleMobileNav();" class="w-full text-left p-2 rounded-xl text-rose-600 dark:text-rose-400 font-black flex items-center gap-2">
+                    <button id="mobBtnOwner" onclick="switchTab('ownerHub'); toggleMobileNav();" class="hidden w-full text-left p-2 rounded-xl text-rose-600 dark:text-rose-400 font-black flex items-center gap-2">
                         <span>👑</span> <span>Пульт Владельца («Меня»)</span>
                     </button>
                 </div>
@@ -1217,7 +1217,7 @@
             { step: 16, category: 'Блок 4: Завершение и 152-ФЗ', title: 'Проверка всех 16 пунктов и согласие 152-ФЗ', field: 'step16_review', type: 'review', desc: 'Проверьте сформированную анкету перед отправкой в защищенный реестр кадров.' }
         ];
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const savedTheme = localStorage.getItem('uet_theme');
             if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 enableDarkMode(true);
@@ -1228,15 +1228,13 @@
                 if (draft) Object.assign(state.surveyData, JSON.parse(draft));
             } catch (e) {}
 
-            applyAuthUI();
             renderStepTimeline();
             renderSurveyCurrentStep();
             renderStatusView();
-            loadRealCandidates();
-            loadVacanciesAdmin();
-            loadInquiriesAdmin();
             loadTechMetrics();
-            loadAdminsList();
+
+            // Проверяем сессию и настраиваем права
+            await initAuth();
         });
 
         function setDeviceView(mode) {
@@ -1264,6 +1262,49 @@
         }
 
         function switchTab(tabName) {
+            const isSuper = state.role === 'superadmin' || state.role === 'super';
+            const isAdmin = isSuper || state.role === 'admin';
+            const isHr = isSuper || isAdmin || state.role === 'hr';
+            const isTech = isSuper || isAdmin || state.role === 'tech';
+
+            // Проверка прав доступа к служебным пультам
+            if (tabName === 'hrHub' && !isHr) {
+                openLoginModal();
+                const err = document.getElementById('loginErrorMsg');
+                if (err) {
+                    err.innerText = 'Для доступа к «HR Кадры» требуется авторизация кадровика или администратора.';
+                    err.classList.remove('hidden');
+                }
+                return;
+            }
+            if (tabName === 'techHub' && !isTech) {
+                openLoginModal();
+                const err = document.getElementById('loginErrorMsg');
+                if (err) {
+                    err.innerText = 'Для доступа к «Tech Пульту» требуется авторизация дежурного инженера.';
+                    err.classList.remove('hidden');
+                }
+                return;
+            }
+            if (tabName === 'adminHub' && !isAdmin) {
+                openLoginModal();
+                const err = document.getElementById('loginErrorMsg');
+                if (err) {
+                    err.innerText = 'Для управления администраторами требуются права администратора.';
+                    err.classList.remove('hidden');
+                }
+                return;
+            }
+            if (tabName === 'ownerHub' && !isSuper) {
+                openLoginModal();
+                const err = document.getElementById('loginErrorMsg');
+                if (err) {
+                    err.innerText = 'Кабинет Владельца доступен только Главному администратору.';
+                    err.classList.remove('hidden');
+                }
+                return;
+            }
+
             const tabs = {
                 'landing': document.getElementById('tabContentLanding'),
                 'survey16': document.getElementById('tabContentSurvey16'),
@@ -1827,7 +1868,7 @@
             if (!tbody) return;
 
             try {
-                const resp = await fetch('/api/candidates?page=1&limit=50&status=all&db_scope=both');
+                const resp = await apiFetch('/api/candidates?page=1&limit=50&status=all&db_scope=both');
                 if (resp.ok) {
                     const data = await resp.json();
                     state.candidates = data.candidates || [];
@@ -1890,7 +1931,7 @@
             content.innerHTML = '<div class="p-4 text-center text-slate-400">Загрузка карточки соискателя...</div>';
 
             try {
-                const resp = await fetch(`/api/candidate/${ticketId}`);
+                const resp = await apiFetch(`/api/candidate/${ticketId}`);
                 if (resp.ok) {
                     const data = await resp.json();
                     const c = data.candidate || data;
@@ -1928,7 +1969,7 @@
         async function changeCandidateStatusModal(newStatus) {
             if (!state.currentModalTicketId) return;
             try {
-                await fetch(`/api/candidate/${state.currentModalTicketId}/status`, {
+                await apiFetch(`/api/candidate/${state.currentModalTicketId}/status`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: newStatus })
@@ -1946,7 +1987,7 @@
             if (!confirm(`Вы действительно хотите удалить анкету #${state.currentModalTicketId} (ст. 21 152-ФЗ)?`)) return;
 
             try {
-                await fetch(`/api/candidate/${state.currentModalTicketId}/delete`, {
+                await apiFetch(`/api/candidate/${state.currentModalTicketId}/delete`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason: 'По регламенту уничтожения ПДн' })
@@ -1965,7 +2006,7 @@
             if (!container) return;
 
             try {
-                const resp = await fetch('/api/vacancies?all=1');
+                const resp = await apiFetch('/api/vacancies?all=1');
                 if (resp.ok) {
                     const data = await resp.json();
                     state.vacancies = data.vacancies || [];
@@ -1996,7 +2037,7 @@
 
         async function toggleVacancyActive(vacTitle) {
             try {
-                await fetch('/api/vacancies/toggle', {
+                await apiFetch('/api/vacancies/toggle', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ vacancy: vacTitle })
@@ -2012,7 +2053,7 @@
             if (!container) return;
 
             try {
-                const resp = await fetch('/api/inquiries');
+                const resp = await apiFetch('/api/inquiries');
                 if (resp.ok) {
                     const data = await resp.json();
                     state.inquiries = data.inquiries || [];
@@ -2056,7 +2097,7 @@
             if (!reply) return;
 
             try {
-                await fetch(`/api/inquiries/${id}/reply`, {
+                await apiFetch(`/api/inquiries/${id}/reply`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ answer: reply })
@@ -2074,9 +2115,12 @@
                 const resp = await fetch('/api/system');
                 if (resp.ok) {
                     const data = await resp.json();
-                    document.getElementById('techEnvDisplay').innerText = `${data.environment || 'TEST'} (Порт ${data.port || 8082})`;
-                    document.getElementById('techDbDisplay').innerText = data.active_db || 'data/resumes_test.db';
-                    document.getElementById('topEnvBadge').innerText = data.environment || 'BETA / TEST';
+                    const envDisp = document.getElementById('techEnvDisplay');
+                    if (envDisp) envDisp.innerText = `${data.environment || 'TEST'} (Порт ${data.port || 8082})`;
+                    const dbDisp = document.getElementById('techDbDisplay');
+                    if (dbDisp) dbDisp.innerText = data.active_db || 'data/resumes_test.db';
+                    const envBadge = document.getElementById('topEnvBadge');
+                    if (envBadge) envBadge.innerText = data.environment || 'BETA / TEST';
                 }
             } catch (e) {}
 
@@ -2085,14 +2129,19 @@
                 if (respM.ok) {
                     const m = await respM.json();
                     const badge = document.getElementById('maintStatusBadge');
-                    if (badge) {
-                        if (m.active) {
+                    const alertBanner = document.getElementById('surveyMaintenanceAlert');
+                    if (m.active) {
+                        if (badge) {
                             badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-red-500/15 text-red-600";
                             badge.innerText = `🔴 ТО АКТИВНО (${m.type || 'плановое'})`;
-                        } else {
+                        }
+                        if (alertBanner) alertBanner.classList.remove('hidden');
+                    } else {
+                        if (badge) {
                             badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600";
                             badge.innerText = "🟢 Прием анкет открыт";
                         }
+                        if (alertBanner) alertBanner.classList.add('hidden');
                     }
                 }
             } catch (e) {}
@@ -2101,7 +2150,7 @@
         async function toggleDatabaseTarget() {
             if (!confirm('Переключить рабочую базу данных (PROD ↔ TEST)?')) return;
             try {
-                const resp = await fetch('/api/system/toggle_db', { method: 'POST' });
+                const resp = await apiFetch('/api/system/toggle_db', { method: 'POST' });
                 const res = await resp.json();
                 alert(`✅ База данных переключена: ${res.active_db || 'Обновлено'}`);
                 loadTechMetrics();
@@ -2112,7 +2161,7 @@
 
         async function setMaintenanceMode(active, type = 'planned') {
             try {
-                await fetch('/api/system/maintenance', {
+                await apiFetch('/api/system/maintenance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ active: active, type: type, details: 'Регламентные работы на сервере' })
@@ -2128,7 +2177,7 @@
             const container = document.getElementById('systemLogsContainer');
             if (!container) return;
             try {
-                const resp = await fetch('/api/system/logs');
+                const resp = await apiFetch('/api/system/logs');
                 if (resp.ok) {
                     const text = await resp.text();
                     container.innerText = text || 'Журнал логов пуст.';
@@ -2144,7 +2193,7 @@
             btn.disabled = true;
             btn.innerText = 'Создание бэкапа...';
             try {
-                const resp = await fetch('/api/system/backup', { method: 'POST' });
+                const resp = await apiFetch('/api/system/backup', { method: 'POST' });
                 const data = await resp.json();
                 alert(`✅ Бэкап успешно создан: ${data.backup_file || 'Готово'}`);
             } catch (e) {
@@ -2160,7 +2209,7 @@
             btn.disabled = true;
             btn.innerText = 'Оптимизация...';
             try {
-                await fetch('/api/system/optimize_db', { method: 'POST' });
+                await apiFetch('/api/system/optimize_db', { method: 'POST' });
                 alert('✅ БД оптимизирована: выполнен VACUUM и truncate WAL.');
             } catch (e) {
                 alert('Сбой оптимизации.');
@@ -2179,7 +2228,7 @@
             resBlock.innerText = 'Запуск набора 12 авто-тестов...';
 
             try {
-                const resp = await fetch('/api/system/run_tests', { method: 'POST' });
+                const resp = await apiFetch('/api/system/run_tests', { method: 'POST' });
                 const data = await resp.json();
                 resBlock.innerText = data.output || 'Тесты успешно пройдены (12/12)';
             } catch (e) {
@@ -2196,7 +2245,7 @@
             if (!tbody) return;
 
             try {
-                const resp = await fetch('/api/admins');
+                const resp = await apiFetch('/api/admins');
                 if (resp.ok) {
                     const data = await resp.json();
                     state.admins = data.admins || [];
@@ -2236,7 +2285,7 @@
             if (!pwd) return;
 
             try {
-                await fetch('/api/admins/set_password', {
+                await apiFetch('/api/admins/set_password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: targetRole, password: pwd })
@@ -2256,7 +2305,7 @@
             btn.innerText = 'Перезагрузка...';
 
             try {
-                await fetch('/api/super/restart_bot', { method: 'POST' });
+                await apiFetch('/api/super/restart_bot', { method: 'POST' });
                 alert('✅ Команда перезапуска отправлена!');
             } catch (e) {
                 alert('Служба перезапущена.');
@@ -2269,7 +2318,7 @@
         async function triggerClearTests() {
             if (!confirm('Удалить тестовые заявки (sim_%, Тестов %)? Реальные анкеты затронуты НЕ будут.')) return;
             try {
-                const resp = await fetch('/api/super/clear_tests', { method: 'POST' });
+                const resp = await apiFetch('/api/super/clear_tests', { method: 'POST' });
                 const data = await resp.json();
                 alert(`✅ Очищено тестовых анкет: ${data.deleted || 0}`);
                 loadRealCandidates();
@@ -2287,7 +2336,7 @@
             }
 
             try {
-                const resp = await fetch('/api/channel/publish', {
+                const resp = await apiFetch('/api/channel/publish', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ title: title, text: text })
@@ -2309,7 +2358,7 @@
             report.innerText = 'Выполняется рассылка...';
 
             try {
-                const resp = await fetch('/api/broadcast/send', {
+                const resp = await apiFetch('/api/broadcast/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ target_mode: target, text: text })
@@ -2330,7 +2379,7 @@
             resBlock.innerText = 'ИИ анализирует задачу...';
 
             try {
-                const resp = await fetch('/api/private/ai_task', {
+                const resp = await apiFetch('/api/private/ai_task', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt: prompt })
@@ -2351,29 +2400,204 @@
         }
 
         // ================= AUTHENTICATION =================
-        function openLoginModal() {
-            document.getElementById('loginModal')?.classList.remove('hidden');
+        function openLoginModal(msg = '') {
+            const modal = document.getElementById('loginModal');
+            modal?.classList.remove('hidden');
+            const err = document.getElementById('loginErrorMsg');
+            if (msg && err) {
+                err.innerText = msg;
+                err.classList.remove('hidden');
+            } else if (err) {
+                err.classList.add('hidden');
+            }
         }
         function closeLoginModal() {
             document.getElementById('loginModal')?.classList.add('hidden');
         }
 
-        function quickLoginAs(role) {
-            if (role === 'superadmin') {
-                state.role = 'superadmin';
-                state.user = { name: 'Илья (SuperAdmin)', role: 'superadmin', user_id: 7657422832 };
-            } else if (role === 'hr') {
-                state.role = 'hr';
-                state.user = { name: 'Отдел кадров', role: 'hr', user_id: 101 };
-            } else if (role === 'tech') {
-                state.role = 'tech';
-                state.user = { name: 'Инженер (Tech)', role: 'tech', user_id: 102 };
+
+        // ================= UNIVERSAL AUTHENTICATED FETCH HELPER =================
+        async function apiFetch(url, options = {}) {
+            options.credentials = 'same-origin';
+            options.headers = options.headers || {};
+            const token = state.token || localStorage.getItem('uet_token');
+            if (token) {
+                options.headers['Authorization'] = `Bearer ${token}`;
+                options.headers['X-Auth-Token'] = token;
+            }
+            if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+                options.headers['Content-Type'] = 'application/json';
+                options.body = JSON.stringify(options.body);
+            }
+            const resp = await fetch(url, options);
+            if (resp.status === 401 && (url.startsWith('/api/candidates') || url.startsWith('/api/admins') || url.startsWith('/api/super'))) {
+                console.warn('Требуется авторизация для адреса:', url);
+            }
+            return resp;
+        }
+
+        // ================= СЕССИИ И ПРАВА ДОСТУПА =================
+        async function initAuth() {
+            // 1. Проверка Telegram Mini App
+            if (window.Telegram?.WebApp?.initData) {
+                try {
+                    const r = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ method: 'tma', init_data: window.Telegram.WebApp.initData })
+                    });
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (data.ok && data.token) {
+                            setAuthSession(data);
+                            return;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            // 2. Проверка сессионной cookie / токена
+            try {
+                const r = await apiFetch('/api/auth/verify_session', { method: 'POST' });
+                if (r.ok) {
+                    const data = await r.json();
+                    if (data.ok && data.role) {
+                        setAuthSession(data);
+                        return;
+                    }
+                }
+            } catch (e) {}
+
+            // 3. По умолчанию — гостевой режим
+            setGuestState();
+        }
+
+        function setAuthSession(data) {
+            state.role = data.role || 'guest';
+            state.user = data;
+            if (data.token) {
+                state.token = data.token;
+                localStorage.setItem('uet_token', data.token);
             }
             applyAuthUI();
-            closeLoginModal();
-            if (role === 'superadmin') switchTab('ownerHub');
-            else if (role === 'hr') switchTab('hrHub');
-            else if (role === 'tech') switchTab('techHub');
+            if (state.role !== 'guest') {
+                if (state.role === 'hr' || state.role === 'superadmin' || state.role === 'admin') loadRealCandidates();
+                if (state.role === 'admin' || state.role === 'superadmin') loadAdminsList();
+            }
+        }
+
+        function setGuestState() {
+            state.role = 'guest';
+            state.user = null;
+            state.token = '';
+            localStorage.removeItem('uet_token');
+            applyAuthUI();
+        }
+
+        function applyAuthUI() {
+            const isSuper = state.role === 'superadmin' || state.role === 'super';
+            const isAdmin = isSuper || state.role === 'admin';
+            const isHr = isSuper || isAdmin || state.role === 'hr';
+            const isTech = isSuper || isAdmin || state.role === 'tech';
+            const isStaff = isSuper || isAdmin || isHr || isTech;
+
+            // Блок навигации десктопа
+            const staffNav = document.getElementById('topStaffNavBlock');
+            if (staffNav) staffNav.classList.toggle('hidden', !isStaff);
+
+            const btnHr = document.getElementById('topBtnHr');
+            const btnTech = document.getElementById('topBtnTech');
+            const btnAdmins = document.getElementById('topBtnAdmins');
+            const btnOwner = document.getElementById('topBtnOwner');
+
+            if (btnHr) btnHr.classList.toggle('hidden', !isHr);
+            if (btnTech) btnTech.classList.toggle('hidden', !isTech);
+            if (btnAdmins) btnAdmins.classList.toggle('hidden', !isAdmin);
+            if (btnOwner) btnOwner.classList.toggle('hidden', !isSuper);
+
+            // Блок навигации мобильного меню
+            const mobStaffNav = document.getElementById('mobStaffNavBlock');
+            if (mobStaffNav) mobStaffNav.classList.toggle('hidden', !isStaff);
+
+            const mobHr = document.getElementById('mobBtnHr');
+            const mobTech = document.getElementById('mobBtnTech');
+            const mobAdmins = document.getElementById('mobBtnAdmins');
+            const mobOwner = document.getElementById('mobBtnOwner');
+
+            if (mobHr) mobHr.classList.toggle('hidden', !isHr);
+            if (mobTech) mobTech.classList.toggle('hidden', !isTech);
+            if (mobAdmins) mobAdmins.classList.toggle('hidden', !isAdmin);
+            if (mobOwner) mobOwner.classList.toggle('hidden', !isSuper);
+
+            // Виджет пользователя в шапке
+            const guestBlock = document.getElementById('authGuestBlock');
+            const userBlock = document.getElementById('authUserBlock');
+
+            if (state.role === 'guest' || !state.user) {
+                guestBlock?.classList.remove('hidden');
+                userBlock?.classList.add('hidden');
+                userBlock?.classList.remove('flex');
+            } else {
+                guestBlock?.classList.add('hidden');
+                if (userBlock) {
+                    userBlock.classList.remove('hidden');
+                    userBlock.classList.add('flex');
+                    document.getElementById('userProfileName').innerText = state.user.name || state.user.role;
+                    let roleLabel = 'СОТРУДНИК';
+                    let badgeColor = 'bg-blue-500/15 text-[#1371B9]';
+                    if (isSuper) {
+                        roleLabel = '👑 ВЛАДЕЛЕЦ';
+                        badgeColor = 'bg-rose-500/15 text-rose-600';
+                    } else if (state.role === 'hr') {
+                        roleLabel = '👔 КАДРЫ';
+                        badgeColor = 'bg-blue-500/15 text-blue-600';
+                    } else if (state.role === 'tech') {
+                        roleLabel = '🛠 ИНЖЕНЕР';
+                        badgeColor = 'bg-amber-500/15 text-amber-600';
+                    } else if (state.role === 'admin') {
+                        roleLabel = '🛡 АДМИН';
+                        badgeColor = 'bg-purple-500/15 text-purple-600';
+                    }
+                    const badge = document.getElementById('userRoleBadge');
+                    if (badge) {
+                        badge.innerText = roleLabel;
+                        badge.className = `text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded font-mono ${badgeColor}`;
+                    }
+                }
+            }
+        }
+
+        async function quickLoginAs(targetRole) {
+            let pwd = 'uet2026super';
+            let loginUser = 'admin';
+            if (targetRole === 'hr') {
+                pwd = 'uet2026hr';
+                loginUser = 'hr';
+            } else if (targetRole === 'tech') {
+                pwd = 'uet2026tech';
+                loginUser = 'tech';
+            }
+
+            try {
+                const resp = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: targetRole, login: loginUser, password: pwd })
+                });
+                const res = await resp.json();
+                if (resp.ok && res.ok) {
+                    setAuthSession(res);
+                    closeLoginModal();
+                    if (res.role === 'superadmin' || res.role === 'super') switchTab('ownerHub');
+                    else if (res.role === 'hr') switchTab('hrHub');
+                    else if (res.role === 'tech') switchTab('techHub');
+                    else switchTab('landing');
+                } else {
+                    alert('Ошибка авторизации: ' + (res.error || 'Неверный ответ'));
+                }
+            } catch (e) {
+                alert('Сбой сети при авторизации');
+            }
         }
 
         async function handleAuthLogin(e) {
@@ -2390,49 +2614,28 @@
                     body: JSON.stringify({ login: login, password: pwd })
                 });
                 const res = await resp.json();
-
                 if (resp.ok && res.ok) {
-                    state.role = res.role || 'superadmin';
-                    state.user = { name: res.name || login, role: res.role, user_id: res.user_id };
-                    applyAuthUI();
+                    setAuthSession(res);
                     closeLoginModal();
-                    if (state.role === 'superadmin') switchTab('ownerHub');
-                    else if (state.role === 'hr') switchTab('hrHub');
-                    else switchTab('techHub');
+                    if (res.role === 'superadmin' || res.role === 'super') switchTab('ownerHub');
+                    else if (res.role === 'hr') switchTab('hrHub');
+                    else if (res.role === 'tech') switchTab('techHub');
+                    else switchTab('status');
                 } else {
                     err.innerText = res.error || 'Неверный логин или пароль.';
                     err.classList.remove('hidden');
                 }
             } catch (e) {
-                // Фоллбэк мастер-паролей
-                if (pwd === 'uet2026super' || pwd === 'uet2026') {
-                    quickLoginAs('superadmin');
-                } else if (pwd === 'uet2026hr' || pwd === 'hr') {
-                    quickLoginAs('hr');
-                } else {
-                    err.innerText = 'Сбой проверки на сервере.';
-                    err.classList.remove('hidden');
-                }
+                err.innerText = 'Сбой сети при авторизации.';
+                err.classList.remove('hidden');
             }
         }
 
-        function applyAuthUI() {
-            document.getElementById('authGuestBlock')?.classList.add('hidden');
-            const userBlock = document.getElementById('authUserBlock');
-            if (userBlock) {
-                userBlock.classList.remove('hidden');
-                userBlock.classList.add('flex');
-                document.getElementById('userProfileName').innerText = state.user?.name || 'Пользователь';
-                document.getElementById('userRoleBadge').innerText = (state.role || 'SUPER').toUpperCase();
-            }
-        }
-
-        function logoutUser() {
-            state.role = 'guest';
-            state.user = null;
-            document.getElementById('authGuestBlock')?.classList.remove('hidden');
-            document.getElementById('authUserBlock')?.classList.add('hidden');
-            fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+        async function logoutUser() {
+            try {
+                await apiFetch('/api/auth/logout', { method: 'POST' });
+            } catch (e) {}
+            setGuestState();
             switchTab('landing');
         }
 

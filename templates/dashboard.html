@@ -3940,7 +3940,7 @@
             try {
                 const resp = await fetch(`/api/inquiries/${inquiryId}/reply`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ reply: text })
                 });
                 const res = await resp.json();
@@ -4048,7 +4048,7 @@
             try {
                 const resp = await fetch('/api/content/customization', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(payload)
                 });
                 const res = await resp.json();
@@ -4214,7 +4214,7 @@
 
                 const resp = await fetch('/api/broadcast/send', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({
                         mode: currentBroadcastMode,
                         title: title,

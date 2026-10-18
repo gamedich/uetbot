@@ -3544,7 +3544,7 @@
 
                 const resp = await fetch('/api/broadcast/send', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: typeof getAuthHeaders === 'function' ? getAuthHeaders({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         mode: currentBroadcastMode,
                         title: title,

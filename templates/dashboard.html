@@ -419,23 +419,35 @@
                     </div>
 
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <button onclick="switchTab('hrHub')" class="p-4 rounded-2xl bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 hover:border-[#1371B9] transition text-left space-y-1">
-                            <div class="text-2xl">👥</div>
+                        <button id="landingCardHr" onclick="switchTab('hrHub')" class="p-4 rounded-2xl bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 hover:border-[#1371B9] transition text-left space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xl">👥</span>
+                                <span id="landingLockHr" class="text-xs text-slate-400">🔒</span>
+                            </div>
                             <div class="font-extrabold text-xs text-[#1371B9] dark:text-sky-300">Кадры (HR)</div>
                             <p class="text-[11px] text-slate-500 line-clamp-1">Воронка, вакансии, вопросы</p>
                         </button>
-                        <button onclick="switchTab('techHub')" class="p-4 rounded-2xl bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-slate-700 hover:border-amber-500 transition text-left space-y-1">
-                            <div class="text-2xl">🛠</div>
+                        <button id="landingCardTech" onclick="switchTab('techHub')" class="p-4 rounded-2xl bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-slate-700 hover:border-amber-500 transition text-left space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xl">🛠</span>
+                                <span id="landingLockTech" class="text-xs text-slate-400">🔒</span>
+                            </div>
                             <div class="font-extrabold text-xs text-amber-600 dark:text-amber-400">Инженер (Tech)</div>
                             <p class="text-[11px] text-slate-500 line-clamp-1">ТО, логи, бэкапы, базы</p>
                         </button>
-                        <button onclick="switchTab('adminHub')" class="p-4 rounded-2xl bg-purple-50 dark:bg-slate-800 border border-purple-200 dark:border-slate-700 hover:border-purple-500 transition text-left space-y-1">
-                            <div class="text-2xl">🛡</div>
+                        <button id="landingCardAdmins" onclick="switchTab('adminHub')" class="p-4 rounded-2xl bg-purple-50 dark:bg-slate-800 border border-purple-200 dark:border-slate-700 hover:border-purple-500 transition text-left space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xl">🛡</span>
+                                <span id="landingLockAdmins" class="text-xs text-slate-400">🔒</span>
+                            </div>
                             <div class="font-extrabold text-xs text-purple-600 dark:text-purple-300">Админы</div>
                             <p class="text-[11px] text-slate-500 line-clamp-1">Роли, пароли, 152-ФЗ</p>
                         </button>
-                        <button onclick="switchTab('ownerHub')" class="p-4 rounded-2xl bg-rose-50 dark:bg-slate-800 border border-rose-200 dark:border-slate-700 hover:border-rose-500 transition text-left space-y-1">
-                            <div class="text-2xl">👑</div>
+                        <button id="landingCardOwner" onclick="switchTab('ownerHub')" class="p-4 rounded-2xl bg-rose-50 dark:bg-slate-800 border border-rose-200 dark:border-slate-700 hover:border-rose-500 transition text-left space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xl">👑</span>
+                                <span id="landingLockOwner" class="text-xs text-slate-400">🔒</span>
+                            </div>
                             <div class="font-extrabold text-xs text-rose-600 dark:text-rose-400">Владелец («Меня»)</div>
                             <p class="text-[11px] text-slate-500 line-clamp-1">Ребут, рассылки, ИИ, канал</p>
                         </button>
@@ -1133,17 +1145,17 @@
                 <button onclick="closeLoginModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 flex items-center justify-center">✕</button>
             </div>
 
-            <!-- Быстрый вход в 1 клик для владельца и персонала -->
+            <!-- Выбор профиля сотрудника (подставляет логин) -->
             <div class="space-y-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
-                <div class="text-[10px] font-bold uppercase text-slate-400">Быстрый вход для сотрудников:</div>
+                <div class="text-[10px] font-bold uppercase text-slate-400">Выберите роль для входа:</div>
                 <div class="grid grid-cols-3 gap-1.5">
-                    <button type="button" onclick="quickLoginAs('superadmin')" class="py-2 px-1 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[11px] font-black hover:bg-rose-500/25 transition">
+                    <button type="button" onclick="selectRolePreset('admin')" class="py-1.5 px-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] font-bold transition text-center border border-rose-500/20">
                         👑 Владелец
                     </button>
-                    <button type="button" onclick="quickLoginAs('hr')" class="py-2 px-1 rounded-xl bg-blue-500/15 text-blue-600 dark:text-sky-300 text-[11px] font-bold hover:bg-blue-500/25 transition">
+                    <button type="button" onclick="selectRolePreset('hr')" class="py-1.5 px-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-sky-300 text-[11px] font-bold transition text-center border border-blue-500/20">
                         👔 HR Кадры
                     </button>
-                    <button type="button" onclick="quickLoginAs('tech')" class="py-2 px-1 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[11px] font-bold hover:bg-amber-500/25 transition">
+                    <button type="button" onclick="selectRolePreset('tech')" class="py-1.5 px-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[11px] font-bold transition text-center border border-amber-500/20">
                         🛠 Инженер
                     </button>
                 </div>
@@ -1158,6 +1170,12 @@
                     <label class="block font-bold text-slate-500 mb-1">Пароль доступа</label>
                     <input id="loginInputPass" type="password" placeholder="Пароль..." required class="form-input-standard">
                 </div>
+                <div id="loginPwdHint" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[10px] text-slate-500 dark:text-slate-400 space-y-0.5">
+                    <div class="font-bold text-slate-700 dark:text-slate-300">🔑 Пароли для авторизации:</div>
+                    <div class="flex justify-between font-mono"><span>👑 Владелец:</span> <strong class="text-rose-600">uet2026super</strong></div>
+                    <div class="flex justify-between font-mono"><span>👔 Кадры (HR):</span> <strong class="text-blue-600">uet2026hr</strong></div>
+                    <div class="flex justify-between font-mono"><span>🛠 Инженер:</span> <strong class="text-amber-600">uet2026tech</strong></div>
+                </div>
                 <div id="loginErrorMsg" class="hidden p-2 rounded-lg bg-red-500/10 text-red-500 font-bold text-[11px]"></div>
                 <button type="submit" class="w-full h-11 bg-[#1371B9] text-white font-bold rounded-xl shadow-md transition">
                     Войти в консоль
@@ -1170,8 +1188,9 @@
     <script>
         const state = {
             darkMode: false,
-            role: 'superadmin',
-            user: { name: 'Илья (SuperAdmin)', role: 'superadmin', user_id: 7657422832 },
+            role: 'guest',
+            user: null,
+            token: localStorage.getItem('uet_token') || '',
             currentStep: 1,
             currentModalTicketId: null,
             surveyData: {
@@ -1262,47 +1281,58 @@
         }
 
         function switchTab(tabName) {
-            const isSuper = state.role === 'superadmin' || state.role === 'super';
-            const isAdmin = isSuper || state.role === 'admin';
-            const isHr = isSuper || isAdmin || state.role === 'hr';
-            const isTech = isSuper || isAdmin || state.role === 'tech';
+            const role = (state.role || 'guest').toLowerCase();
+            const isSuper = role === 'superadmin' || role === 'super';
+            const isAdmin = isSuper || role === 'admin';
+            const isHr = isSuper || isAdmin || role === 'hr';
+            const isTech = isSuper || isAdmin || role === 'tech';
 
-            // Проверка прав доступа к служебным пультам
-            if (tabName === 'hrHub' && !isHr) {
-                openLoginModal();
-                const err = document.getElementById('loginErrorMsg');
-                if (err) {
-                    err.innerText = 'Для доступа к «HR Кадры» требуется авторизация кадровика или администратора.';
-                    err.classList.remove('hidden');
+            // 1. Строгая проверка доступа к Кадрам (HR)
+            if (tabName === 'hrHub') {
+                if (role === 'guest') {
+                    openLoginModal('Для доступа к пульту «HR Кадры» требуется авторизация кадровика.');
+                    return;
                 }
-                return;
+                if (!isHr) {
+                    alert(`⛔ Доступ запрещён!\n\nВаша текущая роль: [${role.toUpperCase()}].\nКадровый пульт доступен только сотрудникам отдела кадров.`);
+                    return;
+                }
             }
-            if (tabName === 'techHub' && !isTech) {
-                openLoginModal();
-                const err = document.getElementById('loginErrorMsg');
-                if (err) {
-                    err.innerText = 'Для доступа к «Tech Пульту» требуется авторизация дежурного инженера.';
-                    err.classList.remove('hidden');
+
+            // 2. Строгая проверка доступа к Инженерному пульту (Tech)
+            if (tabName === 'techHub') {
+                if (role === 'guest') {
+                    openLoginModal('Для доступа к «Tech Пульту» требуется авторизация дежурного инженера.');
+                    return;
                 }
-                return;
+                if (!isTech) {
+                    alert(`⛔ Доступ запрещён!\n\nВаша текущая роль: [${role.toUpperCase()}].\nИнженерный пульт доступен только техническим специалистам.`);
+                    return;
+                }
             }
-            if (tabName === 'adminHub' && !isAdmin) {
-                openLoginModal();
-                const err = document.getElementById('loginErrorMsg');
-                if (err) {
-                    err.innerText = 'Для управления администраторами требуются права администратора.';
-                    err.classList.remove('hidden');
+
+            // 3. Строгая проверка доступа к панели Администраторов
+            if (tabName === 'adminHub') {
+                if (role === 'guest') {
+                    openLoginModal('Для управления списком администраторов требуется авторизация.');
+                    return;
                 }
-                return;
+                if (!isAdmin) {
+                    alert(`⛔ Доступ запрещён!\n\nВаша текущая роль: [${role.toUpperCase()}].\nУправление учетными записями доступно только администраторам.`);
+                    return;
+                }
             }
-            if (tabName === 'ownerHub' && !isSuper) {
-                openLoginModal();
-                const err = document.getElementById('loginErrorMsg');
-                if (err) {
-                    err.innerText = 'Кабинет Владельца доступен только Главному администратору.';
-                    err.classList.remove('hidden');
+
+            // 4. Строгая проверка доступа к кабинету Владельца («Меня»)
+            if (tabName === 'ownerHub') {
+                if (role === 'guest') {
+                    openLoginModal('Кабинет Владельца доступен только Главному администратору предприятия.');
+                    return;
                 }
-                return;
+                if (!isSuper) {
+                    alert(`⛔ Доступ запрещён!\n\nВаша текущая роль: [${role.toUpperCase()}].\nКабинет Владельца («Меня») предназначен исключительно для Главного администратора.`);
+                    return;
+                }
             }
 
             const tabs = {
@@ -2494,14 +2524,27 @@
             applyAuthUI();
         }
 
+        function selectRolePreset(role) {
+            const userInput = document.getElementById('loginInputUser');
+            const passInput = document.getElementById('loginInputPass');
+            if (userInput) userInput.value = role;
+            if (passInput) {
+                if (role === 'admin' || role === 'superadmin') passInput.value = 'uet2026super';
+                else if (role === 'hr') passInput.value = 'uet2026hr';
+                else if (role === 'tech') passInput.value = 'uet2026tech';
+                passInput.focus();
+            }
+        }
+
         function applyAuthUI() {
-            const isSuper = state.role === 'superadmin' || state.role === 'super';
-            const isAdmin = isSuper || state.role === 'admin';
-            const isHr = isSuper || isAdmin || state.role === 'hr';
-            const isTech = isSuper || isAdmin || state.role === 'tech';
+            const role = (state.role || 'guest').toLowerCase();
+            const isSuper = role === 'superadmin' || role === 'super';
+            const isAdmin = isSuper || role === 'admin';
+            const isHr = isSuper || isAdmin || role === 'hr';
+            const isTech = isSuper || isAdmin || role === 'tech';
             const isStaff = isSuper || isAdmin || isHr || isTech;
 
-            // Блок навигации десктопа
+            // 1. Десктопная панель навигации в шапке (показываем только те пульты, куда есть доступ)
             const staffNav = document.getElementById('topStaffNavBlock');
             if (staffNav) staffNav.classList.toggle('hidden', !isStaff);
 
@@ -2515,7 +2558,7 @@
             if (btnAdmins) btnAdmins.classList.toggle('hidden', !isAdmin);
             if (btnOwner) btnOwner.classList.toggle('hidden', !isSuper);
 
-            // Блок навигации мобильного меню
+            // 2. Мобильное выпадающее меню
             const mobStaffNav = document.getElementById('mobStaffNavBlock');
             if (mobStaffNav) mobStaffNav.classList.toggle('hidden', !isStaff);
 
@@ -2529,11 +2572,44 @@
             if (mobAdmins) mobAdmins.classList.toggle('hidden', !isAdmin);
             if (mobOwner) mobOwner.classList.toggle('hidden', !isSuper);
 
-            // Виджет пользователя в шапке
+            // 3. Карточки на Главной странице (landing)
+            const cardHr = document.getElementById('landingCardHr');
+            const cardTech = document.getElementById('landingCardTech');
+            const cardAdmins = document.getElementById('landingCardAdmins');
+            const cardOwner = document.getElementById('landingCardOwner');
+
+            const lockHr = document.getElementById('landingLockHr');
+            const lockTech = document.getElementById('landingLockTech');
+            const lockAdmins = document.getElementById('landingLockAdmins');
+            const lockOwner = document.getElementById('landingLockOwner');
+
+            if (role === 'guest') {
+                if (lockHr) lockHr.innerText = '🔒';
+                if (lockTech) lockTech.innerText = '🔒';
+                if (lockAdmins) lockAdmins.innerText = '🔒';
+                if (lockOwner) lockOwner.innerText = '🔒';
+                if (cardHr) cardHr.classList.remove('hidden');
+                if (cardTech) cardTech.classList.remove('hidden');
+                if (cardAdmins) cardAdmins.classList.remove('hidden');
+                if (cardOwner) cardOwner.classList.remove('hidden');
+            } else {
+                // Если сотрудник авторизован — открываем замок на доступных пультах и скрываем недоступные
+                if (lockHr) lockHr.innerText = isHr ? '🔓' : '🚫';
+                if (lockTech) lockTech.innerText = isTech ? '🔓' : '🚫';
+                if (lockAdmins) lockAdmins.innerText = isAdmin ? '🔓' : '🚫';
+                if (lockOwner) lockOwner.innerText = isSuper ? '🔓' : '🚫';
+
+                if (cardHr) cardHr.classList.toggle('hidden', !isHr);
+                if (cardTech) cardTech.classList.toggle('hidden', !isTech);
+                if (cardAdmins) cardAdmins.classList.toggle('hidden', !isAdmin);
+                if (cardOwner) cardOwner.classList.toggle('hidden', !isSuper);
+            }
+
+            // 4. Виджет авторизации в шапке
             const guestBlock = document.getElementById('authGuestBlock');
             const userBlock = document.getElementById('authUserBlock');
 
-            if (state.role === 'guest' || !state.user) {
+            if (role === 'guest' || !state.user) {
                 guestBlock?.classList.remove('hidden');
                 userBlock?.classList.add('hidden');
                 userBlock?.classList.remove('flex');
@@ -2548,13 +2624,13 @@
                     if (isSuper) {
                         roleLabel = '👑 ВЛАДЕЛЕЦ';
                         badgeColor = 'bg-rose-500/15 text-rose-600';
-                    } else if (state.role === 'hr') {
+                    } else if (role === 'hr') {
                         roleLabel = '👔 КАДРЫ';
                         badgeColor = 'bg-blue-500/15 text-blue-600';
-                    } else if (state.role === 'tech') {
+                    } else if (role === 'tech') {
                         roleLabel = '🛠 ИНЖЕНЕР';
                         badgeColor = 'bg-amber-500/15 text-amber-600';
-                    } else if (state.role === 'admin') {
+                    } else if (role === 'admin') {
                         roleLabel = '🛡 АДМИН';
                         badgeColor = 'bg-purple-500/15 text-purple-600';
                     }

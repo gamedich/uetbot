@@ -33,10 +33,7 @@ from aiohttp import ClientSession, ClientTimeout
 
 import texts
 
-try:
-    from services.candidate_service import candidate_service
-except ImportError:
-    from services.candidate_service import candidate_service
+from services.candidate_service import candidate_service
 
 from common import (
     CONFIG,

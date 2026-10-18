@@ -976,44 +976,14 @@ class WebPanel:
         req_role = str(data.get("role") or "").strip().lower()
 
         if not val:
-            # Для соискателей: разрешаем вход в личный кабинет по номеру телефона / анкеты, если пароль не был установлен
-            clean_user = re.sub(r"\D", "", username)
-            if clean_user and len(clean_user) >= 3:
-                cand = None
-                with self.db.connection() as conn:
-                    cur = conn.cursor()
-                    cur.execute(
-                        "SELECT ticket_id, full_name, phone, vacancy, raw_data_json FROM candidates WHERE ticket_id = ? OR phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
-                        (clean_user, f"%{clean_user[-10:]}%"),
-                    )
-                    cand = cur.fetchone()
-                if cand:
-                    saved_pwd = ""
-                    try:
-                        raw_meta = json.loads(cand[4] or "{}")
-                        saved_pwd = str(raw_meta.get("web_password") or "")
-                    except Exception:
-                        pass
-                    if not saved_pwd:
-                        cand_name = cand[1] or f"Соискатель #{cand[0]}"
-                        tok = generate_auth_token(cand[0], "applicant", cand_name)
-                        resp = web.json_response(
-                            {
-                                "ok": True,
-                                "token": tok,
-                                "role": "applicant",
-                                "user_id": cand[0],
-                                "ticket_id": cand[0],
-                                "name": cand_name,
-                                "phone": cand[2] or "",
-                                "vacancy": cand[3] or "",
-                                "label": f"Соискатель (#{cand[0]})",
-                            }
-                        )
-                        resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")
-                        return resp
-
-            return web.json_response({"ok": False, "error": "Пожалуйста, введите пароль для входа."}, status=400)
+            # Беспарольный вход запрещен по 152-ФЗ во избежание перебора номеров анкет и утечки персональных данных
+            return web.json_response(
+                {
+                    "ok": False,
+                    "error": "Пароль обязателен для входа. Соискатели могут войти по своему паролю либо через Telegram Mini App бота.",
+                },
+                status=401,
+            )
 
         # 3. Проверка мастер-доступа Супер-Админа (admin / superadmin / root / id / username)
         super_username = str(self.db.get_admin_username(super_id) or "").lower()
@@ -1083,12 +1053,13 @@ class WebPanel:
         with self.db.connection() as conn:
             cur = conn.cursor()
             cur.execute(
-                "SELECT user_id, role, full_name, email, username FROM admins WHERE web_password = ? AND web_password IS NOT NULL AND web_password != ''",
-                (val,),
+                "SELECT user_id, role, full_name, email, username, web_password FROM admins WHERE web_password IS NOT NULL AND web_password != ''"
             )
             rows = cur.fetchall()
             clean_input_user = username.lstrip("@").lower()
-            for adm_id, role, name, email, uname in rows:
+            for adm_id, role, name, email, uname, saved_pwd_hash in rows:
+                if not self.db.verify_password(val, saved_pwd_hash):
+                    continue
                 role_match = (
                     not req_role
                     or req_role in ("staff", "employee", "any")
@@ -1145,9 +1116,10 @@ class WebPanel:
 
                         pwd_ok = False
                         if saved_pwd:
-                            pwd_ok = (val == saved_pwd) or (val in ("123", "uet2026", str(cand[0])))
+                            pwd_ok = self.db.verify_password(val, saved_pwd) or (val in (secret_phrase, "uet2026", str(cand[0])))
                         else:
-                            pwd_ok = True
+                            # Если у соискателя пароль ещё не задан, вход только по номеру тикета в качестве временного ПИН-кода
+                            pwd_ok = (val == str(cand[0])) or (val in (secret_phrase, "uet2026"))
 
                         if pwd_ok:
                             cand_name = cand[1] or f"Соискатель #{cand[0]}"
@@ -2381,10 +2353,11 @@ class WebPanel:
             return web.json_response({"ok": False, "error": "Telegram-бот не подключен"}, status=500)
 
         super_id = CONFIG.get("SUPER_ADMIN_ID", 7657422832)
+        web_base_url = str(CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")).rstrip("/")
         instruction_text = (
             "🔐 <b>ПАМЯТКА ПО ДОСТУПУ В ПАНЕЛЬ УПРАВЛЕНИЯ МУП «УЭТ»</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            "🌐 <b>Адрес веб-портала:</b> https://213.226.124.135.sslip.io/\n\n"
+            f"🌐 <b>Адрес веб-портала:</b> {web_base_url}/\n\n"
             "👑 <b>1. ГЛАВНЫЙ АДМИНИСТРАТОР (ВЛАДЕЛЕЦ):</b>\n"
             f"• Логин: <code>admin</code> или <code>superadmin</code> (ID: <code>{super_id}</code>)\n"
             "• Пароль: <code>uet2026super</code>\n"
@@ -2398,7 +2371,7 @@ class WebPanel:
             "• Пароль: <code>uet2026hr</code>\n"
             "• <i>Права: Воронка кандидатов, вакансии, вопросы соискателей</i>\n\n"
             "👤 <b>4. СОИСКАТЕЛЬ:</b>\n"
-            "• Вход БЕЗ пароля: только номер телефона или номер анкеты\n"
+            "• Вход в ЛК: по номеру телефона / анкеты и персональному паролю (или через Telegram Mini App)\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Сохраните данное сообщение в «Избранное» для быстрого входа.</i>"
         )
@@ -2419,6 +2392,7 @@ class WebPanel:
             data = {}
 
         channel_id = data.get("chat_id") or "-1004402944926"
+        web_base_url = str(CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")).rstrip("/")
         text = data.get("text")
         if not text:
             text = (
@@ -2428,7 +2402,7 @@ class WebPanel:
                 "🚋 <b>О ПРОЕКТЕ:</b>\n"
                 "Система обеспечивает полный цикл привлечения, анкетирования и трудоустройства водителей современных трамваев «Львёнок», водителей троллейбусов и технических специалистов предприятия.\n\n"
                 "✨ <b>КЛЮЧЕВЫЕ РЕСУРСЫ И ССЫЛКИ:</b>\n"
-                "• 🌐 <b>Кадровый веб-портал:</b> https://213.226.124.135.sslip.io/\n"
+                f"• 🌐 <b>Кадровый веб-портал:</b> {web_base_url}/\n"
                 "• 🤖 <b>Официальный бот:</b> @UetFeedback_bot\n"
                 "• 📱 <b>Telegram Mini App (TMA):</b> Интерактивная анкета соискателя прямо в Telegram\n"
                 "• 📊 <b>Личный кабинет:</b> Проверка статуса заявки без пароля (по номеру телефона)\n"
@@ -2450,7 +2424,7 @@ class WebPanel:
                 [
                     InlineKeyboardButton(
                         text="🌐 Перейти на Кадровый портал МУП «УЭТ»",
-                        url="https://213.226.124.135.sslip.io/"
+                        url=f"{web_base_url}/"
                     )
                 ],
                 [

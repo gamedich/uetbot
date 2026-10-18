@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import json
 import logging
 import os
+import secrets
 import sqlite3
 from datetime import datetime, timedelta
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
@@ -1134,26 +1136,64 @@ class ResumeDB:
             row = cursor.fetchone()
             return str(row[0]) if row else None
 
+    @staticmethod
+    def hash_password(password: str) -> str:
+        """Безопасное хеширование пароля через scrypt с уникальной солью (152-ФЗ)."""
+        if not password:
+            return ""
+        salt = secrets.token_hex(16)
+        h = hashlib.scrypt(password.encode("utf-8"), salt=salt.encode("utf-8"), n=16384, r=8, p=1)
+        return f"{salt}${h.hex()}"
+
+    @staticmethod
+    def verify_password(password: str, hashed: str) -> bool:
+        """Сверка пароля с хешем scrypt (поддерживает плавную миграцию старых plaintext-паролей)."""
+        if not password or not hashed:
+            return False
+        if "$" in hashed:
+            try:
+                salt, h = hashed.split("$", 1)
+                check = hashlib.scrypt(password.encode("utf-8"), salt=salt.encode("utf-8"), n=16384, r=8, p=1)
+                return secrets.compare_digest(check.hex(), h)
+            except Exception as e:
+                logger.error(f"Ошибка проверки хеша пароля: {e}")
+                return False
+        # Для обратной совместимости со старыми нехешированными паролями
+        return secrets.compare_digest(password, hashed)
+
     def set_admin_password(self, user_id: int, password: str) -> bool:
-        """Установка или сброс персонального пароля сотрудника или соискателя для веб-панели."""
+        """Установка персонального пароля сотрудника или соискателя (сохраняется только хеш scrypt)."""
+        hashed_pwd = self.hash_password(password.strip())
         with self.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("UPDATE admins SET web_password = ? WHERE user_id = ?", (password.strip(), user_id))
+            cursor.execute("UPDATE admins SET web_password = ? WHERE user_id = ?", (hashed_pwd, user_id))
             if cursor.rowcount == 0:
                 cursor.execute(
                     "INSERT INTO admins (user_id, role, notify_dm, web_password) VALUES (?, 'applicant', 1, ?)",
-                    (user_id, password.strip()),
+                    (user_id, hashed_pwd),
                 )
             conn.commit()
             return True
 
     def get_admin_password(self, user_id: int) -> Optional[str]:
-        """Получение пароля веб-панели сотрудника."""
+        """Получение хеша пароля веб-панели сотрудника."""
         with self.connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT web_password FROM admins WHERE user_id = ?", (user_id,))
             row = cursor.fetchone()
             return str(row[0]) if row and row[0] else None
+
+    def verify_admin_password(self, user_id: int, input_password: str) -> bool:
+        """Проверка пароля администратора/соискателя с автомиграцией в хеш при необходимости."""
+        saved_hash = self.get_admin_password(user_id)
+        if not saved_hash:
+            return False
+        if self.verify_password(input_password, saved_hash):
+            # Если пароль хранился в открытом виде (без знака '$'), автоматически мигрируем на scrypt
+            if "$" not in saved_hash:
+                self.set_admin_password(user_id, input_password)
+            return True
+        return False
 
     def set_admin_email(self, user_id: int, email: str) -> bool:
         """Привязка электронной почты сотрудника или соискателя."""

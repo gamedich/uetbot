@@ -373,6 +373,20 @@ class WebPanel:
             headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
         )
 
+    async def handle_showcase_page(self, request: web.Request) -> web.Response:
+        """Интерактивная витрина и эмулятор адаптивных шаблонов."""
+        target = SHOWCASE_HTML_PATH if SHOWCASE_HTML_PATH.exists() else DASHBOARD_HTML_PATH
+        if target.exists():
+            content = target.read_text(encoding="utf-8")
+        else:
+            content = "<h1>Ошибка: Шаблон showcase.html не найден</h1>"
+        return web.Response(
+            text=content,
+            content_type="text/html",
+            charset="utf-8",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
+        )
+
     async def handle_dashboard_page(self, request: web.Request) -> web.Response:
         """Мастер-дашборд экосистемы МУП «УЭТ» (публичный портал + хабы HR, Tech, SuperAdmin)."""
         if DASHBOARD_HTML_PATH.exists():

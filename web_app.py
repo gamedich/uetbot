@@ -249,7 +249,6 @@ class WebPanel:
         self.app.router.add_get("/api/stats", self.handle_api_stats)
         self.app.router.add_get("/api/candidates", self.handle_api_candidates)
         self.app.router.add_get("/api/candidate/{ticket_id}", self.handle_api_candidate_detail)
-        self.app.router.add_get("/api/candidate/{id:\\d+}", self.handle_api_candidate_detail)
         self.app.router.add_post("/api/candidate/{ticket_id}/status", self.handle_api_candidate_status)
         self.app.router.add_post("/api/candidate/{ticket_id}/note", self.handle_api_candidate_note)
         self.app.router.add_post("/api/candidate/{ticket_id}/delete", self.handle_api_candidate_delete)
@@ -1174,9 +1173,11 @@ class WebPanel:
         if existing_cand:
             ticket_id = existing_cand[0]
             cand_name = existing_cand[1] or full_name
-            return web.json_response(
+            tok = generate_auth_token(ticket_id, "applicant", cand_name)
+            resp = web.json_response(
                 {
                     "ok": True,
+                    "token": tok,
                     "role": "applicant",
                     "user_id": ticket_id,
                     "ticket_id": ticket_id,
@@ -1187,6 +1188,8 @@ class WebPanel:
                     "message": f"Вы уже зарегистрированы в кадровом реестре (Заявка #{ticket_id}). Вход выполнен успешно!",
                 }
             )
+            resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")
+            return resp
 
         # Создаем нового кандидата
         raw_meta = {
@@ -1226,9 +1229,11 @@ class WebPanel:
             except Exception as e:
                 logger.warning("Не удалось отправить TG-уведомление о регистрации соискателя: %s", e)
 
-        return web.json_response(
+        tok = generate_auth_token(ticket_id, "applicant", full_name)
+        resp = web.json_response(
             {
                 "ok": True,
+                "token": tok,
                 "role": "applicant",
                 "user_id": ticket_id,
                 "ticket_id": ticket_id,
@@ -1239,6 +1244,8 @@ class WebPanel:
                 "message": f"Регистрация прошла успешно! Ваш номер анкеты: #{ticket_id}. Добро пожаловать в личный кабинет!",
             }
         )
+        resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")
+        return resp
 
     async def handle_api_stats(self, request: web.Request) -> web.Response:
         env = CONFIG.get("ENVIRONMENT", "TEST").upper()
@@ -1471,8 +1478,33 @@ class WebPanel:
         if not new_status:
             return web.json_response({"error": "Status required"}, status=400)
 
+        cand = self.db.get_candidate(ticket_id)
         self.db.update_status(ticket_id, new_status)
         logger.info("Веб-панель: статус анкеты #%s изменен на %s", ticket_id, new_status)
+
+        # Синхронизация с ботом и мессенджерами: отправка уведомления соискателю
+        if cand:
+            try:
+                platform, user_id, full_name = cand[1], cand[2], cand[3]
+                user_msg = None
+                if new_status == "В работе":
+                    user_msg = texts.format_status_in_progress(full_name)
+                elif new_status == "Приглашен":
+                    user_msg = texts.format_status_invited(full_name)
+                elif new_status == "Отказ":
+                    user_msg = texts.format_status_rejected(full_name)
+                elif new_status != "Архив":
+                    user_msg = (
+                        f"📋 <b>Здравствуйте, {html.escape(full_name)}!</b>\n\n"
+                        f"Статус вашей анкеты #{ticket_id} на должность «{html.escape(cand[5] or '')}» изменен на: <b>{html.escape(new_status)}</b>."
+                    )
+                if user_msg:
+                    from common import send_response_to_candidate
+
+                    await send_response_to_candidate(platform, str(user_id), user_msg)
+            except Exception as e:
+                logger.warning("Не удалось отправить кандидату #%s уведомление о смене статуса из веб-панели: %s", ticket_id, e)
+
         return web.json_response({"ok": True, "ticket_id": ticket_id, "status": new_status})
 
     async def handle_api_candidate_note(self, request: web.Request) -> web.Response:
@@ -2156,24 +2188,23 @@ class WebPanel:
         platform = inq[2]
         self.db.reply_inquiry(inquiry_id, reply_text)
 
-        # Отправка в Telegram, если соискатель привязан к боту
-        sent_tg = False
-        if self.bot and str(user_id).lstrip("-").isdigit():
-            try:
-                from common import safe_send
-                msg_body = (
-                    f"💬 <b>Ответ отдела кадров МУП «Ульяновскэлектротранс»</b>\n"
-                    f"<i>(на ваш вопрос № В-{inquiry_id})</i>\n\n"
-                    f"{html.escape(reply_text)}\n\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"📞 <i>Отдел кадров: +7 (8422) 58-46-60</i>"
-                )
-                await safe_send(self.bot, int(user_id), msg_body)
-                sent_tg = True
-            except Exception as e:
-                logger.warning("Не удалось переслать ответ соискателю в TG: %s", e)
+        # Отправка ответа соискателю в целевой мессенджер (TG / VK / MAX)
+        sent_msg = False
+        msg_body = (
+            f"💬 <b>Ответ отдела кадров МУП «Ульяновскэлектротранс»</b>\n"
+            f"<i>(на ваш вопрос № В-{inquiry_id})</i>\n\n"
+            f"{html.escape(reply_text)}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📞 <i>Отдел кадров: +7 (8422) 58-46-60</i>"
+        )
+        try:
+            from common import send_response_to_candidate
 
-        return web.json_response({"ok": True, "inquiry_id": inquiry_id, "sent_tg": sent_tg})
+            sent_msg = await send_response_to_candidate(platform, str(user_id), msg_body)
+        except Exception as e:
+            logger.warning("Не удалось переслать ответ соискателю %s (%s): %s", user_id, platform, e)
+
+        return web.json_response({"ok": True, "inquiry_id": inquiry_id, "sent_msg": sent_msg})
 
     async def handle_api_get_customization(self, request: web.Request) -> web.Response:
         """Публичное получение актуальных текстов и заголовков сайта из БД."""

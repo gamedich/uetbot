@@ -20,6 +20,7 @@ from common import (
     safe_answer,
 )
 from keyboards import make_admin_menu_keyboard
+import texts
 
 logger = logging.getLogger("HR_PANEL")
 panel_router = Router(name="hr_panel")
@@ -37,14 +38,7 @@ async def cmd_admin(message: types.Message) -> None:
         return
 
     stats = db.get_statistics()
-    text = (
-        "⚙️ <b>КАДРОВАЯ ПАНЕЛЬ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📊 Всего анкет: <code>{stats['total']}</code> | 🆕 Новых: <code>{stats['new']}</code>\n"
-        f"🟡 В работе: <code>{stats.get('in_progress', 0)}</code> | 📦 В архиве: <code>{stats.get('archive', 0)}</code>\n"
-        f"🟢 Приглашено: <code>{stats['invited']}</code> | 🔴 Отклонено: <code>{stats['rejected']}</code>\n"
-        "━━━━━━━━━━━━━━━━━━━━━"
-    )
+    text = texts.format_hr_panel_text(stats)
     await safe_answer(message, text, reply_markup=make_admin_menu_keyboard(user_id), parse_mode="HTML")
 
 
@@ -57,17 +51,7 @@ async def cb_admin_stats(callback: types.CallbackQuery) -> None:
         return
 
     stats = db.get_statistics()
-    text = (
-        "📊 <b>СТАТИСТИКА ОТДЕЛА КАДРОВ</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📁 Всего анкет: <b>{stats['total']}</b>\n"
-        f"🆕 Ожидают проверки (новые): <b>{stats['new']}</b>\n"
-        f"🟡 В работе: <b>{stats.get('in_progress', 0)}</b>\n"
-        f"🟢 Приглашены: <b>{stats['invited']}</b>\n"
-        f"🔴 Отклонены: <b>{stats['rejected']}</b>\n"
-        f"📦 В архиве: <b>{stats.get('archive', 0)}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━"
-    )
+    text = texts.format_hr_stats_text(stats)
     await callback.message.edit_text(
         text, reply_markup=make_admin_menu_keyboard(callback.from_user.id), parse_mode="HTML"
     )
@@ -135,15 +119,7 @@ async def cb_hr_web_panel_info(callback: types.CallbackQuery) -> None:
 
     web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
 
-    text = (
-        "🌐 <b>ВЕБ-ПАНЕЛЬ МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📱 <b>Telegram Mini App (TMA):</b>\n"
-        f"Адрес защищённого портала: <a href='{web_url}'>{web_url}</a>\n\n"
-        "<i>Панель содержит интерактивную воронку кандидатов, быстрый поиск, "
-        "историю заметок, фильтры и статус сервисов в реальном времени.</i>\n\n"
-        "Нажмите кнопку ниже, чтобы открыть панель прямо внутри Telegram:"
-    )
+    text = texts.format_hr_web_panel_info(web_url)
 
     builder = InlineKeyboardBuilder()
     builder.button(text="🌐 Открыть Mini App (внутри TG)", web_app=types.WebAppInfo(url=web_url))

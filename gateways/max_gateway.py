@@ -26,7 +26,7 @@ from common import (
     CONFIG,
     EXTERNAL_SESSIONS,
     SYSTEM_METRICS,
-    VACANCIES,
+    get_all_vacancies,
     route_new_candidate_ticket,
     route_new_inquiry_ticket,
     safe_send,
@@ -66,7 +66,7 @@ def make_max_cancel_keyboard() -> List[List[Dict[str, Any]]]:
 def make_max_vacancies_keyboard() -> List[List[Dict[str, Any]]]:
     """Список вакансий предприятия для МАКС."""
     buttons = []
-    for vac in VACANCIES:
+    for vac in get_all_vacancies():
         buttons.append([{"text": f"🚋 {vac[:35]}", "callbackData": f"vac_{vac[:30]}"}])
     buttons.append([{"text": "📋 Другая должность", "callbackData": "vac_other"}])
     buttons.append([{"text": "❌ Отмена", "callbackData": "cancel"}])
@@ -192,36 +192,7 @@ async def handle_max_message(
         if key in EXTERNAL_SESSIONS:
             del EXTERNAL_SESSIONS[key]
         cand = db.get_candidate_by_user_id(str(user_id), platform="max")
-        if cand:
-            c_id = cand[0]
-            name = cand[3]
-            phone = cand[4]
-            vac = cand[5]
-            exp = cand[6]
-            st = cand[7]
-            admin_note = cand[8] if len(cand) > 8 else ""
-            created = cand[9] if len(cand) > 9 else ""
-            meet_line = f"\n📍 Назначенное собеседование: {admin_note}\n" if "Приглашен" in st and admin_note else ""
-
-            my_text = (
-                "📑 <b>ВАША АНКЕТА В МУП «УЛЬЯНОВСКЭЛЕКТРОТРАНС»</b>\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🆔 Номер заявки: <b>#{c_id}</b>\n"
-                f"👤 ФИО: {name}\n"
-                f"📞 Телефон: <code>{phone}</code>\n"
-                f"🎯 Должность: {vac}\n"
-                f"💼 Опыт работы: {exp}\n"
-                f"📊 Статус: <b>{st}</b>\n"
-                f"⏱ Дата подачи: <code>{created}</code>\n"
-                f"{meet_line}"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "Для уточнения данных напишите нам кнопкой «💬 Связаться с кадровиком»."
-            )
-        else:
-            my_text = (
-                "📑 У вас пока нет поданных анкет в МУП «Ульяновскэлектротранс».\n\n"
-                "Чтобы отправить резюме на рассмотрение кадровой службы, нажмите кнопку «📝 Заполнить анкету»."
-            )
+        my_text = texts.format_my_application_full(cand) if cand else texts.APP_NOT_FOUND
         return await send_max_message(session, api_base, token, chat_id, my_text, keyboard=make_max_main_keyboard())
 
     # 5. Контакты (синхронизировано с texts.py)
@@ -247,16 +218,18 @@ async def handle_max_message(
         if not can_apply and info:
             ticket_id = info.get("ticket_id")
             if reason == "unprocessed":
-                msg = (
-                    f"⚠️ У вас уже есть активная анкета №{ticket_id} на рассмотрении!\n\n"
-                    f"Специалисты отдела кадров обязательно свяжутся с вами. Телефон: {CONFIG['HR_PHONE']}."
+                msg = texts.format_already_applied(
+                    ticket_id=ticket_id,
+                    vacancy=info.get("vacancy", "Не указана"),
+                    created_at=info.get("created_at", ""),
+                    status=info.get("status", "Новая"),
                 )
                 return await send_max_message(session, api_base, token, chat_id, msg, keyboard=make_max_main_keyboard())
             elif reason in ("cooldown", "rejected_cooldown"):
-                msg = (
-                    f"⏳ Повторная подача анкеты временно недоступна.\n"
-                    f"По предыдущей анкете №{ticket_id} было принято решение об отказе.\n"
-                    f"Повторная подача возможна с {info.get('available_date')} (осталось {info.get('days_left')} дн.)."
+                msg = texts.format_rejection_cooldown(
+                    ticket_id=ticket_id,
+                    refusal_date=info.get("created_at", ""),
+                    days_left=info.get("days_left", 90),
                 )
                 return await send_max_message(session, api_base, token, chat_id, msg, keyboard=make_max_main_keyboard())
 
@@ -277,7 +250,7 @@ async def handle_max_message(
         can_ask, seconds_left = db.check_inquiry_cooldown(str(user_id), cooldown)
         if not can_ask:
             minutes_left = max(1, (seconds_left + 59) // 60)
-            msg_text = f"⏳ Вы сможете задать следующий вопрос через {minutes_left} мин.\nСрочные вопросы: {CONFIG['HR_PHONE']}"
+            msg_text = texts.format_inquiry_cooldown(minutes_left)
             return await send_max_message(
                 session, api_base, token, chat_id, msg_text, keyboard=make_max_main_keyboard()
             )
@@ -358,7 +331,7 @@ async def handle_max_message(
             chosen_vac = "Другая должность"
             if payload_cmd.startswith("vac_"):
                 val = payload_cmd.replace("vac_", "")
-                for v in VACANCIES:
+                for v in get_all_vacancies():
                     if v.startswith(val):
                         chosen_vac = v
                         break

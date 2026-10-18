@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import collections
+import html
 import io
 import json
 import logging

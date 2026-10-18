@@ -250,13 +250,18 @@ def validate_config() -> None:
     if not super_id or super_id <= 0:
         critical_errors.append("SUPER_ADMIN_ID не задан! Укажите цифровой Telegram ID владельца в .env")
 
+    # Проверка минимальной криптостойкости секретов
+    admin_pwd = str(CONFIG.get("SUPER_ADMIN_PASSWORD", "")).strip()
+    if not admin_pwd or admin_pwd in ("123", "admin", "password"):
+        critical_errors.append("SUPER_ADMIN_PASSWORD слишком простой или отсутствует! Задайте стойкий пароль в .env")
+
     if critical_errors:
         err_report = (
             "\n❌ КРИТИЧЕСКИЕ ОШИБКИ КОНФИГУРАЦИИ:\n"
             + "\n".join(f"  • {e}" for e in critical_errors)
             + "\n\n💡 Проверьте файл .env и перезапустите службу бота."
         )
-        raise ValueError(err_report)
+        raise RuntimeError(err_report)
 
 
 def get_safe_config_summary() -> Dict[str, Any]:

@@ -395,6 +395,138 @@ class ResumeDB:
             if "operator" not in dl_cols:
                 cursor.execute("ALTER TABLE destruction_logs ADD COLUMN operator TEXT DEFAULT 'Система'")
 
+            # 14. Таблица настроек и кастомизации вакансий (Сквозная синхронизация сайт <-> бот)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS vacancy_settings (
+                    slug TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    category TEXT DEFAULT 'general',
+                    is_active INTEGER DEFAULT 1,
+                    sort_order INTEGER DEFAULT 0,
+                    salary_text TEXT,
+                    description TEXT,
+                    meta_json TEXT DEFAULT '{}'
+                )
+                """
+            )
+
+            # Проверка наличия стартовых данных в vacancy_settings
+            cursor.execute("SELECT COUNT(*) FROM vacancy_settings")
+            vac_count = cursor.fetchone()[0]
+            if vac_count == 0:
+                initial_vacancies = [
+                    (
+                        "tram_driver",
+                        "Водитель трамвая (обучение со стипендией)",
+                        "driver",
+                        1,
+                        1,
+                        "55 000 — 100 000 ₽",
+                        "Управление современными трамвайными вагонами («Львенок», «Татра») на маршрутах Ульяновска. Бесплатное обучение 2-3 мес. со стипендией от 20 000 ₽, оплачиваемый отпуск 40 дней, депо №1 и №2.",
+                        json.dumps({
+                            "icon": "🚋",
+                            "badge": "Львёнок • Стипендия 20к",
+                            "stipend": "от 20 000 ₽ на период обучения",
+                            "training": True,
+                            "requirements": "От 21 года (к моменту выпуска), ст. 328.1 ТК РФ",
+                            "depots": ["Депо №1 (Северное)", "Депо №2 (Засвияжское)"]
+                        }, ensure_ascii=False)
+                    ),
+                    (
+                        "trolley_driver",
+                        "Водитель троллейбуса (обучение со стипендией)",
+                        "driver",
+                        1,
+                        2,
+                        "55 000 — 95 000 ₽",
+                        "Пассажирские перевозки на современных троллейбусных маршрутах Заволжского района. Бесплатное переобучение со стипендией 20 000 ₽, льготный пенсионный стаж, депо №3.",
+                        json.dumps({
+                            "icon": "🚎",
+                            "badge": "Заволжское депо №3",
+                            "stipend": "от 20 000 ₽ на период обучения",
+                            "training": True,
+                            "requirements": "От 21 года, ст. 328.1 ТК РФ",
+                            "depots": ["Депо №3 (Заволжское)"]
+                        }, ensure_ascii=False)
+                    ),
+                    (
+                        "conductor",
+                        "Кондуктор общественного транспорта",
+                        "service",
+                        1,
+                        3,
+                        "38 000 — 48 000 ₽",
+                        "Сбор платы за проезд и проверка проездных билетов на маршрутах трамвая и троллейбуса. Сменный график 2/2, бесплатный проезд, спецодежда.",
+                        json.dumps({
+                            "icon": "🎫",
+                            "badge": "Сменный график 2/2",
+                            "stipend": None,
+                            "training": False,
+                            "requirements": "От 18 лет, вежливость, ответственность",
+                            "depots": ["Депо №1", "Депо №2", "Депо №3"]
+                        }, ensure_ascii=False)
+                    ),
+                    (
+                        "rolling_stock_fitter",
+                        "Слесарь по ремонту подвижного состава",
+                        "technical",
+                        1,
+                        4,
+                        "45 000 — 70 000 ₽",
+                        "Техническое обслуживание и текущий ремонт механического, пневматического и электрического оборудования трамваев и троллейбусов.",
+                        json.dumps({
+                            "icon": "🔧",
+                            "badge": "Техническая служба",
+                            "stipend": None,
+                            "training": False,
+                            "requirements": "От 18 лет, знание устройства подвижного состава",
+                            "depots": ["Депо №1", "Депо №2", "Депо №3"]
+                        }, ensure_ascii=False)
+                    ),
+                    (
+                        "catenary_electrician",
+                        "Электромонтер контактной сети",
+                        "technical",
+                        1,
+                        5,
+                        "48 000 — 72 000 ₽",
+                        "Обслуживание, плановый осмотр и оперативное восстановление контактных сетей и тяговых подстанций предприятия.",
+                        json.dumps({
+                            "icon": "⚡",
+                            "badge": "Служба энергохозяйства",
+                            "stipend": None,
+                            "training": False,
+                            "requirements": "От 18 лет, электробезопасность от III группы",
+                            "depots": ["Служба энергохозяйства (ул. Гончарова, 2)"]
+                        }, ensure_ascii=False)
+                    ),
+                    (
+                        "track_worker",
+                        "Монтер пути",
+                        "technical",
+                        1,
+                        6,
+                        "42 000 — 65 000 ₽",
+                        "Текущее содержание, ремонт и выправка рельсового полотна и стрелочных переводов трамвайных путей города Ульяновска.",
+                        json.dumps({
+                            "icon": "🛤",
+                            "badge": "Служба пути",
+                            "stipend": None,
+                            "training": False,
+                            "requirements": "От 18 лет, выносливость, без противопоказаний по здоровью",
+                            "depots": ["Служба пути"]
+                        }, ensure_ascii=False)
+                    )
+                ]
+                cursor.executemany(
+                    """
+                    INSERT INTO vacancy_settings (slug, title, category, is_active, sort_order, salary_text, description, meta_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    initial_vacancies
+                )
+
             conn.commit()
 
     # =========================================================================
@@ -1920,3 +2052,133 @@ class ResumeDB:
 
     async def async_add_inquiry(self, *args, **kwargs) -> int:
         return await asyncio.to_thread(self.add_inquiry, *args, **kwargs)
+
+    # =========================================================================
+    # 10. СКВОЗНАЯ СИНХРОНИЗАЦИЯ И КАСТОМИЗАЦИЯ ВАКАНСИЙ (САЙТ <-> БОТ)
+    # =========================================================================
+
+    def get_vacancies(self, only_active: bool = False, is_test: Optional[bool] = None) -> List[Dict[str, Any]]:
+        """Возвращает список всех вакансий из vacancy_settings, отсортированных по sort_order ASC"""
+        targets = [is_test] if is_test is not None else [False, True]
+        results = []
+        for test_mode in targets:
+            with self.connection(is_test=test_mode) as conn:
+                cur = conn.cursor()
+                sql = "SELECT slug, title, category, is_active, sort_order, salary_text, description, meta_json FROM vacancy_settings"
+                if only_active:
+                    sql += " WHERE is_active = 1"
+                sql += " ORDER BY sort_order ASC, slug ASC"
+                cur.execute(sql)
+                rows = cur.fetchall()
+                if rows:
+                    for r in rows:
+                        meta = {}
+                        try:
+                            meta = json.loads(r[7] or "{}") if r[7] else {}
+                        except Exception:
+                            meta = {}
+                        results.append({
+                            "slug": r[0],
+                            "title": r[1],
+                            "category": r[2] or "general",
+                            "is_active": int(r[3]),
+                            "sort_order": int(r[4]),
+                            "salary_text": r[5] or "",
+                            "description": r[6] or "",
+                            "meta_json": r[7] or "{}",
+                            "meta": meta
+                        })
+                    break
+        return results
+
+    def get_vacancy_by_slug(self, slug: str, is_test: Optional[bool] = None) -> Optional[Dict[str, Any]]:
+        """Получает карточку вакансии по её slug"""
+        targets = [is_test] if is_test is not None else [False, True]
+        for test_mode in targets:
+            with self.connection(is_test=test_mode) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT slug, title, category, is_active, sort_order, salary_text, description, meta_json FROM vacancy_settings WHERE slug = ? OR title = ?",
+                    (slug, slug)
+                )
+                r = cur.fetchone()
+                if r:
+                    meta = {}
+                    try:
+                        meta = json.loads(r[7] or "{}") if r[7] else {}
+                    except Exception:
+                        meta = {}
+                    return {
+                        "slug": r[0],
+                        "title": r[1],
+                        "category": r[2] or "general",
+                        "is_active": int(r[3]),
+                        "sort_order": int(r[4]),
+                        "salary_text": r[5] or "",
+                        "description": r[6] or "",
+                        "meta_json": r[7] or "{}",
+                        "meta": meta
+                    }
+        return None
+
+    def save_vacancies_batch(self, vacancies: List[Dict[str, Any]]) -> bool:
+        """Атомарный upsert списка вакансий с сохранением в обе базы (prod и test)"""
+        for test_mode in (False, True):
+            with self.connection(is_test=test_mode) as conn:
+                cur = conn.cursor()
+                for v in vacancies:
+                    slug = str(v.get("slug") or "").strip()
+                    if not slug:
+                        continue
+                    title = str(v.get("title") or "").strip()
+                    category = str(v.get("category") or "general").strip()
+                    is_active = 1 if v.get("is_active") in (1, "1", True, "true") else 0
+                    sort_order = int(v.get("sort_order") or 0)
+                    salary_text = str(v.get("salary_text") or v.get("salary") or "").strip()
+                    description = str(v.get("description") or v.get("desc") or "").strip()
+                    raw_meta = v.get("meta") or v.get("meta_json")
+                    if isinstance(raw_meta, dict):
+                        meta_str = json.dumps(raw_meta, ensure_ascii=False)
+                    elif isinstance(raw_meta, str) and raw_meta.strip():
+                        meta_str = raw_meta.strip()
+                    else:
+                        meta_str = "{}"
+
+                    cur.execute(
+                        """
+                        INSERT INTO vacancy_settings (slug, title, category, is_active, sort_order, salary_text, description, meta_json)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(slug) DO UPDATE SET
+                            title=excluded.title,
+                            category=excluded.category,
+                            is_active=excluded.is_active,
+                            sort_order=excluded.sort_order,
+                            salary_text=excluded.salary_text,
+                            description=excluded.description,
+                            meta_json=excluded.meta_json
+                        """,
+                        (slug, title, category, is_active, sort_order, salary_text, description, meta_str)
+                    )
+                conn.commit()
+        return True
+
+    def toggle_vacancy_active(self, slug: str, is_active: Optional[int] = None) -> bool:
+        """Переключает видимость вакансии"""
+        for test_mode in (False, True):
+            with self.connection(is_test=test_mode) as conn:
+                cur = conn.cursor()
+                if is_active is None:
+                    cur.execute("UPDATE vacancy_settings SET is_active = (1 - is_active) WHERE slug = ? OR title = ?", (slug, slug))
+                else:
+                    cur.execute("UPDATE vacancy_settings SET is_active = ? WHERE slug = ? OR title = ?", (is_active, slug, slug))
+                conn.commit()
+        return True
+
+    async def async_get_vacancies(self, only_active: bool = False) -> List[Dict[str, Any]]:
+        return await asyncio.to_thread(self.get_vacancies, only_active)
+
+    async def async_get_vacancy_by_slug(self, slug: str) -> Optional[Dict[str, Any]]:
+        return await asyncio.to_thread(self.get_vacancy_by_slug, slug)
+
+    async def async_save_vacancies_batch(self, vacancies: List[Dict[str, Any]]) -> bool:
+        return await asyncio.to_thread(self.save_vacancies_batch, vacancies)

@@ -51,6 +51,8 @@ from keyboards import (
     make_step2_birthdate_kb,
     make_step4_city_kb,
     make_step5_vacancies_kb,
+    make_vacancies_catalog_kb,
+    make_vacancy_card_kb,
     make_step6_1_categories_kb,
     make_step6_license_kb,
     make_step7_experience_kb,
@@ -1143,17 +1145,29 @@ async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext) ->
 
     vac_name = None
     if callback.data.startswith("vac_pick_"):
+        slug_or_idx = callback.data.replace("vac_pick_", "").strip()
+        # 1. Попытка получить из SQLite vacancy_settings по slug
         try:
-            idx = int(callback.data.replace("vac_pick_", ""))
-            open_vacs = get_open_vacancies()
-            if 0 <= idx < len(open_vacs):
-                vac_name = open_vacs[idx]
-            else:
-                all_vacs = get_all_vacancies()
-                if 0 <= idx < len(all_vacs):
-                    vac_name = all_vacs[idx]
-        except (ValueError, TypeError):
-            vac_name = None
+            if hasattr(db, "get_vacancy_by_slug"):
+                v_obj = db.get_vacancy_by_slug(slug_or_idx)
+                if v_obj and v_obj.get("title"):
+                    vac_name = v_obj["title"]
+        except Exception as e:
+            logger.debug("Ошибка поиска вакансии по slug: %s", e)
+
+        # 2. Если не найден по slug, пробуем как числовой индекс (для совместимости)
+        if not vac_name:
+            try:
+                idx = int(slug_or_idx)
+                open_vacs = get_open_vacancies()
+                if 0 <= idx < len(open_vacs):
+                    vac_name = open_vacs[idx]
+                else:
+                    all_vacs = get_all_vacancies()
+                    if 0 <= idx < len(all_vacs):
+                        vac_name = all_vacs[idx]
+            except (ValueError, TypeError):
+                pass
 
     if not vac_name:
         vac_name = VACANCY_MAP.get(vac_raw, vac_raw)
@@ -1169,6 +1183,100 @@ async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext) ->
         f"🎯 Вакансия: <b>{html.escape(vac_name)}</b>\n\n{texts.SURVEY_STEP6_LICENSE}",
         reply_markup=make_step6_license_kb(),
         parse_mode="HTML",
+    )
+    await callback.answer()
+
+
+# =========================================================================
+# КАТАЛОГ ВАКАНСИЙ И КАРТОЧКИ ПО SLUG (AIOGRAM 3 <-> SQLITE)
+# =========================================================================
+
+@candidate_router.message(Command("vacancies", "jobs", "work"))
+@candidate_router.callback_query(F.data == "cand_show_vacancies")
+async def cmd_or_cb_vacancies_catalog(event: Union[types.Message, types.CallbackQuery]) -> None:
+    """Отображение каталога актуальных вакансий предприятия на основе vacancy_settings."""
+    catalog_text = (
+        "💼 <b>Актуальные вакансии МУП «Ульяновскэлектротранс»</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Официальное трудоустройство, стабильная заработная плата, полный соцпакет "
+        "и возможность бесплатного переобучения за счёт предприятия.\n\n"
+        "<i>Нажмите на интересующую должность, чтобы открыть подробную карточку с условиями:</i>"
+    )
+    if isinstance(event, types.CallbackQuery):
+        await event.message.edit_text(
+            catalog_text,
+            reply_markup=make_vacancies_catalog_kb(),
+            parse_mode="HTML"
+        )
+        await event.answer()
+    else:
+        await safe_answer(
+            event,
+            catalog_text,
+            reply_markup=make_vacancies_catalog_kb(),
+            parse_mode="HTML"
+        )
+
+
+@candidate_router.callback_query(F.data.startswith("vac_card_"))
+async def cb_show_vacancy_card(callback: types.CallbackQuery) -> None:
+    """Карточка конкретной вакансии по её slug из единой таблицы SQLite vacancy_settings."""
+    slug = callback.data.replace("vac_card_", "").strip()
+    v = db.get_vacancy_by_slug(slug) if hasattr(db, "get_vacancy_by_slug") else None
+    if not v:
+        await callback.answer("⚠️ Карточка вакансии не найдена или была обновлена.", show_alert=True)
+        return
+
+    title = v.get("title", "")
+    salary = v.get("salary_text") or "По результатам собеседования"
+    desc = v.get("description") or "Работа на маршрутах и производственных объектах предприятия."
+    meta = v.get("meta") or {}
+    icon = meta.get("icon") or get_vacancy_icon(title)
+    reqs = meta.get("requirements") or "От 18 лет, без медицинских противопоказаний"
+    stipend = meta.get("stipend")
+    training = meta.get("training")
+
+    lines = [
+        f"{icon} <b>{html.escape(title)}</b>\n━━━━━━━━━━━━━━━━━━━━━",
+        f"💰 <b>Заработная плата:</b> <b>{html.escape(salary)}</b>",
+    ]
+    if training:
+        stipend_str = f" (стипендия {html.escape(stipend)})" if stipend else ""
+        lines.append(f"🎓 <b>Обучение:</b> Бесплатное в корпоративном учебном центре{stipend_str}")
+    if reqs:
+        lines.append(f"📋 <b>Требования:</b> {html.escape(reqs)}")
+    if desc:
+        lines.append(f"\n📝 <b>Обязанности и условия:</b>\n{html.escape(desc)}")
+
+    lines.append(
+        "\n✅ <b>Гарантии предприятия:</b> Официальное оформление по ТК РФ, "
+        "сменный график, льготный проезд на горэлектротранспорте, профсоюзная поддержка."
+    )
+
+    card_text = "\n".join(lines)
+    await callback.message.edit_text(
+        card_text,
+        reply_markup=make_vacancy_card_kb(slug),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+
+@candidate_router.callback_query(F.data.startswith("vac_apply_"))
+async def cb_apply_from_vacancy_card(callback: types.CallbackQuery, state: FSMContext) -> None:
+    """Быстрый старт подачи анкеты с предвыбранной вакансией прямо из её карточки."""
+    slug = callback.data.replace("vac_apply_", "").strip()
+    v = db.get_vacancy_by_slug(slug) if hasattr(db, "get_vacancy_by_slug") else None
+    vac_title = v["title"] if v else "Водитель трамвая"
+
+    await state.clear()
+    await state.update_data(vacancy=vac_title)
+    await state.set_state(CandidateForm.full_name)
+    await callback.message.edit_text(
+        f"🎯 Вы выбрали должность: <b>{html.escape(vac_title)}</b>\n\n"
+        f"Приступаем к заполнению официальной анкеты соискателя.\n\n{texts.SURVEY_STEP1_FIO}",
+        reply_markup=make_step_nav_kb(can_skip=False),
+        parse_mode="HTML"
     )
     await callback.answer()
 

@@ -234,6 +234,7 @@ class WebPanel:
 
         # Vacancies & Candidate Apply API
         self.app.router.add_get("/api/vacancies", self.handle_api_vacancies)
+        self.app.router.add_post("/api/vacancies/save", self.handle_api_vacancies_save)
         self.app.router.add_post("/api/vacancies/toggle", self.handle_api_vacancies_toggle)
         self.app.router.add_post("/api/vacancies/add", self.handle_api_vacancies_add)
         self.app.router.add_post("/api/vacancies/delete", self.handle_api_vacancies_delete)
@@ -1709,93 +1710,135 @@ class WebPanel:
             return web.json_response({"error": str(e)}, status=500)
 
     async def handle_api_vacancies(self, request: web.Request) -> web.Response:
-        """Динамический список должностей МУП «Ульяновскэлектротранс» из единого источника правды."""
-        all_vac = get_all_vacancies()
-        closed_set = get_closed_vacancies()
-        open_vac = [v for v in all_vac if v not in closed_set]
-
-        meta_presets = {
-            "Водитель трамвая": {
-                "salary": "55 000 — 85 000 ₽",
-                "training": True,
-                "stipend": "от 20 000 ₽ на период обучения",
-                "requirements": "От 21 года (к моменту выпуска), ст. 328.1 ТК РФ",
-                "description": "Управление современными трамвайными вагонами (Львенок, Татра) на маршрутах г. Ульяновска.",
-                "sub": "Зарплата от 55 000 до 85 000 ₽",
-            },
-            "Водитель троллейбуса": {
-                "salary": "55 000 — 85 000 ₽",
-                "training": True,
-                "stipend": "от 20 000 ₽ на период обучения",
-                "requirements": "От 21 года, ст. 328.1 ТК РФ",
-                "description": "Пассажирские перевозки на троллейбусных маршрутах Заволжского района.",
-                "sub": "Зарплата от 55 000 до 85 000 ₽",
-            },
-            "Кондуктор": {
-                "salary": "30 000 — 45 000 ₽",
-                "training": False,
-                "stipend": None,
-                "requirements": "От 18 лет, ответственность, вежливость",
-                "description": "Сбор платы за проезд, проверка проездных документов, сменный график 2/2.",
-                "sub": "Сменный график, официальное трудоустройство",
-            },
-            "Слесарь по ремонту подвижного состава": {
-                "salary": "40 000 — 65 000 ₽",
-                "training": False,
-                "stipend": None,
-                "requirements": "От 18 лет, знание механики/электрики",
-                "description": "Техническое обслуживание и текущий ремонт подвижного состава в депо.",
-                "sub": "Северное / Засвияжское / Заволжское депо",
-            },
-            "Электромонтер контактной сети": {
-                "salary": "45 000 — 70 000 ₽",
-                "training": False,
-                "stipend": None,
-                "requirements": "От 18 лет, профильное образование",
-                "description": "Обслуживание и оперативный ремонт контактных сетей и тяговых подстанций.",
-                "sub": "Обслуживание контактных сетей и подстанций",
-            },
-            "Монтер пути": {
-                "salary": "42 000 — 65 000 ₽",
-                "training": False,
-                "stipend": None,
-                "requirements": "От 21 года, хорошая физическая подготовка",
-                "description": "Текущее содержание, ремонт и обслуживание трамвайных путей и стрелочных переводов.",
-                "sub": "Служба пути МУП «Ульяновскэлектротранс»",
-            },
-        }
-
+        """Динамический список должностей МУП «Ульяновскэлектротранс» из единого источника правды (SQLite vacancy_settings)."""
         show_all = request.query.get("all") in ("1", "true")
-        target_list = all_vac if show_all else open_vac
+        
+        db_vacs = []
+        try:
+            if hasattr(db, "get_vacancies"):
+                db_vacs = db.get_vacancies(only_active=False)
+        except Exception as e:
+            logger.warning("Ошибка получения вакансий из vacancy_settings: %s", e)
 
-        vacancies = []
-        for idx, title in enumerate(target_list):
-            preset = meta_presets.get(title, {})
-            is_open = title not in closed_set
-            vacancies.append(
-                {
+        if not db_vacs:
+            # Fallback на системные функции common.py
+            all_vac = get_all_vacancies()
+            closed_set = get_closed_vacancies()
+            target_list = all_vac if show_all else [v for v in all_vac if v not in closed_set]
+            vacancies = []
+            for idx, title in enumerate(target_list):
+                vacancies.append({
                     "id": f"vac_{idx}",
+                    "slug": f"vac_{idx}",
                     "title": title,
                     "icon": get_vacancy_icon(title),
-                    "salary": preset.get("salary", "По результатам собеседования"),
-                    "training": preset.get("training", False),
-                    "stipend": preset.get("stipend"),
-                    "requirements": preset.get("requirements", "Официальное трудоустройство, соцпакет"),
-                    "description": preset.get("description", "Работа в МУП «Ульяновскэлектротранс»."),
-                    "sub": preset.get("sub", preset.get("salary", "Официальное трудоустройство")),
-                    "is_open": is_open,
-                }
-            )
-
-        return web.json_response(
-            {
+                    "salary": "По результатам собеседования",
+                    "salary_text": "По результатам собеседования",
+                    "requirements": "Официальное трудоустройство, соцпакет",
+                    "description": "Работа в МУП «Ульяновскэлектротранс».",
+                    "sub": "Официальное трудоустройство",
+                    "is_active": 0 if title in closed_set else 1,
+                    "is_open": title not in closed_set,
+                    "sort_order": idx + 1,
+                    "meta": {}
+                })
+            open_vac = [v for v in all_vac if v not in closed_set]
+            return web.json_response({
                 "ok": True,
                 "open_vacancies": open_vac,
                 "closed_vacancies": list(closed_set),
                 "all_vacancies": all_vac,
                 "vacancies": vacancies,
-            }
-        )
+            })
+
+        # Сортировка по sort_order ASC
+        db_vacs.sort(key=lambda x: (x.get("sort_order", 0), x.get("slug", "")))
+
+        all_titles = [v["title"] for v in db_vacs]
+        open_titles = [v["title"] for v in db_vacs if v.get("is_active")]
+        closed_titles = [v["title"] for v in db_vacs if not v.get("is_active")]
+
+        vacancies = []
+        for idx, v in enumerate(db_vacs):
+            is_active = bool(v.get("is_active", 1))
+            if not show_all and not is_active:
+                continue
+            meta = v.get("meta") or {}
+            vacancies.append({
+                "id": v["slug"],
+                "slug": v["slug"],
+                "title": v["title"],
+                "category": v.get("category", "general"),
+                "icon": meta.get("icon") or get_vacancy_icon(v["title"]),
+                "salary": v.get("salary_text") or "По согласованию",
+                "salary_text": v.get("salary_text") or "По согласованию",
+                "training": meta.get("training", False),
+                "stipend": meta.get("stipend"),
+                "requirements": meta.get("requirements", "Официальное трудоустройство, полный соцпакет"),
+                "description": v.get("description") or "Работа на маршрутах и объектах предприятия.",
+                "sub": v.get("salary_text") or "Официальное трудоустройство",
+                "is_active": 1 if is_active else 0,
+                "is_open": is_active,
+                "active": is_active,
+                "sort_order": v.get("sort_order", idx + 1),
+                "meta": meta
+            })
+
+        return web.json_response({
+            "ok": True,
+            "open_vacancies": open_titles,
+            "closed_vacancies": closed_titles,
+            "all_vacancies": all_titles,
+            "vacancies": vacancies,
+        })
+
+    async def handle_api_vacancies_save(self, request: web.Request) -> web.Response:
+        """Атомарный upsert списка вакансий (порядок, активность, тексты)."""
+        _, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
+        if err:
+            return err
+        try:
+            body = await request.json()
+            items = body.get("vacancies") if isinstance(body, dict) else body
+            if not isinstance(items, list):
+                return web.json_response({"error": "Требуется список вакансий (массив объектов)"}, status=400)
+
+            batch = []
+            for idx, item in enumerate(items):
+                if not isinstance(item, dict):
+                    continue
+                title = str(item.get("title") or item.get("name") or "").strip()
+                if not title:
+                    continue
+                slug = str(item.get("slug") or item.get("id") or "").strip()
+                if not slug or slug.startswith("vac_"):
+                    slug = f"vac_{idx}_{abs(hash(title)) % 100000}"
+                
+                is_active = 1 if item.get("is_active") in (1, "1", True, "true") or item.get("active") in (1, "1", True, "true") else 0
+                sort_order = int(item.get("sort_order") if item.get("sort_order") is not None else (idx + 1))
+                salary = str(item.get("salary_text") or item.get("salary") or "").strip()
+                desc = str(item.get("description") or item.get("desc") or "").strip()
+                meta = item.get("meta") or {}
+
+                batch.append({
+                    "slug": slug,
+                    "title": title,
+                    "category": item.get("category", "general"),
+                    "is_active": is_active,
+                    "sort_order": sort_order,
+                    "salary_text": salary,
+                    "description": desc,
+                    "meta": meta
+                })
+
+            if hasattr(db, "save_vacancies_batch"):
+                db.save_vacancies_batch(batch)
+
+            updated = db.get_vacancies(only_active=False) if hasattr(db, "get_vacancies") else batch
+            return web.json_response({"ok": True, "vacancies": updated})
+        except Exception as e:
+            logger.error("Ошибка сохранения настроек вакансий: %s", e)
+            return web.json_response({"error": str(e)}, status=500)
 
     async def handle_api_vacancies_toggle(self, request: web.Request) -> web.Response:
         """Переключение набора (открыть / закрыть) для должности."""
@@ -1804,19 +1847,24 @@ class WebPanel:
             return err
         try:
             data = await request.json()
-            title = (data.get("title") or "").strip()
+            title = (data.get("title") or data.get("vacancy") or data.get("slug") or "").strip()
             if not title:
                 return web.json_response({"error": "Не указано наименование должности"}, status=400)
 
-            closed = get_closed_vacancies()
-            if title in closed:
-                closed.remove(title)
-                is_open = True
+            if hasattr(db, "toggle_vacancy_active"):
+                db.toggle_vacancy_active(title)
+                v = db.get_vacancy_by_slug(title)
+                is_open = bool(v.get("is_active")) if v else True
             else:
-                closed.add(title)
-                is_open = False
-            set_closed_vacancies(closed)
-            return web.json_response({"ok": True, "title": title, "is_open": is_open})
+                closed = get_closed_vacancies()
+                if title in closed:
+                    closed.remove(title)
+                    is_open = True
+                else:
+                    closed.add(title)
+                    is_open = False
+                set_closed_vacancies(closed)
+            return web.json_response({"ok": True, "title": title, "is_open": is_open, "active": is_open})
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
@@ -1827,14 +1875,29 @@ class WebPanel:
             return err
         try:
             data = await request.json()
-            title = (data.get("title") or "").strip()
+            title = (data.get("title") or data.get("name") or "").strip()
             if not title:
                 return web.json_response({"error": "Введите наименование вакансии"}, status=400)
 
+            slug = (data.get("slug") or "").strip()
+            if not slug:
+                slug = f"vac_{abs(hash(title)) % 1000000}"
+
+            new_vac = {
+                "slug": slug,
+                "title": title,
+                "category": data.get("category", "general"),
+                "is_active": 1,
+                "sort_order": int(data.get("sort_order") or 99),
+                "salary_text": str(data.get("salary_text") or data.get("salary") or "").strip(),
+                "description": str(data.get("description") or data.get("desc") or "").strip(),
+                "meta": data.get("meta") or {}
+            }
+
+            if hasattr(db, "save_vacancies_batch"):
+                db.save_vacancies_batch([new_vac])
+
             all_vac = get_all_vacancies()
-            if title not in all_vac:
-                all_vac.append(title)
-                save_all_vacancies(all_vac)
             return web.json_response({"ok": True, "title": title, "vacancies": all_vac})
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
@@ -1846,9 +1909,18 @@ class WebPanel:
             return err
         try:
             data = await request.json()
-            title = (data.get("title") or "").strip()
+            title = (data.get("title") or data.get("slug") or "").strip()
             if not title:
                 return web.json_response({"error": "Не указано наименование"}, status=400)
+
+            # Деактивируем или удаляем из vacancy_settings
+            try:
+                for test_mode in (False, True):
+                    with db.connection(is_test=test_mode) as conn:
+                        conn.execute("DELETE FROM vacancy_settings WHERE slug = ? OR title = ?", (title, title))
+                        conn.commit()
+            except Exception as e:
+                logger.warning("Ошибка при удалении из vacancy_settings: %s", e)
 
             all_vac = get_all_vacancies()
             if title in all_vac:

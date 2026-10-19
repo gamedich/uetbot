@@ -5,7 +5,7 @@
 """
 from pathlib import Path
 
-portal_html = '''<!DOCTYPE html>
+portal_html = r'''<!DOCTYPE html>
 <html lang="ru" class="scroll-smooth">
 
 <head>

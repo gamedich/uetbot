@@ -540,7 +540,15 @@ BASE_DIR: Path = Path(__file__).resolve().parent
 
 
 def get_all_vacancies() -> List[str]:
-    """Возвращает список всех актуальных вакансий предприятия."""
+    """Возвращает список всех актуальных вакансий предприятия из единой таблицы SQLite vacancy_settings."""
+    try:
+        if hasattr(db, "get_vacancies"):
+            vacs = db.get_vacancies(only_active=False)
+            if vacs:
+                return [v["title"] for v in vacs]
+    except Exception as e:
+        logger.warning("Не удалось загрузить вакансии из БД vacancy_settings: %s", e)
+
     try:
         data_dir = BASE_DIR / "data"
         vac_file = data_dir / "vacancies.json"
@@ -555,7 +563,26 @@ def get_all_vacancies() -> List[str]:
 
 
 def save_all_vacancies(vacancies: List[str]) -> bool:
-    """Сохраняет обновленный список вакансий в data/vacancies.json."""
+    """Сохраняет обновленный список вакансий."""
+    try:
+        batch = []
+        for idx, title in enumerate(vacancies):
+            slug = f"vac_{idx}_{abs(hash(title)) % 100000}"
+            batch.append({
+                "slug": slug,
+                "title": title,
+                "category": "general",
+                "is_active": 1,
+                "sort_order": idx + 1,
+                "salary_text": "",
+                "description": "",
+                "meta": {}
+            })
+        if hasattr(db, "save_vacancies_batch"):
+            db.save_vacancies_batch(batch)
+    except Exception as e:
+        logger.error("Ошибка сохранения вакансий в БД: %s", e)
+
     try:
         data_dir = BASE_DIR / "data"
         data_dir.mkdir(parents=True, exist_ok=True)
@@ -575,7 +602,14 @@ save_vacancies = save_all_vacancies
 
 
 def get_closed_vacancies() -> Set[str]:
-    """Возвращает набор временно закрытых должностей (по которым набор приостановлен)."""
+    """Возвращает набор временно скрытых должностей (is_active = 0)."""
+    try:
+        if hasattr(db, "get_vacancies"):
+            all_v = db.get_vacancies(only_active=False)
+            if all_v:
+                return {v["title"] for v in all_v if not v.get("is_active")}
+    except Exception:
+        pass
     try:
         val = db.get_setting("closed_vacancies", "[]")
         return set(json.loads(val))
@@ -584,8 +618,13 @@ def get_closed_vacancies() -> Set[str]:
 
 
 def set_closed_vacancies(closed: Set[str]) -> bool:
-    """Сохраняет список закрытых должностей в настройках БД."""
+    """Сохраняет статус закрытых должностей."""
     try:
+        if hasattr(db, "get_vacancies") and hasattr(db, "save_vacancies_batch"):
+            all_v = db.get_vacancies(only_active=False)
+            for v in all_v:
+                v["is_active"] = 0 if v["title"] in closed else 1
+            db.save_vacancies_batch(all_v)
         db.set_setting("closed_vacancies", json.dumps(list(closed), ensure_ascii=False))
         return True
     except Exception as e:
@@ -594,7 +633,14 @@ def set_closed_vacancies(closed: Set[str]) -> bool:
 
 
 def get_open_vacancies() -> List[str]:
-    """Возвращает список только тех вакансий, приём по которым в данный момент открыт."""
+    """Возвращает список только тех вакансий, приём по которым в данный момент открыт (is_active = 1)."""
+    try:
+        if hasattr(db, "get_vacancies"):
+            active_v = db.get_vacancies(only_active=True)
+            if active_v:
+                return [v["title"] for v in active_v]
+    except Exception as e:
+        logger.warning("Ошибка получения активных вакансий из БД: %s", e)
     all_vac = get_all_vacancies()
     closed = get_closed_vacancies()
     return [v for v in all_vac if v not in closed]

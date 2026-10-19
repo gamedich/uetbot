@@ -8,6 +8,7 @@
 .env.*
 *.pem
 *.key
+DEV_PASSWORDS.md
 
 # --- Приватные модули владельца и инженерии ---
 private_admin.py
@@ -20,6 +21,7 @@ tech.py
 # tests/ (включено для автотестов CI/CD)
 run_tests.py
 test_scratch_*.py
+test_auth_refactor.py
 clean_*.py
 fix_*.py
 update_*.py

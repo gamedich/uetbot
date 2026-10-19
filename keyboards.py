@@ -19,6 +19,7 @@ from common import (
     is_hr_admin,
     is_maintenance_active,
     is_tech_admin,
+    logger,
 )
 
 
@@ -449,9 +450,31 @@ def make_step4_city_kb() -> types.InlineKeyboardMarkup:
 def make_step5_vacancies_kb() -> types.InlineKeyboardMarkup:
     """
     Клавиатура выбора вакансии для соискателя (Шаг 5).
-    Динамически синхронизирована с базой данных и настройками набора (get_open_vacancies()).
+    Динамически генерируется через InlineKeyboardBuilder на основе выборки из SQLite:
+    SELECT slug, title FROM vacancy_settings WHERE is_active = 1 ORDER BY sort_order ASC.
     """
     builder = InlineKeyboardBuilder()
+    vac_list = []
+    try:
+        if hasattr(db, "get_vacancies"):
+            vac_list = db.get_vacancies(only_active=True)
+    except Exception as e:
+        logger.warning("Ошибка выборки вакансий для клавиатуры: %s", e)
+
+    if vac_list:
+        for v in vac_list:
+            slug = v.get("slug")
+            title = v.get("title")
+            meta = v.get("meta") or {}
+            icon = meta.get("icon") or get_vacancy_icon(title)
+            builder.button(text=f"{icon} {title}", callback_data=f"vac_pick_{slug}")
+        builder.button(text="📋 Другая должность", callback_data="vac_other")
+        builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+        builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+        layout = [1] * len(vac_list) + [1, 2]
+        builder.adjust(*layout)
+        return builder.as_markup()
+
     open_vacancies = get_open_vacancies()
     if not open_vacancies:
         open_vacancies = [
@@ -471,6 +494,47 @@ def make_step5_vacancies_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
     layout = [1] * len(open_vacancies) + [1, 2]
     builder.adjust(*layout)
+    return builder.as_markup()
+
+
+def make_vacancies_catalog_kb() -> types.InlineKeyboardMarkup:
+    """
+    Инлайн-каталог активных вакансий МУП «УЭТ».
+    Формирует список кнопок для открытия персональной карточки по slug.
+    """
+    builder = InlineKeyboardBuilder()
+    vac_list = []
+    try:
+        if hasattr(db, "get_vacancies"):
+            vac_list = db.get_vacancies(only_active=True)
+    except Exception:
+        pass
+    if not vac_list:
+        open_vac = get_open_vacancies()
+        for idx, t in enumerate(open_vac):
+            vac_list.append({"slug": f"vac_{idx}", "title": t, "meta": {}})
+
+    for v in vac_list:
+        slug = v.get("slug")
+        title = v.get("title")
+        meta = v.get("meta") or {}
+        icon = meta.get("icon") or get_vacancy_icon(title)
+        builder.button(text=f"{icon} {title}", callback_data=f"vac_card_{slug}")
+
+    builder.button(text="📝 Подать анкету соискателя", callback_data="cand_start_apply")
+    builder.button(text="🏠 Главное меню", callback_data="cand_back_to_main")
+    layout = [1] * len(vac_list) + [1, 1]
+    builder.adjust(*layout)
+    return builder.as_markup()
+
+
+def make_vacancy_card_kb(slug: str) -> types.InlineKeyboardMarkup:
+    """Клавиатура для карточки конкретной вакансии (Откликнуться / Назад к списку)."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📝 Откликнуться на вакансию", callback_data=f"vac_apply_{slug}")
+    builder.button(text="💼 Все вакансии", callback_data="cand_show_vacancies")
+    builder.button(text="🏠 Главное меню", callback_data="cand_back_to_main")
+    builder.adjust(1, 2)
     return builder.as_markup()
 
 

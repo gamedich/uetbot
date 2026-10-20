@@ -40,10 +40,8 @@ class InquiryMixin:
         email: str = "",
         reply_channel: str = "tg",
     ) -> int:
-        target_setting = self.get_setting("active_db_target", "resumes.db")  # type: ignore
-        use_test = is_test or (target_setting == "resumes_test.db")
-
-        with self._get_connection(is_test=use_test) as conn:  # type: ignore
+        is_test_val = 1 if is_test else 0
+        with self.connection() as conn:  # type: ignore
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -60,7 +58,7 @@ class InquiryMixin:
                     phone,
                     vacancy,
                     question_text,
-                    1 if use_test else 0,
+                    is_test_val,
                     consent_timestamp or "",
                     email or "",
                     reply_channel or "tg",

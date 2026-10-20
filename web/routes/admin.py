@@ -251,7 +251,7 @@ async def handle_api_system_ai_prompt(panel: WebPanel, request: web.Request) -> 
 
 async def handle_api_stats(panel: WebPanel, request: web.Request) -> web.Response:
     env = CONFIG.get("ENVIRONMENT", "TEST").upper()
-    active_db = panel.db.get_setting("active_db_target", "resumes.db")
+    active_db = os.path.basename(getattr(panel.db, "db_path", "resumes.db"))
     db_scope = request.query.get("db_scope") or request.query.get("scope") or "both"
 
     try:
@@ -316,19 +316,16 @@ async def handle_api_system(panel: WebPanel, request: web.Request) -> web.Respon
         pass
 
     db_prod_path = Path(panel.db.db_path)
-    db_test_path = Path(panel.db.test_db_path)
     db_prod_kb = round(db_prod_path.stat().st_size / 1024, 1) if db_prod_path.exists() else 0
-    db_test_kb = round(db_test_path.stat().st_size / 1024, 1) if db_test_path.exists() else 0
+    db_test_kb = 0
 
     db_prod_rows = 0
     db_test_rows = 0
-    with panel.db.connection(is_test=False) as conn:
+    with panel.db.connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM candidates")
+        cur.execute("SELECT COUNT(*) FROM candidates WHERE (is_test = 0 OR is_test IS NULL) AND ticket_id < 900000")
         db_prod_rows = cur.fetchone()[0]
-    with panel.db.connection(is_test=True) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM candidates")
+        cur.execute("SELECT COUNT(*) FROM candidates WHERE is_test = 1 OR ticket_id >= 900000")
         db_test_rows = cur.fetchone()[0]
 
     return web.json_response(
@@ -355,11 +352,13 @@ async def handle_api_toggle_db(panel: WebPanel, request: web.Request) -> web.Res
     _, err = panel.require_roles(request, {"tech", "superadmin", "super"})
     if err:
         return err
-    cur_db = panel.db.get_setting("active_db_target", "resumes.db")
-    new_db = "resumes_test.db" if cur_db == "resumes.db" else "resumes.db"
-    panel.db.set_setting("active_db_target", new_db)
-    logger.info("Веб-панель: активная база переключена на %s", new_db)
-    return web.json_response({"ok": True, "active_db": new_db})
+    active_db = os.path.basename(panel.db.db_path)
+    logger.info("Веб-панель: статус активной базы %s", active_db)
+    return web.json_response({
+        "ok": True,
+        "active_db": active_db,
+        "message": f"Архитектура 12-Factor App: активная база {active_db} задается через DB_PATH.",
+    })
 
 
 async def handle_api_toggle_env(panel: WebPanel, request: web.Request) -> web.Response:

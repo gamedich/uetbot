@@ -767,7 +767,7 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
     consent_ts = datetime.now().strftime("%d.%m.%Y %H:%M")
     is_admin = int(user_id) == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(int(user_id)) or is_tech_admin(int(user_id))
     is_test_inq = is_admin and (
-        db.get_setting("active_db_target", "resumes.db") == "resumes_test.db" or "тест" in q_text.lower()
+        CONFIG.get("ENVIRONMENT") == "TEST" or "тест" in q_text.lower()
     )
     cooldown = CONFIG.get("COOLDOWN_SECONDS", 1200) if not is_admin else 0
 
@@ -1817,7 +1817,7 @@ async def cb_submit_final(callback: types.CallbackQuery, state: FSMContext, bot:
     is_admin = int(user_id) == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(int(user_id)) or is_tech_admin(int(user_id))
     full_name = data.get("full_name", "")
     is_test_cand = is_admin and (
-        db.get_setting("active_db_target", "resumes.db") == "resumes_test.db" or "тест" in full_name.lower()
+        CONFIG.get("ENVIRONMENT") == "TEST" or "тест" in full_name.lower()
     )
     data["is_test"] = is_test_cand
 

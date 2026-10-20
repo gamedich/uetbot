@@ -60,59 +60,55 @@ async def handle_api_candidate_lookup(panel: WebPanel, request: web.Request) -> 
             logger.warning("Ошибка get_candidate по ID %s: %s", cleaned_num, e)
 
     if not cand:
-        for is_test_db in (False, True):
-            try:
-                with panel.db._get_connection(is_test=is_test_db) as conn:
-                    cur = conn.cursor()
-                    if len(clean_digits) >= 10:
-                        cur.execute(
-                            """
-                            SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
-                                   birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                                   medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
-                                   interview_depot, interview_time, interview_status
-                            FROM candidates WHERE phone LIKE ? ORDER BY ticket_id DESC LIMIT 1
-                            """,
-                            (f"%{clean_digits[-10:]}%",),
-                        )
-                        row = cur.fetchone()
-                        if row:
-                            cand = row
-                            break
+        try:
+            with panel.db.connection() as conn:
+                cur = conn.cursor()
+                if len(clean_digits) >= 10:
+                    cur.execute(
+                        """
+                        SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                               birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                               medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
+                               interview_depot, interview_time, interview_status
+                        FROM candidates WHERE phone LIKE ? ORDER BY ticket_id DESC LIMIT 1
+                        """,
+                        (f"%{clean_digits[-10:]}%",),
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        cand = row
 
-                    if clean_digits:
-                        cur.execute(
-                            """
-                            SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
-                                   birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                                   medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
-                                   interview_depot, interview_time, interview_status
-                            FROM candidates WHERE ticket_id = ? ORDER BY ticket_id DESC LIMIT 1
-                            """,
-                            (clean_digits,),
-                        )
-                        row = cur.fetchone()
-                        if row:
-                            cand = row
-                            break
+                if not cand and clean_digits:
+                    cur.execute(
+                        """
+                        SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                               birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                               medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
+                               interview_depot, interview_time, interview_status
+                        FROM candidates WHERE ticket_id = ? ORDER BY ticket_id DESC LIMIT 1
+                        """,
+                        (clean_digits,),
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        cand = row
 
-                    if len(q) >= 3 and not q.isdigit():
-                        cur.execute(
-                            """
-                            SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
-                                   birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                                   medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
-                                   interview_depot, interview_time, interview_status
-                            FROM candidates WHERE full_name LIKE ? ORDER BY ticket_id DESC LIMIT 1
-                            """,
-                            (f"%{q}%",),
-                        )
-                        row = cur.fetchone()
-                        if row:
-                            cand = row
-                            break
-            except Exception as err:
-                logger.warning("Ошибка поиска в базе (is_test=%s): %s", is_test_db, err)
+                if not cand and len(q) >= 3 and not q.isdigit():
+                    cur.execute(
+                        """
+                        SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                               birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                               medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
+                               interview_depot, interview_time, interview_status
+                        FROM candidates WHERE full_name LIKE ? ORDER BY ticket_id DESC LIMIT 1
+                        """,
+                        (f"%{q}%",),
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        cand = row
+        except Exception as err:
+            logger.warning("Ошибка поиска в базе: %s", err)
 
     if not cand:
         return web.json_response(
@@ -155,61 +151,54 @@ async def handle_api_candidates(panel: WebPanel, request: web.Request) -> web.Re
         search = (request.query.get("search", "")).strip().lower()
         sort_order = "ASC" if request.query.get("sort", "desc") == "asc" else "DESC"
 
-        active_db = panel.db.get_setting("active_db_target", "resumes.db")
-
-        target_dbs: List[Tuple[str, bool]] = []
-        if db_scope == "both":
-            target_dbs = [("prod", False), ("test", True)]
-        elif db_scope == "prod":
-            target_dbs = [("prod", False)]
-        elif db_scope == "test":
-            target_dbs = [("test", True)]
-        else:
-            target_dbs = [("test" if active_db == "resumes_test.db" else "prod", active_db == "resumes_test.db")]
-
         all_rows = []
-        for scope_name, is_test in target_dbs:
-            with panel.db.connection(is_test=is_test) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    SELECT ticket_id, created_at, full_name, vacancy, phone, status,
-                           interview_depot, interview_time, driver_license, is_test,
-                           birth_date, criminal_record, experience, platform
-                    FROM candidates
-                    """
-                )
-                rows = cursor.fetchall()
-                for r in rows:
-                    (
-                        t_id, cr, fn, vac, ph, st, depot, itime, lic, test_flag,
-                        bdate, crim, exp, plat,
-                    ) = r
-                    score_info = candidate_service.calculate_applicant_score({
-                        "vacancy": vac or "",
-                        "driver_license": lic or "",
-                        "birth_date": bdate or "",
-                        "criminal_record": crim or "",
-                        "experience": exp or "",
-                    })
-                    row_dict = {
-                        "ticket_id": t_id,
-                        "created_at": cr or "",
-                        "full_name": fn or "",
-                        "vacancy": vac or "",
-                        "phone": ph or "",
-                        "status": st or "Новая",
-                        "interview_depot": depot or "",
-                        "interview_time": itime or "",
-                        "driver_license": lic or "",
-                        "platform": plat or "web",
-                        "birth_date": bdate or "",
-                        "experience": exp or "",
-                        "is_test": bool(test_flag or is_test or t_id >= 900000),
-                        "db_scope": scope_name,
-                        "fit_score": score_info,
-                    }
-                    all_rows.append(row_dict)
+        with panel.db.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ticket_id, created_at, full_name, vacancy, phone, status,
+                       interview_depot, interview_time, driver_license, is_test,
+                       birth_date, criminal_record, experience, platform
+                FROM candidates
+                """
+            )
+            rows = cursor.fetchall()
+            for r in rows:
+                (
+                    t_id, cr, fn, vac, ph, st, depot, itime, lic, test_flag,
+                    bdate, crim, exp, plat,
+                ) = r
+                is_candidate_test = bool(test_flag or (t_id and t_id >= 900000))
+                scope_name = "test" if is_candidate_test else "prod"
+                if db_scope == "prod" and is_candidate_test:
+                    continue
+                if db_scope == "test" and not is_candidate_test:
+                    continue
+                score_info = candidate_service.calculate_applicant_score({
+                    "vacancy": vac or "",
+                    "driver_license": lic or "",
+                    "birth_date": bdate or "",
+                    "criminal_record": crim or "",
+                    "experience": exp or "",
+                })
+                row_dict = {
+                    "ticket_id": t_id,
+                    "created_at": cr or "",
+                    "full_name": fn or "",
+                    "vacancy": vac or "",
+                    "phone": ph or "",
+                    "status": st or "Новая",
+                    "interview_depot": depot or "",
+                    "interview_time": itime or "",
+                    "driver_license": lic or "",
+                    "platform": plat or "web",
+                    "birth_date": bdate or "",
+                    "experience": exp or "",
+                    "is_test": is_candidate_test,
+                    "db_scope": scope_name,
+                    "fit_score": score_info,
+                }
+                all_rows.append(row_dict)
 
         if status_filter and status_filter != "all":
             if status_filter == "test_only":

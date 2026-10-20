@@ -318,12 +318,9 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     toggle_env_text = "🛡 Включить PROD (152-ФЗ, лимиты)" if env == "TEST" else "🧪 Включить TEST (без ограничений)"
     builder.button(text=toggle_env_text, callback_data="tech_toggle_env")
 
-    # 2. Отдельный переключатель физической базы данных
-    cur_db = db.get_setting("active_db_target", "resumes.db")
-    if cur_db == "resumes_test.db":
-        db_btn_text = "🧪 База: [ТЕСТОВАЯ resumes_test.db] ⇄"
-    else:
-        db_btn_text = "📁 База: [БОЕВАЯ resumes.db] ⇄"
+    # 2. Индикатор базы данных (12-Factor App: DB_PATH)
+    cur_db = os.path.basename(getattr(db, "db_path", "resumes.db"))
+    db_btn_text = f"📁 База: [{cur_db}] ℹ️"
     builder.button(text=db_btn_text, callback_data="tech_toggle_db")
 
     builder.button(text="💾 Управление бэкапами (/backups)", callback_data="tech_manage_backups")
@@ -367,8 +364,8 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
     check_time = datetime.now().strftime("%H:%M:%S")
 
-    cur_db_name = db.get_setting("active_db_target", "resumes.db")
-    active_db_label = "🧪 Тестовая (resumes_test.db)" if cur_db_name == "resumes_test.db" else "📁 Боевая (resumes.db)"
+    cur_db_name = os.path.basename(getattr(db, "db_path", "resumes.db"))
+    active_db_label = f"📁 {cur_db_name} (12-Factor DB_PATH)"
 
     text = (
         "🛠 <b>ТЕХНИЧЕСКИЙ МОНИТОРИНГ И ОБСЛУЖИВАНИЕ</b>\n"

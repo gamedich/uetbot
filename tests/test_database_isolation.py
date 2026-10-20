@@ -30,27 +30,50 @@ class TestDatabaseIsolation:
     def test_tmp_path_database_isolation(self, tmp_path: Path):
         """Проверка, что база создаётся строго во временном каталоге и не затрагивает data/."""
         custom_file = str(tmp_path / "sandbox" / "custom.db")
-        custom_test_file = str(tmp_path / "sandbox" / "custom_test.db")
 
-        db = ResumeDB(db_path=custom_file, test_db_path=custom_test_file)
+        # Проверяем инициализацию и обратную совместимость с test_db_path
+        db = ResumeDB(db_path=custom_file, test_db_path=custom_file)
         assert Path(custom_file).exists()
-        assert Path(custom_test_file).exists()
 
-        # Добавляем тестового кандидата
+        # Добавляем боевого кандидата
         ticket_id = db.add_candidate(
             platform="tg",
             user_id="999888",
-            full_name="Тестов Тест Тестович",
+            full_name="Иванов Иван Иванович",
             phone="+79990001122",
             vacancy="Водитель трамвая",
             experience="1 год",
             is_test=False,
         )
         assert ticket_id > 0
+        assert ticket_id < 900000
+
+        # Добавляем тестового кандидата в ту же базу
+        test_ticket_id = db.add_candidate(
+            platform="tg",
+            user_id="999889",
+            full_name="Тестов Тест Тестович",
+            phone="+79990001133",
+            vacancy="Водитель трамвая",
+            experience="1 год",
+            is_test=True,
+        )
+        assert test_ticket_id > 0
+        assert test_ticket_id != ticket_id
 
         cand = db.get_candidate(ticket_id)
         assert cand is not None
-        assert cand[3] == "Тестов Тест Тестович"
+        assert cand[3] == "Иванов Иван Иванович"
+
+        test_cand = db.get_candidate(test_ticket_id)
+        assert test_cand is not None
+        assert test_cand[3] == "Тестов Тест Тестович"
+
+        # Проверяем, что сброс тестовых данных очищает только тестовую анкету
+        cands_deleted, _ = db.reset_all_test_data()
+        assert cands_deleted == 1
+        assert db.get_candidate(ticket_id) is not None
+        assert db.get_candidate(test_ticket_id) is None
 
     def test_no_database_files_created_in_repo_root_or_untracked(self, memory_db: ResumeDB):
         """Убеждаемся, что при работе с memory_db в корне проекта не создаются файлы .db."""

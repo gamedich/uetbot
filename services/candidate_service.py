@@ -232,7 +232,6 @@ class CandidateService:
         extra_info = data.get("additional_info") or data.get("extra_info", "")
 
         # 2. Умное определение тестовой анкеты
-        target_db = self.db.get_setting("active_db_target", "resumes.db")
         fn_lower = full_name.lower()
         exp_lower = experience.lower()
         uid_str = str(user_id).lower()
@@ -250,7 +249,6 @@ class CandidateService:
         is_test = bool(
             data.get("is_test", False)
             or is_test_marker
-            or (target_db == "resumes_test.db" and is_test_marker)
         )
 
         # 3. Сохранение в базу данных

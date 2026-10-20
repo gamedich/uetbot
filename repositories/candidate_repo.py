@@ -110,15 +110,9 @@ class CandidateMixin:
         referrer_tab: str = "",
         target_db: str = "",
     ) -> int:
-        target_setting = self.get_setting("active_db_target", "resumes.db")  # type: ignore
-        if target_db == "prod":
-            use_test = False
-        elif target_db == "test":
-            use_test = True
-        else:
-            use_test = is_test or (target_setting == "resumes_test.db")
-
-        with self._get_connection(is_test=use_test) as conn:  # type: ignore
+        """Добавление анкеты соискателя в активную базу данных."""
+        is_test_val = 1 if is_test else 0
+        with self.connection() as conn:  # type: ignore
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -136,7 +130,7 @@ class CandidateMixin:
                     phone,
                     vacancy,
                     experience,
-                    1 if use_test else 0,
+                    is_test_val,
                     consent_timestamp or "",
                     birth_date,
                     city,
@@ -163,22 +157,22 @@ class CandidateMixin:
         """
         uid = str(user_id)
         deleted_id = None
-        for is_test in (False, True):
-            with self._get_connection(is_test=is_test) as conn:  # type: ignore
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT ticket_id FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1",
-                    (uid, platform),
-                )
-                row = cursor.fetchone()
-                if row:
-                    t_id = row[0]
-                    cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (t_id,))
-                    cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid,))
-                    cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (uid, platform))
-                    cursor.execute("DELETE FROM user_consents WHERE user_id = ?", (uid,))
-                    cursor.execute("DELETE FROM user_cooldowns WHERE user_id = ?", (uid,))
-                    deleted_id = int(t_id)
+        with self.connection() as conn:  # type: ignore
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT ticket_id FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1",
+                (uid, platform),
+            )
+            row = cursor.fetchone()
+            if row:
+                t_id = row[0]
+                cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (t_id,))
+                cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid,))
+                cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (uid, platform))
+                cursor.execute("DELETE FROM user_consents WHERE user_id = ?", (uid,))
+                cursor.execute("DELETE FROM user_cooldowns WHERE user_id = ?", (uid,))
+                conn.commit()
+                deleted_id = int(t_id)
         return deleted_id
 
     def get_candidate_dict_by_user(self, user_id: str, platform: str = "tg") -> Optional[Dict[str, Any]]:
@@ -194,31 +188,11 @@ class CandidateMixin:
             return dict(row) if row else None
 
     def get_candidate(self, ticket_id: int) -> Optional[Tuple]:
-        """Поиск анкеты по ID с автоматической маршрутизацией по диапазону номеров."""
+        """Поиск анкеты по ID в активной базе данных."""
         if not ticket_id or ticket_id <= 0:
             return None
 
-        is_test = ticket_id >= 900000
-
-        # 1. Запрос в целевую базу
-        with self._get_connection(is_test=is_test) as conn:  # type: ignore
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
-                       birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
-                       interview_depot, interview_time, interview_status
-                FROM candidates WHERE ticket_id = ?
-                """,
-                (ticket_id,),
-            )
-            row = cursor.fetchone()
-            if row:
-                return row
-
-        # 2. Резервный поиск в альтернативной базе
-        with self._get_connection(is_test=not is_test) as conn:  # type: ignore
+        with self.connection() as conn:  # type: ignore
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -235,29 +209,20 @@ class CandidateMixin:
     def get_candidate_by_user_id(
         self, user_id: str, platform: str = "tg", is_test: Optional[bool] = None
     ) -> Optional[Tuple]:
-        """Поиск последней анкеты пользователя с бесшовным поиском в активной и резервной базах."""
-        if is_test is True or is_test is False:
-            with self._get_connection(is_test=is_test) as conn:  # type: ignore
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
-                           birth_date, city, driver_license, education, relocation, dormitory, shift_work,
-                           medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
-                           interview_depot, interview_time, interview_status
-                    FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1
-                    """,
-                    (str(user_id), platform),
-                )
-                return cursor.fetchone()
-
-        target = self.get_setting("active_db_target", "resumes.db")  # type: ignore
-        prefer_test = target == "resumes_test.db"
-
-        row = self.get_candidate_by_user_id(user_id, platform=platform, is_test=prefer_test)
-        if not row:
-            row = self.get_candidate_by_user_id(user_id, platform=platform, is_test=not prefer_test)
-        return row
+        """Поиск последней анкеты пользователя."""
+        with self.connection() as conn:  # type: ignore
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ticket_id, platform, user_id, full_name, phone, vacancy, experience, status, admin_note, created_at,
+                       birth_date, city, driver_license, education, relocation, dormitory, shift_work,
+                       medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
+                       interview_depot, interview_time, interview_status
+                FROM candidates WHERE user_id = ? AND platform = ? ORDER BY ticket_id DESC LIMIT 1
+                """,
+                (str(user_id), platform),
+            )
+            return cursor.fetchone()
 
     def check_candidate_can_apply(
         self, user_id: str, platform: str = "tg"
@@ -268,86 +233,81 @@ class CandidateMixin:
         2. Кулдаун 90 дней (3 месяца) после отказа.
         """
         uid_str = str(user_id)
-        for is_test in (False, True):
-            with self._get_connection(is_test=is_test) as conn:  # type: ignore
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    SELECT ticket_id, status, created_at, full_name, vacancy
-                    FROM candidates
-                    WHERE user_id = ? AND platform = ? AND (status IN ('Новая', 'В работе', 'Приглашен') OR status LIKE 'Приглашен%')
-                    ORDER BY ticket_id DESC LIMIT 1
-                    """,
-                    (uid_str, platform),
+        with self.connection() as conn:  # type: ignore
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ticket_id, status, created_at, full_name, vacancy
+                FROM candidates
+                WHERE user_id = ? AND platform = ? AND (status IN ('Новая', 'В работе', 'Приглашен') OR status LIKE 'Приглашен%')
+                ORDER BY ticket_id DESC LIMIT 1
+                """,
+                (uid_str, platform),
+            )
+            active_row = cursor.fetchone()
+            if active_row:
+                t_id, st, cr, fn, vc = active_row
+                return (
+                    False,
+                    "unprocessed",
+                    {
+                        "ticket_id": t_id,
+                        "status": st,
+                        "created_at": cr,
+                        "full_name": fn,
+                        "vacancy": vc,
+                    },
                 )
-                active_row = cursor.fetchone()
-                if active_row:
-                    t_id, st, cr, fn, vc = active_row
+
+            cursor.execute(
+                """
+                SELECT ticket_id, status, created_at, updated_at, full_name, vacancy
+                FROM candidates
+                WHERE user_id = ? AND platform = ? AND (status = 'Отказ' OR status LIKE 'Отказ%')
+                ORDER BY ticket_id DESC LIMIT 1
+                """,
+                (uid_str, platform),
+            )
+            refuse_row = cursor.fetchone()
+            if refuse_row:
+                t_id, st, cr, up, fn, vc = refuse_row
+                refuse_ts = up or cr
+                refuse_dt = self._parse_ts(refuse_ts)
+                now = datetime.now()
+                cooldown_days = 90
+                diff_seconds = (now - refuse_dt).total_seconds()
+                diff_days = int(diff_seconds // 86400)
+
+                if diff_days < cooldown_days:
+                    available_dt = refuse_dt + timedelta(days=cooldown_days)
+                    remaining_seconds = max(0.0, (available_dt - now).total_seconds())
+                    days_left = max(1, int(remaining_seconds // 86400) + 1)
                     return (
                         False,
-                        "unprocessed",
+                        "rejected_cooldown",
                         {
                             "ticket_id": t_id,
                             "status": st,
-                            "created_at": cr,
+                            "refuse_date": refuse_dt.strftime("%d.%m.%Y"),
+                            "available_date": available_dt.strftime("%d.%m.%Y"),
+                            "days_left": days_left,
                             "full_name": fn,
                             "vacancy": vc,
                         },
                     )
 
-                cursor.execute(
-                    """
-                    SELECT ticket_id, status, created_at, updated_at, full_name, vacancy
-                    FROM candidates
-                    WHERE user_id = ? AND platform = ? AND (status = 'Отказ' OR status LIKE 'Отказ%')
-                    ORDER BY ticket_id DESC LIMIT 1
-                    """,
-                    (uid_str, platform),
-                )
-                refuse_row = cursor.fetchone()
-                if refuse_row:
-                    t_id, st, cr, up, fn, vc = refuse_row
-                    refuse_ts = up or cr
-                    refuse_dt = self._parse_ts(refuse_ts)
-                    now = datetime.now()
-                    cooldown_days = 90
-                    diff_seconds = (now - refuse_dt).total_seconds()
-                    diff_days = int(diff_seconds // 86400)
-
-                    if diff_days < cooldown_days:
-                        available_dt = refuse_dt + timedelta(days=cooldown_days)
-                        remaining_seconds = max(0.0, (available_dt - now).total_seconds())
-                        days_left = max(1, int(remaining_seconds // 86400) + 1)
-                        return (
-                            False,
-                            "rejected_cooldown",
-                            {
-                                "ticket_id": t_id,
-                                "status": st,
-                                "refuse_date": refuse_dt.strftime("%d.%m.%Y"),
-                                "available_date": available_dt.strftime("%d.%m.%Y"),
-                                "days_left": days_left,
-                                "full_name": fn,
-                                "vacancy": vc,
-                            },
-                        )
-
         return True, "ok", None
 
     def delete_candidate(self, ticket_id: int) -> bool:
-        """Физическое удаление анкеты кандидата и связанных диалогов из базы (с поддержкой обеих БД)."""
-        is_test = ticket_id >= 900000
-        deleted = False
-        for flag in (is_test, not is_test):
-            with self._get_connection(is_test=flag) as conn:  # type: ignore
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (ticket_id,))
-                if cursor.rowcount > 0:
-                    deleted = True
-                cursor.execute("DELETE FROM active_dialogs WHERE ticket_id = ?", (ticket_id,))
-                cursor.execute("DELETE FROM inquiries WHERE ticket_id = ?", (ticket_id,))
-                conn.commit()
-        return deleted
+        """Физическое удаление анкеты кандидата и связанных диалогов из базы."""
+        with self.connection() as conn:  # type: ignore
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM candidates WHERE ticket_id = ?", (ticket_id,))
+            deleted = cursor.rowcount > 0
+            cursor.execute("DELETE FROM active_dialogs WHERE ticket_id = ?", (ticket_id,))
+            cursor.execute("DELETE FROM inquiries WHERE ticket_id = ?", (ticket_id,))
+            conn.commit()
+            return deleted
 
     def delete_candidate_152fz(self, ticket_id: int) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """Удаление анкеты с возвратом метаданных для оформления акта уничтожения."""
@@ -366,49 +326,43 @@ class CandidateMixin:
         return True, cand_info
 
     def reset_candidate_for_test(self, user_id: str, platform: str = "tg") -> bool:
-        """Полная очистка тестовых записей администратора без задевания боевых анкет."""
+        """Очистка тестовых записей администратора."""
         uid = str(user_id)
-        deleted = False
-        for flag in (True, False):
-            with self._get_connection(is_test=flag) as conn:  # type: ignore
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM candidates WHERE user_id = ? AND platform = ?", (uid, platform))
-                if cursor.rowcount > 0:
-                    deleted = True
-                cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid,))
-                cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (uid, platform))
-                cursor.execute("DELETE FROM user_cooldowns WHERE user_id = ?", (uid,))
-                conn.commit()
-        return deleted
+        with self.connection() as conn:  # type: ignore
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM candidates WHERE user_id = ? AND platform = ?", (uid, platform))
+            deleted = cursor.rowcount > 0
+            cursor.execute("DELETE FROM active_dialogs WHERE user_id = ?", (uid,))
+            cursor.execute("DELETE FROM inquiries WHERE user_id = ? AND platform = ?", (uid, platform))
+            cursor.execute("DELETE FROM user_cooldowns WHERE user_id = ?", (uid,))
+            conn.commit()
+            return deleted
 
     def reset_all_test_data(self) -> Tuple[int, int]:
-        """Очистка всех тестовых анкет и обращений из обеих баз данных."""
-        cand_cnt = 0
-        inq_cnt = 0
-        for flag in (True, False):
-            with self._get_connection(is_test=flag) as conn:  # type: ignore
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    DELETE FROM candidates
-                    WHERE is_test = 1 OR status LIKE '%Тест%'
-                       OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%'
-                       OR ticket_id >= 900000
-                    """
-                )
-                cand_cnt += cursor.rowcount
-                cursor.execute(
-                    """
-                    DELETE FROM inquiries
-                    WHERE is_test = 1 OR question_text LIKE '%Тест%'
-                       OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%'
-                       OR inquiry_id >= 900000
-                    """
-                )
-                inq_cnt += cursor.rowcount
-                cursor.execute("DELETE FROM active_dialogs WHERE full_name LIKE '%Тест%' OR full_name LIKE '%тест%'")
-                conn.commit()
-        return cand_cnt, inq_cnt
+        """Очистка всех тестовых анкет и обращений из базы данных."""
+        with self.connection() as conn:  # type: ignore
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                DELETE FROM candidates
+                WHERE is_test = 1 OR status LIKE '%Тест%'
+                   OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%'
+                   OR ticket_id >= 900000
+                """
+            )
+            cand_cnt = cursor.rowcount
+            cursor.execute(
+                """
+                DELETE FROM inquiries
+                WHERE is_test = 1 OR question_text LIKE '%Тест%'
+                   OR full_name LIKE '%Тест%' OR full_name LIKE '%тест%'
+                   OR inquiry_id >= 900000
+                """
+            )
+            inq_cnt = cursor.rowcount
+            cursor.execute("DELETE FROM active_dialogs WHERE full_name LIKE '%Тест%' OR full_name LIKE '%тест%'")
+            conn.commit()
+            return cand_cnt, inq_cnt
 
     def purge_all_candidates_for_debug(self) -> Tuple[int, int]:
         """Полная очистка всех анкет (только для среды разработки/отладки)."""
@@ -469,8 +423,7 @@ class CandidateMixin:
             return cursor.fetchall()
 
     def update_status(self, ticket_id: int, new_status: str):
-        is_test = ticket_id >= 900000
-        with self._get_connection(is_test=is_test) as conn:  # type: ignore
+        with self.connection() as conn:  # type: ignore
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE candidates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
@@ -479,8 +432,7 @@ class CandidateMixin:
             conn.commit()
 
     def update_admin_note(self, ticket_id: int, note: str):
-        is_test = ticket_id >= 900000
-        with self._get_connection(is_test=is_test) as conn:  # type: ignore
+        with self.connection() as conn:  # type: ignore
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE candidates SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
@@ -490,8 +442,7 @@ class CandidateMixin:
 
     def set_interview_details(self, ticket_id: int, depot: str, slot_time: str) -> bool:
         """Сохранение выбранного филиала депо и времени собеседования."""
-        is_test = ticket_id >= 900000
-        with self._get_connection(is_test=is_test) as conn:  # type: ignore
+        with self.connection() as conn:  # type: ignore
             cursor = conn.cursor()
             cursor.execute(
                 """
@@ -506,8 +457,7 @@ class CandidateMixin:
 
     def update_interview_status(self, ticket_id: int, status: str) -> bool:
         """Обновление статуса явки на собеседование (confirmed, reschedule и т.д.)."""
-        is_test = ticket_id >= 900000
-        with self._get_connection(is_test=is_test) as conn:  # type: ignore
+        with self.connection() as conn:  # type: ignore
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE candidates SET interview_status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
@@ -517,17 +467,7 @@ class CandidateMixin:
             return cursor.rowcount > 0
 
     def get_statistics(self, scope: str = "both") -> Dict[str, int]:
-        """Агрегированный подсчёт кадровой воронки предприятия с поддержкой обеих баз (PROD и TEST)."""
-        if scope == "both":
-            target_dbs = [False, True]
-        elif scope == "test":
-            target_dbs = [True]
-        elif scope == "prod":
-            target_dbs = [False]
-        else:
-            active_db = self.get_setting("active_db_target", "resumes.db")  # type: ignore
-            target_dbs = [active_db == "resumes_test.db"]
-
+        """Агрегированный подсчёт кадровой воронки предприятия по активной базе."""
         res = {
             "total": 0,
             "new": 0,
@@ -539,43 +479,37 @@ class CandidateMixin:
             "test_total": 0,
             "prod_total": 0,
         }
+        try:
+            with self.connection() as conn:  # type: ignore
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM candidates")
+                cnt = cursor.fetchone()[0]
+                res["total"] = cnt
 
-        for is_test_db in target_dbs:
-            try:
-                with self.connection(is_test=is_test_db) as conn:  # type: ignore
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT COUNT(*) FROM candidates")
-                    cnt = cursor.fetchone()[0]
-                    res["total"] += cnt
+                cursor.execute("SELECT COUNT(*) FROM candidates WHERE is_test = 1 OR ticket_id >= 900000")
+                test_cnt = cursor.fetchone()[0]
+                res["test_total"] = test_cnt
+                res["prod_total"] = max(0, cnt - test_cnt)
 
-                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE is_test = 1 OR ticket_id >= 900000")
-                    test_cnt = cursor.fetchone()[0]
-                    if is_test_db:
-                        res["test_total"] += cnt
-                        res["prod_total"] += max(0, cnt - test_cnt)
-                    else:
-                        res["test_total"] += test_cnt
-                        res["prod_total"] += max(0, cnt - test_cnt)
+                cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'Новая'")
+                res["new"] = cursor.fetchone()[0]
 
-                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'Новая'")
-                    res["new"] += cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'В работе'")
+                res["in_progress"] = cursor.fetchone()[0]
 
-                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'В работе'")
-                    res["in_progress"] += cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Приглашен%'")
+                res["invited"] = cursor.fetchone()[0]
 
-                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Приглашен%'")
-                    res["invited"] += cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Принят%'")
+                res["hired"] = cursor.fetchone()[0]
 
-                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Принят%'")
-                    res["hired"] += cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Отказ%'")
+                res["rejected"] = cursor.fetchone()[0]
 
-                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status LIKE 'Отказ%'")
-                    res["rejected"] += cursor.fetchone()[0]
-
-                    cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'Архив'")
-                    res["archive"] += cursor.fetchone()[0]
-            except Exception as e:
-                logger.error("Ошибка подсчёта статистики в базе (is_test=%s): %s", is_test_db, e)
+                cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'Архив'")
+                res["archive"] = cursor.fetchone()[0]
+        except Exception as e:
+            logger.error("Ошибка подсчёта статистики в базе: %s", e)
 
         return res
 

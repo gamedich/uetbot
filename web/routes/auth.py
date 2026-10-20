@@ -475,55 +475,54 @@ async def handle_api_auth_login(panel: WebPanel, request: web.Request) -> web.Re
     # 6. Проверка соискателя по номеру анкеты или телефону (ЛК Соискателя)
     clean_user = re.sub(r"\D", "", username or val)
     if clean_user and len(clean_user) >= 3:
-        for is_test_db in (False, True):
-            with panel.db.connection(is_test=is_test_db) as conn:
-                cur = conn.cursor()
-                cur.execute(
-                    """
-                    SELECT ticket_id, full_name, phone, vacancy, raw_data_json
-                    FROM candidates
-                    WHERE ticket_id = ?
-                       OR phone LIKE ?
-                       OR replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ?
-                    ORDER BY ticket_id DESC LIMIT 1
-                    """,
-                    (clean_user, f"%{clean_user[-10:]}%", f"%{clean_user[-10:]}%"),
-                )
-                cand = cur.fetchone()
-                if cand:
-                    saved_pwd = ""
-                    try:
-                        raw_meta = json.loads(cand[4] or "{}")
-                        saved_pwd = str(raw_meta.get("web_password") or "")
-                    except Exception:
-                        pass
+        with panel.db.connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT ticket_id, full_name, phone, vacancy, raw_data_json
+                FROM candidates
+                WHERE ticket_id = ?
+                   OR phone LIKE ?
+                   OR replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ?
+                ORDER BY ticket_id DESC LIMIT 1
+                """,
+                (clean_user, f"%{clean_user[-10:]}%", f"%{clean_user[-10:]}%"),
+            )
+            cand = cur.fetchone()
+            if cand:
+                saved_pwd = ""
+                try:
+                    raw_meta = json.loads(cand[4] or "{}")
+                    saved_pwd = str(raw_meta.get("web_password") or "")
+                except Exception:
+                    pass
 
-                    pwd_ok = False
-                    if saved_pwd:
-                        pwd_ok = panel.db.verify_password(val, saved_pwd) or (val == str(cand[0]))
-                    else:
-                        pwd_ok = (val == str(cand[0]))
+                pwd_ok = False
+                if saved_pwd:
+                    pwd_ok = panel.db.verify_password(val, saved_pwd) or (val == str(cand[0]))
+                else:
+                    pwd_ok = (val == str(cand[0]))
 
-                    if pwd_ok:
-                        cand_name = cand[1] or f"Соискатель #{cand[0]}"
-                        tok = generate_auth_token(cand[0], "applicant", cand_name)
-                        resp = web.json_response(
-                            {
-                                "ok": True,
-                                "token": tok,
-                                "role": "applicant",
-                                "user_id": cand[0],
-                                "ticket_id": cand[0],
-                                "name": cand_name,
-                                "phone": cand[2] or "",
-                                "vacancy": cand[3] or "",
-                                "label": f"Соискатель (#{cand[0]})",
-                            }
-                        )
-                        resp.set_cookie(
-                            "uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax"
-                        )
-                        return resp
+                if pwd_ok:
+                    cand_name = cand[1] or f"Соискатель #{cand[0]}"
+                    tok = generate_auth_token(cand[0], "applicant", cand_name)
+                    resp = web.json_response(
+                        {
+                            "ok": True,
+                            "token": tok,
+                            "role": "applicant",
+                            "user_id": cand[0],
+                            "ticket_id": cand[0],
+                            "name": cand_name,
+                            "phone": cand[2] or "",
+                            "vacancy": cand[3] or "",
+                            "label": f"Соискатель (#{cand[0]})",
+                        }
+                    )
+                    resp.set_cookie(
+                        "uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax"
+                    )
+                    return resp
 
     panel.failed_login_attempts.setdefault(client_ip, []).append(now)
     return web.json_response(
@@ -587,12 +586,11 @@ async def handle_api_auth_register(panel: WebPanel, request: web.Request) -> web
             try:
                 meta = json.loads(existing_cand[4] or "{}")
                 meta["web_password"] = panel.db.hash_password(password)
-                for is_test_db in (False, True):
-                    with panel.db.connection(is_test=is_test_db) as conn:
-                        conn.cursor().execute(
-                            "UPDATE candidates SET raw_data_json = ? WHERE ticket_id = ?",
-                            (json.dumps(meta, ensure_ascii=False), ticket_id),
-                        )
+                with panel.db.connection() as conn:
+                    conn.cursor().execute(
+                        "UPDATE candidates SET raw_data_json = ? WHERE ticket_id = ?",
+                        (json.dumps(meta, ensure_ascii=False), ticket_id),
+                    )
             except Exception as e:
                 logger.warning("Ошибка обновления пароля соискателя: %s", e)
         tok = generate_auth_token(ticket_id, "applicant", cand_name)

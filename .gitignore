@@ -17,8 +17,6 @@ private_ai_bridge.py
 private_*.py
 web/private_ai.html
 templates/private_*.html
-handlers/tech.py
-tech.py
 # tests/ (включено для автотестов CI/CD)
 run_tests.py
 test_scratch_*.py

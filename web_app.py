@@ -11,10 +11,8 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import csv
 import hashlib
-import hmac
 import html
 import io
 import json
@@ -24,10 +22,9 @@ import re
 import secrets
 import shutil
 import time
-import urllib.parse
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from aiogram import Bot
 from aiohttp import web
@@ -65,158 +62,8 @@ TG_MINIAPP_HTML_PATH = TEMPLATES_DIR / "tg_miniapp.html"
 DOCS_DIR = Path(__file__).resolve().parent / "docs"
 
 
-@web.middleware
-async def security_headers_middleware(request: web.Request, handler):
-    """OWASP Security Headers: X-Content-Type-Options, Referrer-Policy, CSP frame-ancestors."""
-    response = await handler(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; "
-        "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org;"
-    )
-    return response
-
-
-@web.middleware
-async def cors_middleware(request: web.Request, handler):
-    """Глобальный CORS middleware с валидацией доверенных источников для защиты ПДн."""
-    if request.method == "OPTIONS":
-        response = web.Response(status=204)
-    else:
-        try:
-            response = await handler(request)
-        except web.HTTPException as ex:
-            response = ex
-
-    origin = request.headers.get("Origin")
-    host = request.headers.get("Host", "")
-
-    web_app_url = str(CONFIG.get("WEB_APP_URL", "")).rstrip("/")
-    allowed_domains = (
-        "web.telegram.org",
-        "webk.telegram.org",
-        "webz.telegram.org",
-        "sslip.io",
-    )
-
-    is_trusted = False
-    if not origin:
-        is_trusted = True
-    elif origin.startswith("http://localhost") or origin.startswith("http://127.0.0.1") or (host and host in origin):
-        is_trusted = True
-    elif web_app_url and origin.startswith(web_app_url):
-        is_trusted = True
-    else:
-        for dom in allowed_domains:
-            if origin.endswith(dom) or f".{dom}" in origin:
-                is_trusted = True
-                break
-
-    if is_trusted and origin:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Vary"] = "Origin"
-    elif not origin:
-        pass
-    else:
-        response.headers["Access-Control-Allow-Origin"] = "null"
-
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-Auth-Token"
-    return response
-
-
-def validate_init_data(init_data_raw: str, bot_token: Union[str, List[str]]) -> Optional[Dict[str, Any]]:
-    """
-    Проверяет валидность строки initData из Telegram Mini App (TMA)
-    в соответствии со спецификацией: https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app
-    Поддерживает пул токенов (beta / prod / personal) для бесперебойной авторизации в TMA.
-    """
-    if not init_data_raw:
-        return None
-    token_list = [bot_token] if isinstance(bot_token, str) else list(bot_token)
-    token_list = [t.strip() for t in token_list if t and str(t).strip()]
-    if not token_list:
-        return None
-    try:
-        parsed = dict(urllib.parse.parse_qsl(init_data_raw, keep_blank_values=True))
-        received_hash = parsed.pop("hash", None)
-        if not received_hash:
-            return None
-
-        # Сортировка ключей по алфавиту и форматирование key=value
-        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(parsed.items()))
-
-        valid = False
-        for tok in token_list:
-            # Секретный ключ: HMAC-SHA256 токена бота с ключом "WebAppData"
-            secret_key = hmac.new(b"WebAppData", tok.encode("utf-8"), hashlib.sha256).digest()
-            calc_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
-            if hmac.compare_digest(calc_hash, received_hash):
-                valid = True
-                break
-
-        # В тестовом режиме или при наличии валидного JSON user допускаем сессию, если HMAC другого бота
-        if not valid and (CONFIG.get("ENVIRONMENT") == "TEST" or "user" in parsed):
-            logger.info("TMA initData: допущена сессия для тестового контура")
-            valid = True
-
-        if not valid:
-            return None
-
-        # Распарсить поле user в словарь
-        if "user" in parsed:
-            try:
-                parsed["user"] = json.loads(parsed["user"])
-            except Exception:
-                pass
-
-        return parsed
-    except Exception as e:
-        logger.error("Ошибка валидации Telegram initData: %s", e)
-        return None
-
-
-def generate_auth_token(user_id: Union[int, str], role: str, name: str = "", exp_days: int = 7) -> str:
-    """Генерирует криптографически подписанный HMAC-SHA256 токен сессии."""
-    token_seed = (
-        str(CONFIG.get("TG_BOT_TOKEN") or CONFIG.get("BOT_TOKEN") or "")
-        + str(CONFIG.get("WEB_SECRET_PHRASE", "uet2026"))
-    ).encode("utf-8")
-    payload = {"uid": str(user_id), "role": str(role), "name": str(name), "exp": int(time.time()) + (exp_days * 86400)}
-    raw_payload = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    b64_payload = base64.urlsafe_b64encode(raw_payload).decode("utf-8").rstrip("=")
-    sig = hmac.new(token_seed, b64_payload.encode("utf-8"), hashlib.sha256).hexdigest()
-    return f"{b64_payload}.{sig}"
-
-
-def verify_auth_token(token: str) -> Optional[Dict[str, Any]]:
-    """Проверяет подлинность и срок действия криптографического токена сессии."""
-    if not token or "." not in token:
-        return None
-    try:
-        parts = token.split(".", 1)
-        if len(parts) != 2:
-            return None
-        b64_payload, sig = parts
-        token_seed = (
-            str(CONFIG.get("TG_BOT_TOKEN") or CONFIG.get("BOT_TOKEN") or "")
-            + str(CONFIG.get("WEB_SECRET_PHRASE", "uet2026"))
-        ).encode("utf-8")
-        expected_sig = hmac.new(token_seed, b64_payload.encode("utf-8"), hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(sig, expected_sig):
-            return None
-        padding = 4 - (len(b64_payload) % 4)
-        if padding != 4:
-            b64_payload += "=" * padding
-        raw_payload = base64.urlsafe_b64decode(b64_payload.encode("utf-8"))
-        data = json.loads(raw_payload.decode("utf-8"))
-        if data.get("exp", 0) < time.time():
-            return None
-        return data
-    except Exception:
-        return None
+from web.middlewares import cors_middleware, security_headers_middleware
+from web.security import generate_auth_token, validate_init_data, verify_auth_token
 
 
 class WebPanel:
@@ -2945,7 +2792,6 @@ class WebPanel:
         session, err = self.require_roles(request, {"hr", "tech", "superadmin", "super"})
         if err:
             return err
-        import hashlib
 
         act_id = request.query.get("act_id", "").strip()
         now_dt = datetime.now()

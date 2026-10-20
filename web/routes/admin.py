@@ -24,15 +24,15 @@ from typing import TYPE_CHECKING
 from aiohttp import web
 
 from common import (
-    BASE_DIR,
-    CONFIG,
-    TEMPLATES_DIR,
     broadcast_maintenance_alert,
     get_maintenance_info,
     is_maintenance_active,
     set_maintenance_active,
-    update_env_variable,
 )
+from config import CONFIG, update_env_variable
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+TEMPLATES_DIR = BASE_DIR / "templates"
 
 if TYPE_CHECKING:
     from web_app import WebPanel

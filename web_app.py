@@ -390,11 +390,11 @@ class WebPanel:
 
     async def handle_dashboard_page(self, request: web.Request) -> web.Response:
         """Мастер-дашборд экосистемы МУП «УЭТ» (публичный портал + хабы HR, Tech, SuperAdmin)."""
-        target = DASHBOARD_HTML_PATH if DASHBOARD_HTML_PATH.exists() else APPLY_HTML_PATH
+        target = APPLY_HTML_PATH if APPLY_HTML_PATH.exists() else DASHBOARD_HTML_PATH
         if target.exists():
             content = target.read_text(encoding="utf-8")
         else:
-            content = "<h1>Ошибка: Шаблон dashboard.html не найден</h1>"
+            content = "<h1>Ошибка: Шаблон apply.html не найден</h1>"
         return web.Response(
             text=content,
             content_type="text/html",
@@ -1060,12 +1060,14 @@ class WebPanel:
         # 1. Авторизация через Telegram Mini App (Строгая криптографическая проверка HMAC с пулом токенов)
         if method == "tma":
             init_raw = str(data.get("init_data") or data.get("value") or "").strip()
-            token_pool = [
-                CONFIG.get("TG_BOT_TOKEN", ""),
-                CONFIG.get("BOT_TOKEN", ""),
-                "8880412470:AAGdTVDsHtwg3e0ySGk_p8RFhIf5kN7p8A4",
-                "8863560607:AAGQcTnN4w-rip1ZSgSfvKJkD7z2fCx-TE8",
-            ]
+            bot_token = (
+                CONFIG.get("BOT_TOKEN")
+                or os.getenv("BOT_TOKEN")
+                or CONFIG.get("TG_BOT_TOKEN")
+                or os.getenv("TG_BOT_TOKEN")
+                or ""
+            )
+            token_pool = [t for t in [bot_token, CONFIG.get("TG_BOT_TOKEN"), os.getenv("TG_BOT_TOKEN")] if t]
             tma_data = validate_init_data(init_raw, token_pool)
             if not tma_data:
                 return web.json_response(

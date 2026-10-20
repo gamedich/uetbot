@@ -2471,6 +2471,7 @@
                 driver_license: state.surveyData.step6_license,
                 experience: state.surveyData.step7_experience,
                 education: state.surveyData.step8_education,
+                citizenship: state.surveyData.step9_citizenship || 'Гражданин РФ',
                 relocation: state.surveyData.step10_dormitory,
                 dormitory: state.surveyData.step10_dormitory,
                 shift_work: state.surveyData.step11_shiftwork,
@@ -2478,6 +2479,7 @@
                 criminal_record: state.surveyData.step13_criminal,
                 source: state.surveyData.step14_source,
                 notes: state.surveyData.step15_notes,
+                extra_info: state.surveyData.step15_notes,
                 platform: 'web'
             };
 

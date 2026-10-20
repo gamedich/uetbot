@@ -2,17 +2,17 @@
 
 # 🚋 UETBot — Омниканальная цифровая экосистема МУП «Ульяновскэлектротранс»
 
-**Единая платформа подбора персонала, 16-шаговая анкета соискателя, интерактивный HR-пульт в Telegram, Web-портал и Mini App, омниканальный мост (TG / VK / MAX) и строгий контур безопасности 152-ФЗ РФ.**
+**Единая платформа подбора персонала, 16-шаговая анкета соискателя, интерактивный HR-пульт в Telegram, Web-портал и Mini App, омниканальный мост (TG / VK / MAX), архитектура 12-Factor App и строгий контур безопасности 152-ФЗ РФ.**
 
-[![Release](https://img.shields.io/badge/Release-v1.9.0_Main-2563eb?style=for-the-badge&logo=github)](https://github.com/gamedich/uetbot/tree/main)
+[![Release](https://img.shields.io/badge/Release-v2.0.0_Main-2563eb?style=for-the-badge&logo=github)](https://github.com/gamedich/uetbot/tree/main)
 [![Telegram Bot](https://img.shields.io/badge/Telegram_Bot-@UetFeedback__bot-229ED9?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/UetFeedback_bot)
 [![GitHub Pages](https://img.shields.io/badge/Live_Showcase-GitHub_Pages-ea580c?style=for-the-badge&logo=githubpages&logoColor=white)](https://gamedich.github.io/uetbot/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Aiogram](https://img.shields.io/badge/Aiogram-3.x-009688?style=for-the-badge&logo=telegram&logoColor=white)](https://docs.aiogram.dev/)
 [![Aiohttp](https://img.shields.io/badge/Web_Panel-Aiohttp_3.10-2C5BB4?style=for-the-badge&logo=aiohttp&logoColor=white)](https://docs.aiohttp.org/)
-[![SQLite](https://img.shields.io/badge/SQLite-WAL_Safe_Pool-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![SQLite](https://img.shields.io/badge/SQLite-WAL_12--Factor-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![152-FZ](https://img.shields.io/badge/Compliance-152--ФЗ_РФ-10b981?style=for-the-badge&logo=shield&logoColor=white)](#-соответствие-законодательству-рф-152-фз-и-тк-рф)
-[![Unit Tests](https://img.shields.io/badge/Tests-41%2F41_Passed-brightgreen?style=for-the-badge&logo=pytest)](#-тестирование)
+[![Unit Tests](https://img.shields.io/badge/Tests-16%2F16_Passed-brightgreen?style=for-the-badge&logo=pytest)](#-тестирование)
 
 [🤖 Бот в Telegram: @UetFeedback_bot](https://t.me/UetFeedback_bot) •
 [🌐 Интерактивная презентация (GitHub Pages)](https://gamedich.github.io/uetbot/) •
@@ -52,11 +52,11 @@ flowchart TD
         Validator["Валидация ФИО, телефона, 18+, категорий прав"]
         Compliance["Проверка судимостей ст. 328.1 ТК РФ и ЧС"]
         Dedup["Проверка активных анкет и кулдауна 3 мес."]
+        Scoring["Автоматический скоринг кандидата (Fit Score)"]
     end
 
-    subgraph Storage ["Единая база данных (SQLite WAL)"]
-        DB[("📁 data/resumes.db\n(Единая таблица candidates)")]
-        TestDB[("🧪 data/resumes_test.db\n(Изолированная песочница)")]
+    subgraph Storage ["Слой данных 12-Factor App (SQLite WAL)"]
+        DB[("📁 База данных инстанса (DB_PATH)\n(Таблицы candidates, inquiries, admins, vacancies)")]
     end
 
     subgraph HR_Workspace ["Рабочие места кадровой службы"]
@@ -70,11 +70,9 @@ flowchart TD
     MAX_Applicant --> ServiceLayer
 
     ServiceLayer --> DB
-    ServiceLayer --> TestDB
 
     DB --> TG_Group
     DB --> Web_Dashboard
-    TestDB -.-> Web_Dashboard
 ```
 
 ### Преимущества сквозной синхронизации:
@@ -216,18 +214,29 @@ flowchart TD
 
 ---
 
-## 📂 Структура проекта
+## 📂 Структура проекта (v2.0 Modular Architecture)
 
 ```text
 /root/uetbot/
 ├── bot.py                  # Главная точка входа: Dispatcher, регистрация шлюзов и воркеров
-├── config.py               # Конфигурация: .env, строгая валидация типов, секреты
-├── database.py             # Слой данных: SQLite (WAL), RBAC, аудит 152-ФЗ, бэкапы
+├── config.py               # Конфигурация 12-Factor App: безопасная загрузка .env, строгая валидация типов
+├── database.py             # Слой данных: SQLite (WAL), пул соединений, scrypt-хеширование
 ├── common.py               # Общие сервисы: ролевая модель, bot commands, safe_send
 ├── keyboards.py            # Разметка клавиатур: сетка 3×4 для HR, 16 шагов, главное меню
 ├── texts.py                # Единая текстовая карта бота (Single Source of Truth)
 ├── web_app.py              # Веб-сервер Aiohttp: REST API, личный кабинет, дашборд
-├── run_tests.py            # Полный набор из 41 автоматического теста
+│
+├── core/                   # Ядро системы
+│   ├── storage.py          # Персистентное FSM-хранилище SQLiteFSMStorage
+│   ├── logging.py          # In-memory кольцевой буфер и структурированное логгирование
+│   └── commands.py         # Регистрация и синхронизация команд Telegram Bot API
+│
+├── repositories/           # Модульный слой данных (Repository Mixins)
+│   ├── schema.py           # DDL-схема таблиц, миграции и сидирование справочников
+│   ├── candidate_repo.py   # Реестр соискателей, поиск, аудит 152-ФЗ, скоринг
+│   ├── inquiry_repo.py     # Обращения кандидатов и журнал live-диалогов
+│   ├── vacancy_repo.py     # Синхронизация открытых/закрытых вакансий
+│   └── admin_repo.py       # RBAC-управление администраторами и правами доступа
 │
 ├── handlers/               # Модульные обработчики Telegram (aiogram 3)
 │   ├── candidate.py        # 16-шаговая анкета, Live-чат, права 152-ФЗ, фолбэки
@@ -235,25 +244,45 @@ flowchart TD
 │   └── hr/                 # Кадровый модуль
 │       ├── panel.py        # Статистика, фильтры, списки
 │       ├── tickets.py      # Обработка тикетов в группе, собеседования, ТК РФ
-│       └── access.py       # Управление правами, синхронизация группы, ЧС
+│       ├── access.py       # Управление правами, синхронизация группы, ЧС
+│       └── export.py       # Выгрузка отчетов и экспорт реестров по ГОСТ
 │
 ├── services/               # Бизнес-логика (не зависит от транспорта)
-│   ├── candidate_service.py # Валидация ФИО, телефона, 18+, регистрация анкет
+│   ├── candidate_service.py # Валидация ФИО, телефона, 18+, регистрация анкет, Fit Score
 │   ├── compliance_service.py # Анализ рисков ст. 328.1 ТК РФ, проверка прав
 │   └── interview_service.py # Слоты и календарь собеседований
+│
+├── web/                    # Веб-платформа и REST API
+│   ├── routes/             # Модульные HTTP-хэндлеры
+│   │   ├── admin.py        # Управление системой, бэкапы, рассылки, ТО
+│   │   ├── auth.py         # Безопасная аутентификация, scrypt, 2FA OTP
+│   │   ├── candidates.py   # API соискателей, воронка, статусы
+│   │   ├── inquiries.py    # Вопросы и обращения кандидатов
+│   │   └── pages.py        # Рендеринг HTML-страниц и статики
+│   ├── middlewares.py      # Аудит запросов, rate limit, CORS
+│   └── security.py         # HMAC-SHA256 токены, сессии
 │
 ├── gateways/               # Омниканальные шлюзы
 │   ├── vk_gateway.py       # Шлюз группы ВКонтакте (LongPoll API)
 │   └── max_gateway.py      # Шлюз мессенджера МАКС / VK Teams
 │
-├── templates/              # HTML5-шаблоны веб-портала
-│   ├── dashboard.html      # Дашборд HR: KPI, карточки, фильтры баз, поиск
+├── templates/              # HTML5-шаблоны веб-портала (Vanilla CSS, Responsive 8px, Dark Mode)
+│   ├── dashboard.html      # Дашборд HR: KPI, карточки, воронка, заметки
 │   ├── apply.html          # Онлайн-анкета соискателя (16 шагов в веб)
 │   └── login.html          # Защищённая страница авторизации
 │
-└── data/                   # Изолированное хранилище данных
-    ├── resumes.db          # Основная база данных соискателей
-    ├── resumes_test.db     # Тестовая база данных (песочница)
+├── tests/                  # Автоматические тесты (Pytest, CI Isolation)
+│   ├── conftest.py         # Фикстуры изоляции окружения (:memory: и tmp_path)
+│   ├── test_candidate_service.py # Тесты валидации полей и бизнес-правил
+│   ├── test_password_security.py # Тесты scrypt-хеширования и прозрачной миграции
+│   └── test_database_isolation.py# Тесты изоляции БД и 12-Factor архитектуры
+│
+├── scripts/                # Инженерные утилиты и сборка
+│   ├── build_portal.py     # Сборка и минификация веб-портала
+│   └── check_db.py         # Диагностика целостности SQLite
+│
+└── data/                   # Локальное хранилище данных (не отслеживается в Git)
+    ├── .gitkeep            # Фиксация каталога в Git без коммита баз данных
     └── vacancies.json      # Реестр открытых и закрытых вакансий (SSOT)
 ```
 
@@ -277,12 +306,16 @@ pip install -r requirements.txt
 ```
 
 ### 3. Настройка окружения (`.env`)
-Создайте файл `.env` на основе примера:
+Создайте файл `.env` на основе примера [.env.example](file:///root/uetbot2/.env.example):
 ```ini
 ENVIRONMENT=PROD
 
+# База данных SQLite (12-Factor App)
+# Для PROD: data/resumes.db, для DEV: data/dev.db
+DB_PATH=data/resumes.db
+
 # Telegram Bot
-TG_BOT_TOKEN=8880412470:AAH...
+BOT_TOKEN=8880412470:AAH...
 SUPER_ADMIN_ID=7657422832
 TECH_ADMIN_ID=7657422832
 HR_GROUP_ID=-1003875480349
@@ -323,15 +356,32 @@ journalctl -u uet_bot.service -f
 
 ## 🧪 Тестирование
 
-Проект покрыт всесторонним комплексом unit- и интеграционных тестов:
+Проект покрыт автоматическим комплексом тестов на базе `pytest` с полной изоляцией баз данных:
 ```bash
-/root/uetbot/venv/bin/python3 run_tests.py
+/root/uetbot/venv/bin/pytest tests/ -v
 ```
 ```text
-----------------------------------------------------------------------
-Ran 41 tests in 0.666s
+============================= test session starts ==============================
+collected 16 items
 
-OK
+tests/test_candidate_service.py::TestCandidateValidation::test_validate_fio_valid PASSED
+tests/test_candidate_service.py::TestCandidateValidation::test_validate_fio_invalid PASSED
+tests/test_candidate_service.py::TestCandidateValidation::test_validate_phone_normalization PASSED
+tests/test_candidate_service.py::TestCandidateValidation::test_validate_phone_invalid PASSED
+tests/test_candidate_service.py::TestCandidateValidation::test_validate_birth_date_adult PASSED
+tests/test_candidate_service.py::TestCandidateValidation::test_validate_birth_date_underage PASSED
+tests/test_candidate_service.py::TestCandidateValidation::test_validate_question PASSED
+tests/test_candidate_service.py::TestCandidateValidation::test_is_driver_vacancy PASSED
+tests/test_candidate_service.py::TestCandidateValidation::test_calculate_applicant_score PASSED
+tests/test_database_isolation.py::TestDatabaseIsolation::test_memory_database_initialization PASSED
+tests/test_database_isolation.py::TestDatabaseIsolation::test_tmp_path_database_isolation PASSED
+tests/test_database_isolation.py::TestDatabaseIsolation::test_no_database_files_created_in_repo_root_or_untracked PASSED
+tests/test_password_security.py::TestPasswordSecurity::test_scrypt_hash_generation PASSED
+tests/test_password_security.py::TestPasswordSecurity::test_verify_password_correct PASSED
+tests/test_password_security.py::TestPasswordSecurity::test_verify_password_wrong PASSED
+tests/test_password_security.py::TestPasswordSecurity::test_legacy_plaintext_migration_compatibility PASSED
+
+============================= 16 passed in 30.07s ==============================
 ```
 
 ---

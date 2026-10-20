@@ -255,7 +255,10 @@ async def handle_api_stats(panel: WebPanel, request: web.Request) -> web.Respons
     db_scope = request.query.get("db_scope") or request.query.get("scope") or "both"
 
     try:
-        stats = panel.db.get_stats(scope=db_scope)
+        if hasattr(panel.db, "get_statistics"):
+            stats = panel.db.get_statistics(scope=db_scope)
+        else:
+            stats = panel.db.get_stats(scope=db_scope)
         inq_cnt = panel.db.get_inquiries_count()
         return web.json_response(
             {

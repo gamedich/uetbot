@@ -44,7 +44,7 @@ from aiogram.types import (
 )
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
-from config import CONFIG, update_env_variable, validate_config
+from config import CONFIG, update_env_variable, validate_config  # noqa: F401
 from database import ResumeDB
 from texts import clean_html
 
@@ -65,173 +65,15 @@ logger = logging.getLogger("UET_HR_BOT")
 
 
 # ==============================================================================
-# ОПЕРАТИВНЫЙ БУФЕР ЛОГОВ (/logs)
+# ОПЕРАТИВНЫЙ БУФЕР ЛОГОВ (/logs) И СИСТЕМНЫЕ ХРАНИЛИЩА (core)
 # ==============================================================================
 
-
-class MemoryLogHandler(logging.Handler):
-    """Кольцевой буфер оперативных логов для удаленной диагностики через Telegram (/logs)."""
-
-    def __init__(self, capacity: int = 120) -> None:
-        super().__init__()
-        self.buffer: collections.deque[str] = collections.deque(maxlen=capacity)
-
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            msg = self.format(record)
-            self.buffer.append(msg)
-        except Exception:
-            pass
-
-    def get_logs(self, n: int = 30) -> List[str]:
-        """Возвращает последние n строк логов."""
-        return list(self.buffer)[-n:]
-
+from core.logging_handler import MemoryLogHandler
+from core.storage import NativeProxiedSession, PersistentSessions, SQLiteFSMStorage
 
 memory_log_handler = MemoryLogHandler(capacity=120)
 memory_log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 logging.getLogger().addHandler(memory_log_handler)
-
-
-# ==============================================================================
-# ПЕРСИСТЕНТНОЕ ХРАНИЛИЩЕ FSM НА БАЗЕ SQLITE WAL
-# ==============================================================================
-
-
-class SQLiteFSMStorage(BaseStorage):
-    """
-    Персистентное хранилище состояний и данных FSM aiogram 3 в SQLite WAL.
-    Гарантирует сохранение прогресса заполнения анкет при перезапуске службы.
-    """
-
-    def __init__(self, database: ResumeDB) -> None:
-        self.db = database
-
-    def _get_key_str(self, key: StorageKey) -> str:
-        return f"{key.bot_id}:{key.chat_id}:{key.user_id}:{key.destiny}"
-
-    async def set_state(self, key: StorageKey, state: StateType = None) -> None:
-        state_str = state.state if isinstance(state, State) else state
-        k = self._get_key_str(key)
-        await asyncio.to_thread(self.db.set_fsm_state, k, state_str)
-
-    async def get_state(self, key: StorageKey) -> Optional[str]:
-        k = self._get_key_str(key)
-        return await asyncio.to_thread(self.db.get_fsm_state, k)
-
-    async def set_data(self, key: StorageKey, data: Dict[str, Any]) -> None:
-        k = self._get_key_str(key)
-        await asyncio.to_thread(self.db.set_fsm_data, k, data)
-
-    async def get_data(self, key: StorageKey) -> Dict[str, Any]:
-        k = self._get_key_str(key)
-        return await asyncio.to_thread(self.db.get_fsm_data, k)
-
-    async def close(self) -> None:
-        pass
-
-
-class PersistentSessions(dict):
-    """Персистентный кэш сессий соискателей VK / MAX с авто-сохранением в SQLite."""
-
-    def __init__(self, database: ResumeDB) -> None:
-        super().__init__()
-        self.db = database
-        try:
-            for plat, uid, data in self.db.get_all_external_sessions():
-                super().__setitem__((plat, str(uid)), data)
-        except Exception:
-            pass
-
-    def __setitem__(self, key: Tuple[str, str], value: Dict[str, Any]) -> None:
-        super().__setitem__(key, value)
-        try:
-            plat, uid = key
-            self.db.set_external_session(plat, str(uid), value)
-        except Exception:
-            pass
-
-    def __delitem__(self, key: Tuple[str, str]) -> None:
-        if key in self:
-            super().__delitem__(key)
-        try:
-            plat, uid = key
-            self.db.delete_external_session(plat, str(uid))
-        except Exception:
-            pass
-
-    def pop(self, key: Tuple[str, str], default: Any = None) -> Any:
-        try:
-            plat, uid = key
-            self.db.delete_external_session(plat, str(uid))
-        except Exception:
-            pass
-        return super().pop(key, default)
-
-
-from aiogram.client.session.aiohttp import AiohttpSession
-
-
-class NativeProxiedSession(AiohttpSession):
-    """Кастомная сессия aiohttp с нативной поддержкой HTTP-туннеля для Telegram API."""
-
-    def __init__(self, proxy_url: Optional[str] = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.proxy_url = proxy_url
-
-    async def create_session(self) -> ClientSession:
-        if self._session is None or self._session.closed:
-            self._session = ClientSession()
-        return self._session
-
-    async def make_request(
-        self,
-        bot: Bot,
-        method: Any,
-        timeout: Optional[int] = None,
-    ) -> Any:
-        session = await self.create_session()
-        url = self.api.api_url(token=bot.token, method=method.__api_method__)
-        form = self.build_form_data(bot=bot, method=method)
-        try:
-            async with session.post(
-                url,
-                data=form,
-                proxy=self.proxy_url,
-                timeout=self.timeout if timeout is None else timeout,
-            ) as resp:
-                raw_result = await resp.text()
-        except (ClientError, asyncio.TimeoutError) as proxy_err:
-            if self.proxy_url:
-                logger.warning(
-                    "Сбой прокси %s (%s). Попытка прямого соединения с Telegram API...",
-                    self.proxy_url,
-                    proxy_err,
-                )
-                try:
-                    async with session.post(
-                        url,
-                        data=form,
-                        proxy=None,
-                        timeout=self.timeout if timeout is None else timeout,
-                    ) as resp:
-                        raw_result = await resp.text()
-                except Exception as direct_err:
-                    raise TelegramNetworkError(
-                        method=method,
-                        message=f"Proxy error: {proxy_err} | Direct error: {direct_err}",
-                    ) from direct_err
-            else:
-                raise TelegramNetworkError(
-                    method=method, message=f"{type(proxy_err).__name__}: {proxy_err}"
-                ) from proxy_err
-        response = self.check_response(
-            bot=bot,
-            method=method,
-            status_code=resp.status,
-            content=raw_result,
-        )
-        return response.result
 
 
 # ==============================================================================
@@ -250,7 +92,7 @@ if _proxy_url:
 else:
     _bot_session = None
 
-_bot_token_candidate = CONFIG.get("TG_BOT_TOKEN")
+_bot_token_candidate = CONFIG.get("BOT_TOKEN") or CONFIG.get("TG_BOT_TOKEN")
 if not _bot_token_candidate or ":" not in _bot_token_candidate:
     # Валидный по формату aiogram фиктивный токен для CI и модульного тестирования
     _bot_token_candidate = f"{'1' * 9}:{'a' * 35}"
@@ -540,7 +382,15 @@ BASE_DIR: Path = Path(__file__).resolve().parent
 
 
 def get_all_vacancies() -> List[str]:
-    """Возвращает список всех актуальных вакансий предприятия."""
+    """Возвращает список всех актуальных вакансий предприятия из единой таблицы SQLite vacancy_settings."""
+    try:
+        if hasattr(db, "get_vacancies"):
+            vacs = db.get_vacancies(only_active=False)
+            if vacs:
+                return [v["title"] for v in vacs]
+    except Exception as e:
+        logger.warning("Не удалось загрузить вакансии из БД vacancy_settings: %s", e)
+
     try:
         data_dir = BASE_DIR / "data"
         vac_file = data_dir / "vacancies.json"
@@ -555,7 +405,26 @@ def get_all_vacancies() -> List[str]:
 
 
 def save_all_vacancies(vacancies: List[str]) -> bool:
-    """Сохраняет обновленный список вакансий в data/vacancies.json."""
+    """Сохраняет обновленный список вакансий."""
+    try:
+        batch = []
+        for idx, title in enumerate(vacancies):
+            slug = f"vac_{idx}_{abs(hash(title)) % 100000}"
+            batch.append({
+                "slug": slug,
+                "title": title,
+                "category": "general",
+                "is_active": 1,
+                "sort_order": idx + 1,
+                "salary_text": "",
+                "description": "",
+                "meta": {}
+            })
+        if hasattr(db, "save_vacancies_batch"):
+            db.save_vacancies_batch(batch)
+    except Exception as e:
+        logger.error("Ошибка сохранения вакансий в БД: %s", e)
+
     try:
         data_dir = BASE_DIR / "data"
         data_dir.mkdir(parents=True, exist_ok=True)
@@ -575,7 +444,14 @@ save_vacancies = save_all_vacancies
 
 
 def get_closed_vacancies() -> Set[str]:
-    """Возвращает набор временно закрытых должностей (по которым набор приостановлен)."""
+    """Возвращает набор временно скрытых должностей (is_active = 0)."""
+    try:
+        if hasattr(db, "get_vacancies"):
+            all_v = db.get_vacancies(only_active=False)
+            if all_v:
+                return {v["title"] for v in all_v if not v.get("is_active")}
+    except Exception:
+        pass
     try:
         val = db.get_setting("closed_vacancies", "[]")
         return set(json.loads(val))
@@ -584,8 +460,13 @@ def get_closed_vacancies() -> Set[str]:
 
 
 def set_closed_vacancies(closed: Set[str]) -> bool:
-    """Сохраняет список закрытых должностей в настройках БД."""
+    """Сохраняет статус закрытых должностей."""
     try:
+        if hasattr(db, "get_vacancies") and hasattr(db, "save_vacancies_batch"):
+            all_v = db.get_vacancies(only_active=False)
+            for v in all_v:
+                v["is_active"] = 0 if v["title"] in closed else 1
+            db.save_vacancies_batch(all_v)
         db.set_setting("closed_vacancies", json.dumps(list(closed), ensure_ascii=False))
         return True
     except Exception as e:
@@ -594,7 +475,14 @@ def set_closed_vacancies(closed: Set[str]) -> bool:
 
 
 def get_open_vacancies() -> List[str]:
-    """Возвращает список только тех вакансий, приём по которым в данный момент открыт."""
+    """Возвращает список только тех вакансий, приём по которым в данный момент открыт (is_active = 1)."""
+    try:
+        if hasattr(db, "get_vacancies"):
+            active_v = db.get_vacancies(only_active=True)
+            if active_v:
+                return [v["title"] for v in active_v]
+    except Exception as e:
+        logger.warning("Ошибка получения активных вакансий из БД: %s", e)
     all_vac = get_all_vacancies()
     closed = get_closed_vacancies()
     return [v for v in all_vac if v not in closed]
@@ -883,6 +771,7 @@ async def safe_answer(
             logger.warning("Flood control в safe_answer: сон %s сек", e.retry_after)
             await asyncio.sleep(e.retry_after)
         except TelegramBadRequest as e:
+            logger.warning("TelegramBadRequest в safe_answer: %s", e)
             msg_lower = (e.message or "").lower()
             if "too long" in msg_lower:
                 short_t = text[:2000] + "\n... (сообщение сокращено)"
@@ -890,10 +779,16 @@ async def safe_answer(
                     await message.answer(short_t, **kwargs)
                     return True
                 except Exception:
-                    return False
-            # Фоллбэк: снятие HTML-тегов при синтаксической ошибке разметки
+                    pass
+            # Фоллбэк 1: снятие HTML-тегов с сохранением кнопок
+            clean_t = re.sub(r"<[^>]+>", "", text)
             try:
-                clean_t = re.sub(r"<[^>]+>", "", text)
+                await message.answer(clean_t, **kwargs)
+                return True
+            except Exception:
+                pass
+            # Фоллбэк 2: если ошибка была в кнопках (например BUTTON_URL_INVALID), отправляем без кнопок
+            try:
                 await message.answer(clean_t)
                 return True
             except Exception:
@@ -1107,8 +1002,8 @@ async def _route_ticket_to_hr(
     else:
         logger.warning("Кадровый чат HR_GROUP_ID не привязан! Маршрутизация в ЛС сотрудникам.")
 
-    # 2. Составляем список получателей (кадровики с DM-уведомлениями)
-    target_users: set[int] = {adm for adm in db.get_hr_admins_with_dm_enabled() if adm > 0}
+    # 2. Доставка в ЛС сотрудникам HR принудительно отключена по регламенту (все заявки идут в кадровый чат)
+    target_users: set[int] = set()
 
     env_mode = (CONFIG.get("ENVIRONMENT") or "TEST").upper()
     is_prod = env_mode in ("PROD", "PRODUCTION")
@@ -1290,126 +1185,13 @@ async def send_photo_to_candidate(user_id: str, photo_bytes: bytes, caption: str
 # ==============================================================================
 
 
+from core.bot_commands import setup_bot_commands as _setup_bot_commands
+from core.bot_commands import sync_user_commands as _sync_user_commands
+
+
 async def setup_bot_commands(bot_instance: Bot) -> None:
     """Установка контекстных выпадающих меню команд Telegram (по ролям и чатам)."""
-    # 1. Меню по умолчанию для соискателей в личном диалоге (чистый лаконичный список)
-    candidate_commands = [
-        BotCommand(command="start", description="🏠 Главное меню / Перезапуск"),
-        BotCommand(command="apply", description="📝 Заполнить анкету на работу"),
-        BotCommand(command="my", description="📊 Моя анкета / Статус"),
-        BotCommand(command="training", description="🚋 Обучение"),
-        BotCommand(command="ask", description="💬 Задать вопрос специалисту кадров"),
-        BotCommand(command="contacts", description="📞 Контакты депо и администрации"),
-        BotCommand(command="privacy", description="🔒 Защита данных (152-ФЗ)"),
-        BotCommand(command="revoke", description="🗑 Отозвать согласие и удалить данные"),
-        BotCommand(command="help", description="ℹ️ Справка"),
-    ]
-    try:
-        await bot_instance.set_my_commands(candidate_commands, scope=BotCommandScopeDefault())
-    except Exception as e:
-        logger.warning("Не удалось установить дефолтные команды меню Telegram: %s", e)
-
-    # 2. Меню для групп и супергрупп (кадровый чат)
-    group_commands = [
-        BotCommand(command="hr", description="📋 Кадровая панель управления"),
-        BotCommand(command="set_group", description="📌 Привязать чат для анкет"),
-        BotCommand(command="sync", description="🔄 Синхронизировать кадровиков"),
-        BotCommand(command="kick", description="🚫 Исключить сотрудника (в ответ)"),
-        BotCommand(command="help", description="ℹ️ Справка по командам чата"),
-    ]
-    try:
-        await bot_instance.set_my_commands(group_commands, scope=BotCommandScopeAllGroupChats())
-    except Exception as e:
-        logger.warning("Не удалось установить команды для групп: %s", e)
-
-    # 3. Полное меню для SuperAdmin (Владелец)
-    super_commands = [
-        BotCommand(command="owner", description="👑 Пульт владельца (UET Kit)"),
-        BotCommand(command="tests", description="🧪 Тестовая лаборатория и симуляции"),
-        BotCommand(command="panel", description="🌐 Веб-панель управления"),
-        BotCommand(command="to", description="🛠 Вкл/Выкл режим ТО"),
-        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
-        BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
-        BotCommand(command="tech", description="⚙️ Панель инженера (ОЗУ, БД, логи)"),
-        BotCommand(command="admins", description="👥 Управление доступом и ролями"),
-        BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
-        BotCommand(command="start", description="🏠 Главное меню"),
-    ]
-    super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
-    if super_id and super_id > 0:
-        try:
-            await bot_instance.set_my_commands(super_commands, scope=BotCommandScopeChat(chat_id=super_id))
-        except Exception as e:
-            logger.debug("Не удалось установить команды для SuperAdmin %s: %s", super_id, e)
-
-    # 4. Меню строго для инженера (Tech)
-    tech_commands = [
-        BotCommand(command="panel", description="🌐 Веб-панель инженера"),
-        BotCommand(command="to", description="🛠 Вкл/Выкл режим ТО"),
-        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
-        BotCommand(command="tech", description="⚙️ Панель инженера (ОЗУ, БД, логи)"),
-        BotCommand(command="start", description="🏠 Главное меню"),
-    ]
-    tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
-    all_tech_ids = {tech_id} if tech_id and tech_id != super_id else set()
-    try:
-        for adm_id, role in db.get_all_admins():
-            if role == "tech" and adm_id > 0 and adm_id != super_id:
-                all_tech_ids.add(adm_id)
-        for t_id in all_tech_ids:
-            try:
-                await bot_instance.set_my_commands(tech_commands, scope=BotCommandScopeChat(chat_id=t_id))
-            except Exception:
-                pass
-    except Exception as e:
-        logger.warning("Ошибка установки команд Tech-пользователей: %s", e)
-
-    # 5. Меню для кадровиков (HR) в личном диалоге
-    hr_commands = [
-        BotCommand(command="panel", description="🌐 Веб-панель соискателей"),
-        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
-        BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
-        BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
-        BotCommand(command="start", description="🏠 Главное меню"),
-    ]
-    try:
-        for adm_id, role in db.get_all_admins():
-            if role == "hr" and adm_id > 0 and adm_id != super_id and adm_id not in all_tech_ids:
-                try:
-                    await bot_instance.set_my_commands(hr_commands, scope=BotCommandScopeChat(chat_id=adm_id))
-                except Exception:
-                    pass
-    except Exception as e:
-        logger.warning("Ошибка установки команд HR-пользователей: %s", e)
-
-    # 6. Установка нативной кнопки Telegram Mini App (Menu Button) рядом с полем ввода
-    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
-    if web_url and web_url.startswith("https://"):
-        if super_id and super_id > 0:
-            try:
-                await bot_instance.set_chat_menu_button(
-                    chat_id=super_id,
-                    menu_button=MenuButtonWebApp(text="🌐 Панель", web_app=WebAppInfo(url=web_url)),
-                )
-            except Exception as e:
-                logger.debug("Не удалось установить MenuButtonWebApp для SuperAdmin: %s", e)
-        for t_id in all_tech_ids:
-            try:
-                await bot_instance.set_chat_menu_button(
-                    chat_id=t_id,
-                    menu_button=MenuButtonWebApp(text="🛠 Панель", web_app=WebAppInfo(url=web_url)),
-                )
-            except Exception:
-                pass
-        for adm_id, role in db.get_all_admins():
-            if role == "hr" and adm_id > 0 and adm_id != super_id and adm_id not in all_tech_ids:
-                try:
-                    await bot_instance.set_chat_menu_button(
-                        chat_id=adm_id,
-                        menu_button=MenuButtonWebApp(text="📋 Панель", web_app=WebAppInfo(url=web_url)),
-                    )
-                except Exception:
-                    pass
+    await _setup_bot_commands(bot_instance, CONFIG, db)
 
 
 async def sync_user_commands(
@@ -1420,104 +1202,13 @@ async def sync_user_commands(
 ) -> bool:
     """
     Синхронизирует выпадающее меню команд Telegram (/) и нативную кнопку Mini App
-    в строгом соответствии с фактической ролью пользователя. При отзыве прав
-    полностью удаляет персональный скоуп команд и возвращает соискательское меню.
+    в строгом соответствии с фактической ролью пользователя.
     """
-    try:
-        target_bot = bot_instance or bot
-        if not target_bot:
-            return False
-
-        web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
-
-        if user_id:
-            super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
-            tech_id = CONFIG.get("TECH_ADMIN_ID", 0)
-
-            actual_role = role
-            if actual_role is None:
-                if user_id == super_id:
-                    actual_role = "superadmin"
-                elif user_id == tech_id:
-                    actual_role = "tech"
-                else:
-                    actual_role = db.get_admin_role(user_id) or "none"
-
-            if actual_role in ("none", "revoked", "candidate", ""):
-                # 1. ПРАВА ОТОЗВАНЫ: удаляем персональный скоуп команд и сбрасываем кнопку
-                try:
-                    await target_bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=user_id))
-                except Exception as e:
-                    logger.debug("delete_my_commands for %s: %s", user_id, e)
-
-                try:
-                    await target_bot.set_chat_menu_button(
-                        chat_id=user_id,
-                        menu_button=MenuButtonDefault(),
-                    )
-                except Exception as e:
-                    logger.debug("set_chat_menu_button default for %s: %s", user_id, e)
-            else:
-                # 2. ПРАВА АКТИВНЫ: устанавливаем ролевое меню
-                target_commands = []
-                btn_text = "🌐 Панель"
-                if actual_role == "superadmin":
-                    target_commands = [
-                        BotCommand(command="panel", description="🌐 Веб-панель управления"),
-                        BotCommand(command="to", description="🛠 Вкл/Выкл режим ТО"),
-                        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
-                        BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
-                        BotCommand(command="tech", description="⚙️ Панель инженера (ОЗУ, БД, логи)"),
-                        BotCommand(command="admins", description="👥 Управление доступом"),
-                        BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
-                        BotCommand(command="start", description="🏠 Главное меню"),
-                    ]
-                    btn_text = "🌐 Панель"
-                elif actual_role == "tech":
-                    target_commands = [
-                        BotCommand(command="panel", description="🌐 Веб-панель инженера"),
-                        BotCommand(command="to", description="🛠 Вкл/Выкл режим ТО"),
-                        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
-                        BotCommand(command="tech", description="⚙️ Панель инженера (ОЗУ, БД, логи)"),
-                        BotCommand(command="start", description="🏠 Главное меню"),
-                    ]
-                    btn_text = "🛠 Панель"
-                elif actual_role == "hr":
-                    target_commands = [
-                        BotCommand(command="panel", description="🌐 Веб-панель соискателей"),
-                        BotCommand(command="password", description="🔑 Пароль от веб-панели"),
-                        BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
-                        BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
-                        BotCommand(command="start", description="🏠 Главное меню"),
-                    ]
-                    btn_text = "📋 Панель"
-                elif actual_role == "depot":
-                    target_commands = [
-                        BotCommand(command="start", description="🏠 Главное меню"),
-                        BotCommand(command="help", description="ℹ️ Справка депо"),
-                    ]
-                    btn_text = "🚋 Кабинет"
-
-                if target_commands:
-                    try:
-                        await target_bot.set_my_commands(target_commands, scope=BotCommandScopeChat(chat_id=user_id))
-                    except Exception as e:
-                        logger.warning("set_my_commands for %s: %s", user_id, e)
-
-                if web_url and web_url.startswith("https://"):
-                    try:
-                        await target_bot.set_chat_menu_button(
-                            chat_id=user_id,
-                            menu_button=MenuButtonWebApp(text=btn_text, web_app=WebAppInfo(url=web_url)),
-                        )
-                    except Exception as e:
-                        logger.debug("set_chat_menu_button for %s: %s", user_id, e)
-
-        await setup_bot_commands(target_bot)
-        return True
-    except Exception as e:
-        logger.warning("Ошибка sync_user_commands: %s", e)
+    target_bot = bot_instance or bot
+    if not target_bot:
         return False
+    return await _sync_user_commands(target_bot, CONFIG, db, user_id=user_id, role=role, **kwargs)
+
 
 
 async def revoke_admin_and_sync(bot_instance: Bot, user_id: int, reason: str = "") -> bool:

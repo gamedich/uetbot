@@ -6,8 +6,10 @@
 # --- Секреты и конфигурация ---
 .env
 .env.*
+!.env.example
 *.pem
 *.key
+DEV_PASSWORDS.md
 
 # --- Приватные модули владельца и инженерии ---
 private_admin.py
@@ -17,10 +19,10 @@ web/private_ai.html
 templates/private_*.html
 handlers/tech.py
 tech.py
+# tests/ (включено для автотестов CI/CD)
 run_tests.py
-run_sim.py
-tests/
-test_*.py
+test_scratch_*.py
+test_auth_refactor.py
 clean_*.py
 fix_*.py
 update_*.py
@@ -37,8 +39,10 @@ audit_*.md
 *.db-shm
 *.sqlite
 *.sqlite3
-data/
+data/*
+!data/.gitkeep
 !data/vacancies.json
+!data/notes.json
 backups/
 *.zip
 *.docx

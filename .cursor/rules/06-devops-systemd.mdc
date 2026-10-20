@@ -1,0 +1,64 @@
+---
+description: Стандарты эксплуатации, systemd-сервисов, разделения PROD/BETA и резервного копирования
+globs: *.service, scripts/**/*.sh, deploy*.sh, deploy.py
+alwaysApply: false
+---
+
+# Регламент DevOps, systemd-юнитов и разделения контуров (PROD vs BETA)
+
+## 1. Строгая изоляция контуров PROD и BETA
+На сервере развернуты два независимых сервиса `systemd`:
+1. **Боевой контур (PROD)**:
+   - Юнит: `uet_bot.service`
+   - Каталог: `/root/uetbot`
+   - Ветка: `main`
+   - Порт веб-панели: **8080**
+   - База данных: `bot.db` (`resumes.db`)
+2. **Тестовый контур (BETA)**:
+   - Юнит: `uet_bot_beta.service`
+   - Каталог: `/root/uetbot2`
+   - Ветка: `beta`
+   - Порт веб-панели: **8082**
+   - База данных: `bot_test.db` (`resumes_test.db`)
+
+### КАТЕГОРИЧЕСКИЙ ЗАПРЕТ:
+**Никогда не перезапускать, не останавливать и не модифицировать `uet_bot.service` во время разработки в ветке `beta`!**
+Любые тесты, рестарты и проверка кода выполняются исключительно через команду:
+```bash
+systemctl restart uet_bot_beta.service
+```
+
+---
+
+## 2. Конфигурация systemd-юнитов
+Эталонный юнит службы обеспечивает автоматический перезапуск при любых сбоях:
+```ini
+[Unit]
+Description=Beta Test Bot (Branch beta) for MUP Ulyanovskelektrotrans
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/uetbot2
+ExecStart=/root/uetbot/venv/bin/python3 bot.py
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=10
+LimitNOFILE=65536
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
+```
+
+---
+
+## 3. Регламент логирования и ротации логов
+1. Системные логи службы пишутся в `systemd-journald`:
+   ```bash
+   journalctl -u uet_bot_beta.service -n 50 --no-pager
+   ```
+2. Ротация архивов резервных копий выполняется автоматически каждые 24 часа. Копии старше 7 дней удаляются из каталога `backups/`.
+3. Дисковое пространство мониторится в модуле `Tech Hub` веб-панели с алертом при свободном месте менее 15%.

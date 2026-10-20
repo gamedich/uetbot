@@ -28,14 +28,9 @@ from common import (
 )
 from gateways.max_gateway import run_max_gateway
 from gateways.vk_gateway import run_vk_gateway
-from handlers import candidate_router, hr_router
+from handlers import candidate_router, hr_router, tech_router
 
-# Безопасное подключение приватных модулей инженерии и владельца
-try:
-    from handlers import tech_router
-except (ImportError, AttributeError):
-    tech_router = None
-
+# Безопасное подключение приватного модуля владельца
 try:
     from private_admin import owner_router
 except ImportError:
@@ -97,6 +92,7 @@ async def main() -> None:
 
     if tech_router:
         dp.include_router(tech_router)
+        logger.info("🛠 Инженерный пульт техобслуживания (Tech Router) подключен")
 
     dp.include_router(hr_router)
     dp.include_router(candidate_router)

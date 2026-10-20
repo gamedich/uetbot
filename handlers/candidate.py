@@ -30,6 +30,7 @@ from common import (
     db,
     get_all_vacancies,
     get_open_vacancies,
+    get_vacancy_icon,
     is_any_staff,
     is_hr_admin,
     is_maintenance_active,
@@ -65,6 +66,8 @@ from keyboards import (
     make_step16_edit_menu_kb,
     make_step_nav_kb,
     make_ticket_keyboard,
+    make_vacancies_catalog_kb,
+    make_vacancy_card_kb,
 )
 from services.candidate_service import candidate_service
 
@@ -136,9 +139,25 @@ async def cmd_candidate_stop_dialog(message: types.Message, bot: Bot) -> None:
 @candidate_router.message(Command("help"))
 @candidate_router.message(StateFilter(None), F.text.lower().in_(["help", "помощь", "справка", "команды", "хелп"]))
 async def cmd_help(message: types.Message, state: Optional[FSMContext] = None) -> None:
-    """Справочник всех команд бота с учетом роли пользователя."""
+    """Справочник всех команд бота с учетом роли пользователя и типа чата."""
     if state:
         await state.clear()
+
+    # В кадровых группах выводим только служебные команды группы
+    if message.chat.type in ["group", "supergroup"]:
+        group_help = (
+            "👥 <b>СПРАВКА ПО РАБОЧЕМУ ЧАТУ КАДРОВОЙ СЛУЖБЫ:</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "• <code>/hr</code> — Кадровая панель управления (анкеты, статусы, фильтры)\n"
+            "• <code>/id</code> — Узнать Telegram ID текущего чата и ваш ID\n"
+            "• <code>/set_group</code> — Привязать этот чат для приёма анкет (администраторы)\n"
+            "• <code>/sync</code> — Двухсторонняя синхронизация состава кадровиков\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Для подачи анкеты соискателя перейдите в личный диалог с ботом.</i>"
+        )
+        await safe_answer(message, group_help, parse_mode="HTML")
+        return
+
     user_id = message.from_user.id
     is_tech = is_tech_admin(user_id)
     is_hr = is_hr_admin(user_id)
@@ -166,6 +185,18 @@ async def cmd_id(message: types.Message) -> None:
 @candidate_router.message(Command("start", "menu"))
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
     """Точка входа и перезапуск интерактивного меню."""
+    # Защита от запуска анкеты соискателя в кадровой группе:
+    if message.chat.type in ["group", "supergroup"]:
+        me = await message.bot.get_me()
+        await safe_answer(
+            message,
+            f"👋 <b>Здравствуйте!</b>\n\n"
+            f"Для работы с ботом и подачи анкеты соискателя напишите боту в личные сообщения: @{me.username}\n\n"
+            f"<i>В кадровой группе доступны служебные команды: <code>/hr</code> (панель), <code>/id</code>, <code>/set_group</code>, <code>/sync</code>.</i>",
+            parse_mode="HTML",
+        )
+        return
+
     # Ловим реферальную ссылку водителя: /start ref_1042
     ref_tab = None
     if message.text:
@@ -178,7 +209,6 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     if ref_tab:
         await state.update_data(referrer_tab=ref_tab)
     user_id = message.from_user.id
-    user_id == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(user_id) or is_tech_admin(user_id)
 
     if db.is_blocked(user_id, super_admin_id=CONFIG.get("SUPER_ADMIN_ID")):
         await safe_answer(
@@ -205,6 +235,18 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
         ) + texts.START_WELCOME
 
+    # 1. Устанавливаем нижнюю эргономичную клавиатуру быстрого доступа (Reply-кнопки):
+
+    try:
+        await message.answer(
+            "🎛 <b>Панель быстрых действий активирована.</b>",
+            reply_markup=make_candidate_persistent_reply_keyboard(),
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        logger.debug("Не удалось отправить persistent reply keyboard: %s", e)
+
+    # 2. Выводим официальное приветственное меню с инлайн-кнопками:
     await safe_answer(
         message,
         welcome_text,
@@ -443,6 +485,15 @@ async def process_support_message(message: types.Message, state: FSMContext, bot
 @candidate_router.message(Command("my", "status", "stat"))
 @candidate_router.message(F.text.lower().in_(["📊 мой статус", "мой статус", "статус", "моя анкета"]))
 async def cb_cand_my_application(event: Union[types.CallbackQuery, types.Message]) -> None:
+    if isinstance(event, types.Message) and event.chat.type in ["group", "supergroup"]:
+        await safe_answer(
+            event,
+            "📑 <b>Просмотр статуса анкеты соискателя доступен только в личном диалоге с ботом</b> "
+            "в целях защиты персональных данных (152-ФЗ РФ). Пожалуйста, напишите боту в ЛС.",
+            parse_mode="HTML",
+        )
+        return
+
     user_id = event.from_user.id
     if db.is_blocked(user_id, super_admin_id=CONFIG.get("SUPER_ADMIN_ID")):
         if isinstance(event, types.CallbackQuery):
@@ -695,7 +746,7 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
     consent_ts = datetime.now().strftime("%d.%m.%Y %H:%M")
     is_admin = int(user_id) == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(int(user_id)) or is_tech_admin(int(user_id))
     is_test_inq = is_admin and (
-        db.get_setting("active_db_target", "resumes.db") == "resumes_test.db" or "тест" in q_text.lower()
+        CONFIG.get("ENVIRONMENT") == "TEST" or "тест" in q_text.lower()
     )
     cooldown = CONFIG.get("COOLDOWN_SECONDS", 1200) if not is_admin else 0
 
@@ -746,7 +797,18 @@ async def process_inquiry_message(message: types.Message, state: FSMContext, bot
 async def cmd_apply(event: Union[types.Message, types.CallbackQuery], state: FSMContext) -> None:
     user_id = event.from_user.id
     if isinstance(event, types.Message):
-        web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+        if event.chat.type in ["group", "supergroup"]:
+            await safe_answer(
+                event,
+                "📝 <b>Подача анкеты соискателя доступна только в личном диалоге с ботом.</b>\n"
+                "Пожалуйста, напишите боту в личные сообщения.",
+                parse_mode="HTML",
+            )
+            return
+
+        from keyboards import get_valid_webapp_url
+
+        web_url = get_valid_webapp_url()
         builder = InlineKeyboardBuilder()
         builder.button(text="🌐 Заполнить анкету на сайте", web_app=types.WebAppInfo(url=web_url))
         builder.button(text="📝 Заполнить в Telegram", callback_data="cand_start_apply")
@@ -964,7 +1026,7 @@ async def process_phone_contact(message: types.Message, state: FSMContext) -> No
     if not phone.startswith("+"):
         phone = "+" + phone
     await state.update_data(phone=phone)
-    await message.answer("✅ Номер телефона успешно получен.", reply_markup=types.ReplyKeyboardRemove())
+    await safe_answer(message, "✅ Номер телефона успешно получен.", reply_markup=types.ReplyKeyboardRemove())
     await state.set_state(CandidateForm.city)
     await safe_answer(
         message,
@@ -1062,17 +1124,29 @@ async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext) ->
 
     vac_name = None
     if callback.data.startswith("vac_pick_"):
+        slug_or_idx = callback.data.replace("vac_pick_", "").strip()
+        # 1. Попытка получить из SQLite vacancy_settings по slug
         try:
-            idx = int(callback.data.replace("vac_pick_", ""))
-            open_vacs = get_open_vacancies()
-            if 0 <= idx < len(open_vacs):
-                vac_name = open_vacs[idx]
-            else:
-                all_vacs = get_all_vacancies()
-                if 0 <= idx < len(all_vacs):
-                    vac_name = all_vacs[idx]
-        except (ValueError, TypeError):
-            vac_name = None
+            if hasattr(db, "get_vacancy_by_slug"):
+                v_obj = db.get_vacancy_by_slug(slug_or_idx)
+                if v_obj and v_obj.get("title"):
+                    vac_name = v_obj["title"]
+        except Exception as e:
+            logger.debug("Ошибка поиска вакансии по slug: %s", e)
+
+        # 2. Если не найден по slug, пробуем как числовой индекс (для совместимости)
+        if not vac_name:
+            try:
+                idx = int(slug_or_idx)
+                open_vacs = get_open_vacancies()
+                if 0 <= idx < len(open_vacs):
+                    vac_name = open_vacs[idx]
+                else:
+                    all_vacs = get_all_vacancies()
+                    if 0 <= idx < len(all_vacs):
+                        vac_name = all_vacs[idx]
+            except (ValueError, TypeError):
+                pass
 
     if not vac_name:
         vac_name = VACANCY_MAP.get(vac_raw, vac_raw)
@@ -1088,6 +1162,100 @@ async def cb_vacancy_select(callback: types.CallbackQuery, state: FSMContext) ->
         f"🎯 Вакансия: <b>{html.escape(vac_name)}</b>\n\n{texts.SURVEY_STEP6_LICENSE}",
         reply_markup=make_step6_license_kb(),
         parse_mode="HTML",
+    )
+    await callback.answer()
+
+
+# =========================================================================
+# КАТАЛОГ ВАКАНСИЙ И КАРТОЧКИ ПО SLUG (AIOGRAM 3 <-> SQLITE)
+# =========================================================================
+
+@candidate_router.message(Command("vacancies", "jobs", "work"))
+@candidate_router.callback_query(F.data == "cand_show_vacancies")
+async def cmd_or_cb_vacancies_catalog(event: Union[types.Message, types.CallbackQuery]) -> None:
+    """Отображение каталога актуальных вакансий предприятия на основе vacancy_settings."""
+    catalog_text = (
+        "💼 <b>Актуальные вакансии МУП «Ульяновскэлектротранс»</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Официальное трудоустройство, стабильная заработная плата, полный соцпакет "
+        "и возможность бесплатного переобучения за счёт предприятия.\n\n"
+        "<i>Нажмите на интересующую должность, чтобы открыть подробную карточку с условиями:</i>"
+    )
+    if isinstance(event, types.CallbackQuery):
+        await event.message.edit_text(
+            catalog_text,
+            reply_markup=make_vacancies_catalog_kb(),
+            parse_mode="HTML"
+        )
+        await event.answer()
+    else:
+        await safe_answer(
+            event,
+            catalog_text,
+            reply_markup=make_vacancies_catalog_kb(),
+            parse_mode="HTML"
+        )
+
+
+@candidate_router.callback_query(F.data.startswith("vac_card_"))
+async def cb_show_vacancy_card(callback: types.CallbackQuery) -> None:
+    """Карточка конкретной вакансии по её slug из единой таблицы SQLite vacancy_settings."""
+    slug = callback.data.replace("vac_card_", "").strip()
+    v = db.get_vacancy_by_slug(slug) if hasattr(db, "get_vacancy_by_slug") else None
+    if not v:
+        await callback.answer("⚠️ Карточка вакансии не найдена или была обновлена.", show_alert=True)
+        return
+
+    title = v.get("title", "")
+    salary = v.get("salary_text") or "По результатам собеседования"
+    desc = v.get("description") or "Работа на маршрутах и производственных объектах предприятия."
+    meta = v.get("meta") or {}
+    icon = meta.get("icon") or get_vacancy_icon(title)
+    reqs = meta.get("requirements") or "От 18 лет, без медицинских противопоказаний"
+    stipend = meta.get("stipend")
+    training = meta.get("training")
+
+    lines = [
+        f"{icon} <b>{html.escape(title)}</b>\n━━━━━━━━━━━━━━━━━━━━━",
+        f"💰 <b>Заработная плата:</b> <b>{html.escape(salary)}</b>",
+    ]
+    if training:
+        stipend_str = f" (стипендия {html.escape(stipend)})" if stipend else ""
+        lines.append(f"🎓 <b>Обучение:</b> Бесплатное в корпоративном учебном центре{stipend_str}")
+    if reqs:
+        lines.append(f"📋 <b>Требования:</b> {html.escape(reqs)}")
+    if desc:
+        lines.append(f"\n📝 <b>Обязанности и условия:</b>\n{html.escape(desc)}")
+
+    lines.append(
+        "\n✅ <b>Гарантии предприятия:</b> Официальное оформление по ТК РФ, "
+        "сменный график, льготный проезд на горэлектротранспорте, профсоюзная поддержка."
+    )
+
+    card_text = "\n".join(lines)
+    await callback.message.edit_text(
+        card_text,
+        reply_markup=make_vacancy_card_kb(slug),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+
+@candidate_router.callback_query(F.data.startswith("vac_apply_"))
+async def cb_apply_from_vacancy_card(callback: types.CallbackQuery, state: FSMContext) -> None:
+    """Быстрый старт подачи анкеты с предвыбранной вакансией прямо из её карточки."""
+    slug = callback.data.replace("vac_apply_", "").strip()
+    v = db.get_vacancy_by_slug(slug) if hasattr(db, "get_vacancy_by_slug") else None
+    vac_title = v["title"] if v else "Водитель трамвая"
+
+    await state.clear()
+    await state.update_data(vacancy=vac_title)
+    await state.set_state(CandidateForm.full_name)
+    await callback.message.edit_text(
+        f"🎯 Вы выбрали должность: <b>{html.escape(vac_title)}</b>\n\n"
+        f"Приступаем к заполнению официальной анкеты соискателя.\n\n{texts.SURVEY_STEP1_FIO}",
+        reply_markup=make_step_nav_kb(can_skip=False),
+        parse_mode="HTML"
     )
     await callback.answer()
 
@@ -1628,7 +1796,7 @@ async def cb_submit_final(callback: types.CallbackQuery, state: FSMContext, bot:
     is_admin = int(user_id) == CONFIG.get("SUPER_ADMIN_ID") or is_hr_admin(int(user_id)) or is_tech_admin(int(user_id))
     full_name = data.get("full_name", "")
     is_test_cand = is_admin and (
-        db.get_setting("active_db_target", "resumes.db") == "resumes_test.db" or "тест" in full_name.lower()
+        CONFIG.get("ENVIRONMENT") == "TEST" or "тест" in full_name.lower()
     )
     data["is_test"] = is_test_cand
 

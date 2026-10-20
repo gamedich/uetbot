@@ -19,7 +19,22 @@ from common import (
     is_hr_admin,
     is_maintenance_active,
     is_tech_admin,
+    logger,
 )
+
+
+def get_valid_webapp_url(path: str = "") -> str:
+    """
+    Возвращает строго валидный HTTPS URL для Telegram WebApp.
+    Telegram Bot API блокирует любые http:// ссылки для WebAppInfo ошибкой BUTTON_URL_INVALID.
+    """
+    url = str(CONFIG.get("WEB_APP_URL") or "").strip()
+    if not url.startswith("https://"):
+        url = "https://213.226.124.135.sslip.io/"
+    url = url.rstrip("/")
+    if path:
+        return f"{url}/{path.lstrip('/')}"
+    return url
 
 
 def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
@@ -27,13 +42,17 @@ def make_candidate_persistent_reply_keyboard() -> types.ReplyKeyboardMarkup:
     Закрепленная внизу экрана эргономичная панель быстрых действий (Reply-клавиатура).
     Позволяет соискателю в 1 клик открыть интерактивную форму анкеты или проверить статус.
     """
-    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+    web_url = get_valid_webapp_url("tg")
     return types.ReplyKeyboardMarkup(
         keyboard=[
             [
                 types.KeyboardButton(text="🌐 Заполнить анкету на сайте", web_app=types.WebAppInfo(url=web_url)),
                 types.KeyboardButton(text="📊 Мой статус"),
-            ]
+            ],
+            [
+                types.KeyboardButton(text="💬 Задать вопрос"),
+                types.KeyboardButton(text="📞 Контакты депо"),
+            ],
         ],
         resize_keyboard=True,
         is_persistent=True,
@@ -49,7 +68,7 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
         [ 💬 Задать вопрос ]    [ 📞 Контакты депо ]
     """
     builder = InlineKeyboardBuilder()
-    web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
+    web_url = get_valid_webapp_url("tg")
 
     maint_active = is_maintenance_active()
 
@@ -75,7 +94,7 @@ def make_candidate_main_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup
     is_hr = bool(user_id and (user_id == super_id or is_hr_admin(user_id)))
 
     if is_tech or is_hr:
-        builder.button(text="👔 Служебный кабинет", web_app=types.WebAppInfo(url=f"{web_url.rstrip('/')}/dashboard"))
+        builder.button(text="👔 Служебный кабинет", web_app=types.WebAppInfo(url=get_valid_webapp_url("dashboard")))
         builder.adjust(1, 2, 2, 1)
     else:
         builder.adjust(1, 2, 2)
@@ -295,6 +314,16 @@ def make_faq_keyboard() -> types.InlineKeyboardMarkup:
 def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
+    # 1. Режим проверок и ограничений (152-ФЗ, лимиты)
+    env = CONFIG.get("ENVIRONMENT", "TEST")
+    toggle_env_text = "🛡 Включить PROD (152-ФЗ, лимиты)" if env == "TEST" else "🧪 Включить TEST (без ограничений)"
+    builder.button(text=toggle_env_text, callback_data="tech_toggle_env")
+
+    # 2. Индикатор базы данных (12-Factor App: DB_PATH)
+    cur_db = os.path.basename(getattr(db, "db_path", "resumes.db"))
+    db_btn_text = f"📁 База: [{cur_db}] ℹ️"
+    builder.button(text=db_btn_text, callback_data="tech_toggle_db")
+
     builder.button(text="💾 Управление бэкапами (/backups)", callback_data="tech_manage_backups")
     if is_maintenance_active():
         builder.button(text="🟢 Завершить ТО и уведомить всех ✅", callback_data="tech_maint_resolve")
@@ -331,8 +360,8 @@ def get_tech_screen_data(user_id: int = 0) -> Tuple[str, types.InlineKeyboardMar
     env_mode = CONFIG.get("ENVIRONMENT", "TEST")
     check_time = datetime.now().strftime("%H:%M:%S")
 
-    cur_db_name = db.get_setting("active_db_target", "resumes.db")
-    active_db_label = "🧪 Тестовая (resumes_test.db)" if cur_db_name == "resumes_test.db" else "📁 Боевая (resumes.db)"
+    cur_db_name = os.path.basename(getattr(db, "db_path", "resumes.db"))
+    active_db_label = f"📁 {cur_db_name} (12-Factor DB_PATH)"
 
     text = (
         "🛠 <b>ТЕХНИЧЕСКИЙ МОНИТОРИНГ И ОБСЛУЖИВАНИЕ</b>\n"
@@ -414,9 +443,31 @@ def make_step4_city_kb() -> types.InlineKeyboardMarkup:
 def make_step5_vacancies_kb() -> types.InlineKeyboardMarkup:
     """
     Клавиатура выбора вакансии для соискателя (Шаг 5).
-    Динамически синхронизирована с базой данных и настройками набора (get_open_vacancies()).
+    Динамически генерируется через InlineKeyboardBuilder на основе выборки из SQLite:
+    SELECT slug, title FROM vacancy_settings WHERE is_active = 1 ORDER BY sort_order ASC.
     """
     builder = InlineKeyboardBuilder()
+    vac_list = []
+    try:
+        if hasattr(db, "get_vacancies"):
+            vac_list = db.get_vacancies(only_active=True)
+    except Exception as e:
+        logger.warning("Ошибка выборки вакансий для клавиатуры: %s", e)
+
+    if vac_list:
+        for v in vac_list:
+            slug = v.get("slug")
+            title = v.get("title")
+            meta = v.get("meta") or {}
+            icon = meta.get("icon") or get_vacancy_icon(title)
+            builder.button(text=f"{icon} {title}", callback_data=f"vac_pick_{slug}")
+        builder.button(text="📋 Другая должность", callback_data="vac_other")
+        builder.button(text="⬅️ Назад", callback_data="cand_nav_back")
+        builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
+        layout = [1] * len(vac_list) + [1, 2]
+        builder.adjust(*layout)
+        return builder.as_markup()
+
     open_vacancies = get_open_vacancies()
     if not open_vacancies:
         open_vacancies = [
@@ -436,6 +487,47 @@ def make_step5_vacancies_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_cancel_flow")
     layout = [1] * len(open_vacancies) + [1, 2]
     builder.adjust(*layout)
+    return builder.as_markup()
+
+
+def make_vacancies_catalog_kb() -> types.InlineKeyboardMarkup:
+    """
+    Инлайн-каталог активных вакансий МУП «УЭТ».
+    Формирует список кнопок для открытия персональной карточки по slug.
+    """
+    builder = InlineKeyboardBuilder()
+    vac_list = []
+    try:
+        if hasattr(db, "get_vacancies"):
+            vac_list = db.get_vacancies(only_active=True)
+    except Exception:
+        pass
+    if not vac_list:
+        open_vac = get_open_vacancies()
+        for idx, t in enumerate(open_vac):
+            vac_list.append({"slug": f"vac_{idx}", "title": t, "meta": {}})
+
+    for v in vac_list:
+        slug = v.get("slug")
+        title = v.get("title")
+        meta = v.get("meta") or {}
+        icon = meta.get("icon") or get_vacancy_icon(title)
+        builder.button(text=f"{icon} {title}", callback_data=f"vac_card_{slug}")
+
+    builder.button(text="📝 Подать анкету соискателя", callback_data="cand_start_apply")
+    builder.button(text="🏠 Главное меню", callback_data="cand_back_to_main")
+    layout = [1] * len(vac_list) + [1, 1]
+    builder.adjust(*layout)
+    return builder.as_markup()
+
+
+def make_vacancy_card_kb(slug: str) -> types.InlineKeyboardMarkup:
+    """Клавиатура для карточки конкретной вакансии (Откликнуться / Назад к списку)."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📝 Откликнуться на вакансию", callback_data=f"vac_apply_{slug}")
+    builder.button(text="💼 Все вакансии", callback_data="cand_show_vacancies")
+    builder.button(text="🏠 Главное меню", callback_data="cand_back_to_main")
+    builder.adjust(1, 2)
     return builder.as_markup()
 
 
@@ -609,3 +701,8 @@ def make_revoke_confirm_kb() -> types.InlineKeyboardMarkup:
     builder.button(text="❌ Отмена", callback_data="cand_back_to_menu")
     builder.adjust(1, 1)
     return builder.as_markup()
+
+
+# Псевдоним для обратной совместимости
+get_ticket_control_inline_keyboard = make_ticket_keyboard
+

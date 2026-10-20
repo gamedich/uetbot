@@ -32,17 +32,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiohttp import ClientSession, ClientTimeout
 
 import texts
-
-try:
-    from services.candidate_service import candidate_service
-except ImportError:
-    from services.candidate_service import candidate_service
-
 from common import (
     CONFIG,
     EXTERNAL_SESSIONS,
     SYSTEM_METRICS,
-    VACANCIES,
     db,
     get_all_vacancies,
     is_maintenance_active,
@@ -52,6 +45,7 @@ from common import (
 )
 from database import ResumeDB
 from keyboards import make_inquiry_admin_keyboard, make_ticket_keyboard
+from services.candidate_service import candidate_service
 from texts import clean_html, format_hr_card_full, format_survey_step16_review
 
 logger = logging.getLogger("VK_GATEWAY")
@@ -799,7 +793,7 @@ def resolve_vacancy(text: str, payload_dict: Optional[Dict[str, Any]] = None) ->
         v = payload_dict["vac"]
         if v == "other":
             return "Другая должность"
-        for real_v in VACANCIES:
+        for real_v in get_all_vacancies():
             if real_v == v or real_v.startswith(v):
                 return real_v
         return str(v)
@@ -818,7 +812,7 @@ def resolve_vacancy(text: str, payload_dict: Optional[Dict[str, Any]] = None) ->
     if tl in ["6", "другая", "другая должность"]:
         return "Другая должность"
 
-    for v in VACANCIES:
+    for v in get_all_vacancies():
         if v.lower() in tl or tl in v.lower():
             return v
     return text.strip()

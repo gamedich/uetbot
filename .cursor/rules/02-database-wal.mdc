@@ -1,0 +1,72 @@
+---
+description: Стандарты работы с SQLite (WAL, транзакции, безопасность от SQLi, бэкапы) в UETBot
+globs: database.py, *db*.py, repositories/**/*.py
+alwaysApply: false
+---
+
+# Стандарты SQLite, WAL-режима и целостности данных в UETBot
+
+## 1. Режим WAL и параметры высокой производительности
+База данных `bot.db` (и тестовая `bot_test.db`) работает в режиме опережающей записи журнала (Write-Ahead Logging).
+Каждое вновь открываемое соединение обязано инициализировать прагмы:
+```python
+conn.execute("PRAGMA journal_mode=WAL;")
+conn.execute("PRAGMA foreign_keys=ON;")       # Контроль целостности внешних ключей
+conn.execute("PRAGMA busy_timeout=30000;")     # Ожидание освобождения лока до 30 секунд
+conn.execute("PRAGMA synchronous=NORMAL;")     # Оптимальный баланс надежности и скорости I/O
+conn.execute("PRAGMA cache_size=-64000;")      # 64 МБ оперативной памяти под кэш страниц
+conn.execute("PRAGMA temp_store=MEMORY;")      # Временные таблицы и индексы в RAM
+```
+
+---
+
+## 2. Безопасные контекстные менеджеры транзакций
+Все обращения к базе данных должны оборачиваться в контекстные менеджеры:
+```python
+# Хорошая практика (автоматический commit при успехе, rollback при исключении):
+with self.connection(is_test=is_test) as conn:
+    cursor = conn.cursor()
+    cursor.execute("UPDATE candidates SET status = ? WHERE ticket_id = ?", (status, ticket_id))
+
+# Плохая практика (утечка дескрипторов соединений, зависшие транзакции):
+conn = sqlite3.connect("bot.db")
+cursor = conn.cursor()
+cursor.execute(...)
+# Забыли commit() или close() при возникновении ошибки
+```
+
+---
+
+## 3. Абсолютный запрет SQL Injection
+Категорически запрещено конкатенировать строки или использовать f-строки для подстановки значений в запросы:
+```python
+# Хорошая практика (строго параметризованный запрос):
+cursor.execute(
+    "SELECT ticket_id, full_name, phone FROM candidates WHERE vacancy = ? AND status = ?",
+    (vacancy, status)
+)
+
+# КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО (критическая уязвимость):
+cursor.execute(f"SELECT * FROM candidates WHERE full_name = '{user_input}'")
+cursor.execute("SELECT * FROM candidates WHERE phone = '%s'" % phone)
+cursor.execute("SELECT * FROM candidates WHERE status = '" + status + "'")
+```
+
+---
+
+## 4. Процедура горячего резервного копирования и оптимизации
+Фоновый воркер `run_auto_backup_worker` в `bot.py` выполняет горячее копирование каждые 24 часа:
+1. `PRAGMA wal_checkpoint(PASSIVE);` — фиксация страниц из WAL в основной файл без блокировки читателей.
+2. `PRAGMA optimize;` — обновление статистики планировщика запросов.
+3. Онлайн-копирование через встроенный API `sqlite3.Connection.backup()`:
+```python
+def backup_database(self) -> str:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_file = os.path.join(self.backup_dir, f"bot_backup_{timestamp}.db")
+    with self.connection() as src:
+        with sqlite3.connect(backup_file) as dst:
+            src.backup(dst, pages=100)  # Постраничное копирование без зависания сервиса
+    return backup_file
+```
+4. Ротация: автоматическое удаление резервных копий старше 7 суток (`cleanup_old_backups(7)`).
+5. Уничтожение персональных данных соискателей с истекшим сроком хранения (180 дней) по регламенту 152-ФЗ РФ.

@@ -13,7 +13,6 @@ from datetime import date, datetime
 from typing import Any, Dict, Optional, Tuple, Union
 
 import texts
-from config import CONFIG
 from texts import clean_html
 
 logger = logging.getLogger("CANDIDATE_SERVICE")

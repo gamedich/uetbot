@@ -14,13 +14,13 @@ from aiogram import F, Router, types
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+import texts
 from common import (
     check_hr_access_or_block,
     db,
     safe_answer,
 )
 from keyboards import make_admin_menu_keyboard
-import texts
 
 logger = logging.getLogger("HR_PANEL")
 panel_router = Router(name="hr_panel")

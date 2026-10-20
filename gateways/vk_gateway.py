@@ -32,14 +32,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiohttp import ClientSession, ClientTimeout
 
 import texts
-
-from services.candidate_service import candidate_service
-
 from common import (
     CONFIG,
     EXTERNAL_SESSIONS,
     SYSTEM_METRICS,
-    VACANCIES,
     db,
     get_all_vacancies,
     is_maintenance_active,
@@ -49,6 +45,7 @@ from common import (
 )
 from database import ResumeDB
 from keyboards import make_inquiry_admin_keyboard, make_ticket_keyboard
+from services.candidate_service import candidate_service
 from texts import clean_html, format_hr_card_full, format_survey_step16_review
 
 logger = logging.getLogger("VK_GATEWAY")

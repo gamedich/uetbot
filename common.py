@@ -44,7 +44,7 @@ from aiogram.types import (
 )
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
-from config import CONFIG, update_env_variable, validate_config
+from config import CONFIG, update_env_variable, validate_config  # noqa: F401
 from database import ResumeDB
 from texts import clean_html
 

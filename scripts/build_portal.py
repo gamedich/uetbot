@@ -235,7 +235,7 @@ portal_html = r'''<!DOCTYPE html>
         <!-- ================= 2. ШАПКА ПОРТАЛА (HEADER) ================= -->
         <header class="bg-white/95 dark:bg-[#112240]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-8 z-40 shadow-xs transition-colors">
             <div class="max-w-7xl mx-auto h-16 px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4">
-                
+
                 <!-- Логотип и Бренд -->
                 <div class="flex items-center gap-2 sm:gap-3 cursor-pointer select-none shrink-0" onclick="switchTab('landing')">
                     <div class="w-10 h-10 rounded-2xl bg-[#D31224] flex items-center justify-center text-white font-black text-lg italic shadow-md border-2 border-white shrink-0">
@@ -455,7 +455,7 @@ portal_html = r'''<!DOCTYPE html>
             <!-- ------------------------------------------------------------------ -->
             <div id="tabContentSurvey16" class="space-y-6 hidden">
                 <div class="bg-white dark:bg-[#112240] rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                    
+
                     <!-- Шапка визарда 16 шагов -->
                     <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
                         <div>
@@ -559,7 +559,7 @@ portal_html = r'''<!DOCTYPE html>
             <!-- ------------------------------------------------------------------ -->
             <div id="tabContentHrHub" class="space-y-6 hidden">
                 <div class="bg-white dark:bg-[#112240] rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
-                    
+
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                         <div>
                             <div class="flex items-center gap-2">
@@ -681,7 +681,7 @@ portal_html = r'''<!DOCTYPE html>
             <!-- ------------------------------------------------------------------ -->
             <div id="tabContentTechHub" class="space-y-6 hidden">
                 <div class="bg-white dark:bg-[#112240] rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
-                    
+
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                         <div>
                             <div class="flex items-center gap-2">
@@ -821,7 +821,7 @@ portal_html = r'''<!DOCTYPE html>
             <!-- ------------------------------------------------------------------ -->
             <div id="tabContentAdminHub" class="space-y-6 hidden">
                 <div class="bg-white dark:bg-[#112240] rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
-                    
+
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                         <div>
                             <div class="flex items-center gap-2">
@@ -894,7 +894,7 @@ portal_html = r'''<!DOCTYPE html>
             <!-- ------------------------------------------------------------------ -->
             <div id="tabContentOwnerHub" class="space-y-6 hidden">
                 <div class="bg-white dark:bg-[#112240] rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-5">
-                    
+
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                         <div>
                             <div class="flex items-center gap-2">
@@ -1712,7 +1712,7 @@ portal_html = r'''<!DOCTYPE html>
                 }
 
                 const ticketId = res.ticket_id || Math.floor(1000 + Math.random() * 9000);
-                
+
                 state.role = 'applicant';
                 state.user = {
                     ticket_id: ticketId,
@@ -2463,11 +2463,12 @@ portal_html = r'''<!DOCTYPE html>
 </html>
 '''
 
-# Запись в dashboard.html и apply.html
-dash_path = Path("/root/uetbot2/templates/dashboard.html")
-apply_path = Path("/root/uetbot2/templates/apply.html")
+if __name__ == "__main__":
+    # Запись в dashboard.html и apply.html
+    dash_path = Path("/root/uetbot2/templates/dashboard.html")
+    apply_path = Path("/root/uetbot2/templates/apply.html")
 
-dash_path.write_text(portal_html, encoding="utf-8")
-apply_path.write_text(portal_html, encoding="utf-8")
-print(f"Successfully generated: {dash_path} ({dash_path.stat().st_size} bytes)")
-print(f"Successfully generated: {apply_path} ({apply_path.stat().st_size} bytes)")
+    dash_path.write_text(portal_html, encoding="utf-8")
+    apply_path.write_text(portal_html, encoding="utf-8")
+    print(f"Successfully generated: {dash_path} ({dash_path.stat().st_size} bytes)")
+    print(f"Successfully generated: {apply_path} ({apply_path.stat().st_size} bytes)")

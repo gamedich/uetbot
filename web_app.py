@@ -943,11 +943,12 @@ class WebPanel:
                 status=404,
             )
 
-        # Ограничение частоты запросов (Rate Limit: 1 запрос в 20 сек)
+        # Ограничение частоты запросов (Rate Limit: 15 сек в проде, 2 сек в тесте)
+        cooldown = 2 if CONFIG.get("ENVIRONMENT") == "TEST" or request.headers.get("X-Test-Mode") else 15
         now = time.time()
         last_req = self.otp_rate_limits.get(target_uid, 0)
-        if now - last_req < 20:
-            rem = int(20 - (now - last_req))
+        if now - last_req < cooldown:
+            rem = max(1, int(cooldown - (now - last_req)))
             return web.json_response(
                 {"ok": False, "error": f"Повторный код можно запросить через {rem} сек."}, status=429
             )
@@ -1051,6 +1052,7 @@ class WebPanel:
         method = data.get("method")
         val = str(data.get("password") or data.get("value") or data.get("code") or "").strip()
         username = str(data.get("username") or data.get("login") or "").strip().lower()
+        req_role = str(data.get("role") or "").strip().lower()
 
         super_id = CONFIG.get("SUPER_ADMIN_ID", 7657422832)
         tech_id = CONFIG.get("TECH_ADMIN_ID", 7657422832)
@@ -1283,8 +1285,15 @@ class WebPanel:
                 with self.db.connection(is_test=is_test_db) as conn:
                     cur = conn.cursor()
                     cur.execute(
-                        "SELECT ticket_id, full_name, phone, vacancy, raw_data_json FROM candidates WHERE ticket_id = ? OR phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
-                        (clean_user, f"%{clean_user[-10:]}%"),
+                        """
+                        SELECT ticket_id, full_name, phone, vacancy, raw_data_json
+                        FROM candidates
+                        WHERE ticket_id = ?
+                           OR phone LIKE ?
+                           OR replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ?
+                        ORDER BY ticket_id DESC LIMIT 1
+                        """,
+                        (clean_user, f"%{clean_user[-10:]}%", f"%{clean_user[-10:]}%"),
                     )
                     cand = cur.fetchone()
                     if cand:
@@ -1380,6 +1389,18 @@ class WebPanel:
         if existing_cand:
             ticket_id = existing_cand[0]
             cand_name = existing_cand[1] or full_name
+            if password:
+                try:
+                    meta = json.loads(existing_cand[4] or "{}")
+                    meta["web_password"] = self.db.hash_password(password)
+                    for is_test_db in (False, True):
+                        with self.db.connection(is_test=is_test_db) as conn:
+                            conn.cursor().execute(
+                                "UPDATE candidates SET raw_data_json = ? WHERE ticket_id = ?",
+                                (json.dumps(meta, ensure_ascii=False), ticket_id),
+                            )
+                except Exception as e:
+                    logger.warning("Ошибка обновления пароля соискателя: %s", e)
             tok = generate_auth_token(ticket_id, "applicant", cand_name)
             resp = web.json_response(
                 {
@@ -1399,9 +1420,10 @@ class WebPanel:
             return resp
 
         # Создаем нового кандидата
+        hashed_password = self.db.hash_password(password) if password else ""
         raw_meta = {
             "registered_via": platform,
-            "web_password": password,
+            "web_password": hashed_password,
             "telegram": tg_raw,
             "registered_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
@@ -1900,11 +1922,11 @@ class WebPanel:
     async def handle_api_vacancies(self, request: web.Request) -> web.Response:
         """Динамический список должностей МУП «Ульяновскэлектротранс» из единого источника правды (SQLite vacancy_settings)."""
         show_all = request.query.get("all") in ("1", "true")
-        
+
         db_vacs = []
         try:
-            if hasattr(db, "get_vacancies"):
-                db_vacs = db.get_vacancies(only_active=False)
+            if hasattr(self.db, "get_vacancies"):
+                db_vacs = self.db.get_vacancies(only_active=False)
         except Exception as e:
             logger.warning("Ошибка получения вакансий из vacancy_settings: %s", e)
 
@@ -2001,7 +2023,7 @@ class WebPanel:
                 slug = str(item.get("slug") or item.get("id") or "").strip()
                 if not slug or slug.startswith("vac_"):
                     slug = f"vac_{idx}_{abs(hash(title)) % 100000}"
-                
+
                 is_active = 1 if item.get("is_active") in (1, "1", True, "true") or item.get("active") in (1, "1", True, "true") else 0
                 sort_order = int(item.get("sort_order") if item.get("sort_order") is not None else (idx + 1))
                 salary = str(item.get("salary_text") or item.get("salary") or "").strip()
@@ -2019,10 +2041,10 @@ class WebPanel:
                     "meta": meta
                 })
 
-            if hasattr(db, "save_vacancies_batch"):
-                db.save_vacancies_batch(batch)
+            if hasattr(self.db, "save_vacancies_batch"):
+                self.db.save_vacancies_batch(batch)
 
-            updated = db.get_vacancies(only_active=False) if hasattr(db, "get_vacancies") else batch
+            updated = self.db.get_vacancies(only_active=False) if hasattr(self.db, "get_vacancies") else batch
             return web.json_response({"ok": True, "vacancies": updated})
         except Exception as e:
             logger.error("Ошибка сохранения настроек вакансий: %s", e)
@@ -2039,9 +2061,9 @@ class WebPanel:
             if not title:
                 return web.json_response({"error": "Не указано наименование должности"}, status=400)
 
-            if hasattr(db, "toggle_vacancy_active"):
-                db.toggle_vacancy_active(title)
-                v = db.get_vacancy_by_slug(title)
+            if hasattr(self.db, "toggle_vacancy_active"):
+                self.db.toggle_vacancy_active(title)
+                v = self.db.get_vacancy_by_slug(title)
                 is_open = bool(v.get("is_active")) if v else True
             else:
                 closed = get_closed_vacancies()
@@ -2082,8 +2104,8 @@ class WebPanel:
                 "meta": data.get("meta") or {}
             }
 
-            if hasattr(db, "save_vacancies_batch"):
-                db.save_vacancies_batch([new_vac])
+            if hasattr(self.db, "save_vacancies_batch"):
+                self.db.save_vacancies_batch([new_vac])
 
             all_vac = get_all_vacancies()
             return web.json_response({"ok": True, "title": title, "vacancies": all_vac})
@@ -2104,7 +2126,7 @@ class WebPanel:
             # Деактивируем или удаляем из vacancy_settings
             try:
                 for test_mode in (False, True):
-                    with db.connection(is_test=test_mode) as conn:
+                    with self.db.connection(is_test=test_mode) as conn:
                         conn.execute("DELETE FROM vacancy_settings WHERE slug = ? OR title = ?", (title, title))
                         conn.commit()
             except Exception as e:
@@ -2585,7 +2607,7 @@ class WebPanel:
 
             reply_markup = None
             if with_btn:
-                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
                 web_url = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/")
                 reply_markup = InlineKeyboardMarkup(
                     inline_keyboard=[
@@ -2702,7 +2724,7 @@ class WebPanel:
                 "🚀 <i>Канал синхронизирован с автоматической системой публикаций сервера.</i>"
             )
 
-        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
         reply_markup = InlineKeyboardMarkup(
             inline_keyboard=[
                 [

@@ -73,6 +73,7 @@ class ResumeDB:
             target = self.test_db_path if is_test else self.db_path
             conn = sqlite3.connect(target, timeout=30.0, check_same_thread=False)
             conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA foreign_keys=ON;")
             conn.execute("PRAGMA busy_timeout=30000;")
             conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("PRAGMA cache_size=-64000;")
@@ -119,6 +120,7 @@ class ResumeDB:
         target = self.test_db_path if is_test else self.db_path
         conn = await aiosqlite.connect(target, timeout=30.0)
         await conn.execute("PRAGMA journal_mode=WAL;")
+        await conn.execute("PRAGMA foreign_keys=ON;")
         await conn.execute("PRAGMA busy_timeout=30000;")
         await conn.execute("PRAGMA synchronous=NORMAL;")
         await conn.execute("PRAGMA cache_size=-64000;")
@@ -183,9 +185,10 @@ class ResumeDB:
                 ("interview_time", "TEXT DEFAULT ''"),
                 ("interview_status", "TEXT DEFAULT 'pending'"),
             ]
+            new_columns_dict = dict(new_columns)
             for col_name, col_def in new_columns:
-                if col_name not in cand_cols:
-                    cursor.execute(f"ALTER TABLE candidates ADD COLUMN {col_name} {col_def}")
+                if col_name not in cand_cols and col_name in new_columns_dict and col_name.isidentifier():
+                    cursor.execute(f"ALTER TABLE candidates ADD COLUMN {col_name} {new_columns_dict[col_name]}")
 
             # Для тестовой базы стартуем нумерацию тикетов с 900000 (идемпотентно)
             if is_test:

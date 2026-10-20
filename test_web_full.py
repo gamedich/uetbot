@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import json
-import urllib.request
+import sys
 import urllib.error
 import urllib.parse
-import sys
+import urllib.request
 
 BASE_URL = "http://127.0.0.1:8082"
 
@@ -124,7 +124,7 @@ def run_tests():
     status, data = post_json("/api/auth/request_otp", {"target": "7657422832", "role": "superadmin"})
     print(f"[*] OTP Request (7657422832): {status}, data={data}")
     results["API /api/auth/request_otp"] = "PASS" if status == 200 and data.get("ok") else f"FAIL ({status})"
-    
+
     dev_code = data.get("dev_code") if isinstance(data, dict) else None
     super_token = None
     if dev_code:
@@ -182,7 +182,7 @@ def run_tests():
         print(f" - {test_name}: {res}")
         if not res.startswith("PASS"):
             all_passed = False
-    
+
     print(f"\nOVERALL RESULT: {'ALL TESTS PASSED' if all_passed else 'SOME TESTS FAILED'}")
     return 0 if all_passed else 1
 

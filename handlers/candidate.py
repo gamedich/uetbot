@@ -30,6 +30,7 @@ from common import (
     db,
     get_all_vacancies,
     get_open_vacancies,
+    get_vacancy_icon,
     is_any_staff,
     is_hr_admin,
     is_maintenance_active,
@@ -51,8 +52,6 @@ from keyboards import (
     make_step2_birthdate_kb,
     make_step4_city_kb,
     make_step5_vacancies_kb,
-    make_vacancies_catalog_kb,
-    make_vacancy_card_kb,
     make_step6_1_categories_kb,
     make_step6_license_kb,
     make_step7_experience_kb,
@@ -67,6 +66,8 @@ from keyboards import (
     make_step16_edit_menu_kb,
     make_step_nav_kb,
     make_ticket_keyboard,
+    make_vacancies_catalog_kb,
+    make_vacancy_card_kb,
 )
 from services.candidate_service import candidate_service
 
@@ -235,7 +236,6 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         ) + texts.START_WELCOME
 
     # 1. Устанавливаем нижнюю эргономичную клавиатуру быстрого доступа (Reply-кнопки):
-    from keyboards import make_candidate_persistent_reply_keyboard
 
     try:
         await message.answer(

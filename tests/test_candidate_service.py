@@ -4,6 +4,7 @@
 """
 
 import pytest
+
 from services.candidate_service import CandidateService
 
 

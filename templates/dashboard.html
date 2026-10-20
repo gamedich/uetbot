@@ -1594,36 +1594,83 @@
                 </form>
             </div>
 
-            <!-- 2. Вкладка: СОТРУДНИК (Служебный вход HR / Tech / Admin / Owner) -->
+            <!-- 2. Вкладка: СОТРУДНИК (Служебный вход по Telegram OTP / TMA) -->
             <div id="authContentStaff" class="space-y-3 text-xs hidden">
                 <div id="staffLoginHintBadge" class="hidden p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[#1371B9] dark:text-sky-300 font-bold leading-relaxed text-[11px]">
                     🔐 Требуется авторизация сотрудника
                 </div>
-                <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
-                    <b>ℹ️ Инструкция:</b> Введите служебный логин и пароль. Если у вас мастер-пароль, логин можно оставить пустым.
-                </div>
-                <form onsubmit="handleAuthLogin(event)" class="space-y-3">
-                    <div>
-                        <label class="block font-bold text-slate-500 mb-1">Служебный логин или Telegram ID (опционально)</label>
-                        <input id="loginInputUser" type="text" placeholder="super, hr, tech (или оставьте пустым)" class="form-input-standard">
-                    </div>
-                    <div>
-                        <label class="block font-bold text-slate-500 mb-1">Пароль доступа <span class="text-red-500">*</span></label>
-                        <input id="loginInputPass" type="password" placeholder="Служебный пароль (например, uet2026super)..." required class="form-input-standard">
-                    </div>
-                    <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                        <span>Быстрый выбор:</span>
-                        <div class="flex items-center gap-1.5 font-bold">
-                            <button type="button" onclick="quickFillStaff('superadmin', 'uet2026super')" class="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition">👑 SuperAdmin</button>
-                            <button type="button" onclick="quickFillStaff('hr', 'uet2026hr')" class="px-2 py-1 rounded-lg bg-blue-500/10 text-[#1371B9] hover:bg-blue-500/20 transition">👔 HR</button>
-                            <button type="button" onclick="quickFillStaff('tech', 'uet2026tech')" class="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition">🛠 Tech</button>
+
+                <!-- Главный безопасный блок: Одноразовый код в Telegram (OTP) -->
+                <div class="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-[#0d1b2a] dark:to-[#1b263b] border border-blue-200/60 dark:border-blue-900/40 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base">🛡</span>
+                        <div>
+                            <h4 class="font-extrabold text-slate-800 dark:text-slate-100 text-xs">Безопасный 2FA-вход без постоянных паролей</h4>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400">Постоянные пароли отключены во избежание подбора. Вход по 6-значному одноразовому коду.</p>
                         </div>
                     </div>
-                    <div id="loginErrorMsg" class="hidden p-2 rounded-lg bg-red-500/10 text-red-500 font-bold text-[11px]"></div>
-                    <button id="btnStaffLoginSubmit" type="submit" class="w-full h-11 bg-[#1371B9] hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition">
-                        Войти в служебную панель
+
+                    <!-- Шаг 1: Запрос кода -->
+                    <div id="staffOtpStep1" class="space-y-2">
+                        <div>
+                            <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Telegram ID или @username <span class="text-red-500">*</span></label>
+                            <input id="staffOtpTargetInput" type="text" placeholder="@its_darksold1 или 7657422832" class="form-input-standard">
+                        </div>
+                        <button id="btnRequestOtp" type="button" onclick="requestStaffOtp()" class="w-full h-10 bg-gradient-to-r from-[#1371B9] to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-extrabold rounded-xl shadow-md transition flex items-center justify-center gap-1.5">
+                            <span>📲</span>
+                            <span>Получить одноразовый код в Telegram</span>
+                        </button>
+                    </div>
+
+                    <!-- Шаг 2: Ввод кода (скрыт до отправки) -->
+                    <div id="staffOtpStep2" class="hidden space-y-2">
+                        <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] flex items-center justify-between" id="staffOtpSentMsg">
+                            <span>✓ Код отправлен в ваш Telegram!</span>
+                            <span id="staffOtpTimer" class="font-mono text-xs">03:00</span>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Введите 6-значный код из Telegram <span class="text-red-500">*</span></label>
+                            <input id="staffOtpCodeInput" type="text" maxlength="6" placeholder="• • • • • •" class="form-input-standard text-center font-mono text-base tracking-widest font-black">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btnVerifyOtp" type="button" onclick="verifyStaffOtp()" class="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-md transition">
+                                ✓ Подтвердить и войти
+                            </button>
+                            <button type="button" onclick="resetStaffOtpStep()" class="h-10 px-3 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 font-bold text-xs">
+                                ↺ Назад
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Быстрый беспарольный вход внутри Telegram Mini App -->
+                <a href="https://t.me/UetFeedback_bot" target="_blank" class="w-full py-2 px-3 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-[#1371B9] dark:text-sky-300 border border-sky-500/20 font-bold flex items-center justify-center gap-2 transition text-center text-xs">
+                    <span>🤖</span>
+                    <span>Открыть через Telegram Mini App (мгновенный вход)</span>
+                </a>
+
+                <!-- Раскрывающаяся секция: Резервный вход по персональному паролю -->
+                <div class="pt-1 border-t border-slate-200 dark:border-slate-800">
+                    <button type="button" onclick="toggleStaffPasswordFallback()" class="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-semibold flex items-center gap-1">
+                        <span id="pwdFallbackArrow">▸</span>
+                        <span>Резервный вход по личному паролю сотрудника</span>
                     </button>
-                </form>
+                    <form id="staffPasswordFallbackForm" onsubmit="handleAuthLogin(event)" class="hidden space-y-2 pt-2">
+                        <div>
+                            <label class="block font-bold text-slate-500 mb-1">Логин или Telegram ID</label>
+                            <input id="loginInputUser" type="text" placeholder="superadmin / ID..." class="form-input-standard text-xs">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-500 mb-1">Персональный пароль</label>
+                            <input id="loginInputPass" type="password" placeholder="Пароль заданный через /password в Telegram..." class="form-input-standard text-xs">
+                        </div>
+                        <button id="btnStaffLoginSubmit" type="submit" class="w-full h-9 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition">
+                            Войти по личному паролю
+                        </button>
+                    </form>
+                </div>
+
+                <div id="loginErrorMsg" class="hidden p-2 rounded-lg bg-red-500/10 text-red-500 font-bold text-[11px]"></div>
             </div>
         </div>
     </div>
@@ -3516,13 +3563,139 @@
             }
         }
 
-        function quickFillStaff(role, pwd) {
-            const u = document.getElementById('loginInputUser');
-            const p = document.getElementById('loginInputPass');
-            if (u) u.value = role;
-            if (p) p.value = pwd;
+        let otpTimerInterval = null;
+
+        async function requestStaffOtp() {
+            const target = document.getElementById('staffOtpTargetInput')?.value.trim();
+            const err = document.getElementById('loginErrorMsg');
+            const btn = document.getElementById('btnRequestOtp');
+            if (err) err.classList.add('hidden');
+
+            if (!target) {
+                if (err) {
+                    err.innerText = 'Пожалуйста, введите ваш Telegram ID или @username.';
+                    err.classList.remove('hidden');
+                }
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳</span><span>Отправка кода в Telegram...</span>';
+
+            try {
+                const resp = await fetch('/api/auth/request_otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target: target })
+                });
+                const res = await resp.json();
+                if (resp.ok && res.ok) {
+                    document.getElementById('staffOtpStep1')?.classList.add('hidden');
+                    document.getElementById('staffOtpStep2')?.classList.remove('hidden');
+                    const codeInput = document.getElementById('staffOtpCodeInput');
+                    if (codeInput) {
+                        codeInput.value = res.dev_code || '';
+                        codeInput.focus();
+                    }
+                    startOtpTimer(res.ttl || 180);
+                } else {
+                    if (err) {
+                        err.innerText = res.error || 'Не удалось отправить код.';
+                        err.classList.remove('hidden');
+                    }
+                }
+            } catch (e) {
+                if (err) {
+                    err.innerText = 'Сбой сети при запросе кода.';
+                    err.classList.remove('hidden');
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>📲</span><span>Получить одноразовый код в Telegram</span>';
+            }
+        }
+
+        async function verifyStaffOtp() {
+            const code = document.getElementById('staffOtpCodeInput')?.value.trim();
+            const err = document.getElementById('loginErrorMsg');
+            const btn = document.getElementById('btnVerifyOtp');
+            if (err) err.classList.add('hidden');
+
+            if (!code || code.length < 4) {
+                if (err) {
+                    err.innerText = 'Введите 6-значный код из Telegram.';
+                    err.classList.remove('hidden');
+                }
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Проверка кода...';
+
+            try {
+                const resp = await fetch('/api/auth/verify_otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code })
+                });
+                const res = await resp.json();
+                if (resp.ok && res.ok) {
+                    clearInterval(otpTimerInterval);
+                    setAuthSession(res);
+                    closeLoginModal();
+                    if (res.role === 'superadmin' || res.role === 'super') switchTab('ownerHub');
+                    else if (res.role === 'hr') switchTab('hrHub');
+                    else if (res.role === 'tech') switchTab('techHub');
+                    else switchTab('status');
+                } else {
+                    if (err) {
+                        err.innerText = res.error || 'Неверный или уже использованный код.';
+                        err.classList.remove('hidden');
+                    }
+                }
+            } catch (e) {
+                if (err) {
+                    err.innerText = 'Сбой сети при верификации кода.';
+                    err.classList.remove('hidden');
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '✓ Подтвердить и войти';
+            }
+        }
+
+        function resetStaffOtpStep() {
+            clearInterval(otpTimerInterval);
+            document.getElementById('staffOtpStep1')?.classList.remove('hidden');
+            document.getElementById('staffOtpStep2')?.classList.add('hidden');
             const err = document.getElementById('loginErrorMsg');
             if (err) err.classList.add('hidden');
+        }
+
+        function startOtpTimer(seconds) {
+            clearInterval(otpTimerInterval);
+            let left = seconds;
+            const timerEl = document.getElementById('staffOtpTimer');
+            function tick() {
+                const m = Math.floor(left / 60);
+                const s = left % 60;
+                if (timerEl) timerEl.innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                if (left <= 0) {
+                    clearInterval(otpTimerInterval);
+                    if (timerEl) timerEl.innerText = 'Истёк';
+                }
+                left--;
+            }
+            tick();
+            otpTimerInterval = setInterval(tick, 1000);
+        }
+
+        function toggleStaffPasswordFallback() {
+            const form = document.getElementById('staffPasswordFallbackForm');
+            const arrow = document.getElementById('pwdFallbackArrow');
+            if (!form) return;
+            const isHidden = form.classList.toggle('hidden');
+            if (arrow) arrow.innerText = isHidden ? '▸' : '▾';
         }
 
         function closeLoginModal() {

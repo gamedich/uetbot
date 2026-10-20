@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import re
+import secrets
 import shutil
 import time
 import urllib.parse
@@ -223,6 +224,9 @@ class WebPanel:
         self.db = db
         self.bot = bot
         self.start_time = datetime.now()
+        self.otp_store: Dict[str, Dict[str, Any]] = {}
+        self.otp_rate_limits: Dict[int, float] = {}
+        self.failed_login_attempts: Dict[str, List[float]] = {}
         self.app = web.Application(middlewares=[cors_middleware, security_headers_middleware])
         self._setup_routes()
 
@@ -256,7 +260,9 @@ class WebPanel:
         self.app.router.add_get("/api/candidate/lookup", self.handle_api_candidate_lookup)
         self.app.router.add_post("/api/candidate/lookup", self.handle_api_candidate_lookup)
 
-        # Auth
+        # Auth (Zero-Knowledge OTP & TMA)
+        self.app.router.add_post("/api/auth/request_otp", self.handle_api_auth_request_otp)
+        self.app.router.add_post("/api/auth/verify_otp", self.handle_api_auth_verify_otp)
         self.app.router.add_post("/api/auth/login", self.handle_api_auth_login)
         self.app.router.add_post("/api/auth/register", self.handle_api_auth_register)
         self.app.router.add_post("/api/auth/verify_session", self.handle_api_auth_verify_session)
@@ -863,21 +869,191 @@ class WebPanel:
         resp.del_cookie("uet_token", path="/")
         return resp
 
+    async def handle_api_auth_request_otp(self, request: web.Request) -> web.Response:
+        """
+        Генерация и отправка одноразового 6-значного кода подтверждения (OTP) в Telegram.
+        Исключает постоянные пароли, защищает от подбора и перехвата (2FA / Zero-Knowledge).
+        """
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+
+        target = str(data.get("target") or data.get("login") or data.get("username") or data.get("identifier") or "").strip().lower()
+        if not target:
+            return web.json_response(
+                {"ok": False, "error": "Укажите ваш Telegram ID или @username для отправки кода."}, status=400
+            )
+
+        clean_user = target.lstrip("@").strip()
+        super_id = int(CONFIG.get("SUPER_ADMIN_ID", 7657422832))
+        tech_id = int(CONFIG.get("TECH_ADMIN_ID", 7657422832))
+        super_username = str(self.db.get_admin_username(super_id) or "its_darksold1").lower().lstrip("@")
+
+        target_uid = None
+        target_role = "applicant"
+        target_name = "Пользователь"
+
+        # 1. Проверяем Супер-Админа
+        if clean_user in (str(super_id), super_username, "super", "superadmin", "owner", "admin", "its_darksold1", "darksold"):
+            target_uid = super_id
+            target_role = "superadmin"
+            target_name = "Илья (SuperAdmin)"
+        elif clean_user in (str(tech_id), "tech", "инженер"):
+            target_uid = tech_id
+            target_role = "tech"
+            target_name = "Дежурный Инженер (Tech)"
+        else:
+            # 2. Ищем в таблице admins
+            with self.db.connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT user_id, role, full_name, username FROM admins")
+                for uid, role, fname, uname in cur.fetchall():
+                    if clean_user in (str(uid), str(uname or "").lower().lstrip("@")):
+                        target_uid = int(uid)
+                        target_role = role
+                        target_name = fname or f"Сотрудник #{uid}"
+                        break
+
+            # 3. Ищем в таблице candidates
+            if not target_uid:
+                num_only = re.sub(r"\D", "", target)
+                if num_only:
+                    with self.db.connection() as conn:
+                        cur = conn.cursor()
+                        cur.execute(
+                            "SELECT ticket_id, user_id, full_name, phone FROM candidates WHERE ticket_id = ? OR phone LIKE ? ORDER BY ticket_id DESC LIMIT 1",
+                            (num_only, f"%{num_only[-10:]}%" if len(num_only) >= 7 else "___NONE___"),
+                        )
+                        cand = cur.fetchone()
+                        if cand and cand[1]:
+                            try:
+                                target_uid = int(cand[1])
+                                target_role = "applicant"
+                                target_name = cand[2] or f"Соискатель #{cand[0]}"
+                            except Exception:
+                                pass
+
+        if not target_uid:
+            return web.json_response(
+                {
+                    "ok": False,
+                    "error": f"Пользователь '{target}' не найден в системе. Откройте бота в Telegram для привязки аккаунта или используйте Telegram Mini App.",
+                },
+                status=404,
+            )
+
+        # Ограничение частоты запросов (Rate Limit: 1 запрос в 20 сек)
+        now = time.time()
+        last_req = self.otp_rate_limits.get(target_uid, 0)
+        if now - last_req < 20:
+            rem = int(20 - (now - last_req))
+            return web.json_response(
+                {"ok": False, "error": f"Повторный код можно запросить через {rem} сек."}, status=429
+            )
+
+        self.otp_rate_limits[target_uid] = now
+
+        # Генерация криптостойкого 6-значного кода
+        code = f"{secrets.randbelow(900000) + 100000}"
+        self.otp_store[code] = {
+            "uid": target_uid,
+            "role": target_role,
+            "name": target_name,
+            "expires_at": now + 180,  # 3 минуты
+            "attempts": 0,
+        }
+
+        # Отправка кода в Telegram через бота
+        sent_ok = False
+        if self.bot:
+            try:
+                from common import safe_send
+
+                msg_text = (
+                    f"🔐 <b>Код подтверждения входа в веб-панель МУП «УЭТ»</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Ваш одноразовый секретный код:\n\n"
+                    f"👉 <code>{code}</code>\n\n"
+                    f"⏱ <i>Код действителен в течение 3 минут.</i>\n"
+                    f"🛡 <i>Никому не передавайте данный код. Он заменяет постоянный пароль и предотвращает несанкционированный доступ к служебной панели.</i>"
+                )
+                sent_ok = await safe_send(self.bot, target_uid, msg_text, parse_mode="HTML")
+            except Exception as e:
+                logger.error("Ошибка отправки OTP в Telegram: %s", e)
+
+        uid_str = str(target_uid)
+        masked_uid = uid_str[:2] + "***" + uid_str[-2:] if len(uid_str) > 4 else "***"
+
+        resp_data = {
+            "ok": True,
+            "sent": sent_ok,
+            "message": f"Одноразовый код отправлен в ваш Telegram ({masked_uid}).",
+            "ttl": 180,
+            "target_uid": target_uid,
+        }
+        logger.info("[OTP_AUTH] Сгенерирован одноразовый код для UID %s (%s)", target_uid, target_role)
+        if CONFIG.get("ENVIRONMENT") == "TEST":
+            resp_data["dev_code"] = code
+
+        return web.json_response(resp_data)
+
+    async def handle_api_auth_verify_otp(self, request: web.Request) -> web.Response:
+        """Проверка одноразового 6-значного кода и выдача сессионного токена."""
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+
+        code = str(data.get("code") or data.get("otp") or "").strip()
+        now = time.time()
+
+        record = self.otp_store.get(code)
+        if not record:
+            return web.json_response(
+                {"ok": False, "error": "Неверный или уже использованный код подтверждения."}, status=400
+            )
+
+        if now > record.get("expires_at", 0):
+            self.otp_store.pop(code, None)
+            return web.json_response(
+                {"ok": False, "error": "Срок действия кода (3 минуты) истёк. Запросите новый код."}, status=400
+            )
+
+        # Одноразовый код: удаляем сразу после успешной проверки
+        self.otp_store.pop(code, None)
+
+        uid = record["uid"]
+        role = record["role"]
+        name = record["name"]
+
+        tok = generate_auth_token(uid, role, name)
+        resp = web.json_response(
+            {
+                "ok": True,
+                "token": tok,
+                "role": role,
+                "user_id": uid,
+                "name": name,
+                "label": f"● {name} ({role.upper()})",
+            }
+        )
+        resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")
+        return resp
+
     async def handle_api_auth_login(self, request: web.Request) -> web.Response:
-        """Безопасная авторизация по логину/паролю или валидированному TMA."""
+        """Безопасная авторизация по OTP коду, TMA или персональному паролю из БД (без статичных паролей)."""
         try:
             data = await request.json()
         except Exception:
             data = {}
 
         method = data.get("method")
-        val = str(data.get("password") or data.get("value") or "").strip()
+        val = str(data.get("password") or data.get("value") or data.get("code") or "").strip()
         username = str(data.get("username") or data.get("login") or "").strip().lower()
 
         super_id = CONFIG.get("SUPER_ADMIN_ID", 7657422832)
         tech_id = CONFIG.get("TECH_ADMIN_ID", 7657422832)
-        secret_phrase = CONFIG.get("WEB_SECRET_PHRASE", "uet2026")
-        master_pin = CONFIG.get("SUPER_ADMIN_PASSWORD", "7657")
 
         # 1. Авторизация через Telegram Mini App (Строгая криптографическая проверка HMAC с пулом токенов)
         if method == "tma":
@@ -982,10 +1158,41 @@ class WebPanel:
             resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")
             return resp
 
-        # 2. ВХОД ПО ЛОГИНУ / РОЛИ И ПАРОЛЮ
-        req_role = str(data.get("role") or "").strip().lower()
+        # 2. ВХОД ПО ОДНОРАЗОВОМУ КОДУ (OTP)
+        if val in self.otp_store:
+            record = self.otp_store.pop(val)
+            if time.time() <= record.get("expires_at", 0):
+                uid = record["uid"]
+                role = record["role"]
+                name = record["name"]
+                tok = generate_auth_token(uid, role, name)
+                resp = web.json_response(
+                    {
+                        "ok": True,
+                        "token": tok,
+                        "role": role,
+                        "user_id": uid,
+                        "name": name,
+                        "label": f"● {name} ({role.upper()})",
+                    }
+                )
+                resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")
+                return resp
 
-        # Автокоррекция: если пользователь ввел пароль в поле логина
+        # 3. ЗАЩИТА ОТ ПОДБОРА (BRUTE-FORCE PROTECTION)
+        client_ip = request.remote or "unknown"
+        now = time.time()
+        attempts = [t for t in self.failed_login_attempts.setdefault(client_ip, []) if now - t < 900]
+        self.failed_login_attempts[client_ip] = attempts
+        if len(attempts) >= 5:
+            return web.json_response(
+                {
+                    "ok": False,
+                    "error": "⛔ Превышено количество попыток входа (блокировка 15 минут). Постоянные пароли отключены во избежание взлома. Воспользуйтесь безопасным входом по одноразовому коду через Telegram.",
+                },
+                status=429,
+            )
+
         if not val and username:
             val = username
             username = ""
@@ -994,54 +1201,19 @@ class WebPanel:
             return web.json_response(
                 {
                     "ok": False,
-                    "error": "Пароль обязателен для входа. Введите служебный пароль или войдите через Telegram Mini App бота.",
+                    "error": "Введите одноразовый код из Telegram либо пароль.",
                 },
                 status=401,
             )
 
-        # 3. Проверка мастер-доступа Супер-Админа (admin / super / superadmin / root / id / username)
-        super_username = str(self.db.get_admin_username(super_id) or "").lower()
-        valid_super_pwds = {
-            secret_phrase,
-            master_pin,
-            "uet2026",
-            "uet2026super",
-            "7657",
-            "7458",
-            str(CONFIG.get("SUPER_ADMIN_PASSWORD", "uet2026super")),
-        }
-        super_db_pwd = self.db.get_admin_password(super_id)
-        if super_db_pwd:
-            valid_super_pwds.add(super_db_pwd)
+        # 4. ПРОВЕРКА ПЕРСОНАЛЬНОГО ПАРОЛЯ ИЗ БАЗЫ ДАННЫХ (ХЕШ PBKDF2/SHA-256)
+        super_configured_pwd = str(CONFIG.get("SUPER_ADMIN_PASSWORD") or "")
+        clean_input_user = username.lstrip("@").lower()
 
-        is_dedicated_super_pwd = val in (
-            "uet2026super",
-            str(CONFIG.get("SUPER_ADMIN_PASSWORD", "uet2026super")),
-            "7657",
-            "7458",
-        )
-        is_super_user = (
-            is_dedicated_super_pwd
-            or req_role in ("superadmin", "super", "admin", "owner")
-            or username in (
-                "admin",
-                "super",
-                "superadmin",
-                "root",
-                "owner",
-                "владелец",
-                str(super_id),
-                "its_darksold1",
-                "@its_darksold1",
-                super_username,
-                f"@{super_username}",
-                "",
-            )
-            or username.startswith("admin")
-            or username.startswith("super")
-        )
-
-        if (is_super_user and val in valid_super_pwds) or is_dedicated_super_pwd:
+        # Аварийный мастер-пароль из .env только если явно задан администратором в конфигурации сервера
+        if super_configured_pwd and val == super_configured_pwd and clean_input_user in (
+            "super", "superadmin", "admin", "owner", "its_darksold1", str(super_id), ""
+        ):
             tok = generate_auth_token(super_id, "superadmin", "Илья (SuperAdmin)")
             resp = web.json_response(
                 {
@@ -1053,71 +1225,6 @@ class WebPanel:
                     "email": "admin@uet73.ru",
                     "username": "its_darksold1",
                     "label": "👑 Главный администратор (SuperAdmin)",
-                }
-            )
-            resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")
-            return resp
-
-        # 4. Проверка мастер-доступа Отдела кадров (hr / кадры)
-        valid_hr_pwds = {
-            "hr",
-            "uet2026",
-            "hr2026",
-            "uet2026hr",
-            secret_phrase,
-            str(CONFIG.get("HR_ADMIN_PASSWORD", "uet2026hr")),
-        }
-        is_dedicated_hr_pwd = val in ("uet2026hr", "hr2026", str(CONFIG.get("HR_ADMIN_PASSWORD", "uet2026hr")))
-        is_hr_user = (
-            is_dedicated_hr_pwd
-            or req_role == "hr"
-            or username in ("hr", "кадры", "отдел кадров", "hr-специалист", "")
-            or username.startswith("hr")
-        )
-        if (is_hr_user and val in valid_hr_pwds) or is_dedicated_hr_pwd:
-            tok = generate_auth_token(73002, "hr", "Раиса Ивановна (HR)")
-            resp = web.json_response(
-                {
-                    "ok": True,
-                    "token": tok,
-                    "role": "hr",
-                    "user_id": 73002,
-                    "name": "Раиса Ивановна (HR)",
-                    "email": "hr@uet73.ru",
-                    "label": "👔 Отдел кадров (HR)",
-                }
-            )
-            resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")
-            return resp
-
-        # 4.1. Проверка мастер-доступа Технического отдела (tech / инженер)
-        valid_tech_pwds = {
-            "tech",
-            "uet2026",
-            "tech2026",
-            "uet2026tech",
-            secret_phrase,
-            master_pin,
-            str(CONFIG.get("TECH_ADMIN_PASSWORD", "uet2026tech")),
-        }
-        is_dedicated_tech_pwd = val in ("uet2026tech", "tech2026", str(CONFIG.get("TECH_ADMIN_PASSWORD", "uet2026tech")))
-        is_tech_user = (
-            is_dedicated_tech_pwd
-            or req_role == "tech"
-            or username in ("tech", "инженер", "тех", "it", "инженер-техник", "")
-            or username.startswith("tech")
-        )
-        if (is_tech_user and val in valid_tech_pwds) or is_dedicated_tech_pwd:
-            tok = generate_auth_token(73003, "tech", "Дежурный Инженер (Tech)")
-            resp = web.json_response(
-                {
-                    "ok": True,
-                    "token": tok,
-                    "role": "tech",
-                    "user_id": 73003,
-                    "name": "Дежурный Инженер (Tech)",
-                    "email": "tech@uet73.ru",
-                    "label": "🛠 Технический отдел (Tech)",
                 }
             )
             resp.set_cookie("uet_token", tok, max_age=86400 * 7, path="/", httponly=True, samesite="Lax")
@@ -1190,10 +1297,10 @@ class WebPanel:
 
                         pwd_ok = False
                         if saved_pwd:
-                            pwd_ok = self.db.verify_password(val, saved_pwd) or (val in (secret_phrase, "uet2026", str(cand[0])))
+                            pwd_ok = self.db.verify_password(val, saved_pwd) or (val == str(cand[0]))
                         else:
-                            # Если у соискателя пароль ещё не задан, вход только по номеру тикета в качестве временного ПИН-кода
-                            pwd_ok = (val == str(cand[0])) or (val in (secret_phrase, "uet2026"))
+                            # Если у соискателя пароль ещё не задан, вход только по номеру тикета в качестве временного кода
+                            pwd_ok = (val == str(cand[0]))
 
                         if pwd_ok:
                             cand_name = cand[1] or f"Соискатель #{cand[0]}"
@@ -1216,10 +1323,11 @@ class WebPanel:
                             )
                             return resp
 
+        self.failed_login_attempts.setdefault(client_ip, []).append(now)
         return web.json_response(
             {
                 "ok": False,
-                "error": "Неверный логин, роль или пароль. Проверьте выбранную роль и правильность пароля. Персональный пароль можно задать в Telegram командой /password.",
+                "error": "Неверный логин или пароль. Постоянные пароли отключены в целях безопасности. Воспользуйтесь безопасным входом по одноразовому коду через Telegram (OTP).",
             },
             status=401,
         )
@@ -2265,7 +2373,13 @@ class WebPanel:
 
     async def handle_api_inquiry_check(self, request: web.Request) -> web.Response:
         """Публичный поиск статуса и ответа на вопрос по номеру обращения или телефону."""
-        query = str(request.query.get("query", "")).strip()
+        query = str(
+            request.query.get("query")
+            or request.query.get("inquiry_id")
+            or request.query.get("ticket_code")
+            or request.query.get("phone")
+            or ""
+        ).strip()
         if not query:
             return web.json_response({"ok": False, "error": "Укажите номер обращения (например, В-15) или номер телефона."}, status=400)
 

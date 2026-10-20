@@ -279,6 +279,7 @@ class CandidateService:
         )
 
         offer_training = self.should_offer_training(vacancy, experience)
+        fit_score = self.calculate_applicant_score(data)
         meta = {
             "ticket_id": ticket_id,
             "offer_training": offer_training,
@@ -287,11 +288,91 @@ class CandidateService:
             "vacancy": vacancy,
             "consent_timestamp": consent_ts,
             "platform": platform,
+            "fit_score": fit_score,
         }
         logger.info(
-            f"Зарегистрирована анкета #{ticket_id} ({platform}): {full_name}, {vacancy}, обучение={offer_training}"
+            f"Зарегистрирована анкета #{ticket_id} ({platform}): {full_name}, {vacancy}, обучение={offer_training}, скоринг={fit_score['score']}%"
         )
         return ticket_id, meta
+
+    def calculate_applicant_score(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Интеллектуальный скоринг соответствия соискателя (Applicant Fit Score 0..100%).
+        Учитывает 152-ФЗ, ст. 328.1 ТК РФ, категории прав, профильный опыт и возраст.
+        """
+        score = 50
+        tags = []
+        is_driver = self.is_driver_vacancy(data.get("vacancy", ""))
+        licenses = str(data.get("license_categories") or data.get("driver_license", "")).upper()
+        experience = str(data.get("experience", "")).lower()
+        medical = str(data.get("medical_restrictions", "Нет")).lower()
+        criminal = str(data.get("criminal_record", "Нет")).lower()
+
+        # 1. Проверка безопасности и ст. 328.1 ТК РФ (для общественного транспорта)
+        if "да" in criminal or "судим" in criminal:
+            score -= 40
+            tags.append("⚠️ Ст. 328.1 ТК РФ")
+        else:
+            score += 15
+            tags.append("✅ Чистая СБ")
+
+        # 2. Медицинские ограничения
+        if "да" in medical or "ограничен" in medical:
+            score -= 25
+            tags.append("⚠️ Медограничения")
+        else:
+            score += 10
+
+        # 3. Водительские категории и соответствие
+        if is_driver:
+            has_tm_tb = "TM" in licenses or "ТМ" in licenses or "TB" in licenses or "ТБ" in licenses
+            has_other_licenses = any(cat in licenses for cat in ["B", "В", "C", "С", "D", "Д"])
+            if has_tm_tb:
+                score += 25
+                tags.append("🎯 Готовые права Tm/Tb")
+            elif has_other_licenses:
+                score += 15
+                tags.append("🚗 Права B/C/D (переобучение)")
+            else:
+                tags.append("🎓 Обучение с нуля")
+
+            bdate = str(data.get("birth_date", ""))
+            try:
+                year_match = re.search(r'\b(19\d\d|20\d\d)\b', bdate)
+                if year_match:
+                    age = datetime.now().year - int(year_match.group(1))
+                    if age >= 21:
+                        score += 10
+                        tags.append(f"👤 {age} лет (21+)")
+                    elif age >= 18:
+                        tags.append(f"👤 {age} лет")
+            except Exception:
+                pass
+        else:
+            if not any(kw in experience for kw in self.NO_EXP_KEYWORDS) and len(experience) > 3:
+                score += 25
+                tags.append("💼 Есть профильный опыт")
+            else:
+                score += 10
+                tags.append("🌱 Стажер")
+
+        final_score = max(5, min(100, score))
+        if final_score >= 80:
+            level = "high"
+            badge = "🟢 Высокий приоритет"
+        elif final_score >= 50:
+            level = "medium"
+            badge = "🟡 Подходит (требует собеседования)"
+        else:
+            level = "low"
+            badge = "🔴 Проверка СБ / Требований"
+
+        return {
+            "score": final_score,
+            "level": level,
+            "badge": badge,
+            "tags": tags,
+        }
 
     async def async_register_candidate(
         self,

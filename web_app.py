@@ -1363,13 +1363,24 @@ class WebPanel:
                     cursor.execute(
                         """
                         SELECT ticket_id, created_at, full_name, vacancy, phone, status,
-                               interview_depot, interview_time, driver_license, is_test
+                               interview_depot, interview_time, driver_license, is_test,
+                               birth_date, criminal_record, experience, platform
                         FROM candidates
                         """
                     )
                     rows = cursor.fetchall()
                     for r in rows:
-                        t_id, cr, fn, vac, ph, st, depot, itime, lic, test_flag = r
+                        (
+                            t_id, cr, fn, vac, ph, st, depot, itime, lic, test_flag,
+                            bdate, crim, exp, plat
+                        ) = r
+                        score_info = candidate_service.calculate_applicant_score({
+                            "vacancy": vac or "",
+                            "driver_license": lic or "",
+                            "birth_date": bdate or "",
+                            "criminal_record": crim or "",
+                            "experience": exp or "",
+                        })
                         row_dict = {
                             "ticket_id": t_id,
                             "created_at": cr or "",
@@ -1380,8 +1391,12 @@ class WebPanel:
                             "interview_depot": depot or "",
                             "interview_time": itime or "",
                             "driver_license": lic or "",
+                            "platform": plat or "web",
+                            "birth_date": bdate or "",
+                            "experience": exp or "",
                             "is_test": bool(test_flag or is_test or t_id >= 900000),
                             "db_scope": scope_name,
+                            "fit_score": score_info,
                         }
                         all_rows.append(row_dict)
 
@@ -1477,11 +1492,21 @@ class WebPanel:
 
         has_risk, risk_desc = ComplianceService.check_criminal_record_risk(vac, crim)
         is_blocked = self.db.is_blocked(uid)
+        score_info = candidate_service.calculate_applicant_score({
+            "vacancy": vac or "",
+            "driver_license": lic or "",
+            "birth_date": bdate or "",
+            "criminal_record": crim or "",
+            "shift_work": shift or "",
+            "medical_restrictions": med or "",
+            "experience": exp or "",
+        })
 
         return web.json_response(
             {
                 "ticket_id": t_id,
                 "platform": plat,
+                "fit_score": score_info,
                 "user_id": uid,
                 "full_name": fn,
                 "phone": ph,

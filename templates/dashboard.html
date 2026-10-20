@@ -317,50 +317,104 @@
                         <span>📊 Статус заявки</span>
                     </button>
 
-                    <!-- Служебные пульты для персонала -->
-                    <div id="topStaffNavBlock" class="hidden flex items-center gap-1 pl-2 border-l border-slate-200 dark:border-slate-700">
-                        <button onclick="switchTab('hrHub')" id="topBtnHr" class="hidden px-2.5 py-1.5 rounded-xl transition bg-blue-500/10 text-[#1371B9] dark:text-sky-300 font-bold hover:bg-blue-500/20 flex items-center gap-1">
-                            <span>👥 HR</span>
-                        </button>
-                        <button onclick="switchTab('techHub')" id="topBtnTech" class="hidden px-2.5 py-1.5 rounded-xl transition bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold hover:bg-amber-500/20 flex items-center gap-1">
-                            <span>🛠 Tech</span>
-                        </button>
-                        <button onclick="switchTab('adminHub')" id="topBtnAdmins" class="hidden px-2.5 py-1.5 rounded-xl transition bg-purple-500/10 text-purple-600 dark:text-purple-300 font-bold hover:bg-purple-500/20 flex items-center gap-1">
-                            <span>🛡 Админы</span>
-                        </button>
-                        <button onclick="switchTab('ownerHub')" id="topBtnOwner" class="hidden px-2.5 py-1.5 rounded-xl transition bg-rose-500/15 text-rose-600 dark:text-rose-400 font-black hover:bg-rose-500/25 flex items-center gap-1 border border-rose-500/30">
-                            <span>👑 Меня</span>
-                        </button>
-                    </div>
                 </nav>
 
-                <!-- Правая часть: Тема, Профиль и Бургер -->
-                <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    <!-- Тема -->
+                <!-- Правая часть: Тема, Служебный пульт (Dropdown) и Бургер -->
+                <div class="flex items-center gap-2 shrink-0">
+                    <!-- Переключатель темы -->
                     <button onclick="toggleDarkMode()" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-amber-400 flex items-center justify-center transition hover:scale-105" title="Переключить тему">
                         <span id="themeIconSun" class="hidden">☀️</span>
                         <span id="themeIconMoon">🌙</span>
                     </button>
 
-                    <!-- Авторизация гостя -->
-                    <div id="authGuestBlock" class="flex items-center gap-1.5">
-                        <button onclick="openLoginModal()" class="px-3 py-2 rounded-xl bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1">
-                            <span>🔑 Вход</span>
+                    <!-- ЕДИНЫЙ ЛАКОНИЧНЫЙ ВЫПАДАЮЩИЙ ПУЛЬТ АДМИНОК (не залезает на экран) -->
+                    <div class="relative" id="adminDropdownContainer">
+                        <button id="adminDropdownTriggerBtn" onclick="toggleAdminMenu(event)" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 shadow-xs">
+                            <span id="adminDropdownIcon" class="text-sm">🔐</span>
+                            <span id="adminDropdownTitle">Служебный вход</span>
+                            <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" id="adminDropdownArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
                         </button>
-                    </div>
 
-                    <!-- Авторизованный профиль -->
-                    <div id="authUserBlock" class="hidden items-center gap-2">
-                        <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                            <span id="userProfileName" class="text-xs font-bold truncate max-w-[120px]">Владелец</span>
-                            <span id="userRoleBadge" class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 font-mono">SUPER</span>
+                        <!-- Выпадающее всплывающее меню (позиционировано right-0, z-50) -->
+                        <div id="adminDropdownMenu" class="hidden absolute right-0 top-full mt-2 w-72 bg-white dark:bg-[#112240] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2 z-50 backdrop-blur-xl animate-fadeIn">
+                            <!-- Шапка меню со статусом роли -->
+                            <div class="px-3 py-2.5 mb-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-[10px] font-black uppercase tracking-wider text-slate-400">Центр управления</div>
+                                    <div class="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5 truncate">
+                                        <span class="w-2 h-2 rounded-full bg-slate-400" id="adminMenuStatusDot"></span>
+                                        <span id="adminMenuUserRoleText" class="truncate">Гостевой доступ</span>
+                                    </div>
+                                </div>
+                                <button id="adminMenuAuthActionBtn" onclick="onAdminMenuAuthAction()" class="ml-2 px-2.5 py-1 rounded-lg bg-[#1371B9] hover:bg-blue-700 text-white text-[10px] font-bold transition shadow-xs shrink-0">
+                                    Вход
+                                </button>
+                            </div>
+
+                            <!-- Быстрый доступ к служебным пультам -->
+                            <div class="space-y-1 text-xs">
+                                <!-- HR Пульт -->
+                                <button type="button" onclick="navigateToStaffTab('hrHub')" class="w-full text-left p-2 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-[#1371B9] transition flex items-center justify-between group">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-base p-1 rounded-lg bg-blue-500/10 text-[#1371B9]">👥</span>
+                                        <div>
+                                            <div class="font-bold leading-tight">Кадровый пульт (HR)</div>
+                                            <div class="text-[10px] text-slate-400">Воронка, Kanban, анкеты</div>
+                                        </div>
+                                    </div>
+                                    <span id="adminMenuLock_hr" class="text-xs font-mono text-slate-400">🔒</span>
+                                </button>
+
+                                <!-- Tech Пульт -->
+                                <button type="button" onclick="navigateToStaffTab('techHub')" class="w-full text-left p-2 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/40 text-slate-700 dark:text-slate-200 hover:text-amber-600 transition flex items-center justify-between group">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-base p-1 rounded-lg bg-amber-500/10 text-amber-600">🛠</span>
+                                        <div>
+                                            <div class="font-bold leading-tight">Инженерный пульт</div>
+                                            <div class="text-[10px] text-slate-400">Логи, БД, телеметрия</div>
+                                        </div>
+                                    </div>
+                                    <span id="adminMenuLock_tech" class="text-xs font-mono text-slate-400">🔒</span>
+                                </button>
+
+                                <!-- Пульт Администраторов -->
+                                <button type="button" onclick="navigateToStaffTab('adminHub')" class="w-full text-left p-2 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-950/40 text-slate-700 dark:text-slate-200 hover:text-purple-600 transition flex items-center justify-between group">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-base p-1 rounded-lg bg-purple-500/10 text-purple-600">🛡</span>
+                                        <div>
+                                            <div class="font-bold leading-tight">Управление доступом</div>
+                                            <div class="text-[10px] text-slate-400">Администраторы и пароли</div>
+                                        </div>
+                                    </div>
+                                    <span id="adminMenuLock_admins" class="text-xs font-mono text-slate-400">🔒</span>
+                                </button>
+
+                                <!-- Пульт Владельца («Меня») -->
+                                <button type="button" onclick="navigateToStaffTab('ownerHub')" class="w-full text-left p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-700 dark:text-slate-200 hover:text-rose-600 transition flex items-center justify-between group">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-base p-1 rounded-lg bg-rose-500/15 text-rose-600">👑</span>
+                                        <div>
+                                            <div class="font-bold leading-tight text-rose-600 dark:text-rose-400">Кабинет Владельца («Я»)</div>
+                                            <div class="text-[10px] text-slate-400">Супер-пульт управления</div>
+                                        </div>
+                                    </div>
+                                    <span id="adminMenuLock_owner" class="text-xs font-mono text-slate-400">🔒</span>
+                                </button>
+                            </div>
+
+                            <!-- Кнопка Выхода (видна только авторизованным) -->
+                            <div id="adminMenuLogoutBlock" class="hidden pt-1.5 mt-1 border-t border-slate-100 dark:border-slate-800">
+                                <button type="button" onclick="logoutUser(); closeAdminMenu();" class="w-full text-left p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-bold transition flex items-center gap-2">
+                                    <span>🚪</span>
+                                    <span>Выйти из системы</span>
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="logoutUser()" class="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition" title="Выйти">
-                            ✕
-                        </button>
                     </div>
 
-                    <!-- Бургер-кнопка меню для мобильных -->
+                    <!-- Бургер-кнопка меню для мобильных устройств -->
                     <button onclick="toggleMobileNav()" class="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
@@ -461,25 +515,19 @@
                     </div>
                 </div>
 
-                <!-- Быстрые пульты управления для сотрудников -->
-                <!-- Корпоративный служебный блок предприятия -->
-                <div class="p-6 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <!-- Корпоративный служебный статус предприятия (без дублирования кнопок входа) -->
+                <div class="p-5 sm:p-6 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div class="space-y-1 text-center sm:text-left">
                         <div class="flex items-center justify-center sm:justify-start gap-2">
                             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span class="font-extrabold text-xs text-slate-800 dark:text-slate-200">Корпоративный портал МУП «Ульяновскэлектротранс»</span>
+                            <span class="font-extrabold text-xs sm:text-sm text-slate-800 dark:text-slate-200">МУП «Ульяновскэлектротранс» — Единая кадровая система</span>
                         </div>
-                        <p class="text-[11px] text-slate-400">Автоматизированная кадровая система трудоустройства и учёта соискателей в депо (152-ФЗ РФ)</p>
+                        <p class="text-[11px] text-slate-400">Официальный реестр учёта соискателей городских маршрутов трамвая и троллейбуса (152-ФЗ РФ)</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="openLoginModal('applicant')" class="px-4 py-2 rounded-xl bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
-                            <span>👤</span>
-                            <span>Личный кабинет соискателя</span>
-                        </button>
-                        <button onclick="openLoginModal('staff')" class="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
-                            <span>🔒</span>
-                            <span>Служебный вход</span>
-                        </button>
+                    <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        <span class="flex items-center gap-1.5"><span class="text-blue-500">📞</span> Отдел кадров: <b>58-46-60</b></span>
+                        <span class="hidden md:inline">•</span>
+                        <span class="hidden md:inline flex items-center gap-1.5"><span class="text-amber-500">📍</span> ул. Гончарова, 2</span>
                     </div>
                 </div>
             </div>
@@ -488,6 +536,37 @@
             <!-- ВКЛАДКА 2: ВСЕ 16 ШАГОВ АНКЕТЫ СОИСКАТЕЛЯ (WIZARD)                 -->
             <!-- ------------------------------------------------------------------ -->
             <div id="tabContentSurvey16" class="space-y-6 hidden">
+                <!-- Баннер автосохранения / черновика из Telegram WebApp CloudStorage -->
+                <div id="surveyDraftRestoreBanner" class="hidden p-4 rounded-2xl bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-amber-500/10 border border-blue-500/30 backdrop-blur-sm transition-all animate-fadeIn">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-[#1371B9] text-white flex items-center justify-center text-lg shadow-md shrink-0">
+                                💾
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-black text-[#1371B9] dark:text-sky-300 uppercase tracking-wider">Найден сохранённый черновик</span>
+                                    <span id="surveyDraftStorageSourceBadge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-[#1371B9] dark:bg-blue-900/40 dark:text-sky-300">
+                                        CloudStorage
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-700 dark:text-slate-200 mt-0.5 font-medium" id="surveyDraftInfoText">
+                                    Сохранены ответы до шага 1. Желаете продолжить заполнение?
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            <button onclick="discardSurveyDraft()" class="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition">
+                                Сбросить
+                            </button>
+                            <button onclick="restoreSurveyDraft()" class="px-4 py-1.5 rounded-xl bg-[#1371B9] hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                                <span>Продолжить</span>
+                                <span>→</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-white dark:bg-[#112240] rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
                     
                     <!-- Шапка визарда 16 шагов -->
@@ -667,24 +746,39 @@
                             </div>
                         </div>
 
-                        <!-- Фильтры по статусам и ручное оформление соискателя кадровиком -->
-                        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
-                            <div class="flex flex-wrap items-center gap-1.5">
-                                <span class="text-slate-400 font-semibold mr-1">Статус:</span>
-                                <button type="button" onclick="filterCandidatesByStatus('all')" class="chip-button active text-xs py-1.5 px-3" data-status-filter="all">Все заявки</button>
-                                <button type="button" onclick="filterCandidatesByStatus('Новая')" class="chip-button text-xs py-1.5 px-3" data-status-filter="Новая">Новые (1 этап)</button>
-                                <button type="button" onclick="filterCandidatesByStatus('В обработке')" class="chip-button text-xs py-1.5 px-3" data-status-filter="В обработке">Проверка СБ</button>
-                                <button type="button" onclick="filterCandidatesByStatus('Собеседование')" class="chip-button text-xs py-1.5 px-3" data-status-filter="Собеседование">Собеседование</button>
-                                <button type="button" onclick="filterCandidatesByStatus('Принят')" class="chip-button text-xs py-1.5 px-3" data-status-filter="Принят">Приняты в депо</button>
+                        <!-- Переключатель видов (Таблица / Kanban) + Фильтры по статусам + Ручное оформление -->
+                        <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <!-- Переключатель режима отображения -->
+                                <div class="inline-flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <button type="button" id="hrBtnViewTable" onclick="switchCandidateFunnelView('table')" class="px-3 py-1.5 rounded-lg font-bold text-xs transition bg-white dark:bg-slate-700 text-[#1371B9] dark:text-sky-300 shadow-xs flex items-center gap-1.5">
+                                        <span>📋 Таблица</span>
+                                    </button>
+                                    <button type="button" id="hrBtnViewKanban" onclick="switchCandidateFunnelView('kanban')" class="px-3 py-1.5 rounded-lg font-bold text-xs transition text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5">
+                                        <span>📊 Kanban-доска</span>
+                                    </button>
+                                </div>
+
+                                <div class="h-5 w-[1px] bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
+
+                                <div class="flex flex-wrap items-center gap-1.5" id="hrStatusFilterChips">
+                                    <span class="text-slate-400 font-semibold mr-1">Фильтр:</span>
+                                    <button type="button" onclick="filterCandidatesByStatus('all')" class="chip-button active text-xs py-1 px-2.5" data-status-filter="all">Все</button>
+                                    <button type="button" onclick="filterCandidatesByStatus('Новая')" class="chip-button text-xs py-1 px-2.5" data-status-filter="Новая">Новые</button>
+                                    <button type="button" onclick="filterCandidatesByStatus('В обработке')" class="chip-button text-xs py-1 px-2.5" data-status-filter="В обработке">СБ</button>
+                                    <button type="button" onclick="filterCandidatesByStatus('Собеседование')" class="chip-button text-xs py-1 px-2.5" data-status-filter="Собеседование">Собеседование</button>
+                                    <button type="button" onclick="filterCandidatesByStatus('Принят')" class="chip-button text-xs py-1 px-2.5" data-status-filter="Принят">Приняты</button>
+                                </div>
                             </div>
+
                             <button type="button" onclick="openHrCreateCandidateModal()" class="px-3.5 py-1.5 rounded-xl bg-[#1371B9] hover:bg-blue-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs">
                                 <span>➕</span>
-                                <span>Оформить анкету (очный приём / звонок)</span>
+                                <span>Оформить анкету (очно/звонок)</span>
                             </button>
                         </div>
 
-                        <!-- Таблица соискателей -->
-                        <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+                        <!-- ВИД 1: Таблица соискателей -->
+                        <div id="hrCandidatesTableView" class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-100 dark:bg-slate-800 text-slate-400 font-bold uppercase">
                                     <tr>
@@ -693,16 +787,119 @@
                                         <th class="p-3">ФИО Соискателя</th>
                                         <th class="p-3">Телефон</th>
                                         <th class="p-3">Вакансия</th>
+                                        <th class="p-3">Скоринг (Fit)</th>
                                         <th class="p-3">Статус</th>
                                         <th class="p-3">Действия</th>
                                     </tr>
                                 </thead>
                                 <tbody id="hrCandidatesTableBody" class="divide-y divide-slate-100 dark:divide-slate-800">
                                     <tr>
-                                        <td colspan="6" class="p-6 text-center text-slate-400">Загрузка базы анкет...</td>
+                                        <td colspan="8" class="p-6 text-center text-slate-400">Загрузка базы анкет...</td>
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- ВИД 2: Интерактивная Kanban-доска со статусами и Drag & Drop -->
+                        <div id="hrCandidatesKanbanView" class="hidden space-y-3">
+                            <div class="flex items-center justify-between text-xs text-slate-400">
+                                <span>💡 <b>Подсказка HR:</b> Перетаскивайте карточки кандидатов между колонками для быстрой смены статуса воронки.</span>
+                                <span class="hidden sm:inline font-mono">Drag & Drop Active</span>
+                            </div>
+
+                            <div class="overflow-x-auto pb-4">
+                                <div class="flex gap-3.5 min-w-[1100px] lg:min-w-full">
+                                    <!-- Колонка 1: Новая -->
+                                    <div class="flex-1 min-w-[220px] bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 flex flex-col kanban-column"
+                                         data-col-status="Новая"
+                                         ondragover="onKanbanDragOver(event)"
+                                         ondragleave="onKanbanDragLeave(event)"
+                                         ondrop="onKanbanDrop(event, 'Новая')">
+                                        <div class="flex items-center justify-between pb-2.5 mb-2 border-b border-blue-500/20">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                                <span class="font-extrabold text-xs text-slate-800 dark:text-slate-100">1. Новые анкеты</span>
+                                            </div>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-[#1371B9] dark:bg-blue-900/40 dark:text-sky-300" id="kanbanCount_Новая">0</span>
+                                        </div>
+                                        <div class="space-y-2.5 flex-1 kanban-cards-area min-h-[140px]" id="kanbanCards_Новая">
+                                            <!-- Карточки -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Колонка 2: В обработке (СБ) -->
+                                    <div class="flex-1 min-w-[220px] bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 flex flex-col kanban-column"
+                                         data-col-status="В обработке"
+                                         ondragover="onKanbanDragOver(event)"
+                                         ondragleave="onKanbanDragLeave(event)"
+                                         ondrop="onKanbanDrop(event, 'В обработке')">
+                                        <div class="flex items-center justify-between pb-2.5 mb-2 border-b border-amber-500/20">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                                <span class="font-extrabold text-xs text-slate-800 dark:text-slate-100">2. Проверка СБ</span>
+                                            </div>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" id="kanbanCount_В_обработке">0</span>
+                                        </div>
+                                        <div class="space-y-2.5 flex-1 kanban-cards-area min-h-[140px]" id="kanbanCards_В_обработке">
+                                            <!-- Карточки -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Колонка 3: Собеседование -->
+                                    <div class="flex-1 min-w-[220px] bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 flex flex-col kanban-column"
+                                         data-col-status="Собеседование"
+                                         ondragover="onKanbanDragOver(event)"
+                                         ondragleave="onKanbanDragLeave(event)"
+                                         ondrop="onKanbanDrop(event, 'Собеседование')">
+                                        <div class="flex items-center justify-between pb-2.5 mb-2 border-b border-purple-500/20">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                                                <span class="font-extrabold text-xs text-slate-800 dark:text-slate-100">3. Собеседование</span>
+                                            </div>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" id="kanbanCount_Собеседование">0</span>
+                                        </div>
+                                        <div class="space-y-2.5 flex-1 kanban-cards-area min-h-[140px]" id="kanbanCards_Собеседование">
+                                            <!-- Карточки -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Колонка 4: Принят -->
+                                    <div class="flex-1 min-w-[220px] bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 flex flex-col kanban-column"
+                                         data-col-status="Принят"
+                                         ondragover="onKanbanDragOver(event)"
+                                         ondragleave="onKanbanDragLeave(event)"
+                                         ondrop="onKanbanDrop(event, 'Принят')">
+                                        <div class="flex items-center justify-between pb-2.5 mb-2 border-b border-emerald-500/20">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                                <span class="font-extrabold text-xs text-slate-800 dark:text-slate-100">4. Принят в депо</span>
+                                            </div>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" id="kanbanCount_Принят">0</span>
+                                        </div>
+                                        <div class="space-y-2.5 flex-1 kanban-cards-area min-h-[140px]" id="kanbanCards_Принят">
+                                            <!-- Карточки -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Колонка 5: Отказ -->
+                                    <div class="flex-1 min-w-[220px] bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800 flex flex-col kanban-column"
+                                         data-col-status="Отказ"
+                                         ondragover="onKanbanDragOver(event)"
+                                         ondragleave="onKanbanDragLeave(event)"
+                                         ondrop="onKanbanDrop(event, 'Отказ')">
+                                        <div class="flex items-center justify-between pb-2.5 mb-2 border-b border-rose-500/20">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                                                <span class="font-extrabold text-xs text-slate-800 dark:text-slate-100">5. Отказ / Архив</span>
+                                            </div>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" id="kanbanCount_Отказ">0</span>
+                                        </div>
+                                        <div class="space-y-2.5 flex-1 kanban-cards-area min-h-[140px]" id="kanbanCards_Отказ">
+                                            <!-- Карточки -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1686,6 +1883,7 @@
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
+            if (tabName === 'survey16') checkSurveyDraft();
             if (tabName === 'hrHub') loadRealCandidates();
             if (tabName === 'techHub') { loadTechMetrics(); loadSystemLogs(); }
             if (tabName === 'adminHub') loadAdminsList();
@@ -1946,10 +2144,130 @@
             }
         }
 
-        function saveDraft() {
+        // ================= TELEGRAM CLOUDSTORAGE & DRAFT AUTO-SYNC =================
+        const CloudSync = {
+            isTG: !!(window.Telegram?.WebApp?.CloudStorage),
+            async setItem(key, val) {
+                try { localStorage.setItem(key, String(val)); } catch(e){}
+                if (this.isTG) {
+                    return new Promise(resolve => {
+                        try {
+                            window.Telegram.WebApp.CloudStorage.setItem(key, String(val), (err, ok) => resolve(!!ok));
+                        } catch(e) { resolve(false); }
+                    });
+                }
+                return true;
+            },
+            async getItem(key) {
+                if (this.isTG) {
+                    const tgVal = await new Promise(resolve => {
+                        try {
+                            window.Telegram.WebApp.CloudStorage.getItem(key, (err, res) => resolve(res || null));
+                        } catch(e) { resolve(null); }
+                    });
+                    if (tgVal) return tgVal;
+                }
+                try { return localStorage.getItem(key); } catch(e) { return null; }
+            },
+            async removeItem(key) {
+                try { localStorage.removeItem(key); } catch(e){}
+                if (this.isTG) {
+                    return new Promise(resolve => {
+                        try {
+                            window.Telegram.WebApp.CloudStorage.removeItem(key, (err, ok) => resolve(!!ok));
+                        } catch(e) { resolve(false); }
+                    });
+                }
+                return true;
+            }
+        };
+
+        async function saveDraft() {
             try {
-                localStorage.setItem('uet_survey_draft', JSON.stringify(state.surveyData));
+                const payload = JSON.stringify({
+                    data: state.surveyData,
+                    step: state.currentStep,
+                    savedAt: new Date().toISOString()
+                });
+                await CloudSync.setItem('uet_survey_draft', payload);
+                if (window.Telegram?.WebApp?.enableClosingConfirmation) {
+                    window.Telegram.WebApp.enableClosingConfirmation();
+                }
             } catch (e) {}
+        }
+
+        async function checkSurveyDraft() {
+            try {
+                const raw = await CloudSync.getItem('uet_survey_draft');
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                const draftData = parsed.data || parsed;
+                const draftStep = parsed.step || 1;
+
+                const hasContent = (draftData.step1_fio && draftData.step1_fio.trim().length > 0) ||
+                                   (draftData.step3_phone && draftData.step3_phone.trim().length > 3) ||
+                                   draftStep > 1;
+                if (!hasContent) return;
+
+                const banner = document.getElementById('surveyDraftRestoreBanner');
+                const text = document.getElementById('surveyDraftInfoText');
+                const badge = document.getElementById('surveyDraftStorageSourceBadge');
+                if (banner && text) {
+                    const name = draftData.step1_fio ? `«${draftData.step1_fio}»` : 'Черновик';
+                    const stepTitle = surveyStepsMeta[draftStep - 1]?.title || `Шаг ${draftStep}`;
+                    text.innerHTML = `Сохранены данные кандидата ${name} (<b>Шаг ${draftStep} из 16:</b> ${stepTitle}). Желаете продолжить заполнение?`;
+                    if (badge) {
+                        badge.innerText = CloudSync.isTG ? 'Telegram CloudStorage' : 'Локальный кэш';
+                    }
+                    banner.classList.remove('hidden');
+                }
+            } catch (e) {}
+        }
+
+        async function restoreSurveyDraft() {
+            try {
+                const raw = await CloudSync.getItem('uet_survey_draft');
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                if (parsed.data) {
+                    state.surveyData = Object.assign({}, state.surveyData, parsed.data);
+                    state.currentStep = parsed.step || 1;
+                } else {
+                    state.surveyData = Object.assign({}, state.surveyData, parsed);
+                    state.currentStep = 1;
+                }
+                document.getElementById('surveyDraftRestoreBanner')?.classList.add('hidden');
+                renderSurveyCurrentStep();
+            } catch (e) {}
+        }
+
+        async function discardSurveyDraft() {
+            if (!confirm('Вы уверены, что хотите сбросить сохраненный черновик анкеты и начать заново?')) return;
+            await CloudSync.removeItem('uet_survey_draft');
+            if (window.Telegram?.WebApp?.disableClosingConfirmation) {
+                window.Telegram.WebApp.disableClosingConfirmation();
+            }
+            state.currentStep = 1;
+            state.surveyData = {
+                step1_fio: '',
+                step2_birthdate: '',
+                step3_phone: '',
+                step4_city: 'г. Ульяновск',
+                step5_vacancy: 'Водитель трамвая (обучение со стипендией)',
+                step6_license: 'Категория B',
+                step7_experience: 'Без опыта (требуется обучение)',
+                step8_education: 'Среднее специальное',
+                step9_citizenship: 'Гражданин РФ',
+                step10_dormitory: 'Нет, проживаю в Ульяновске',
+                step11_shiftwork: 'Да, готов к графику 2/2',
+                step12_medical: 'Нет противопоказаний, готов к медкомиссии',
+                step13_criminal: 'Судимости нет (соответствует ст. 328.1 ТК РФ)',
+                step14_source: 'Официальный сайт МУП «УЭТ»',
+                step15_notes: '',
+                step16_consent: true
+            };
+            document.getElementById('surveyDraftRestoreBanner')?.classList.add('hidden');
+            renderSurveyCurrentStep();
         }
 
         function setupDateMask() {
@@ -2103,7 +2421,10 @@
                 };
 
                 localStorage.setItem('uet_candidate_ticket', ticketId);
-                localStorage.removeItem('uet_survey_draft');
+                await CloudSync.removeItem('uet_survey_draft');
+                if (window.Telegram?.WebApp?.disableClosingConfirmation) {
+                    window.Telegram.WebApp.disableClosingConfirmation();
+                }
 
                 const inp = document.getElementById('statusCheckInput');
                 if (inp) inp.value = ticketId;
@@ -2247,6 +2568,40 @@
             }
         }
 
+        let hrCurrentFunnelView = 'table';
+        let draggedCandidateTicketId = null;
+
+        function switchCandidateFunnelView(mode) {
+            hrCurrentFunnelView = mode;
+            const isTable = mode === 'table';
+            document.getElementById('hrCandidatesTableView')?.classList.toggle('hidden', !isTable);
+            document.getElementById('hrCandidatesKanbanView')?.classList.toggle('hidden', isTable);
+
+            const btnTable = document.getElementById('hrBtnViewTable');
+            const btnKanban = document.getElementById('hrBtnViewKanban');
+            if (btnTable && btnKanban) {
+                if (isTable) {
+                    btnTable.className = "px-3 py-1.5 rounded-lg font-bold text-xs transition bg-white dark:bg-slate-700 text-[#1371B9] dark:text-sky-300 shadow-xs flex items-center gap-1.5";
+                    btnKanban.className = "px-3 py-1.5 rounded-lg font-bold text-xs transition text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5";
+                } else {
+                    btnKanban.className = "px-3 py-1.5 rounded-lg font-bold text-xs transition bg-white dark:bg-slate-700 text-[#1371B9] dark:text-sky-300 shadow-xs flex items-center gap-1.5";
+                    btnTable.className = "px-3 py-1.5 rounded-lg font-bold text-xs transition text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5";
+                }
+            }
+            if (!isTable) {
+                renderKanbanBoard(state.candidates);
+            }
+        }
+
+        function normalizeKanbanStatus(rawStatus) {
+            const s = (rawStatus || '').toLowerCase();
+            if (s.includes('принят') || s.includes('нанят') || s.includes('штат')) return 'Принят';
+            if (s.includes('собесед') || s.includes('приглаш')) return 'Собеседование';
+            if (s.includes('обработ') || s.includes('сб') || s.includes('работ')) return 'В обработке';
+            if (s.includes('отказ') || s.includes('архив') || s.includes('отклон')) return 'Отказ';
+            return 'Новая';
+        }
+
         async function loadRealCandidates() {
             const tbody = document.getElementById('hrCandidatesTableBody');
             if (!tbody) return;
@@ -2259,10 +2614,12 @@
                     const data = await resp.json();
                     state.candidates = data.candidates || [];
                     renderCandidatesTable(state.candidates);
+                    renderKanbanBoard(state.candidates);
                 }
             } catch (e) {
                 // Демо-данные если оффлайн
                 renderCandidatesTable(state.candidates);
+                renderKanbanBoard(state.candidates);
             }
         }
 
@@ -2271,7 +2628,7 @@
             if (!tbody) return;
 
             if (!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400">Заявок соискателей пока нет.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">Заявок соискателей пока нет.</td></tr>';
                 return;
             }
 
@@ -2286,6 +2643,16 @@
                     platBadge = '<span class="px-1.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/40 text-purple-600 text-[10px] font-bold">⚡ MAX</span>';
                 }
 
+                let scoreBadge = '<span class="text-slate-400 font-mono text-[10px]">—</span>';
+                if (c.fit_score) {
+                    const sc = c.fit_score.score || 0;
+                    const col = c.fit_score.color || 'blue';
+                    const bgClass = col === 'green' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' :
+                                   (col === 'yellow' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' :
+                                   (col === 'red' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-sky-300'));
+                    scoreBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black ${bgClass}" title="${c.fit_score.recommendation || ''}">🎯 ${sc}%</span>`;
+                }
+
                 return `
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                         <td class="p-3 font-mono font-bold text-[#1371B9]">#${c.ticket_id}</td>
@@ -2293,6 +2660,7 @@
                         <td class="p-3 font-semibold text-slate-900 dark:text-white">${escapeHtml(c.full_name || c.name || '—')}</td>
                         <td class="p-3 font-mono text-slate-500">${escapeHtml(c.phone || '—')}</td>
                         <td class="p-3">${escapeHtml(c.vacancy || 'Водитель')}</td>
+                        <td class="p-3">${scoreBadge}</td>
                         <td class="p-3">
                             <span class="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-[#1371B9] dark:text-sky-300 text-[10px] font-bold">
                                 ${escapeHtml(c.status || 'Новая')}
@@ -2308,16 +2676,159 @@
             }).join('');
         }
 
+        function renderKanbanBoard(list) {
+            const columns = {
+                'Новая': document.getElementById('kanbanCards_Новая'),
+                'В обработке': document.getElementById('kanbanCards_В_обработке'),
+                'Собеседование': document.getElementById('kanbanCards_Собеседование'),
+                'Принят': document.getElementById('kanbanCards_Принят'),
+                'Отказ': document.getElementById('kanbanCards_Отказ')
+            };
+
+            const counts = { 'Новая': 0, 'В обработке': 0, 'Собеседование': 0, 'Принят': 0, 'Отказ': 0 };
+            Object.keys(columns).forEach(k => {
+                if (columns[k]) columns[k].innerHTML = '';
+            });
+
+            if (!list || list.length === 0) {
+                Object.keys(columns).forEach(k => {
+                    if (columns[k]) {
+                        columns[k].innerHTML = '<div class="text-[11px] text-slate-400 text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Нет анкет</div>';
+                    }
+                });
+                return;
+            }
+
+            list.forEach(c => {
+                const normCol = normalizeKanbanStatus(c.status);
+                counts[normCol] = (counts[normCol] || 0) + 1;
+                const container = columns[normCol];
+                if (!container) return;
+
+                const plat = (c.platform || 'site').toLowerCase();
+                let platIcon = '🌐 Сайт';
+                if (plat.includes('tg') || plat.includes('tele')) platIcon = '🤖 TG';
+                else if (plat.includes('vk')) platIcon = '💬 VK';
+                else if (plat.includes('max')) platIcon = '⚡ MAX';
+
+                let scoreBadge = '';
+                if (c.fit_score) {
+                    const sc = c.fit_score.score || 0;
+                    const lvl = c.fit_score.level || '';
+                    const col = c.fit_score.color || 'blue';
+                    const bg = col === 'green' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-500/20' :
+                              (col === 'yellow' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-500/20' :
+                              (col === 'red' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-500/20' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-sky-300 border-blue-500/20'));
+                    scoreBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black border ${bg}" title="${c.fit_score.recommendation || ''}">🎯 ${sc}% ${lvl}</span>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200/90 dark:border-slate-700/80 shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing space-y-2 group";
+                card.setAttribute('draggable', 'true');
+                card.setAttribute('data-ticket-id', c.ticket_id);
+                card.ondragstart = (e) => onKanbanDragStart(e, c.ticket_id);
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="font-mono font-black text-[#1371B9] dark:text-sky-400">#${c.ticket_id}</span>
+                        <span class="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/80 text-slate-500 text-[9px] font-bold">${platIcon}</span>
+                    </div>
+                    <div>
+                        <h5 class="font-extrabold text-xs text-slate-900 dark:text-white leading-snug group-hover:text-[#1371B9] transition-colors">${escapeHtml(c.full_name || c.name || 'Соискатель')}</h5>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">${escapeHtml(c.vacancy || 'Водитель')}</p>
+                    </div>
+                    ${scoreBadge ? `<div class="pt-0.5">${scoreBadge}</div>` : ''}
+                    <div class="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-700/60 text-[11px]">
+                        <span class="font-mono text-slate-400 text-[10px]">${escapeHtml(c.phone || '')}</span>
+                        <button type="button" onclick="openCandidateDetailModal(${c.ticket_id})" class="px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-[#1371B9] dark:text-sky-300 hover:bg-[#1371B9] hover:text-white text-[10px] font-bold transition">
+                            Детали →
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // Обновляем бейджи количества
+            const countNew = document.getElementById('kanbanCount_Новая');
+            if (countNew) countNew.innerText = counts['Новая'] || 0;
+            const countInProc = document.getElementById('kanbanCount_В_обработке');
+            if (countInProc) countInProc.innerText = counts['В обработке'] || 0;
+            const countInterview = document.getElementById('kanbanCount_Собеседование');
+            if (countInterview) countInterview.innerText = counts['Собеседование'] || 0;
+            const countHired = document.getElementById('kanbanCount_Принят');
+            if (countHired) countHired.innerText = counts['Принят'] || 0;
+            const countRejected = document.getElementById('kanbanCount_Отказ');
+            if (countRejected) countRejected.innerText = counts['Отказ'] || 0;
+
+            // Пустые зоны для колонок без анкет
+            Object.keys(columns).forEach(k => {
+                if (columns[k] && counts[k] === 0) {
+                    columns[k].innerHTML = '<div class="text-[11px] text-slate-400 text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Перетащите сюда</div>';
+                }
+            });
+        }
+
+        function onKanbanDragStart(e, ticketId) {
+            draggedCandidateTicketId = ticketId;
+            e.dataTransfer.setData('text/plain', String(ticketId));
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function onKanbanDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const col = e.currentTarget;
+            col.classList.add('ring-2', 'ring-[#1371B9]', 'bg-blue-50/50', 'dark:bg-blue-950/20');
+        }
+
+        function onKanbanDragLeave(e) {
+            const col = e.currentTarget;
+            col.classList.remove('ring-2', 'ring-[#1371B9]', 'bg-blue-50/50', 'dark:bg-blue-950/20');
+        }
+
+        async function onKanbanDrop(e, targetStatus) {
+            e.preventDefault();
+            const col = e.currentTarget;
+            col.classList.remove('ring-2', 'ring-[#1371B9]', 'bg-blue-50/50', 'dark:bg-blue-950/20');
+
+            const ticketId = draggedCandidateTicketId || parseInt(e.dataTransfer.getData('text/plain'), 10);
+            if (!ticketId) return;
+
+            const cand = state.candidates.find(c => c.ticket_id == ticketId);
+            if (cand) {
+                const oldStatus = cand.status;
+                cand.status = targetStatus;
+                renderKanbanBoard(state.candidates);
+                renderCandidatesTable(state.candidates);
+
+                try {
+                    const resp = await apiFetch(`/api/candidate/${ticketId}/status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: targetStatus })
+                    });
+                    if (!resp.ok) {
+                        cand.status = oldStatus;
+                        renderKanbanBoard(state.candidates);
+                        renderCandidatesTable(state.candidates);
+                        alert('Не удалось обновить статус на сервере.');
+                    }
+                } catch(err) {
+                    cand.status = oldStatus;
+                    renderKanbanBoard(state.candidates);
+                    renderCandidatesTable(state.candidates);
+                    alert('Сетевая ошибка при смене статуса.');
+                }
+            }
+        }
+
         function filterCandidatesByStatus(status) {
             document.querySelectorAll('[data-status-filter]').forEach(b => {
                 b.classList.toggle('active', b.getAttribute('data-status-filter') === status);
             });
-            if (status === 'all') {
-                renderCandidatesTable(state.candidates);
-            } else {
-                const filtered = state.candidates.filter(c => (c.status || '').includes(status));
-                renderCandidatesTable(filtered);
-            }
+            const filtered = status === 'all' ? state.candidates : state.candidates.filter(c => (c.status || '').includes(status));
+            renderCandidatesTable(filtered);
+            renderKanbanBoard(filtered);
         }
 
         async function openCandidateDetailModal(ticketId) {
@@ -2354,8 +2865,29 @@
                         waBtn.classList.toggle('opacity-50', !cleanPhone);
                     }
 
+                    let scoreBanner = '';
+                    if (c.fit_score) {
+                        const sc = c.fit_score.score || 0;
+                        const lvl = c.fit_score.level || '';
+                        const rec = c.fit_score.recommendation || '';
+                        const col = c.fit_score.color || 'blue';
+                        const bg = col === 'green' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300' :
+                                   (col === 'yellow' ? 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-300' :
+                                   (col === 'red' ? 'bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-300' : 'bg-blue-500/10 border-blue-500/30 text-[#1371B9] dark:text-sky-300'));
+                        scoreBanner = `
+                            <div class="sm:col-span-2 p-3 rounded-2xl border ${bg} flex items-center justify-between gap-3">
+                                <div>
+                                    <div class="font-bold text-xs uppercase tracking-wider">🎯 Индекс соответствия: ${sc}% (${lvl})</div>
+                                    <div class="text-[11px] opacity-90 mt-0.5">${escapeHtml(rec)}</div>
+                                </div>
+                                <div class="text-2xl font-black shrink-0">${sc}%</div>
+                            </div>
+                        `;
+                    }
+
                     content.innerHTML = `
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            ${scoreBanner}
                             <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800"><b>1. ФИО:</b> ${escapeHtml(c.full_name || '—')}</div>
                             <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800"><b>2. Дата рождения:</b> ${escapeHtml(c.birth_date || '—')}</div>
                             <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800"><b>3. Телефон:</b> ${escapeHtml(c.phone || '—')}</div>
@@ -3245,6 +3777,83 @@
         }
 
 
+        // ================= УПРАВЛЕНИЕ СЛУЖЕБНЫМ ВЫПАДАЮЩИМ МЕНЮ (DROPDOWN) =================
+        function toggleAdminMenu(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('adminDropdownMenu');
+            const arrow = document.getElementById('adminDropdownArrow');
+            if (!menu) return;
+            const isClosed = menu.classList.contains('hidden');
+            if (isClosed) {
+                menu.classList.remove('hidden');
+                arrow?.classList.add('rotate-180');
+            } else {
+                closeAdminMenu();
+            }
+        }
+
+        function closeAdminMenu() {
+            const menu = document.getElementById('adminDropdownMenu');
+            const arrow = document.getElementById('adminDropdownArrow');
+            if (menu) menu.classList.add('hidden');
+            if (arrow) arrow.classList.remove('rotate-180');
+        }
+
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('adminDropdownContainer');
+            if (container && !container.contains(e.target)) {
+                closeAdminMenu();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAdminMenu();
+        });
+
+        function onAdminMenuAuthAction() {
+            closeAdminMenu();
+            if (state.role === 'guest' || !state.user) {
+                openLoginModal('staff');
+            } else {
+                logoutUser();
+            }
+        }
+
+        function navigateToStaffTab(tabName) {
+            closeAdminMenu();
+            const role = (state.role || 'guest').toLowerCase();
+            const isSuper = role === 'superadmin' || role === 'super';
+            const isAdmin = isSuper || role === 'admin';
+            const isHr = isSuper || isAdmin || role === 'hr';
+            const isTech = isSuper || isAdmin || role === 'tech';
+
+            if (tabName === 'hrHub') {
+                if (!isHr) {
+                    openLoginModal('Для доступа к пульту «HR Кадры» требуется авторизация кадровика.');
+                    return;
+                }
+                switchTab('hrHub');
+            } else if (tabName === 'techHub') {
+                if (!isTech) {
+                    openLoginModal('Для доступа к «Tech Пульту» требуется авторизация дежурного инженера.');
+                    return;
+                }
+                switchTab('techHub');
+            } else if (tabName === 'adminHub') {
+                if (!isAdmin) {
+                    openLoginModal('Для управления списком администраторов требуется авторизация.');
+                    return;
+                }
+                switchTab('adminHub');
+            } else if (tabName === 'ownerHub') {
+                if (!isSuper) {
+                    openLoginModal('Кабинет Владельца доступен только Главному администратору предприятия.');
+                    return;
+                }
+                switchTab('ownerHub');
+            }
+        }
+
         function applyAuthUI() {
             const role = (state.role || 'guest').toLowerCase();
             const isSuper = role === 'superadmin' || role === 'super';
@@ -3253,33 +3862,82 @@
             const isTech = isSuper || isAdmin || role === 'tech';
             const isStaff = isSuper || isAdmin || isHr || isTech;
 
-            // 1. Десктопная панель навигации в шапке (показываем только те пульты, куда есть доступ)
-            const staffNav = document.getElementById('topStaffNavBlock');
-            if (staffNav) staffNav.classList.toggle('hidden', !isStaff);
+            // 1. Обновление триггер-кнопки выпадающего меню в шапке
+            const triggerBtn = document.getElementById('adminDropdownTriggerBtn');
+            const triggerIcon = document.getElementById('adminDropdownIcon');
+            const triggerTitle = document.getElementById('adminDropdownTitle');
+            const statusDot = document.getElementById('adminMenuStatusDot');
+            const roleText = document.getElementById('adminMenuUserRoleText');
+            const authActionBtn = document.getElementById('adminMenuAuthActionBtn');
+            const logoutBlock = document.getElementById('adminMenuLogoutBlock');
 
-            const btnHr = document.getElementById('topBtnHr');
-            const btnTech = document.getElementById('topBtnTech');
-            const btnAdmins = document.getElementById('topBtnAdmins');
-            const btnOwner = document.getElementById('topBtnOwner');
+            // Замочки/бейджи на пунктах выпадающего меню
+            const lockHr = document.getElementById('adminMenuLock_hr');
+            const lockTech = document.getElementById('adminMenuLock_tech');
+            const lockAdmins = document.getElementById('adminMenuLock_admins');
+            const lockOwner = document.getElementById('adminMenuLock_owner');
 
-            if (btnHr) btnHr.classList.toggle('hidden', !isHr);
-            if (btnTech) btnTech.classList.toggle('hidden', !isTech);
-            if (btnAdmins) btnAdmins.classList.toggle('hidden', !isAdmin);
-            if (btnOwner) btnOwner.classList.toggle('hidden', !isSuper);
+            if (role === 'guest' || !state.user) {
+                if (triggerIcon) triggerIcon.innerText = '🔐';
+                if (triggerTitle) triggerTitle.innerText = 'Служебный вход';
+                if (statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+                if (roleText) roleText.innerText = 'Гостевой доступ';
+                if (authActionBtn) {
+                    authActionBtn.innerText = 'Вход';
+                    authActionBtn.className = 'ml-2 px-2.5 py-1 rounded-lg bg-[#1371B9] hover:bg-blue-700 text-white text-[10px] font-bold transition shadow-xs shrink-0';
+                }
+                if (logoutBlock) logoutBlock.classList.add('hidden');
+
+                if (lockHr) lockHr.innerHTML = '<span class="text-slate-400">🔒</span>';
+                if (lockTech) lockTech.innerHTML = '<span class="text-slate-400">🔒</span>';
+                if (lockAdmins) lockAdmins.innerHTML = '<span class="text-slate-400">🔒</span>';
+                if (lockOwner) lockOwner.innerHTML = '<span class="text-slate-400">🔒</span>';
+            } else {
+                let roleLabel = 'СОТРУДНИК';
+                let icon = '👤';
+                if (isSuper) {
+                    roleLabel = 'ВЛАДЕЛЕЦ';
+                    icon = '👑';
+                } else if (role === 'hr') {
+                    roleLabel = 'КАДРОВИК';
+                    icon = '👥';
+                } else if (role === 'tech') {
+                    roleLabel = 'ИНЖЕНЕР';
+                    icon = '🛠';
+                } else if (role === 'admin') {
+                    roleLabel = 'АДМИН';
+                    icon = '🛡';
+                }
+
+                if (triggerIcon) triggerIcon.innerText = icon;
+                if (triggerTitle) triggerTitle.innerText = `${state.user.name || roleLabel}`;
+                if (statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+                if (roleText) roleText.innerText = `${state.user.name || 'Сотрудник'} (${roleLabel})`;
+                if (authActionBtn) {
+                    authActionBtn.innerText = 'Выйти';
+                    authActionBtn.className = 'ml-2 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 text-[10px] font-bold transition shrink-0';
+                }
+                if (logoutBlock) logoutBlock.classList.remove('hidden');
+
+                if (lockHr) lockHr.innerHTML = isHr ? '<span class="text-emerald-500 font-bold text-[10px]">✅ Доступ</span>' : '<span class="text-slate-400">🔒</span>';
+                if (lockTech) lockTech.innerHTML = isTech ? '<span class="text-emerald-500 font-bold text-[10px]">✅ Доступ</span>' : '<span class="text-slate-400">🔒</span>';
+                if (lockAdmins) lockAdmins.innerHTML = isAdmin ? '<span class="text-emerald-500 font-bold text-[10px]">✅ Доступ</span>' : '<span class="text-slate-400">🔒</span>';
+                if (lockOwner) lockOwner.innerHTML = isSuper ? '<span class="text-emerald-500 font-bold text-[10px]">✅ Доступ</span>' : '<span class="text-slate-400">🔒</span>';
+            }
 
             // 2. Мобильное выпадающее меню
             const mobStaffNav = document.getElementById('mobStaffNavBlock');
-            if (mobStaffNav) mobStaffNav.classList.toggle('hidden', !isStaff);
+            if (mobStaffNav) mobStaffNav.classList.remove('hidden');
 
             const mobHr = document.getElementById('mobBtnHr');
             const mobTech = document.getElementById('mobBtnTech');
             const mobAdmins = document.getElementById('mobBtnAdmins');
             const mobOwner = document.getElementById('mobBtnOwner');
 
-            if (mobHr) mobHr.classList.toggle('hidden', !isHr);
-            if (mobTech) mobTech.classList.toggle('hidden', !isTech);
-            if (mobAdmins) mobAdmins.classList.toggle('hidden', !isAdmin);
-            if (mobOwner) mobOwner.classList.toggle('hidden', !isSuper);
+            if (mobHr) mobHr.classList.remove('hidden');
+            if (mobTech) mobTech.classList.remove('hidden');
+            if (mobAdmins) mobAdmins.classList.remove('hidden');
+            if (mobOwner) mobOwner.classList.remove('hidden');
 
             // 3. Карточки на Главной странице (landing)
             const cardHr = document.getElementById('landingCardHr');
@@ -3287,68 +3945,30 @@
             const cardAdmins = document.getElementById('landingCardAdmins');
             const cardOwner = document.getElementById('landingCardOwner');
 
-            const lockHr = document.getElementById('landingLockHr');
-            const lockTech = document.getElementById('landingLockTech');
-            const lockAdmins = document.getElementById('landingLockAdmins');
-            const lockOwner = document.getElementById('landingLockOwner');
+            const landingLockHr = document.getElementById('landingLockHr');
+            const landingLockTech = document.getElementById('landingLockTech');
+            const landingLockAdmins = document.getElementById('landingLockAdmins');
+            const landingLockOwner = document.getElementById('landingLockOwner');
 
             if (role === 'guest') {
-                if (lockHr) lockHr.innerText = '🔒';
-                if (lockTech) lockTech.innerText = '🔒';
-                if (lockAdmins) lockAdmins.innerText = '🔒';
-                if (lockOwner) lockOwner.innerText = '🔒';
+                if (landingLockHr) landingLockHr.innerText = '🔒';
+                if (landingLockTech) landingLockTech.innerText = '🔒';
+                if (landingLockAdmins) landingLockAdmins.innerText = '🔒';
+                if (landingLockOwner) landingLockOwner.innerText = '🔒';
                 if (cardHr) cardHr.classList.remove('hidden');
                 if (cardTech) cardTech.classList.remove('hidden');
                 if (cardAdmins) cardAdmins.classList.remove('hidden');
                 if (cardOwner) cardOwner.classList.remove('hidden');
             } else {
-                // Если сотрудник авторизован — открываем замок на доступных пультах и скрываем недоступные
-                if (lockHr) lockHr.innerText = isHr ? '🔓' : '🚫';
-                if (lockTech) lockTech.innerText = isTech ? '🔓' : '🚫';
-                if (lockAdmins) lockAdmins.innerText = isAdmin ? '🔓' : '🚫';
-                if (lockOwner) lockOwner.innerText = isSuper ? '🔓' : '🚫';
+                if (landingLockHr) landingLockHr.innerText = isHr ? '🔓' : '🚫';
+                if (landingLockTech) landingLockTech.innerText = isTech ? '🔓' : '🚫';
+                if (landingLockAdmins) landingLockAdmins.innerText = isAdmin ? '🔓' : '🚫';
+                if (landingLockOwner) landingLockOwner.innerText = isSuper ? '🔓' : '🚫';
 
                 if (cardHr) cardHr.classList.toggle('hidden', !isHr);
                 if (cardTech) cardTech.classList.toggle('hidden', !isTech);
                 if (cardAdmins) cardAdmins.classList.toggle('hidden', !isAdmin);
                 if (cardOwner) cardOwner.classList.toggle('hidden', !isSuper);
-            }
-
-            // 4. Виджет авторизации в шапке
-            const guestBlock = document.getElementById('authGuestBlock');
-            const userBlock = document.getElementById('authUserBlock');
-
-            if (role === 'guest' || !state.user) {
-                guestBlock?.classList.remove('hidden');
-                userBlock?.classList.add('hidden');
-                userBlock?.classList.remove('flex');
-            } else {
-                guestBlock?.classList.add('hidden');
-                if (userBlock) {
-                    userBlock.classList.remove('hidden');
-                    userBlock.classList.add('flex');
-                    document.getElementById('userProfileName').innerText = state.user.name || state.user.role;
-                    let roleLabel = 'СОТРУДНИК';
-                    let badgeColor = 'bg-blue-500/15 text-[#1371B9]';
-                    if (isSuper) {
-                        roleLabel = '👑 ВЛАДЕЛЕЦ';
-                        badgeColor = 'bg-rose-500/15 text-rose-600';
-                    } else if (role === 'hr') {
-                        roleLabel = '👔 КАДРЫ';
-                        badgeColor = 'bg-blue-500/15 text-blue-600';
-                    } else if (role === 'tech') {
-                        roleLabel = '🛠 ИНЖЕНЕР';
-                        badgeColor = 'bg-amber-500/15 text-amber-600';
-                    } else if (role === 'admin') {
-                        roleLabel = '🛡 АДМИН';
-                        badgeColor = 'bg-purple-500/15 text-purple-600';
-                    }
-                    const badge = document.getElementById('userRoleBadge');
-                    if (badge) {
-                        badge.innerText = roleLabel;
-                        badge.className = `text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded font-mono ${badgeColor}`;
-                    }
-                }
             }
         }
 
@@ -3406,6 +4026,252 @@
 
         function escapeHtml(t) {
             return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // ================= ВОПРОС КАДРОВИКУ (QUESTION MODAL) =================
+        function openQuestionModal(tab = 'ask') {
+            const modal = document.getElementById('askQuestionModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                switchQuestionModalTab(tab);
+            }
+        }
+
+        function closeQuestionModal() {
+            const modal = document.getElementById('askQuestionModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function switchQuestionModalTab(tab) {
+            const askTab = document.getElementById('askQuestionContentAsk');
+            const checkTab = document.getElementById('askQuestionContentCheck');
+            const btnAsk = document.getElementById('modalTabBtnAsk');
+            const btnCheck = document.getElementById('modalTabBtnCheck');
+
+            if (tab === 'ask') {
+                askTab?.classList.remove('hidden');
+                checkTab?.classList.add('hidden');
+                btnAsk?.classList.add('bg-gradient-to-r', 'from-orange-500', 'to-amber-500', 'text-white', 'shadow-xs');
+                btnAsk?.classList.remove('text-slate-600', 'dark:text-slate-400');
+                btnCheck?.classList.remove('bg-gradient-to-r', 'from-orange-500', 'to-amber-500', 'text-white', 'shadow-xs');
+                btnCheck?.classList.add('text-slate-600', 'dark:text-slate-400');
+            } else {
+                askTab?.classList.add('hidden');
+                checkTab?.classList.remove('hidden');
+                btnCheck?.classList.add('bg-gradient-to-r', 'from-orange-500', 'to-amber-500', 'text-white', 'shadow-xs');
+                btnCheck?.classList.remove('text-slate-600', 'dark:text-slate-400');
+                btnAsk?.classList.remove('bg-gradient-to-r', 'from-orange-500', 'to-amber-500', 'text-white', 'shadow-xs');
+                btnAsk?.classList.add('text-slate-600', 'dark:text-slate-400');
+            }
+        }
+
+        async function submitQuestionForm(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const fullName = document.getElementById('qFullName')?.value?.trim() || '';
+            const phone = document.getElementById('qPhone')?.value?.trim() || '';
+            const text = document.getElementById('qText')?.value?.trim() || '';
+            const successMsg = document.getElementById('questionSuccessMsg');
+            const errorMsg = document.getElementById('questionErrorMsg');
+            const btn = document.getElementById('btnSubmitQuestion');
+
+            if (successMsg) successMsg.classList.add('hidden');
+            if (errorMsg) errorMsg.classList.add('hidden');
+
+            if (!phone || !text) {
+                if (errorMsg) {
+                    errorMsg.textContent = 'Пожалуйста, укажите контактный телефон и текст вопроса.';
+                    errorMsg.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (btn) btn.disabled = true;
+            try {
+                const resp = await apiFetch('/api/inquiry/submit', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        full_name: fullName,
+                        phone: phone,
+                        question_text: text,
+                        vacancy: state.surveyData?.step5_vacancy || 'Общий вопрос'
+                    })
+                });
+                const res = await resp.json();
+                if (resp.ok && res.ok) {
+                    if (successMsg) {
+                        successMsg.innerHTML = `✅ <b>Вопрос #${res.inquiry_id || ''} успешно отправлен в отдел кадров!</b><br><span class="text-xs font-normal">Ответ поступит в течение рабочего дня. Вы также можете проверить статус по номеру телефона во вкладке «Проверить ответ».</span>`;
+                        successMsg.classList.remove('hidden');
+                    }
+                    if (document.getElementById('qText')) document.getElementById('qText').value = '';
+                } else {
+                    if (errorMsg) {
+                        errorMsg.textContent = res.error || 'Ошибка при отправке вопроса.';
+                        errorMsg.classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                if (errorMsg) {
+                    errorMsg.textContent = 'Ошибка сети: ' + err.message;
+                    errorMsg.classList.remove('hidden');
+                }
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        async function performModalInquiryCheck() {
+            const query = document.getElementById('inqCheckQueryInput')?.value?.trim();
+            const resBlock = document.getElementById('inqCheckResultBlock');
+            if (!query) {
+                if (resBlock) resBlock.innerHTML = '<span class="text-amber-500 font-bold">Введите номер телефона или номер вопроса.</span>';
+                return;
+            }
+            if (resBlock) resBlock.innerHTML = '<span class="text-slate-400">Поиск в базе обращений...</span>';
+            try {
+                const resp = await apiFetch(`/api/inquiry/check?query=${encodeURIComponent(query)}`);
+                const res = await resp.json();
+                if (res && res.inquiries && res.inquiries.length > 0) {
+                    let out = '<div class="space-y-2 text-left">';
+                    for (const inq of res.inquiries) {
+                        const statusBadge = inq.status === 'Отвечен'
+                            ? '<span class="px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-600 font-bold">Отвечен</span>'
+                            : '<span class="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-600 font-bold">На рассмотрении</span>';
+                        out += `
+                            <div class="p-3 rounded-xl bg-white dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 text-xs space-y-1">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-slate-800 dark:text-white">Вопрос #В-${inq.inquiry_id}</span>
+                                    ${statusBadge}
+                                </div>
+                                <div class="text-slate-600 dark:text-slate-300"><b>Вопрос:</b> ${escapeHtml(inq.question_text || '')}</div>
+                                ${inq.admin_reply ? `<div class="p-2 rounded-lg bg-blue-50 dark:bg-slate-800 text-blue-900 dark:text-sky-200 mt-1"><b>Ответ кадровика:</b> ${escapeHtml(inq.admin_reply)}</div>` : '<div class="text-slate-400 text-[11px] italic">Ожидает ответа сотрудника кадров</div>'}
+                            </div>
+                        `;
+                    }
+                    out += '</div>';
+                    resBlock.innerHTML = out;
+                } else {
+                    resBlock.innerHTML = '<span class="text-slate-400">Обращений по данному номеру не найдено.</span>';
+                }
+            } catch (err) {
+                if (resBlock) resBlock.innerHTML = `<span class="text-red-500">Ошибка: ${escapeHtml(err.message)}</span>`;
+            }
+        }
+
+        // ================= ДОБАВЛЕНИЕ ВАКАНСИИ =================
+        async function openAddVacancyModal() {
+            const title = prompt('Введите наименование новой вакансии (например: Водитель троллейбуса 1 класса):');
+            if (!title || !title.trim()) return;
+            const salary = prompt('Укажите заработную плату / вилку (например: от 75 000 ₽):', 'по договоренности') || '';
+            const desc = prompt('Краткое описание требований и условий:', 'Официальное трудоустройство, сменный график') || '';
+
+            try {
+                const resp = await apiFetch('/api/vacancies/add', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        title: title.trim(),
+                        salary_text: salary.trim(),
+                        description: desc.trim(),
+                        category: 'general'
+                    })
+                });
+                const res = await resp.json();
+                if (resp.ok && res.ok) {
+                    alert(`✅ Вакансия «${title.trim()}» успешно добавлена!`);
+                    if (typeof loadVacanciesAdmin === 'function') loadVacanciesAdmin();
+                } else {
+                    alert('Ошибка: ' + (res.error || 'Не удалось добавить вакансию.'));
+                }
+            } catch (e) {
+                alert('Сбой сети: ' + e.message);
+            }
+        }
+
+        // ================= УПРАВЛЕНИЕ АДМИНИСТРАТОРАМИ И КУЛДАУНОМ =================
+        async function openAddAdminModal() {
+            const userId = prompt('Введите Telegram ID нового сотрудника / администратора:');
+            if (!userId || !userId.trim()) return;
+            const name = prompt('Имя сотрудника или подразделение (например: Кадры Северное депо):', 'Сотрудник') || 'Сотрудник';
+            const roleChoice = prompt('Выберите роль (hr / tech / superadmin):', 'hr') || 'hr';
+            const cleanRole = roleChoice.toLowerCase().trim();
+
+            try {
+                const resp = await apiFetch('/api/admins/add', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: userId.trim(),
+                        name: name.trim(),
+                        role: cleanRole
+                    })
+                });
+                const res = await resp.json();
+                if (resp.ok && res.ok) {
+                    alert(`✅ Сотрудник ${name} (#${userId}) успешно добавлен с ролью ${cleanRole.toUpperCase()}!`);
+                    if (typeof loadAdminsList === 'function') loadAdminsList();
+                } else {
+                    alert('Ошибка: ' + (res.error || 'Не удалось добавить администратора.'));
+                }
+            } catch (e) {
+                alert('Сбой сети: ' + e.message);
+            }
+        }
+
+        async function removeAdmin(userId) {
+            if (!confirm(`Вы действительно хотите отозвать доступ у сотрудника #${userId}?`)) return;
+            try {
+                const resp = await apiFetch('/api/admins/remove', {
+                    method: 'POST',
+                    body: JSON.stringify({ user_id: userId })
+                });
+                const res = await resp.json();
+                if (resp.ok && res.ok) {
+                    alert(`✅ Доступ для #${userId} отозван.`);
+                    if (typeof loadAdminsList === 'function') loadAdminsList();
+                } else {
+                    alert('Ошибка: ' + (res.error || 'Не удалось удалить администратора.'));
+                }
+            } catch (e) {
+                alert('Сбой сети: ' + e.message);
+            }
+        }
+
+        async function toggleAdminNotify(userId) {
+            try {
+                const resp = await apiFetch('/api/admins/toggle_notify', {
+                    method: 'POST',
+                    body: JSON.stringify({ user_id: userId })
+                });
+                const res = await resp.json();
+                if (resp.ok && res.ok) {
+                    if (typeof loadAdminsList === 'function') loadAdminsList();
+                } else {
+                    alert('Ошибка: ' + (res.error || 'Не удалось переключить уведомления.'));
+                }
+            } catch (e) {
+                alert('Сбой сети: ' + e.message);
+            }
+        }
+
+        async function saveCooldown() {
+            const inp = document.getElementById('ownerCooldownInput');
+            const sec = parseInt(inp?.value, 10);
+            if (isNaN(sec) || sec < 0) {
+                alert('Пожалуйста, введите корректное число секунд.');
+                return;
+            }
+            try {
+                const resp = await apiFetch('/api/super/set_cooldown', {
+                    method: 'POST',
+                    body: JSON.stringify({ cooldown_seconds: sec })
+                });
+                const res = await resp.json();
+                if (resp.ok && res.ok) {
+                    alert(`✅ Кулдаун антифлуда успешно установлен: ${sec} сек.`);
+                } else {
+                    alert('Ошибка: ' + (res.error || 'Не удалось сохранить кулдаун.'));
+                }
+            } catch (e) {
+                alert('Сбой сети: ' + e.message);
+            }
         }
     </script>
 </body>

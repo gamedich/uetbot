@@ -89,3 +89,30 @@ class TestCandidateValidation:
         assert candidate_service.is_driver_vacancy("Водитель трамвая") is True
         assert candidate_service.is_driver_vacancy("Водитель троллейбуса") is True
         assert candidate_service.is_driver_vacancy("Слесарь-электрик") is False
+
+    def test_calculate_applicant_score(self, candidate_service):
+        # 1. Идеальный кандидат на водителя трамвая с категорией Tm
+        ideal_driver = {
+            "vacancy": "Водитель трамвая",
+            "license_categories": "B, C, Tm",
+            "birth_date": "10.05.1990",
+            "medical_restrictions": "Нет",
+            "criminal_record": "Нет",
+            "experience": "Стаж 5 лет",
+        }
+        res_ideal = candidate_service.calculate_applicant_score(ideal_driver)
+        assert res_ideal["score"] >= 80
+        assert res_ideal["level"] == "high"
+        assert any("Tm" in tag for tag in res_ideal["tags"])
+
+        # 2. Кандидат с судимостью (риск по ст. 328.1 ТК РФ)
+        convicted_cand = {
+            "vacancy": "Водитель троллейбуса",
+            "criminal_record": "Да",
+            "medical_restrictions": "Нет",
+        }
+        res_convicted = candidate_service.calculate_applicant_score(convicted_cand)
+        assert res_convicted["score"] < 50
+        assert res_convicted["level"] == "low"
+        assert any("328.1" in tag for tag in res_convicted["tags"])
+

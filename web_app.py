@@ -63,6 +63,7 @@ DOCS_DIR = Path(__file__).resolve().parent / "docs"
 
 
 from web.middlewares import cors_middleware, security_headers_middleware
+from web.routes import pages
 from web.security import generate_auth_token, validate_init_data, verify_auth_token
 
 
@@ -202,84 +203,14 @@ class WebPanel:
         except Exception as e:
             logger.warning("Локальный модуль Git не инициализирован: %s", e)
 
-    async def handle_index(self, request: web.Request) -> web.Response:
-        """
-        Единая входная точка веб-сервиса с поддержкой адаптивных шаблонов:
-        - ?view=tg -> tg_miniapp.html (чистый Telegram Mini App)
-        - ?view=mobile / ?view=apply -> apply.html (мобильный портал)
-        - ?view=kadry / ?view=hr -> kadry.html (служебный кабинет кадров)
-        - по умолчанию -> dashboard.html (универсальный мастер-дашборд с переключателем вьюпорта)
-        """
-        view = request.query.get("view", "").strip().lower()
-        if view == "tg":
-            return await self.handle_tg_page(request)
-        elif view in ("mobile", "apply", "phone"):
-            return await self.handle_apply_page(request)
-        elif view in ("kadry", "hr"):
-            return await self.handle_kadry_page(request)
-        elif view in ("pc", "dashboard"):
-            return await self.handle_dashboard_page(request)
-
-        # Умный автодетект: если открыто из нативного клиента Telegram
-        user_agent = request.headers.get("User-Agent", "")
-        if "Telegram" in user_agent or "tgWebAppData" in request.query or "tgWebAppVersion" in request.query:
-            return await self.handle_tg_page(request)
-
-        return await self.handle_dashboard_page(request)
-
-    async def handle_tg_page(self, request: web.Request) -> web.Response:
-        """Специализированный нативный шаблон Telegram Mini App (TMA)."""
-        return await self.handle_dashboard_page(request)
-
-    async def handle_showcase_page(self, request: web.Request) -> web.Response:
-        """Интерактивная витрина и эмулятор адаптивных шаблонов."""
-        return await self.handle_dashboard_page(request)
-
-    async def handle_dashboard_page(self, request: web.Request) -> web.Response:
-        """Мастер-дашборд экосистемы МУП «УЭТ» (публичный портал + хабы HR, Tech, SuperAdmin)."""
-        target = APPLY_HTML_PATH if APPLY_HTML_PATH.exists() else DASHBOARD_HTML_PATH
-        if target.exists():
-            content = target.read_text(encoding="utf-8")
-        else:
-            content = "<h1>Ошибка: Шаблон apply.html не найден</h1>"
-        return web.Response(
-            text=content,
-            content_type="text/html",
-            charset="utf-8",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
-        )
-
-    async def handle_apply_page(self, request: web.Request) -> web.Response:
-        """Карьерный портал соискателя МУП «УЭТ»: мобильная и десктопная адаптация."""
-        return await self.handle_dashboard_page(request)
-
-    async def handle_kadry_page(self, request: web.Request) -> web.Response:
-        """Служебный рабочий кабинет сотрудников и отдела кадров «КАДРЫ»."""
-        return await self.handle_dashboard_page(request)
-
-    async def handle_docs_page(self, request: web.Request) -> web.Response:
-        """Официальный сайт документации и презентации UETBot 2.0.0."""
-        docs_file = DOCS_DIR / "index.html"
-        if docs_file.exists():
-            return web.Response(
-                text=docs_file.read_text(encoding="utf-8"),
-                content_type="text/html",
-                charset="utf-8",
-                headers={"Cache-Control": "public, max-age=300"},
-            )
-        return web.Response(text="<h1>Документация не найдена</h1>", status=404, content_type="text/html")
-
-    async def handle_presentation_page(self, request: web.Request) -> web.Response:
-        """Markdown-документ презентации экосистемы UETBot 2.0.0."""
-        pres_file = DOCS_DIR / "presentation.md"
-        if pres_file.exists():
-            return web.Response(
-                text=pres_file.read_text(encoding="utf-8"),
-                content_type="text/markdown",
-                charset="utf-8",
-                headers={"Cache-Control": "public, max-age=300"},
-            )
-        return web.Response(text="Презентация не найдена", status=404, content_type="text/plain")
+    handle_index = staticmethod(pages.handle_index)
+    handle_tg_page = staticmethod(pages.handle_tg_page)
+    handle_showcase_page = staticmethod(pages.handle_showcase_page)
+    handle_dashboard_page = staticmethod(pages.handle_dashboard_page)
+    handle_apply_page = staticmethod(pages.handle_apply_page)
+    handle_kadry_page = staticmethod(pages.handle_kadry_page)
+    handle_docs_page = staticmethod(pages.handle_docs_page)
+    handle_presentation_page = staticmethod(pages.handle_presentation_page)
 
     async def handle_api_candidate_lookup(self, request: web.Request) -> web.Response:
         """Поиск статуса анкеты соискателем по номеру заявки, номеру телефона или ФИО (в обоих контурах: PROD и TEST)."""

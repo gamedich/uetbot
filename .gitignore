@@ -6,6 +6,7 @@
 # --- Секреты и конфигурация ---
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 DEV_PASSWORDS.md
@@ -36,8 +37,10 @@ private/
 *.db-shm
 *.sqlite
 *.sqlite3
-data/
+data/*
+!data/.gitkeep
 !data/vacancies.json
+!data/notes.json
 backups/
 *.zip
 *.docx

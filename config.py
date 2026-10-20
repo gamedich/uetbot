@@ -23,9 +23,9 @@ env_file_name = os.getenv("ENV_FILE", ".env.test" if (BASE_DIR / ".env.test").ex
 ENV_PATH: Path = BASE_DIR / env_file_name if not os.path.isabs(env_file_name) else Path(env_file_name)
 
 if ENV_PATH.exists():
-    load_dotenv(dotenv_path=ENV_PATH, override=True)
+    load_dotenv(dotenv_path=ENV_PATH, override=False)
 else:
-    load_dotenv(override=True)
+    load_dotenv(override=False)
 
 
 # ==============================================================================
@@ -119,22 +119,32 @@ class AppConfig(dict):
 # Список целевых чатов для уведомлений
 initial_target_chats: List[int] = []
 
-# Определение пути по умолчанию к базе SQLite (строго в каталоге data/)
-_raw_db = _get_str("DB_PATH", "resumes.db")
-if not os.path.isabs(_raw_db) and not _raw_db.startswith("data/"):
-    resolved_db_path = str(DATA_DIR / os.path.basename(_raw_db))
-elif _raw_db.startswith("data/"):
-    resolved_db_path = str(BASE_DIR / _raw_db)
+# Определение среды и пути по умолчанию к базе SQLite (строго в каталоге data/)
+_raw_env = _get_str("ENVIRONMENT", "DEV").upper()
+_raw_db = _get_str("DB_PATH", "")
+if not _raw_db:
+    if _raw_env == "PROD":
+        default_name = "resumes.db" if (DATA_DIR / "resumes.db").exists() else "prod.db"
+    else:
+        default_name = "resumes_test.db" if (DATA_DIR / "resumes_test.db").exists() else "dev.db"
+    resolved_db_path = str(DATA_DIR / default_name)
+elif not os.path.isabs(_raw_db):
+    if _raw_db.startswith("data/"):
+        resolved_db_path = str(BASE_DIR / _raw_db)
+    else:
+        resolved_db_path = str(DATA_DIR / os.path.basename(_raw_db))
 else:
     resolved_db_path = _raw_db
 os.environ["DB_PATH"] = resolved_db_path
 
+# Поддержка BOT_TOKEN и TG_BOT_TOKEN
+_bot_token = _get_str("BOT_TOKEN") or _get_str("TG_BOT_TOKEN", "")
 
 # Инициализация глобального словаря настроек
 CONFIG: AppConfig = AppConfig(
     {
         # --- Среда выполнения и версия ---
-        "ENVIRONMENT": _get_str("ENVIRONMENT", "TEST").upper(),
+        "ENVIRONMENT": _raw_env,
         "BOT_VERSION": _get_str("BOT_VERSION", "2.0.0"),
         # --- Пути файловой системы ---
         "BASE_DIR": str(BASE_DIR),
@@ -144,7 +154,8 @@ CONFIG: AppConfig = AppConfig(
         "DB_PATH": resolved_db_path,
         "LOG_FILE": _get_str("LOG_FILE", str(LOGS_DIR / "bot.log")),
         # --- Токены внешних шлюзов и сеть ---
-        "TG_BOT_TOKEN": _get_str("TG_BOT_TOKEN", ""),
+        "BOT_TOKEN": _bot_token,
+        "TG_BOT_TOKEN": _bot_token,
         "PROXY_URL": _get_str(
             "PROXY_URL", os.getenv("HTTPS_PROXY", os.getenv("https_proxy", os.getenv("HTTP_PROXY", "")))
         ),
@@ -241,20 +252,24 @@ def validate_config() -> None:
     """
     critical_errors: List[str] = []
 
-    token = CONFIG.get("TG_BOT_TOKEN", "")
+    token = CONFIG.get("BOT_TOKEN") or CONFIG.get("TG_BOT_TOKEN", "")
     if not token:
-        critical_errors.append("TG_BOT_TOKEN не задан! Укажите токен бота в файле .env")
+        critical_errors.append("BOT_TOKEN (или TG_BOT_TOKEN) не задан! Укажите токен бота в файле .env")
     elif ":" not in token:
-        critical_errors.append("TG_BOT_TOKEN имеет неверный формат Telegram Bot API токена")
+        critical_errors.append("BOT_TOKEN имеет неверный формат Telegram Bot API токена")
 
+    is_prod = CONFIG.get("ENVIRONMENT", "DEV").upper() == "PROD"
     super_id = CONFIG.get("SUPER_ADMIN_ID", 0)
     if not super_id or super_id <= 0:
-        critical_errors.append("SUPER_ADMIN_ID не задан! Укажите цифровой Telegram ID владельца в .env")
+        if is_prod:
+            critical_errors.append("SUPER_ADMIN_ID не задан! В режиме PROD обязательно укажите цифровой Telegram ID в .env")
+        else:
+            logger.warning("SUPER_ADMIN_ID не задан в режиме DEV. Административные команды владельца будут недоступны.")
 
-    # Проверка минимальной криптостойкости секретов
+    # Проверка паролей веб-панели в PROD
     admin_pwd = str(CONFIG.get("SUPER_ADMIN_PASSWORD", "")).strip()
-    if not admin_pwd or admin_pwd in ("123", "admin", "password"):
-        critical_errors.append("SUPER_ADMIN_PASSWORD слишком простой или отсутствует! Задайте стойкий пароль в .env")
+    if is_prod and (not admin_pwd or admin_pwd in ("123", "admin", "password")):
+        critical_errors.append("SUPER_ADMIN_PASSWORD слишком простой или отсутствует! Задайте стойкий пароль в .env для PROD")
 
     if critical_errors:
         err_report = (

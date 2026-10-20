@@ -10,6 +10,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+from pathlib import Path
 import sqlite3
 import threading
 from typing import Generator, Optional
@@ -58,26 +59,31 @@ class ResumeDB(
     """
 
     def __init__(self, db_path: Optional[str] = None, test_db_path: Optional[str] = None):
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        data_dir = os.path.join(base_dir, "data")
-        os.makedirs(data_dir, exist_ok=True)
+        base_dir = Path(__file__).resolve().parent
+        data_dir = base_dir / "data"
+
+        if db_path is None:
+            db_path = os.getenv("DB_PATH")
 
         if not db_path:
-            db_path = os.path.join(data_dir, "resumes.db")
-        elif not os.path.isabs(db_path):
+            db_path = str(data_dir / "resumes.db")
+        elif db_path != ":memory:" and not os.path.isabs(db_path):
             db_path = (
-                os.path.join(base_dir, db_path)
+                str(base_dir / db_path)
                 if db_path.startswith("data/")
-                else os.path.join(data_dir, os.path.basename(db_path))
+                else str(data_dir / os.path.basename(db_path))
             )
 
         if not test_db_path:
-            test_db_path = os.path.join(data_dir, "resumes_test.db")
-        elif not os.path.isabs(test_db_path):
+            if db_path == ":memory:":
+                test_db_path = ":memory:"
+            else:
+                test_db_path = str(data_dir / "resumes_test.db")
+        elif test_db_path != ":memory:" and not os.path.isabs(test_db_path):
             test_db_path = (
-                os.path.join(base_dir, test_db_path)
+                str(base_dir / test_db_path)
                 if test_db_path.startswith("data/")
-                else os.path.join(data_dir, os.path.basename(test_db_path))
+                else str(data_dir / os.path.basename(test_db_path))
             )
 
         self.db_path = db_path
@@ -85,14 +91,16 @@ class ResumeDB(
 
         # Автоматически создаем папку data/, если её нет
         for p in (self.db_path, self.test_db_path):
-            parent = os.path.dirname(p)
-            if parent:
-                os.makedirs(parent, exist_ok=True)
+            if p != ":memory:":
+                parent = os.path.dirname(p)
+                if parent:
+                    os.makedirs(parent, exist_ok=True)
 
         self._local = threading.local()
 
         self._init_and_migrate_db(is_test=False)
-        self._init_and_migrate_db(is_test=True)
+        if self.test_db_path != self.db_path:
+            self._init_and_migrate_db(is_test=True)
 
     def _get_thread_connection(self, is_test: bool = False) -> sqlite3.Connection:
         """Получение или создание переиспользуемого соединения для текущего потока (Thread-local caching)."""
@@ -100,8 +108,13 @@ class ResumeDB(
         conn = getattr(self._local, attr_name, None)
         if conn is None:
             target = self.test_db_path if is_test else self.db_path
+            if target != ":memory:":
+                parent = os.path.dirname(target)
+                if parent:
+                    os.makedirs(parent, exist_ok=True)
             conn = sqlite3.connect(target, timeout=30.0, check_same_thread=False)
-            conn.execute("PRAGMA journal_mode=WAL;")
+            if target != ":memory:":
+                conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA foreign_keys=ON;")
             conn.execute("PRAGMA busy_timeout=30000;")
             conn.execute("PRAGMA synchronous=NORMAL;")
@@ -146,8 +159,13 @@ class ResumeDB(
         if aiosqlite is None:
             raise RuntimeError("Пакет aiosqlite не установлен. Установите: pip install aiosqlite")
         target = self.test_db_path if is_test else self.db_path
+        if target != ":memory:":
+            parent = os.path.dirname(target)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
         conn = await aiosqlite.connect(target, timeout=30.0)
-        await conn.execute("PRAGMA journal_mode=WAL;")
+        if target != ":memory:":
+            await conn.execute("PRAGMA journal_mode=WAL;")
         await conn.execute("PRAGMA foreign_keys=ON;")
         await conn.execute("PRAGMA busy_timeout=30000;")
         await conn.execute("PRAGMA synchronous=NORMAL;")

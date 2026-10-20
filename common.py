@@ -92,7 +92,7 @@ if _proxy_url:
 else:
     _bot_session = None
 
-_bot_token_candidate = CONFIG.get("TG_BOT_TOKEN")
+_bot_token_candidate = CONFIG.get("BOT_TOKEN") or CONFIG.get("TG_BOT_TOKEN")
 if not _bot_token_candidate or ":" not in _bot_token_candidate:
     # Валидный по формату aiogram фиктивный токен для CI и модульного тестирования
     _bot_token_candidate = f"{'1' * 9}:{'a' * 35}"

@@ -13,6 +13,7 @@ import secrets
 import time
 from datetime import datetime
 from typing import TYPE_CHECKING
+
 from aiohttp import web
 
 from common import CONFIG, is_maintenance_active

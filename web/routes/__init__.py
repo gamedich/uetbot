@@ -2,4 +2,6 @@
 Маршрутизаторы и контроллеры REST API и страниц web.
 """
 
-from __future__ import annotations
+from web.routes import admin, auth, candidates, inquiries, pages
+
+__all__ = ["admin", "auth", "candidates", "inquiries", "pages"]

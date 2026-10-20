@@ -1184,14 +1184,26 @@
                             <div>
                                 <label class="block font-bold text-slate-500 mb-1">Новый пароль SuperAdmin (Владелец)</label>
                                 <div class="flex gap-2">
-                                    <input id="newSuperPwdInput" type="text" placeholder="Новый пароль..." class="form-input-standard flex-1">
+                                    <div class="relative flex-1 flex items-center">
+                                        <input id="newSuperPwdInput" type="password" placeholder="Новый пароль..." class="form-input-standard w-full pr-10">
+                                        <button type="button" onclick="togglePasswordVisibility('newSuperPwdInput', this)" class="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none" title="Показать/скрыть пароль" aria-label="Показать пароль">
+                                            <svg class="eye-open w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            <svg class="eye-closed w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                                        </button>
+                                    </div>
                                     <button onclick="saveAdminPassword('superadmin')" class="px-4 bg-purple-600 text-white font-bold rounded-xl shrink-0">Сохранить</button>
                                 </div>
                             </div>
                             <div>
                                 <label class="block font-bold text-slate-500 mb-1">Новый пароль Отдела кадров (HR)</label>
                                 <div class="flex gap-2">
-                                    <input id="newHrPwdInput" type="text" placeholder="Новый пароль..." class="form-input-standard flex-1">
+                                    <div class="relative flex-1 flex items-center">
+                                        <input id="newHrPwdInput" type="password" placeholder="Новый пароль..." class="form-input-standard w-full pr-10">
+                                        <button type="button" onclick="togglePasswordVisibility('newHrPwdInput', this)" class="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none" title="Показать/скрыть пароль" aria-label="Показать пароль">
+                                            <svg class="eye-open w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            <svg class="eye-closed w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                                        </button>
+                                    </div>
                                     <button onclick="saveAdminPassword('hr')" class="px-4 bg-[#1371B9] text-white font-bold rounded-xl shrink-0">Сохранить</button>
                                 </div>
                             </div>
@@ -1552,7 +1564,13 @@
                     </div>
                     <div>
                         <label class="block font-bold text-slate-500 mb-1">Пароль соискателя <span class="text-red-500">*</span></label>
-                        <input id="appLoginPass" type="password" placeholder="Ваш пароль..." required class="form-input-standard">
+                        <div class="relative flex items-center">
+                            <input id="appLoginPass" type="password" placeholder="Ваш пароль..." required class="form-input-standard pr-10">
+                            <button type="button" onclick="togglePasswordVisibility('appLoginPass', this)" class="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none" title="Показать/скрыть пароль" aria-label="Показать пароль">
+                                <svg class="eye-open w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                <svg class="eye-closed w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                            </button>
+                        </div>
                     </div>
                     <div id="appLoginError" class="hidden p-2 rounded-lg bg-red-500/10 text-red-500 font-bold text-[11px]"></div>
                     <button type="submit" class="w-full h-11 bg-[#1371B9] hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition">
@@ -1585,7 +1603,13 @@
                     </div>
                     <div>
                         <label class="block font-bold text-slate-500 mb-1">Придумайте пароль для входа <span class="text-red-500">*</span></label>
-                        <input id="regPassword" type="password" placeholder="Минимум 4 символа" minlength="4" required class="form-input-standard">
+                        <div class="relative flex items-center">
+                            <input id="regPassword" type="password" placeholder="Минимум 4 символа" minlength="4" required class="form-input-standard pr-10">
+                            <button type="button" onclick="togglePasswordVisibility('regPassword', this)" class="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none" title="Показать/скрыть пароль" aria-label="Показать пароль">
+                                <svg class="eye-open w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                <svg class="eye-closed w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                            </button>
+                        </div>
                     </div>
                     <div id="regError" class="hidden p-2 rounded-lg bg-red-500/10 text-red-500 font-bold text-[11px]"></div>
                     <button type="submit" class="w-full h-11 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold rounded-xl shadow-md transition">
@@ -1662,7 +1686,13 @@
                         </div>
                         <div>
                             <label class="block font-bold text-slate-500 mb-1">Персональный пароль</label>
-                            <input id="loginInputPass" type="password" placeholder="Пароль заданный через /password в Telegram..." class="form-input-standard text-xs">
+                            <div class="relative flex items-center">
+                                <input id="loginInputPass" type="password" placeholder="Пароль заданный через /password в Telegram..." class="form-input-standard text-xs pr-10">
+                                <button type="button" onclick="togglePasswordVisibility('loginInputPass', this)" class="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none" title="Показать/скрыть пароль" aria-label="Показать пароль">
+                                    <svg class="eye-open w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    <svg class="eye-closed w-3.5 h-3.5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                                </button>
+                            </div>
                         </div>
                         <button id="btnStaffLoginSubmit" type="submit" class="w-full h-9 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition">
                             Войти по личному паролю
@@ -3688,6 +3718,29 @@
             }
             tick();
             otpTimerInterval = setInterval(tick, 1000);
+        }
+
+        function togglePasswordVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            
+            if (btn) {
+                const eyeOpen = btn.querySelector('.eye-open');
+                const eyeClosed = btn.querySelector('.eye-closed');
+                if (eyeOpen && eyeClosed) {
+                    if (isPassword) {
+                        eyeOpen.classList.add('hidden');
+                        eyeClosed.classList.remove('hidden');
+                        btn.setAttribute('aria-label', 'Скрыть пароль');
+                    } else {
+                        eyeOpen.classList.remove('hidden');
+                        eyeClosed.classList.add('hidden');
+                        btn.setAttribute('aria-label', 'Показать пароль');
+                    }
+                }
+            }
         }
 
         function toggleStaffPasswordFallback() {

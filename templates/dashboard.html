@@ -1596,20 +1596,31 @@
 
             <!-- 2. Вкладка: СОТРУДНИК (Служебный вход HR / Tech / Admin / Owner) -->
             <div id="authContentStaff" class="space-y-3 text-xs hidden">
+                <div id="staffLoginHintBadge" class="hidden p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[#1371B9] dark:text-sky-300 font-bold leading-relaxed text-[11px]">
+                    🔐 Требуется авторизация сотрудника
+                </div>
                 <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
-                    <b>ℹ️ Инструкция для сотрудников:</b> Введите служебный логин и пароль доступа. Пароль сотрудника можно получить у системного администратора или настроить персонально в Telegram-боте командой <code>/password</code>.
+                    <b>ℹ️ Инструкция:</b> Введите служебный логин и пароль. Если у вас мастер-пароль, логин можно оставить пустым.
                 </div>
                 <form onsubmit="handleAuthLogin(event)" class="space-y-3">
                     <div>
-                        <label class="block font-bold text-slate-500 mb-1">Служебный логин или Telegram ID <span class="text-red-500">*</span></label>
-                        <input id="loginInputUser" type="text" placeholder="hr, tech, admin..." required class="form-input-standard">
+                        <label class="block font-bold text-slate-500 mb-1">Служебный логин или Telegram ID (опционально)</label>
+                        <input id="loginInputUser" type="text" placeholder="super, hr, tech (или оставьте пустым)" class="form-input-standard">
                     </div>
                     <div>
                         <label class="block font-bold text-slate-500 mb-1">Пароль доступа <span class="text-red-500">*</span></label>
-                        <input id="loginInputPass" type="password" placeholder="Служебный пароль..." required class="form-input-standard">
+                        <input id="loginInputPass" type="password" placeholder="Служебный пароль (например, uet2026super)..." required class="form-input-standard">
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                        <span>Быстрый выбор:</span>
+                        <div class="flex items-center gap-1.5 font-bold">
+                            <button type="button" onclick="quickFillStaff('superadmin', 'uet2026super')" class="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition">👑 SuperAdmin</button>
+                            <button type="button" onclick="quickFillStaff('hr', 'uet2026hr')" class="px-2 py-1 rounded-lg bg-blue-500/10 text-[#1371B9] hover:bg-blue-500/20 transition">👔 HR</button>
+                            <button type="button" onclick="quickFillStaff('tech', 'uet2026tech')" class="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition">🛠 Tech</button>
+                        </div>
                     </div>
                     <div id="loginErrorMsg" class="hidden p-2 rounded-lg bg-red-500/10 text-red-500 font-bold text-[11px]"></div>
-                    <button type="submit" class="w-full h-11 bg-[#1371B9] hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition">
+                    <button id="btnStaffLoginSubmit" type="submit" class="w-full h-11 bg-[#1371B9] hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition">
                         Войти в служебную панель
                     </button>
                 </form>
@@ -3484,24 +3495,34 @@
 
             const isMsg = typeof tabOrMsg === 'string' && (tabOrMsg.includes(' ') || tabOrMsg.length > 20);
             const err = document.getElementById('loginErrorMsg');
+            const hint = document.getElementById('staffLoginHintBadge');
+            if (err) err.classList.add('hidden');
 
             if (isMsg) {
                 switchAuthTab('staff');
-                if (err) {
-                    err.innerText = tabOrMsg;
-                    err.classList.remove('hidden');
+                if (hint) {
+                    hint.innerText = tabOrMsg;
+                    hint.classList.remove('hidden');
                 }
             } else if (tabOrMsg === 'staff') {
                 switchAuthTab('staff');
-                if (err) err.classList.add('hidden');
+                if (hint) hint.classList.add('hidden');
             } else if (tabOrMsg === 'register' || tabOrMsg === 'applicant_reg') {
                 switchAuthTab('applicant');
                 setApplicantAuthMode('register');
             } else {
                 switchAuthTab('applicant');
                 setApplicantAuthMode('login');
-                if (err) err.classList.add('hidden');
             }
+        }
+
+        function quickFillStaff(role, pwd) {
+            const u = document.getElementById('loginInputUser');
+            const p = document.getElementById('loginInputPass');
+            if (u) u.value = role;
+            if (p) p.value = pwd;
+            const err = document.getElementById('loginErrorMsg');
+            if (err) err.classList.add('hidden');
         }
 
         function closeLoginModal() {

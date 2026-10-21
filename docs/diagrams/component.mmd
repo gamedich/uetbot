@@ -1,0 +1,85 @@
+graph TD
+    %% Архитектурная диаграмма компонентов (Component Diagram) АИС «УЭТ-Бот»
+    
+    subgraph External_Clients ["Внешние клиенты и платформы"]
+        TG_User["📱 Пользователь Telegram (Соискатель)"]
+        HR_User["💼 Кадровик в Telegram (Группа ОК)"]
+        Web_User["🌐 Оператор депо (Браузер / WebApp)"]
+    end
+
+    subgraph Telegram_Infrastructure ["Облачная инфраструктура Telegram"]
+        TG_API["☁️ Telegram Bot API"]
+    end
+
+    subgraph Application_Container ["Контейнер приложения АИС «УЭТ-Бот»"]
+        subgraph Transport_Layer ["Транспортный уровень (Transport Layer)"]
+            Bot_Session["🤖 Bot Session (aiohttp client)"]
+            Dispatcher["🔀 aiogram Dispatcher (Root)"]
+            
+            subgraph Middleware_Pipeline ["Конвейер промежуточной обработки (Middlewares)"]
+                MW_Throttling["⏱ Throttling / Rate-Limiting"]
+                MW_Auth["🛡 RBAC & Blacklist Filter"]
+                MW_Logging["📝 Structural Logging"]
+            end
+        end
+
+        subgraph Handler_Routers ["Слой маршрутизации (Routers)"]
+            R_Candidate["Маршрутизатор кандидата (candidate_router)"]
+            R_Admin["Маршрутизатор администратора (admin_router)"]
+            R_Tech["Инженерный пульт (tech_router)"]
+        end
+
+        subgraph FSM_Engine ["Конечный автомат (FSM Engine)"]
+            FSM_Storage["💾 FSMContext (MemoryStorage / SQLite Backed)"]
+            FSM_Forms["📋 Формы состояний (CandidateForm, InquiryForm)"]
+        end
+
+        subgraph Domain_Services ["Сервисный слой доменной логики (Core Services)"]
+            S_Candidate["CandidateService (Бизнес-логика подбора)"]
+            S_Compliance["ComplianceService (152-ФЗ, Согласия, Акты)"]
+            S_DomainRules["domain_rules.py (Валидаторы ФИО, телефонов, 196-ФЗ, ТК РФ)"]
+            S_DocGen["doc_generator.py (Формирование .docx)"]
+        end
+
+        subgraph Data_Access_Layer ["Слой доступа к данным (DAO & Repositories)"]
+            Repo_Facade["ResumeDB (Фасад базы данных)"]
+            R_CandRepo["CandidateMixin (Операции с соискателями)"]
+            R_AdminRepo["AdminMixin (Администраторы и аудит)"]
+            R_Settings["SettingsMixin (Конфигурация системы)"]
+            Thread_Local["🧵 Thread-local Connection Pool"]
+        end
+
+        subgraph Storage_Engine ["Локальное дисковое хранилище"]
+            SQLite_WAL[("🗄 SQLite3 Database (resumes.db, PRAGMA WAL)")]
+            Backup_Engine["🔄 Hot Online Backup Worker"]
+        end
+    end
+
+    %% Потоки данных и вызовов
+    TG_User <-->|HTTPS Long Polling| TG_API
+    HR_User <-->|HTTPS Notifications / Callbacks| TG_API
+    TG_API <--> Bot_Session
+    Bot_Session --> Dispatcher
+
+    Dispatcher --> MW_Throttling
+    MW_Throttling --> MW_Auth
+    MW_Auth --> MW_Logging
+    MW_Logging --> Handler_Routers
+
+    R_Candidate <--> FSM_Forms
+    FSM_Forms <--> FSM_Storage
+    
+    Handler_Routers --> Domain_Services
+    S_Candidate --> S_DomainRules
+    S_Compliance --> S_DocGen
+
+    Domain_Services --> Repo_Facade
+    Repo_Facade --> R_CandRepo
+    Repo_Facade --> R_AdminRepo
+    Repo_Facade --> R_Settings
+    Repo_Facade --> Thread_Local
+
+    Thread_Local <-->|WAL Concurrent I/O| SQLite_WAL
+    SQLite_WAL --> Backup_Engine
+
+    Web_User <-->|HTTP REST / 127.0.0.1:8080| Repo_Facade

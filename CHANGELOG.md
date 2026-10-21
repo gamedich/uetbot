@@ -4,6 +4,25 @@
 
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/), и данный проект придерживается [Semantic Versioning (SemVer 2.0.0)](https://semver.org/lang/ru/).
 
+## [2.0.0] - 2026-10-21
+
+### Added
+- **Пирамида тестирования (Testing Pyramid: Unit, Integration, E2E):**
+  - Добавлен комплексный юнит-тестовый модуль `tests/test_unit.py` (19 тестов): валидация ФИО гражданина РФ, нормализация телефонов, контроль возрастного ценза по 196-ФЗ (21+ для водителей) и ТК РФ (18+ для кондукторов), валидация маршрутов Ульяновска, расчет смен и надбавок (ст. 153, 154 ТК РФ).
+  - Добавлен интеграционный модуль `tests/test_integration.py` (4 теста): транзакции SQLite WAL, создание и поиск анкет, бронирование собеседований в депо, проверка уникальных ограничений целостности (`UNIQUE tab_number`).
+  - Добавлен сквозной E2E-тест `tests/test_e2e.py`: полная симуляция цепочки состояний FSM (`CandidateForm`) от согласия 152-ФЗ до сохранения в БД и очистки контекста.
+  - Общий объем автоматизированных тестов доведен до 42 (100% pass rate).
+- **Пакет нормативной документации (Трек А — Госзаказ):**
+  - Техническое задание по ГОСТ 34.602-2020 (`docs/tz.md`).
+  - Двунаправленная матрица трассируемости требований (`docs/requirements-traceability.md`).
+  - Актуализированная политика безопасности и модель угроз STRIDE (`docs/security.md`).
+  - Архитектурные решения ADR-001 (`docs/adr/001-framework-choice.md`), ADR-002 (`docs/adr/002-database-engine.md`), ADR-003 (`docs/adr/003-architecture-pattern.md`), ADR-004 (`docs/adr/004-branching-strategy.md`).
+  - Диаграммы как код (Mermaid): `use_case.mmd`, `state_machine.mmd`, `er_diagram.mmd`, `component.mmd`.
+- **Инструменты контроля качества кода (Project Hygiene):**
+  - Конфигурация `.editorconfig` (UTF-8, LF, 4 spaces).
+  - Конфигурация pre-commit хуков `.pre-commit-config.yaml` (black, ruff, check-added-large-files, detect-private-key).
+  - Безопасный шаблон конфигурации окружения `.env.example`.
+
 ## [2.0.0-beta] - 2026-10-18
 
 ### Added

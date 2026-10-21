@@ -12,7 +12,7 @@
 [![Aiohttp](https://img.shields.io/badge/Web_Panel-Aiohttp_3.10-2C5BB4?style=for-the-badge&logo=aiohttp&logoColor=white)](https://docs.aiohttp.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL_12--Factor-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![152-FZ](https://img.shields.io/badge/Compliance-152--ФЗ_РФ-10b981?style=for-the-badge&logo=shield&logoColor=white)](#-соответствие-законодательству-рф-152-фз-и-тк-рф)
-[![Unit Tests](https://img.shields.io/badge/Tests-16%2F16_Passed-brightgreen?style=for-the-badge&logo=pytest)](#-тестирование)
+[![Unit Tests](https://img.shields.io/badge/Tests-42%2F42_Passed-brightgreen?style=for-the-badge&logo=pytest)](#-тестирование)
 
 [🤖 Бот в Telegram: @UetFeedback_bot](https://t.me/UetFeedback_bot) •
 [🌐 Интерактивная презентация (GitHub Pages)](https://gamedich.github.io/uetbot/) •
@@ -250,6 +250,8 @@ flowchart TD
 ├── services/               # Бизнес-логика (не зависит от транспорта)
 │   ├── candidate_service.py # Валидация ФИО, телефона, 18+, регистрация анкет, Fit Score
 │   ├── compliance_service.py # Анализ рисков ст. 328.1 ТК РФ, проверка прав
+│   ├── domain_rules.py     # Валидаторы ФИО, телефонов, цензов 196-ФЗ (21+) и расчет смен (ст. 153, 154 ТК РФ)
+│   ├── doc_generator.py    # Генерация официальных актов уничтожения ПДн (.docx)
 │   └── interview_service.py # Слоты и календарь собеседований
 │
 ├── web/                    # Веб-платформа и REST API
@@ -262,6 +264,13 @@ flowchart TD
 │   ├── middlewares.py      # Аудит запросов, rate limit, CORS
 │   └── security.py         # HMAC-SHA256 токены, сессии
 │
+├── docs/                   # Техническая документация (Трек А — Госзаказ)
+│   ├── tz.md               # ТЗ по ГОСТ 34.602-2020
+│   ├── requirements-traceability.md # Матрица трассируемости требований
+│   ├── security.md         # Модель угроз STRIDE и комплаенс 152-ФЗ
+│   ├── adr/                # Архитектурные решения (ADR-001..004)
+│   └── diagrams/           # Архитектурные диаграммы Mermaid
+│
 ├── gateways/               # Омниканальные шлюзы
 │   ├── vk_gateway.py       # Шлюз группы ВКонтакте (LongPoll API)
 │   └── max_gateway.py      # Шлюз мессенджера МАКС / VK Teams
@@ -271,8 +280,11 @@ flowchart TD
 │   ├── apply.html          # Онлайн-анкета соискателя (16 шагов в веб)
 │   └── login.html          # Защищённая страница авторизации
 │
-├── tests/                  # Автоматические тесты (Pytest, CI Isolation)
+├── tests/                  # Пирамида тестирования (Testing Pyramid: Pytest, CI Isolation)
 │   ├── conftest.py         # Фикстуры изоляции окружения (:memory: и tmp_path)
+│   ├── test_unit.py        # Юнит-тесты доменной логики (ФИО, телефоны, 196-ФЗ 21+, маршруты, смены)
+│   ├── test_integration.py # Интеграционные тесты SQLite WAL, CRUD и уникальных ограничений
+│   ├── test_e2e.py         # Сквозной E2E-тест жизненного цикла FSM-диалога
 │   ├── test_candidate_service.py # Тесты валидации полей и бизнес-правил
 │   ├── test_password_security.py # Тесты scrypt-хеширования и прозрачной миграции
 │   └── test_database_isolation.py# Тесты изоляции БД и 12-Factor архитектуры
@@ -288,6 +300,32 @@ flowchart TD
 
 ---
 
+## ⚙️ Таблица переменных окружения (`.env`)
+
+Все параметры конфигурации передаются через переменные окружения в соответствии с принципами 12-Factor App:
+
+| Переменная | Обязательность | Назначение и описание | Пример значения |
+|---|---|---|---|
+| `ENVIRONMENT` | Да | Режим работы системы (`PROD` или `TEST`) | `PROD` |
+| `BOT_VERSION` | Да | Семантическая версия релиза (SemVer) | `2.0.0` |
+| `TG_BOT_TOKEN` | Да | Токен Telegram Bot API от @BotFather | `8863560607:AAF...` |
+| `BOT_USERNAME` | Да | Имя пользователя бота в Telegram | `uet_job_bot` |
+| `DB_PATH` | Да | Путь к файлу базы данных SQLite | `data/resumes.db` |
+| `SUPER_ADMIN_ID` | Да | Telegram ID главного администратора системы | `7657422832` |
+| `TECH_ADMIN_ID` | Нет | Telegram ID технического инженера | `7657422832` |
+| `SUPER_ADMIN_PASSWORD` | Да | Мастер-пароль суперадминистратора веб-панели | `uet2026super` |
+| `HR_ADMIN_PASSWORD` | Да | Пароль сотрудников кадровой службы | `uet2026hr` |
+| `HR_GROUP_ID` | Да | ID закрытой Telegram-группы для карточек кандидатов | `-1003875480349` |
+| `WEB_APP_HOST` | Да | Сетевой интерфейс для веб-сервера | `127.0.0.1` |
+| `WEB_APP_PORT` | Да | Локальный порт веб-сервера aiohttp | `8080` |
+| `WEB_APP_URL` | Нет | Внешний URL веб-портала (для Telegram Mini App) | `https://site.domain/` |
+| `VK_GROUP_TOKEN` | Нет | Токен доступа API сообщества ВКонтакте | `vk1.a...` |
+| `VK_GROUP_ID` | Нет | Цифровой идентификатор группы ВКонтакте | `241536798` |
+| `MAX_BOT_TOKEN` | Нет | Токен бота корпоративного мессенджера МАКС | `001.xxx...` |
+| `COOLDOWN_SECONDS` | Нет | Кулдаун между вопросами соискателя (антифлуд) | `1200` |
+
+---
+
 ## 🚀 Быстрый старт и деплой
 
 ### 1. Системные требования
@@ -297,72 +335,51 @@ flowchart TD
 
 ### 2. Клонирование и установка зависимостей
 ```bash
-git clone https://github.com/gamedich/uetbot.git
-cd /root/uetbot
-python3 -m venv venv
-source venv/bin/activate
+git clone https://github.com/gamedich/uetbot.git /home/botuser/uetbot
+cd /home/botuser/uetbot
+python3 -m venv .venv
+source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
 ### 3. Настройка окружения (`.env`)
-Создайте файл `.env` на основе примера [.env.example](file:///root/uetbot2/.env.example):
-```ini
-ENVIRONMENT=PROD
-
-# База данных SQLite (12-Factor App)
-# Для PROD: data/resumes.db, для DEV: data/dev.db
-DB_PATH=data/resumes.db
-
-# Telegram Bot
-BOT_TOKEN=8880412470:AAH...
-SUPER_ADMIN_ID=7657422832
-TECH_ADMIN_ID=7657422832
-HR_GROUP_ID=-1003875480349
-
-# ВКонтакте (Сообщество)
-VK_GROUP_TOKEN=vk1.a...
-VK_GROUP_ID=241536798
-
-# Корпоративный мессенджер МАКС / VK Teams
-MAX_BOT_TOKEN=
-MAX_API_BASE=https://api.myteam.mail.ru/bot/v1
-
-# Встроенный веб-портал и Mini App
-WEB_APP_HOST=0.0.0.0
-WEB_APP_PORT=8080
-WEB_APP_URL=https://213.226.124.135.sslip.io/
-
-# Данные организации
-HR_PHONE=+7 (8422) 58-46-60
-HR_ADDRESS=г. Ульяновск, ул. Гончарова, д. 2
-HR_SCHEDULE=Пн–Пт с 8:00 до 17:00 (обед 12:00–13:00)
+Скопируйте безопасный шаблон `.env.example` в `.env` и задайте ваши параметры:
+```bash
+cp .env.example .env
+chmod 600 .env
 ```
 
 ### 4. Управление системной службой (systemd)
 Служба `/etc/systemd/system/uet_bot.service`:
 ```bash
 # Перезапуск службы
-systemctl restart uet_bot.service
+sudo systemctl restart uet_bot.service
 
 # Просмотр статуса
 systemctl status uet_bot.service
 
 # Чтение логов в реальном времени
-journalctl -u uet_bot.service -f
+sudo journalctl -u uet_bot.service -f
 ```
 
 ---
 
-## 🧪 Тестирование
+## 🧪 Тестирование (Testing Pyramid)
 
-Проект покрыт автоматическим комплексом тестов на базе `pytest` с полной изоляцией баз данных:
+Проект покрыт полным комплексом автоматизированных тестов архитектурной пирамиды:
+- **Unit Layer (`tests/test_unit.py`):** 19 тестов валидаторов ФИО, телефонов, возрастных цензов (196-ФЗ 21+, ТК РФ 18+), маршрутов и расчетов заработной платы.
+- **Integration Layer (`tests/test_integration.py`):** 4 теста транзакций SQLite, переходов статусов и ограничений целостности.
+- **End-to-End Layer (`tests/test_e2e.py`):** Сквозная симуляция диалога FSM (`CandidateForm`) от согласия 152-ФЗ до персистентности в SQLite.
+- **Core Isolation (`tests/test_database_isolation.py`, `tests/test_password_security.py`):** Проверка защиты паролей scrypt и изоляции баз.
+
+Запуск тестового комплекса:
 ```bash
-/root/uetbot/venv/bin/pytest tests/ -v
+/home/botuser/uetbot/.venv/bin/pytest tests/ -v
 ```
 ```text
 ============================= test session starts ==============================
-collected 16 items
+collected 42 items
 
 tests/test_candidate_service.py::TestCandidateValidation::test_validate_fio_valid PASSED
 tests/test_candidate_service.py::TestCandidateValidation::test_validate_fio_invalid PASSED
@@ -376,12 +393,38 @@ tests/test_candidate_service.py::TestCandidateValidation::test_calculate_applica
 tests/test_database_isolation.py::TestDatabaseIsolation::test_memory_database_initialization PASSED
 tests/test_database_isolation.py::TestDatabaseIsolation::test_tmp_path_database_isolation PASSED
 tests/test_database_isolation.py::TestDatabaseIsolation::test_no_database_files_created_in_repo_root_or_untracked PASSED
+tests/test_e2e.py::test_candidate_fsm_e2e_lifecycle PASSED
+tests/test_integration.py::TestDatabaseCandidateOperations::test_candidate_creation_and_retrieval PASSED
+tests/test_integration.py::TestDatabaseCandidateOperations::test_candidate_status_lifecycle_and_interview_booking PASSED
+tests/test_integration.py::TestDatabaseCandidateOperations::test_database_unique_constraints_enforcement PASSED
+tests/test_integration.py::TestDatabaseCandidateOperations::test_cooldown_and_duplicate_prevention PASSED
 tests/test_password_security.py::TestPasswordSecurity::test_scrypt_hash_generation PASSED
 tests/test_password_security.py::TestPasswordSecurity::test_verify_password_correct PASSED
 tests/test_password_security.py::TestPasswordSecurity::test_verify_password_wrong PASSED
 tests/test_password_security.py::TestPasswordSecurity::test_legacy_plaintext_migration_compatibility PASSED
+tests/test_unit.py::TestRussianFioValidation::test_valid_three_words_fio PASSED
+tests/test_unit.py::TestRussianFioValidation::test_valid_hyphenated_surname PASSED
+tests/test_unit.py::TestRussianFioValidation::test_invalid_fio_with_latin_letters PASSED
+tests/test_unit.py::TestRussianFioValidation::test_invalid_fio_with_digits_or_symbols PASSED
+tests/test_unit.py::TestRussianFioValidation::test_invalid_fio_too_short PASSED
+tests/test_phoneNumberValidation::test_valid_phone_plus_seven_format PASSED
+tests/test_phoneNumberValidation::test_valid_phone_eight_prefix_and_formatting PASSED
+tests/test_phoneNumberValidation::test_valid_phone_ten_digits PASSED
+tests/test_phoneNumberValidation::test_invalid_phone_too_short_or_alphanumeric PASSED
+tests/test_candidateAgeThresholds::test_driver_underage_rejected PASSED
+tests/test_candidateAgeThresholds::test_driver_eligible_age PASSED
+tests/test_candidateAgeThresholds::test_conductor_underage_rejected PASSED
+tests/test_candidateAgeThresholds::test_conductor_eligible_age PASSED
+tests/test_candidateAgeThresholds::test_calculate_age_leap_year_boundary PASSED
+tests/test_tramRouteValidation::test_valid_main_routes PASSED
+tests/test_tramRouteValidation::test_valid_seasonal_route PASSED
+tests/test_tramRouteValidation::test_invalid_route PASSED
+tests/test_shiftPayrollCalculation::test_standard_day_shift PASSED
+tests/test_shiftPayrollCalculation::test_night_shift_surcharge PASSED
+tests/test_shiftPayrollCalculation::test_driver_first_class_bonus PASSED
+tests/test_shiftPayrollCalculation::test_holiday_double_pay_with_regularity_bonus PASSED
 
-============================= 16 passed in 30.07s ==============================
+============================== 42 passed in 4.83s ==============================
 ```
 
 ---

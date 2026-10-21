@@ -1,25 +1,17 @@
 # ==============================================================================
 # .gitignore — МУП «Ульяновскэлектротранс» UETBot
-# ЖЁСТКАЯ ИЗОЛЯЦИЯ PRIVATE VS PUBLIC
 # ==============================================================================
 
 # --- Секреты и конфигурация ---
 .env
 .env.*
 *.env
-*.example
-*EXAMPLE*
 *.pem
 *.key
-DEV_PASSWORDS.md
 
-# --- Приватные модули владельца и инженерии ---
-private_admin.py
-private_ai_bridge.py
+# --- Приватные утилиты и тестовые скрипты ---
 private_*.py
-web/private_ai.html
 templates/private_*.html
-# tests/ (включено для автотестов CI/CD)
 run_tests.py
 test_scratch_*.py
 test_auth_refactor.py
@@ -86,18 +78,7 @@ temp/
 path/to/web-switcher/
 switch_script.sh
 
-# --- Developer tooling & local configs ---
-.antigravity*
-.agents/
-templates/antigravity_*
-*.antigravity*
-.cursorrules
-.cursor/
-GEMINI.md
-AGENTS.md
-CLAUDE.md
-.gemini/
-*MANUAL*.md
-*manual*.md
-SERVER_MANUAL.md
-regulations.md
+# --- Локальные настройки окружения ---
+*.local
+*.local.*
+.local/

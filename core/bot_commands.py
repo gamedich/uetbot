@@ -55,6 +55,7 @@ async def setup_bot_commands(bot_instance: Bot, config: dict, db) -> None:
         BotCommand(command="password", description="🔑 Пароль от веб-панели"),
         BotCommand(command="hr", description="📋 Кадровая панель (соискатели)"),
         BotCommand(command="tech", description="⚙️ Панель инженера (ОЗУ, БД, логи)"),
+        BotCommand(command="restart", description="🔄 Перезапуск службы бота"),
         BotCommand(command="admins", description="👥 Управление доступом и ролями"),
         BotCommand(command="export", description="📊 Выгрузка анкет в Excel"),
         BotCommand(command="start", description="🏠 Главное меню"),
@@ -72,6 +73,7 @@ async def setup_bot_commands(bot_instance: Bot, config: dict, db) -> None:
         BotCommand(command="to", description="🛠 Вкл/Выкл режим ТО"),
         BotCommand(command="password", description="🔑 Пароль от веб-панели"),
         BotCommand(command="tech", description="⚙️ Панель инженера (ОЗУ, БД, логи)"),
+        BotCommand(command="restart", description="🔄 Перезапуск службы бота"),
         BotCommand(command="start", description="🏠 Главное меню"),
     ]
     tech_id = config.get("TECH_ADMIN_ID", 0)

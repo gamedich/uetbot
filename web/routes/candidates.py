@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import html
 import logging
+import os
 import re
 import time
 from datetime import datetime
@@ -222,6 +223,7 @@ async def handle_api_candidates(panel: WebPanel, request: web.Request) -> web.Re
         total_pages = max(1, (total_items + limit - 1) // limit)
         paginated = all_rows[offset : offset + limit]
 
+        active_db = os.path.basename(getattr(panel.db, "db_path", "resumes.db"))
         return web.json_response(
             {
                 "candidates": paginated,

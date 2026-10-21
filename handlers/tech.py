@@ -213,6 +213,61 @@ async def cb_tech_toggle_db(callback: types.CallbackQuery):
     except Exception:
         pass
 
+def get_maintenance_screen_data() -> Tuple[str, types.InlineKeyboardMarkup]:
+    """Экран прямого управления режимом технического обслуживания (/to)."""
+    info = get_maintenance_info()
+    status_str = "🔴 ВКЛЮЧЕН (приём анкет на паузе)" if info["active"] else "🟢 ВЫКЛЮЧЕН (штатная работа)"
+    type_str = "Плановое" if info["type"] == "planned" else "Срочное / Аварийное"
+    details_str = f"\n⏱ <i>Детали:</i> {info['details']}" if info["details"] else ""
+
+    builder = InlineKeyboardBuilder()
+    if info["active"]:
+        builder.button(text="🟢 Завершить ТО и уведомить всех ✅", callback_data="tech_maint_resolve")
+        builder.button(text="⚙️ Выключить тихо (без рассылки)", callback_data="tech_toggle_maint")
+    else:
+        builder.button(text="🟡 Плановое ТО (с рассылкой)", callback_data="tech_maint_plan")
+        builder.button(text="🚨 Срочное ТО (мгновенная рассылка)", callback_data="tech_maint_emergency")
+        builder.button(text="⚙️ Включить тихо (без рассылки)", callback_data="tech_toggle_maint")
+    builder.button(text="🔄 Обновить статус", callback_data="tech_to_refresh")
+    builder.button(text="⚙️ Панель инженера (/tech)", callback_data="tech_refresh")
+    builder.adjust(1)
+
+    text = (
+        "🛠 <b>УПРАВЛЕНИЕ РЕЖИМОМ ТЕХОБСЛУЖИВАНИЯ (ТО)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"• Статус режима: <b>{status_str}</b>\n"
+        f"• Тип регламента: <b>{type_str}</b>"
+        f"{details_str}\n\n"
+        "ℹ️ <i>При включенном ТО приём новых анкет в боте и на сайте ставится на паузу. "
+        "Текущие диалоги сохраняются. Вы можете объявить плановое ТО с оповещением или выключить режим.</i>"
+    )
+    return text, builder.as_markup()
+
+
+@tech_router.message(Command("to", "maint", "maintenance"))
+async def cmd_maintenance_control(message: types.Message) -> None:
+    """Прямая команда управления режимом ТО (/to, /maint, /maintenance)."""
+    if not is_privileged_user(message.from_user.id):
+        await safe_answer(message, "🚫 Доступ ограничен администраторами.")
+        return
+    text, kb = get_maintenance_screen_data()
+    await safe_answer(message, text, reply_markup=kb, parse_mode="HTML")
+
+
+@tech_router.callback_query(F.data == "tech_to_refresh")
+async def cb_tech_to_refresh(callback: types.CallbackQuery) -> None:
+    """Обновление экрана /to."""
+    if not is_privileged_user(callback.from_user.id):
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
+    text, kb = get_maintenance_screen_data()
+    try:
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        pass
+    await callback.answer("🔄 Статус ТО обновлен!")
+
+
 @tech_router.callback_query(F.data == "tech_toggle_maint")
 async def cb_tech_toggle_maint(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
@@ -225,7 +280,11 @@ async def cb_tech_toggle_maint(callback: types.CallbackQuery) -> None:
     status_str = "ВКЛЮЧЕН (прием анкет на паузе)" if new_state else "ВЫКЛЮЧЕН (штатная работа)"
     await callback.answer(f"Режим ТО: {status_str}", show_alert=True)
     if callback.message:
-        screen_text, kb = get_tech_screen_data(callback.from_user.id)
+        is_to_screen = "УПРАВЛЕНИЕ РЕЖИМОМ ТЕХОБСЛУЖИВАНИЯ" in (callback.message.text or "")
+        if is_to_screen:
+            screen_text, kb = get_maintenance_screen_data()
+        else:
+            screen_text, kb = get_tech_screen_data(callback.from_user.id)
         try:
             await callback.message.edit_text(screen_text, reply_markup=kb, parse_mode="HTML")
         except Exception:
@@ -245,12 +304,17 @@ async def cb_tech_maint_plan(callback: types.CallbackQuery, bot: Bot) -> None:
 
     stats = await broadcast_maintenance_alert(bot, action="planned", details=details)
 
-    screen_text, kb = get_tech_screen_data(callback.from_user.id)
-    alert_report = f"\n\n📢 <b>Плановое ТО объявлено!</b>\nДоставлено уведомлений: <code>{stats['sent']}</code>"
-    try:
-        await callback.message.edit_text(screen_text + alert_report, reply_markup=kb, parse_mode="HTML")
-    except Exception:
-        pass
+    if callback.message:
+        is_to_screen = "УПРАВЛЕНИЕ РЕЖИМОМ ТЕХОБСЛУЖИВАНИЯ" in (callback.message.text or "")
+        if is_to_screen:
+            screen_text, kb = get_maintenance_screen_data()
+        else:
+            screen_text, kb = get_tech_screen_data(callback.from_user.id)
+        alert_report = f"\n\n📢 <b>Плановое ТО объявлено!</b>\nДоставлено уведомлений: <code>{stats['sent']}</code>"
+        try:
+            await callback.message.edit_text(screen_text + alert_report, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
 
 
 @tech_router.callback_query(F.data == "tech_maint_emergency")
@@ -266,12 +330,17 @@ async def cb_tech_maint_emergency(callback: types.CallbackQuery, bot: Bot) -> No
 
     stats = await broadcast_maintenance_alert(bot, action="emergency", details=details)
 
-    screen_text, kb = get_tech_screen_data(callback.from_user.id)
-    alert_report = f"\n\n🚨 <b>Срочное ТО объявлено!</b>\nДоставлено уведомлений: <code>{stats['sent']}</code>"
-    try:
-        await callback.message.edit_text(screen_text + alert_report, reply_markup=kb, parse_mode="HTML")
-    except Exception:
-        pass
+    if callback.message:
+        is_to_screen = "УПРАВЛЕНИЕ РЕЖИМОМ ТЕХОБСЛУЖИВАНИЯ" in (callback.message.text or "")
+        if is_to_screen:
+            screen_text, kb = get_maintenance_screen_data()
+        else:
+            screen_text, kb = get_tech_screen_data(callback.from_user.id)
+        alert_report = f"\n\n🚨 <b>Срочное ТО объявлено!</b>\nДоставлено уведомлений: <code>{stats['sent']}</code>"
+        try:
+            await callback.message.edit_text(screen_text + alert_report, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
 
 
 @tech_router.callback_query(F.data == "tech_maint_resolve")
@@ -286,12 +355,17 @@ async def cb_tech_maint_resolve(callback: types.CallbackQuery, bot: Bot) -> None
 
     stats = await broadcast_maintenance_alert(bot, action="resolved")
 
-    screen_text, kb = get_tech_screen_data(callback.from_user.id)
-    alert_report = f"\n\n✅ <b>ТО завершено! Сервис работает в штатном режиме.</b>\nДоставлено уведомлений: <code>{stats['sent']}</code>"
-    try:
-        await callback.message.edit_text(screen_text + alert_report, reply_markup=kb, parse_mode="HTML")
-    except Exception:
-        pass
+    if callback.message:
+        is_to_screen = "УПРАВЛЕНИЕ РЕЖИМОМ ТЕХОБСЛУЖИВАНИЯ" in (callback.message.text or "")
+        if is_to_screen:
+            screen_text, kb = get_maintenance_screen_data()
+        else:
+            screen_text, kb = get_tech_screen_data(callback.from_user.id)
+        alert_report = f"\n\n✅ <b>ТО завершено! Сервис работает в штатном режиме.</b>\nДоставлено уведомлений: <code>{stats['sent']}</code>"
+        try:
+            await callback.message.edit_text(screen_text + alert_report, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
 
 
 
@@ -1749,21 +1823,47 @@ async def cb_vac_del_execute(callback: types.CallbackQuery) -> None:
 # 5. ПЕРЕЗАПУСК СЛУЖБЫ (/restart)
 # ==============================================================================
 
+@tech_router.callback_query(F.data == "tech_action_ask_restart")
+async def cb_tech_action_ask_restart(callback: types.CallbackQuery) -> None:
+    if not is_privileged_user(callback.from_user.id):
+        await callback.answer("🚫 Нет прав!", show_alert=True)
+        return
+    is_beta = "uetbot2" in os.path.abspath(__file__) or CONFIG.get("ENVIRONMENT") == "TEST" or "beta" in CONFIG.get("BOT_VERSION", "").lower()
+    service_name = "uet_bot_beta.service" if is_beta else "uet_bot.service"
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ ДА, ПЕРЕЗАПУСТИТЬ", callback_data="tech_action_restart_only")
+    builder.button(text="❌ Отмена", callback_data="tech_refresh")
+    builder.adjust(1, 1)
+    await callback.message.edit_text(
+        "⚠️ <b>ПОДТВЕРЖДЕНИЕ ПЕРЕЗАПУСКА СЛУЖБЫ</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Вы собираетесь перезапустить системную службу <code>{service_name}</code>.\n"
+        "Процесс перезагрузится за 2–3 секунды и применит изменения.\n\n"
+        "<b>Перезапустить сейчас?</b>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML",
+    )
+    await callback.answer()
+
+
 @tech_router.callback_query(F.data == "tech_action_restart_only")
 async def cb_tech_restart_only(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):
         await callback.answer("🚫 Нет прав!", show_alert=True)
         return
 
+    is_beta = "uetbot2" in os.path.abspath(__file__) or CONFIG.get("ENVIRONMENT") == "TEST" or "beta" in CONFIG.get("BOT_VERSION", "").lower()
+    service_name = "uet_bot_beta.service" if is_beta else "uet_bot.service"
+
     await callback.message.edit_text(
-        "🔄 <b>Перезапуск службы uet_bot выполняется...</b>\n\nБот перезагрузится через 2-3 секунды.",
+        f"🔄 <b>Перезапуск службы <code>{service_name}</code> выполняется...</b>\n\nБот перезагрузится через 2–3 секунды.",
         parse_mode="HTML",
     )
     await callback.answer()
 
     async def _do_restart():
         await asyncio.sleep(1.0)
-        await run_shell_cmd("systemctl restart uet_bot")
+        await run_shell_cmd(f"sudo /bin/systemctl restart {service_name}")
 
     asyncio.create_task(_do_restart())
 
@@ -1773,6 +1873,8 @@ async def cmd_restart(message: types.Message) -> None:
     if not is_privileged_user(message.from_user.id):
         await safe_answer(message, "🚫 Доступ ограничен администраторами.")
         return
+    is_beta = "uetbot2" in os.path.abspath(__file__) or CONFIG.get("ENVIRONMENT") == "TEST" or "beta" in CONFIG.get("BOT_VERSION", "").lower()
+    service_name = "uet_bot_beta.service" if is_beta else "uet_bot.service"
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ ДА, ПЕРЕЗАПУСТИТЬ", callback_data="tech_action_restart_only")
     builder.button(text="❌ Отмена", callback_data="tech_refresh")
@@ -1781,7 +1883,7 @@ async def cmd_restart(message: types.Message) -> None:
         message,
         "⚠️ <b>ПОДТВЕРЖДЕНИЕ ПЕРЕЗАПУСКА СЛУЖБЫ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "Вы собираетесь перезапустить системную службу <code>uet_bot</code>.\n"
+        f"Вы собираетесь перезапустить системную службу <code>{service_name}</code>.\n"
         "Процесс перезагрузится за 2–3 секунды и применит изменения.\n\n"
         "<b>Перезапустить сейчас?</b>",
         reply_markup=builder.as_markup(),

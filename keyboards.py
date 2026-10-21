@@ -331,6 +331,7 @@ def make_tech_menu_keyboard(user_id: int = 0) -> types.InlineKeyboardMarkup:
         builder.button(text="🟡 Плановое ТО (рассылка со временем)", callback_data="tech_maint_plan")
         builder.button(text="🚨 Срочное ТО (мгновенная рассылка)", callback_data="tech_maint_emergency")
     builder.button(text="📋 Системные логи (/logs)", callback_data="tech_show_logs")
+    builder.button(text="🔄 Перезапустить службу (/restart)", callback_data="tech_action_ask_restart")
     builder.button(text="🔄 Обновить статус", callback_data="tech_refresh")
     builder.adjust(1)
     return builder.as_markup()

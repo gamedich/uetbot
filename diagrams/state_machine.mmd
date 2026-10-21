@@ -1,0 +1,51 @@
+stateDiagram-v2
+    %% Диаграмма состояний конечного автомата (FSM State Machine) подбора персонала
+    [*] --> Idle: Пользователь открывает чат (/start)
+
+    Idle --> WaitingConsent: Запуск анкетирования (/apply)
+    
+    WaitingConsent --> ConsentRefused: Отказ от 152-ФЗ
+    ConsentRefused --> Idle: Завершение без сохранения данных
+
+    WaitingConsent --> VacancySelection: Принятие согласия 152-ФЗ (user_consents)
+    
+    VacancySelection --> FullNameInput: Выбор вакансии (Водитель / Кондуктор / Слесарь)
+    
+    FullNameInput --> FullNameInput: Некорректное ФИО (латиница/цифры)
+    FullNameInput --> BirthDateInput: Успешная валидация ФИО (Кириллица, 2+ слова)
+
+    BirthDateInput --> BirthDateInput: Ошибка формата даты или дата в будущем
+    BirthDateInput --> AgeRejected: Возраст < 21 для водителя (196-ФЗ) / < 18 для кондуктора
+    AgeRejected --> Idle: Разъяснение причин и завершение
+    BirthDateInput --> PhoneInput: Возраст соответствует нормативным требованиям
+
+    PhoneInput --> PhoneInput: Некорректный номер телефона
+    PhoneInput --> CityAndExperience: Нормализация телефона (+79XXXXXXXXX)
+
+    CityAndExperience --> ScheduleSelection: Выбор города и указание стажа работы
+    
+    ScheduleSelection --> DepoAndHealth: Выбор сменного графика (2/2, 5/2)
+    
+    DepoAndHealth --> ConfirmReview: Заполнение мед. ограничений и депо (№1 / №2)
+
+    state ConfirmReview {
+        [*] --> ReviewingData
+        ReviewingData --> EditField: Нажатие «Изменить поле»
+        EditField --> ReviewingData: Сохранение корректировки
+    }
+
+    ConfirmReview --> SavingToDatabase: Нажатие «Отправить анкету»
+    
+    state SavingToDatabase {
+        [*] --> ClearFSMContext: state.clear()
+        ClearFSMContext --> WriteSQLite: ResumeDB.add_candidate()
+        WriteSQLite --> TriggerTrainingBonus: Проверка триггера обучения водителя
+        TriggerTrainingBonus --> [*]
+    }
+
+    SavingToDatabase --> TicketCreated: Генерация ticket_id и отправка в группу кадров
+    
+    TicketCreated --> InterviewScheduling: Приглашение на собеседование
+    
+    InterviewScheduling --> InterviewConfirmed: Выбор депо и времени слота
+    InterviewConfirmed --> [*]: Анкета в кадровом контуре

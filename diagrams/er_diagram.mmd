@@ -1,0 +1,91 @@
+erDiagram
+    %% Реляционная модель сущностей (ER Diagram) АИС «УЭТ-Бот»
+    
+    CANDIDATES ||--o{ INQUIRIES : "имеет обращения"
+    CANDIDATES ||--o{ ACTIVE_DIALOGS : "ведет живой диалог"
+    CANDIDATES }|--|| VACANCIES : "претендует на вакансию"
+    EMPLOYEES ||--o{ EMPLOYEE_REQUESTS : "запрашивает справки"
+    ROUTES ||--|{ SHIFTS : "содержит наряды/смены"
+    CANDIDATES ||--o{ DESTRUCTION_LOGS : "уничтожение по 152-ФЗ"
+
+    CANDIDATES {
+        int ticket_id PK "Первичный автоинкрементный ключ"
+        string platform "Платформа (tg, vk, max, web)"
+        string user_id "Идентификатор пользователя в мессенджере"
+        string full_name "Нормализованное ФИО соискателя"
+        string phone "Телефон в формате +79XXXXXXXXX"
+        string vacancy "Выбранная должность"
+        string experience "Опыт работы"
+        string birth_date "Дата рождения (ДД.ММ.ГГГГ)"
+        string city "Город проживания"
+        string driver_license "Категории ВУ (B, C, D, Tm, Tb)"
+        string shift_work "Готовность к сменному графику"
+        string status "Статус (Новая, В работе, Приглашен, Принят, Архив)"
+        string interview_depot "Филиал депо собеседования"
+        string interview_time "Временной слот собеседования"
+        string interview_status "Статус собеседования (pending, confirmed)"
+        timestamp created_at "Дата и время создания"
+        timestamp updated_at "Дата последнего обновления"
+        string consent_timestamp "Метка согласия 152-ФЗ"
+    }
+
+    VACANCIES {
+        string slug PK "Идентификатор вакансии (tram_driver, conductor)"
+        string title "Официальное наименование должности"
+        string category "Категория (driver, service, engineering)"
+        string salary_text "Вилка заработной платы"
+        int is_active "Флаг активности вакансии"
+        int min_age "Возрастной порог (21 для водителей, 18 для остальных)"
+        string description "Квалификационные требования и льготы"
+    }
+
+    ROUTES {
+        string route_number PK "Номер маршрута (1, 4, 9, 10, 15, 22, 70, 107)"
+        string title "Наименование маршрута"
+        string depot "Приписанное депо (Депо №1, Депо №2)"
+        string start_point "Начальный пункт"
+        string end_point "Конечный пункт"
+        boolean is_active "Активен"
+        boolean is_seasonal "Сезонный дачный маршрут"
+    }
+
+    SHIFTS {
+        int shift_id PK "Идентификатор смены"
+        string route_number FK "Номер маршрута"
+        string schedule_type "Тип графика (2/2, 5/2, Разрывной)"
+        decimal day_hours "Дневные часы смены"
+        decimal night_hours "Ночные часы смены (ст. 154 ТК РФ +40%)"
+        decimal base_rate "Базовая часовая ставка (руб/час)"
+        decimal class_bonus "Надбавка за классность водителя"
+    }
+
+    EMPLOYEES {
+        int id PK "Внутренний идентификатор"
+        string tab_number UK "Табельный номер сотрудника (Уникальный)"
+        string full_name "ФИО штатного сотрудника"
+        string depot "Место работы (Депо №1 / №2)"
+        string position "Штатная должность"
+        string phone "Контактный телефон"
+        int telegram_id "Привязанный Telegram ID"
+        int is_active "Флаг работы на предприятии"
+    }
+
+    INQUIRIES {
+        int inquiry_id PK "Идентификатор обращения"
+        int ticket_id FK "Ссылка на анкету кандидата"
+        string user_id "Telegram ID автора"
+        string question_text "Текст вопроса кадровикам"
+        string status "Статус (open, answered, closed)"
+        string admin_reply "Официальный ответ сотрудника ОК"
+        timestamp created_at "Время поступления вопроса"
+    }
+
+    DESTRUCTION_LOGS {
+        int id PK "Идентификатор записи журнала"
+        int candidate_id FK "Идентификатор уничтоженной анкеты"
+        string user_id "Субъект ПДн"
+        string reason "Основание (Отзыв согласия ст. 14, 21 152-ФЗ)"
+        string act_number "Номер акта уничтожения ПДн"
+        string operator "Ответственный сотрудник"
+        timestamp destroyed_at "Дата и время уничтожения"
+    }

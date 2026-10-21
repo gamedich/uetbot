@@ -84,8 +84,14 @@ temp/
 path/to/web-switcher/
 switch_script.sh
 
-# --- Antigravity IDE / AI ассистент ---
+# --- Antigravity IDE / Cursor / AI ассистент ---
 .antigravity*
 .agents/
 templates/antigravity_*
 *.antigravity*
+.cursorrules
+.cursor/
+*MANUAL*.md
+*manual*.md
+SERVER_MANUAL.md
+regulations.md

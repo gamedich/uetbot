@@ -98,7 +98,7 @@ class ResumeDB(
             if self.db_path != ":memory:":
                 conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA foreign_keys=ON;")
-            conn.execute("PRAGMA busy_timeout=30000;")
+            conn.execute("PRAGMA busy_timeout=5000;")
             conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("PRAGMA cache_size=-64000;")
             conn.execute("PRAGMA temp_store=MEMORY;")
@@ -146,7 +146,7 @@ class ResumeDB(
         if self.db_path != ":memory:":
             await conn.execute("PRAGMA journal_mode=WAL;")
         await conn.execute("PRAGMA foreign_keys=ON;")
-        await conn.execute("PRAGMA busy_timeout=30000;")
+        await conn.execute("PRAGMA busy_timeout=5000;")
         await conn.execute("PRAGMA synchronous=NORMAL;")
         await conn.execute("PRAGMA cache_size=-64000;")
         await conn.execute("PRAGMA temp_store=MEMORY;")

@@ -71,9 +71,12 @@ async def handle_api_candidate_lookup(panel: WebPanel, request: web.Request) -> 
                                birth_date, city, driver_license, education, relocation, dormitory, shift_work,
                                medical_restrictions, criminal_record, source, extra_info, consent_timestamp, raw_data_json,
                                interview_depot, interview_time, interview_status
-                        FROM candidates WHERE phone LIKE ? ORDER BY ticket_id DESC LIMIT 1
+                        FROM candidates
+                        WHERE replace(replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') LIKE ?
+                           OR phone LIKE ?
+                        ORDER BY ticket_id DESC LIMIT 1
                         """,
-                        (f"%{clean_digits[-10:]}%",),
+                        (f"%{clean_digits[-10:]}%", f"%{clean_digits[-10:]}%"),
                     )
                     row = cur.fetchone()
                     if row:

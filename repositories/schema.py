@@ -49,6 +49,9 @@ def init_and_migrate_db(conn: sqlite3.Connection, is_test: bool = False) -> None
         cursor.execute("ALTER TABLE candidates ADD COLUMN consent_timestamp TEXT DEFAULT ''")
 
     new_columns: List[Tuple[str, str]] = [
+        ("id", "INTEGER DEFAULT NULL"),
+        ("age", "INTEGER DEFAULT NULL"),
+        ("stage", "TEXT DEFAULT 'new'"),
         ("birth_date", "TEXT DEFAULT ''"),
         ("city", "TEXT DEFAULT ''"),
         ("driver_license", "TEXT DEFAULT ''"),
@@ -70,6 +73,58 @@ def init_and_migrate_db(conn: sqlite3.Connection, is_test: bool = False) -> None
     for col_name, _ in new_columns:
         if col_name not in cand_cols and col_name in new_columns_dict and col_name.isidentifier():
             cursor.execute(f"ALTER TABLE candidates ADD COLUMN {col_name} {new_columns_dict[col_name]}")
+
+    # Синхронизация id = ticket_id если пуст
+    try:
+        cursor.execute("UPDATE candidates SET id = ticket_id WHERE id IS NULL")
+    except Exception:
+        pass
+
+    # Синхронизация stage со статусом если stage пуст
+    try:
+        cursor.execute("""
+            UPDATE candidates SET stage = CASE
+                WHEN status = 'Новая' THEN 'new'
+                WHEN status = 'В работе' THEN 'interview'
+                WHEN status LIKE 'Приглашен%' THEN 'interview'
+                WHEN status LIKE 'Принят%' THEN 'offer'
+                WHEN status LIKE 'Отказ%' THEN 'rejected'
+                WHEN status = 'Архив' THEN 'rejected'
+                ELSE 'new'
+            END
+            WHERE stage IS NULL OR stage = ''
+        """)
+    except Exception:
+        pass
+
+    # 1.1 Таблица перекрытий дорог / путей
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS geo_closures (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            street TEXT NOT NULL,
+            detour_info TEXT NOT NULL,
+            status TEXT DEFAULT 'active',
+            lat REAL NOT NULL,
+            lng REAL NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    # 1.2 Таблица ключевых гео-точек / остановок
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS geo_points (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            route TEXT NOT NULL,
+            lat REAL NOT NULL,
+            lng REAL NOT NULL
+        )
+        """
+    )
 
     # Для тестовой базы стартуем нумерацию тикетов с 900000 (идемпотентно)
     if is_test:

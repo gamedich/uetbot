@@ -164,14 +164,15 @@ async def main() -> None:
 
     # 5.1. Веб-панель управления и Telegram Mini App (aiohttp.web)
     web_task = None
-    try:
-        from web_app import start_web_panel_task
+    if str(CONFIG.get("SPAWN_WEB_INSIDE_BOT", "true")).lower() in ("true", "1", "yes"):
+        try:
+            from web_app import start_web_panel_task
 
-        web_host = CONFIG.get("WEB_APP_HOST", "0.0.0.0")
-        web_port = int(CONFIG.get("WEB_APP_PORT", 8080))
-        web_task = asyncio.create_task(start_web_panel_task(db, bot=bot, host=web_host, port=web_port))
-    except Exception as e:
-        logger.warning(f"Веб-панель не запущена: {e}")
+            web_host = CONFIG.get("WEB_APP_HOST", "127.0.0.1")
+            web_port = int(CONFIG.get("WEB_APP_PORT", 8082))
+            web_task = asyncio.create_task(start_web_panel_task(db, bot=bot, host=web_host, port=web_port))
+        except Exception as e:
+            logger.warning(f"Веб-панель не запущена: {e}")
 
     # 6. Оповещение о старте ИСКЛЮЧИТЕЛЬНО Главному администратору в ЛС
     start_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")

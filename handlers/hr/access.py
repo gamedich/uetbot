@@ -608,3 +608,43 @@ async def cb_hr_mute_all_dm(callback: types.CallbackQuery) -> None:
         await callback.message.edit_reply_markup(reply_markup=make_admin_menu_keyboard(callback.from_user.id))
     except Exception:
         pass
+
+
+@access_router.callback_query(F.data == "hr_web_panel_info")
+async def cb_hr_web_panel_info(callback: types.CallbackQuery) -> None:
+    """Генерация персонализированной одноразовой Magic Link для защищенного входа в веб-панель."""
+    user_id = callback.from_user.id
+    allowed, err_text = check_hr_access_or_block(user_id, callback.message.chat.id)
+    if not allowed:
+        await callback.answer(err_text or "🚫 Нет доступа к кадровой веб-панели", show_alert=True)
+        return
+
+    super_id = CONFIG.get("SUPER_ADMIN_ID", 7657422832)
+    role = "superadmin" if user_id == super_id else (db.get_admin_role(user_id) or "hr")
+    user_name = callback.from_user.full_name or f"Сотрудник #{user_id}"
+
+    try:
+        from web.security import generate_auth_token
+        token = generate_auth_token(user_id=user_id, role=role, name=user_name, exp_days=1)
+    except Exception:
+        token = ""
+
+    web_base = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/").rstrip("/")
+    target_path = "/admin/admin.html" if role == "superadmin" else "/admin/admin.html"
+    direct_url = f"{web_base}{target_path}?token={token}" if token else f"{web_base}{target_path}"
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🚀 Войти в веб-кабинет (1-Click)", url=direct_url)
+    builder.button(text="⬅️ Назад в меню HR", callback_data="admin_stats")
+    builder.adjust(1, 1)
+
+    text = (
+        "🔐 <b>ПРЯМОЙ ДОСТУП В ВЕБ-ПАНЕЛЬ МУП «УЭТ» (v3.0.0)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>Пользователь:</b> {html.escape(user_name)}\n"
+        f"🏷 <b>Роль в системе:</b> <code>{html.escape(role.upper())}</code>\n"
+        f"⏱ <b>Срок действия токена:</b> 24 часа (HMAC-SHA256)\n\n"
+        "<i>Нажмите кнопку ниже для перехода в веб-интерфейс без ввода логина и пароля:</i>"
+    )
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()

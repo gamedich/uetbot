@@ -1,0 +1,99 @@
+# ==============================================================================
+# Конфигурация виртуального хоста Nginx для МУП «Ульяновскэлектротранс»
+# Файл: /etc/nginx/sites-available/uet
+# Симлинк: /etc/nginx/sites-enabled/uet -> /etc/nginx/sites-available/uet
+# ==============================================================================
+
+# HTTP — перенаправление на HTTPS и обработка локальных запросов
+server {
+    listen 80;
+    listen [::]:80;
+    server_name 213.226.124.135 213.226.124.135.sslip.io localhost;
+
+    # Корневой каталог публичной статики лендинга
+    root /var/www/uet;
+    index index.html;
+
+    # 1. Публичный лендинг МУП «УЭТ»
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 2. Приватный SPA-пульт HR и диспетчера
+    location /admin {
+        auth_basic "UET Dispatcher & HR Area";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        try_files $uri $uri/ /admin/admin.html;
+    }
+
+    # 3. Серверный API слой бота / веба (proxy_pass на 127.0.0.1:8080)
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Настройки таймаутов
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        # Поддержка WebSocket и HTTP 1.1
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+# HTTPS — защищенное соединение с SSL-сертификатом Let's Encrypt
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name 213.226.124.135 213.226.124.135.sslip.io;
+
+    ssl_certificate /etc/letsencrypt/live/213.226.124.135.sslip.io/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/213.226.124.135.sslip.io/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Разрешаем встраивание в Telegram WebApp
+    proxy_hide_header X-Frame-Options;
+
+    # Корневой каталог публичной статики
+    root /var/www/uet;
+    index index.html;
+
+    # 1. Публичный лендинг МУП «УЭТ»
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 2. Приватный SPA-пульт HR и диспетчера
+    location /admin {
+        auth_basic "UET Dispatcher & HR Area";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        try_files $uri $uri/ /admin/admin.html;
+    }
+
+    # 3. Серверный API слой бота / веба (proxy_pass на 127.0.0.1:8080)
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Настройки таймаутов
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        # Поддержка WebSocket и HTTP 1.1
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}

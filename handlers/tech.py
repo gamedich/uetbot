@@ -172,6 +172,44 @@ async def cb_tech_refresh(event: Union[types.Message, types.CallbackQuery]) -> N
         await safe_answer(event, screen_text, reply_markup=kb, parse_mode="HTML")
 
 
+@tech_router.callback_query(F.data == "tech_web_panel_info")
+async def cb_tech_web_panel_info(callback: types.CallbackQuery) -> None:
+    """Генерация одноразовой Magic Link для защищенного входа в пульт владельца (Root/Owner)."""
+    user_id = callback.from_user.id
+    if not is_privileged_user(user_id):
+        await callback.answer("🚫 Доступ ограничен администраторам и инженерам", show_alert=True)
+        return
+
+    super_id = CONFIG.get("SUPER_ADMIN_ID", 7657422832)
+    role = "superadmin" if user_id == super_id else "tech"
+    user_name = callback.from_user.full_name or f"Инженер #{user_id}"
+
+    try:
+        from web.security import generate_auth_token
+        token = generate_auth_token(user_id=user_id, role=role, name=user_name, exp_days=1)
+    except Exception:
+        token = ""
+
+    web_base = CONFIG.get("WEB_APP_URL", "https://213.226.124.135.sslip.io/").rstrip("/")
+    direct_url = f"{web_base}/admin/admin.html?token={token}" if token else f"{web_base}/admin/admin.html"
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="👑 Открыть пульт владельца (1-Click)", url=direct_url)
+    builder.button(text="⬅️ Назад в /tech", callback_data="tech_refresh")
+    builder.adjust(1, 1)
+
+    text = (
+        "👑 <b>ЗАКРЫТЫЙ ПУЛЬТ ВЛАДЕЛЬЦА / ROOT CONSOLE (v3.0.0)</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>Пользователь:</b> {html.escape(user_name)}\n"
+        f"🏷 <b>Уровень доступа:</b> <code>{html.escape(role.upper())}</code>\n"
+        f"⏱ <b>Срок действия токена:</b> 24 часа (HMAC-SHA256)\n\n"
+        "<i>Нажмите кнопку ниже для бесшовного входа в панель супер-администратора:</i>"
+    )
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
 @tech_router.callback_query(F.data == "tech_toggle_env")
 async def cb_tech_toggle_env(callback: types.CallbackQuery) -> None:
     if not is_privileged_user(callback.from_user.id):

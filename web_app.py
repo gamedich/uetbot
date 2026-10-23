@@ -36,7 +36,7 @@ DOCS_DIR = Path(__file__).resolve().parent / "docs"
 
 
 from web.middlewares import cors_middleware, security_headers_middleware
-from web.routes import admin, auth, candidates, inquiries, pages
+from web.routes import admin, admin_api, auth, candidates, inquiries, pages
 from web.security import verify_auth_token
 
 
@@ -56,6 +56,8 @@ class WebPanel:
             self.app.router.add_static("/static/", STATIC_DIR)
 
         self.app.router.add_get("/", self.handle_index)
+        self.app.router.add_get("/admin", self.handle_admin_page)
+        self.app.router.add_get("/admin/", self.handle_admin_page)
         self.app.router.add_get("/app", self.handle_index)
         self.app.router.add_get("/dashboard", self.handle_dashboard_page)
         self.app.router.add_get("/showcase", self.handle_showcase_page)
@@ -71,6 +73,36 @@ class WebPanel:
         self.app.router.add_get("/docs/presentation.md", self.handle_presentation_page)
         self.app.router.add_get("/presentation", self.handle_presentation_page)
 
+        # UET Map Routes
+        self.app.router.add_get("/public", self.handle_map_public_page)
+        self.app.router.add_get("/public/", self.handle_map_public_page)
+        self.app.router.add_get("/map", self.handle_map_public_page)
+        self.app.router.add_get("/map/", self.handle_map_public_page)
+        self.app.router.add_get("/map/admin", self.handle_map_admin_page)
+        self.app.router.add_get("/map/admin/", self.handle_map_admin_page)
+        self.app.router.add_get("/manifest.json", self.handle_manifest_page)
+        self.app.router.add_get("/map/manifest.json", self.handle_manifest_page)
+        self.app.router.add_get("/download/app", self.handle_app_download)
+
+        # UET Map API Proxies (to uetmap service)
+        for api_path in (
+            "/api/routes",
+            "/api/routes/{id}",
+            "/api/points",
+            "/api/points/{id}",
+            "/api/events",
+            "/api/nodes",
+            "/api/alerts",
+            "/api/alerts/{id}",
+            "/api/incidents",
+            "/api/incidents/{id}",
+            "/api/admin/login",
+            "/api/admin/verify",
+            "/api/admin/logout",
+        ):
+            self.app.router.add_route("*", api_path, self.handle_map_api_proxy)
+
+
         # Vacancies & Candidate Apply API
         self.app.router.add_get("/api/vacancies", self.handle_api_vacancies)
         self.app.router.add_post("/api/vacancies/save", self.handle_api_vacancies_save)
@@ -81,12 +113,16 @@ class WebPanel:
         self.app.router.add_get("/api/candidate/lookup", self.handle_api_candidate_lookup)
         self.app.router.add_post("/api/candidate/lookup", self.handle_api_candidate_lookup)
 
-        # Auth (Zero-Knowledge OTP & TMA)
+        # Auth (Zero-Knowledge OTP & TMA & HMAC Magic Link)
         self.app.router.add_post("/api/auth/request_otp", self.handle_api_auth_request_otp)
         self.app.router.add_post("/api/auth/verify_otp", self.handle_api_auth_verify_otp)
         self.app.router.add_post("/api/auth/login", self.handle_api_auth_login)
         self.app.router.add_post("/api/auth/register", self.handle_api_auth_register)
         self.app.router.add_post("/api/auth/verify_session", self.handle_api_auth_verify_session)
+        self.app.router.add_post("/api/auth/verify", self.handle_api_auth_verify_session)
+        self.app.router.add_get("/api/auth/verify", self.handle_api_auth_verify_session)
+        self.app.router.add_post("/auth/verify", self.handle_api_auth_verify_session)
+        self.app.router.add_get("/auth/verify", self.handle_api_auth_verify_session)
         self.app.router.add_post("/api/auth/logout", self.handle_api_auth_logout)
         self.app.router.add_get("/api/auth/logout", self.handle_api_auth_logout)
         self.app.router.add_post("/api/logout", self.handle_api_auth_logout)
@@ -151,6 +187,18 @@ class WebPanel:
         self.app.router.add_post("/api/settings/toggle_notifications", self.handle_api_settings_toggle_notifications)
 
         self.app.router.add_get("/api/health", self.handle_api_health)
+        self.app.router.add_get("/api/content", self.handle_api_content)
+        self.app.router.add_post("/api/apply", self.handle_api_apply)
+        self.app.router.add_get("/api/admin/candidates", self.handle_api_admin_candidates)
+        self.app.router.add_post("/api/admin/candidates/status", self.handle_api_admin_candidates_status)
+        self.app.router.add_get("/api/admin/closures", self.handle_api_admin_closures_get)
+        self.app.router.add_post("/api/admin/closures", self.handle_api_admin_closures_post)
+        self.app.router.add_get("/api/admin/points", self.handle_api_admin_points_get)
+        self.app.router.add_get("/api/owner/overview", self.handle_api_owner_overview)
+        self.app.router.add_get("/api/owner/admins", self.handle_api_owner_admins)
+        self.app.router.add_get("/api/owner/logs", self.handle_api_owner_logs)
+        self.app.router.add_post("/api/owner/actions", self.handle_api_owner_actions)
+
         self.app.router.add_get("/api/questions", self.handle_api_questions)
         self.app.router.add_post("/api/questions", self.handle_api_questions_update)
         self.app.router.add_get("/api/system/logs", self.handle_api_system_logs)
@@ -168,6 +216,7 @@ class WebPanel:
 
 
     handle_index = staticmethod(pages.handle_index)
+    handle_admin_page = staticmethod(pages.handle_admin_page)
     handle_tg_page = staticmethod(pages.handle_tg_page)
     handle_showcase_page = staticmethod(pages.handle_showcase_page)
     handle_dashboard_page = staticmethod(pages.handle_dashboard_page)
@@ -175,6 +224,11 @@ class WebPanel:
     handle_kadry_page = staticmethod(pages.handle_kadry_page)
     handle_docs_page = staticmethod(pages.handle_docs_page)
     handle_presentation_page = staticmethod(pages.handle_presentation_page)
+    handle_map_public_page = staticmethod(pages.handle_map_public_page)
+    handle_map_admin_page = staticmethod(pages.handle_map_admin_page)
+    handle_map_api_proxy = staticmethod(pages.handle_map_api_proxy)
+    handle_manifest_page = staticmethod(pages.handle_manifest_page)
+    handle_app_download = staticmethod(pages.handle_app_download)
 
     async def handle_api_candidate_lookup(self, request: web.Request) -> web.Response:
         return await candidates.handle_api_candidate_lookup(self, request)
@@ -468,6 +522,39 @@ class WebPanel:
 
     async def handle_api_settings_role_get(self, request: web.Request) -> web.Response:
         return await admin.handle_api_settings_role_get(self, request)
+
+    async def handle_api_content(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_content(self, request)
+
+    async def handle_api_apply(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_apply(self, request)
+
+    async def handle_api_admin_candidates(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_admin_candidates(self, request)
+
+    async def handle_api_admin_candidates_status(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_admin_candidates_status(self, request)
+
+    async def handle_api_admin_closures_get(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_admin_closures_get(self, request)
+
+    async def handle_api_admin_closures_post(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_admin_closures_post(self, request)
+
+    async def handle_api_admin_points_get(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_admin_points_get(self, request)
+
+    async def handle_api_owner_overview(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_owner_overview(self, request)
+
+    async def handle_api_owner_admins(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_owner_admins(self, request)
+
+    async def handle_api_owner_logs(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_owner_logs(self, request)
+
+    async def handle_api_owner_actions(self, request: web.Request) -> web.Response:
+        return await admin_api.handle_api_owner_actions(self, request)
 
 
 async def start_web_panel_task(

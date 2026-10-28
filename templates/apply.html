@@ -270,7 +270,7 @@
             </button>
         </div>
         <div class="sm:hidden flex items-center text-[10px] text-sky-300 font-mono font-bold bg-white/10 px-2 py-0.5 rounded-md">
-            Порт 8082
+            Порт 8081
         </div>
     </div>
 
@@ -2207,6 +2207,7 @@
         }
 
         function selectSurveyCard(val) {
+            window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium');
             state.surveyData.step5_vacancy = val;
             saveDraft();
             renderSurveyCurrentStep();
@@ -2501,6 +2502,8 @@
 
                 const ticketId = res.ticket_id || Math.floor(1000 + Math.random() * 9000);
                 
+                window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
+
                 state.role = 'applicant';
                 state.user = {
                     ticket_id: ticketId,

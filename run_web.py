@@ -1,6 +1,6 @@
 """
 Запуск выделенного веб-сервера кадрового портала и личного кабинета МУП «УЭТ».
-Работает как отдельный независимый сервис на порту 8082 (ветка beta).
+Работает как отдельный независимый сервис на порту 8081 (ветка beta).
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ logger = logging.getLogger("UET_STANDALONE_WEB")
 
 async def main() -> None:
     host = CONFIG.get("WEB_APP_HOST", "127.0.0.1")
-    port = int(CONFIG.get("WEB_APP_PORT", 8082))
+    port = int(CONFIG.get("WEB_APP_PORT", 8081))
     logger.info("Запуск независимого веб-сервиса UET на http://%s:%s", host, port)
     await start_web_panel_task(db, bot=bot, host=host, port=port)
 
